@@ -30,7 +30,6 @@
 #include <math.h>
 #include "logger.h"
 
-#include "gamestr.h"
 #include "ani.h"
 #include <algorithm>
 #include <iterator>

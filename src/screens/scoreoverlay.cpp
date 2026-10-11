@@ -24,7 +24,6 @@
 #include "frontend.h"
 #include "session.h"
 #include "textrenderer.h"
-#include "gamestr.h"
 #include "menuscreens.h"
 #include "menuart.h"
 #include "theme.h"
@@ -142,15 +141,15 @@ void Score_DrawHighScoreTable(const MenuArt *art, const FrontEnd *frontEnd, Them
         const HighScoreRecord *rec = frontEnd->highScores()->record(row);
         const float y = ((float)dy + 180.0f) * w * VSCALE;
 
-        sprintf(buf, GS_FMT_S, rec->name);
+        sprintf(buf, "%s", rec->name);
         text->drawLeft(xName, y, cellW, cellH, 0.75f, buf, d3d, 0,
                        THEME_COL(THEME_COLOR_MENUHIGHSCORESENTRIES));
 
-        sprintf(buf, GS_FMT_D, (unsigned)rec->level);
+        sprintf(buf, "%d", (unsigned)rec->level);
         text->drawRight(xLevel, y, cellW, cellH, 0.75f, buf, d3d, 0,
                         THEME_COL(THEME_COLOR_MENUHIGHSCORESENTRIES));
 
-        sprintf(buf, GS_FMT_D, rec->score);
+        sprintf(buf, "%d", rec->score);
         text->drawRight(xScore, y, cellW, cellH, 0.75f, buf, d3d, 0,
                         THEME_COL(THEME_COLOR_MENUHIGHSCORESENTRIES));
 
@@ -172,14 +171,14 @@ struct ScoreRow {
 enum { ROW_LEVEL_TOTAL = TALLY_ROWS, ROW_GRAND_TOTAL };
 
 static const ScoreRow k_rows[] = {
-    { 0.28125f,  GS_HUD_CRYSTALS,          TALLY_GEMS,      GS_HUD_TIMES_5 },
-    { 0.3125f,   GS_HUD_EXTRA_CRYSTALS,    TALLY_SURPLUS,   GS_HUD_TIMES_10 },
-    { 0.34375f,  GS_HUD_DESTROYED_ENEMIES, TALLY_FOES,      GS_HUD_TIMES_50 },
-    { 0.375f,    GS_HUD_TIME_LEFT,         TALLY_TIME,      GS_HUD_TIMES_2 },
-    { 0.40625f,  GS_HUD_SISYPHUS_BONUS,    TALLY_ALLITEMS,  GS_HUD_TIMES_5 },
-    { 0.4375f,   GS_HUD_VITALITY,          TALLY_VITALITY,  GS_HUD_TIMES_1 },
-    { 0.46875f,  GS_HUD_LEVEL_SCORE,       ROW_LEVEL_TOTAL, NULL },
-    { 0.515625f, GS_HUD_TOTAL_SCORE,       ROW_GRAND_TOTAL, NULL },
+    { 0.28125f,  "crystals:",          TALLY_GEMS,      "x  5 =" },
+    { 0.3125f,   "extra crystals:",    TALLY_SURPLUS,   "x 10 =" },
+    { 0.34375f,  "destroyed enemies:", TALLY_FOES,      "x 50 =" },
+    { 0.375f,    "time left:",         TALLY_TIME,      "x  2 =" },
+    { 0.40625f,  "Sisyphus bonus:",    TALLY_ALLITEMS,  "x  5 =" },
+    { 0.4375f,   "vitality:",          TALLY_VITALITY,  "x  1 =" },
+    { 0.46875f,  "level score:",       ROW_LEVEL_TOTAL, NULL },
+    { 0.515625f, "total score:",       ROW_GRAND_TOTAL, NULL },
 };
 
 /* The value a row shows: the counted-up count, or a total. */
@@ -229,7 +228,7 @@ static void draw_summary(const Session *session, ThemeAssetBlock *theme, RenderD
         text->drawLeft(xLabel, y, cellW, cellH, 0.75f, r.label, d3d, 0,
                        THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
 
-        sprintf(buf, GS_FMT_D, row_value(session->tally(), r.row));
+        sprintf(buf, "%d", row_value(session->tally(), r.row));
         text->drawRight(r.mul ? xValue : xProd, y, cellW, cellH, 0.75f,
                         buf, d3d, 0,
                         THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
@@ -237,7 +236,7 @@ static void draw_summary(const Session *session, ThemeAssetBlock *theme, RenderD
         if (r.mul) {
             text->drawLeft(xValue, y, cellW, cellH, 0.75f, r.mul, d3d, 0,
                            THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
-            sprintf(buf, GS_FMT_D, session->tally()->shownScore[r.row]);
+            sprintf(buf, "%d", session->tally()->shownScore[r.row]);
             text->drawRight(xProd, y, cellW, cellH, 0.75f, buf, d3d, 0,
                             THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
         }
@@ -253,14 +252,14 @@ void Score_DrawGameOverScore(const Session *session, ThemeAssetBlock *theme, Ren
                   (unsigned long)d3d->width(),
                   (unsigned long)d3d->height(), n);
 
-    draw_summary(session, theme, d3d, text, n, GS_HUD_GAME_OVER);
+    draw_summary(session, theme, d3d, text, n, "GAME OVER");
 
     const uint32_t dwWidth = d3d->width();
     const float w = (float)dwWidth;
     text->drawCentered(w * 0.5f, w * 0.59375f,
                        (float)(dwWidth * 12) * VSCALE,
                        (float)(dwWidth * 14) * VSCALE, 0.75f,
-                       GS_HUD_PRESS_ENTER, d3d, 0,
+                       "...press Enter", d3d, 0,
                        THEME_COL(THEME_COLOR_HUD));
 }
 

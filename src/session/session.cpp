@@ -6,7 +6,6 @@
 #include <string.h>
 
 #include "session.h"
-#include "gamestr.h"
 #include "logger.h"
 #include "sysdev.h"
 
@@ -22,7 +21,7 @@ int Session::loadGameFile(const char *gameDir, const char *name)
     unsigned char hdr[4];
 
     levelCount_ = 0;
-    snprintf(path, sizeof(path), GS_GAME_FILE_PATH, gameDir, name);
+    snprintf(path, sizeof(path), "%s\134%s.gam", gameDir, name);
     g_logger.logMessage(2, "GAME: load game-file: %s", path);
     sysdev::TextFile in(path);
     if (!in)

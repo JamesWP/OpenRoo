@@ -8,7 +8,6 @@
 #include "fixedsounds.h"
 #include "menutree.h"
 #include "player.h"
-#include "gamestr.h"
 
 #include "audiodev.h"
 
@@ -34,15 +33,15 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     if (self->audio()->fixedSounds()->loaded != 0)
         return;
 
-    if ((self->config()->save(GS_CFG_FILE) & 0xff) != 0)
+    if ((self->config()->save("openroo.ini") & 0xff) != 0)
         g_logger.logMessage(1, "GAME: config-values saved correctly");
     else
         g_logger.logMessage(3, "GAME: ** error ** while saving config-values (maybe write-protected or hd full\077) !!!");
     self->frontEnd()->menu()->setLockStart(*self->world()->clock());
     self->frontEnd()->menu()->setLock(1);
     if (self->config()->musicOn() != 0)
-        self->audio()->cdThemes()->play(GS_GAME_MAIN);
-    self->audio()->cdThemes()->setCurrentTrack((unsigned char)self->audio()->cdThemes()->findThemeIndex(GS_GAME_MAIN));
+        self->audio()->cdThemes()->play("Main");
+    self->audio()->cdThemes()->setCurrentTrack((unsigned char)self->audio()->cdThemes()->findThemeIndex("Main"));
 
     if (self->audio()->soundCreated() == 0) {
         g_logger.logMessage(1, "GAME: warning - SoundManager not created, no wave and CD-sound !!!");
@@ -77,19 +76,19 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     self->world()->extraObjects()->setSoundLibrary(sm);
     sp->setSoundManager(sm);
 
-    snprintf(path, sizeof(path), GS_WAV_TIME_OUT, self->gameDir());
+    snprintf(path, sizeof(path), "%s\134waves\134TimeOut.wav", self->gameDir());
     self->audio()->fixedSounds()->timeOut = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), GS_WAV_LAST_SECONDS, self->gameDir());
+    snprintf(path, sizeof(path), "%s\134waves\134LastSeconds.wav", self->gameDir());
     self->audio()->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), GS_WAV_COUNT, self->gameDir());
+    snprintf(path, sizeof(path), "%s\134waves\134Count.wav", self->gameDir());
     self->audio()->fixedSounds()->count = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), GS_WAV_MENU_UP_DOWN, self->gameDir());
+    snprintf(path, sizeof(path), "%s\134waves\134MenuUpDown.wav", self->gameDir());
     self->audio()->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);
-    snprintf(path, sizeof(path), GS_WAV_SWITCH, self->gameDir());
+    snprintf(path, sizeof(path), "%s\134waves\134Switch.wav", self->gameDir());
     self->audio()->fixedSounds()->switchClick = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), GS_WAV_LEVEL_COMPLETED, self->gameDir());
+    snprintf(path, sizeof(path), "%s\134waves\134LevelCompleted.wav", self->gameDir());
     self->audio()->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), GS_WAV_SPLAT, self->gameDir());
+    snprintf(path, sizeof(path), "%s\134waves\134splat.wav", self->gameDir());
     self->world()->player()->setSoundA7(sm->acquireStatic(path, 1));
     sm->setup(self->config()->sound3D());
 

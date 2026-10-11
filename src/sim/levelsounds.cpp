@@ -22,7 +22,6 @@
 #include "platformobject.h"
 #include "bridgeobject.h"
 #include "fallingtile.h"
-#include "gamestr.h"
 
 namespace audiodev { class Buffer; }
 #include "voicepool.h"
@@ -85,11 +84,11 @@ Sim_InitLevelBasedSounds(Game *self)
     g_logger.logMessage(2, "GAME: trying to init level-based sounds");
     if (self->audio()->soundCreated() != 0) {
         pl->setWorldSoundVariant(0);
-        if (strcmp(world, GS_SND_EGYPT) == 0)
+        if (strcmp(world, "Egypt") == 0)
             pl->setWorldSoundVariant(0);
-        if (strcmp(world, GS_SND_SPACE) == 0)
+        if (strcmp(world, "Space") == 0)
             pl->setWorldSoundVariant(s_fx ? 1 : 2);
-        if (strcmp(world, GS_SND_CANDY) == 0)
+        if (strcmp(world, "Candy") == 0)
             pl->setWorldSoundVariant(s_fx ? 2 : 1);
 
         if (pl->pool9f() != NULL)

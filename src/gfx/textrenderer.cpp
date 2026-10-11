@@ -24,7 +24,6 @@
 #include "renderdevice.h"
 #include "logger.h"
 #include "texture.h"
-#include "gamestr.h"
 #include <stdlib.h>
 
 #include <fstream>

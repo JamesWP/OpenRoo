@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include "gametime.h"
 #include "crtrand.h"
-#include "gamestr.h"
 #include <math.h>
 #include <string.h>
 #include <new>
@@ -440,7 +439,7 @@ int RingBuffer::alloc(uint32_t count, uint32_t shapes)
 /* ─── ParticleSystem, the base class ───────────────────────────────────────
  */
 ParticleSystem::ParticleSystem()
-    : pName_(GS_PSNAME_SYSTEM), pGenerator_(NULL), pEnvironment_(NULL),
+    : pName_((char *)"ParticleSystem"), pGenerator_(NULL), pEnvironment_(NULL),
       dwVertexCount_(0)
 {
 }
@@ -538,7 +537,7 @@ int ParticleSystem::copyFrom(const ParticleSystem *src)
 template <class T>
 static int ps_write_sub_object(T *obj, std::ostream &out)
 {
-    const char *name = obj ? obj->name() : GS_PS_NAME_NULL;
+    const char *name = obj ? obj->name() : "NULL";
     uint32_t len = (uint32_t)strlen(name) + 1;
     if (!ps_write(&len, 4, out))
         return false;
@@ -584,7 +583,7 @@ static int ps_load_sub_object(std::istream &in, T **out,
     std::unique_ptr<char[]> name = ps_read_name(in, msg_noname);
     if (!name)
         return false;
-    if (strcmp(name.get(), GS_PS_NAME_NULL) != 0) {
+    if (strcmp(name.get(), "NULL") != 0) {
         T *obj = T::create(name.get());
         if (obj == NULL) {
             g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, msg_nocreate, name.get());
@@ -618,15 +617,15 @@ int ParticleSystem::load(std::istream &in)
     }
 
     Generator *gen;
-    if (!ps_load_sub_object(in, &gen, GS_PS_MSG_NONAME, GS_PS_MSG_NOGEN,
-                            GS_PS_MSG_GENLOAD))
+    if (!ps_load_sub_object(in, &gen, "PS: Error while loading Particlesystem, because could not read GeneratorclassName", "PS: Error while loading Particlesystem, because Generator of Typ: '%s' coud not created",
+                            "PS: Error while loading Particlesystem, because Generator coud not loaded"))
         return false;
     if (gen)
         setGenerator(gen);
 
     Environment *env;
-    if (!ps_load_sub_object(in, &env, GS_PS_MSG_NOENV, GS_PS_MSG_ENVNAME,
-                            GS_PS_MSG_ENVLOAD))
+    if (!ps_load_sub_object(in, &env, "PS: Error while loading Particlesystem, because could not read Environment-ClassName", "PS: Error while loading Particlesystem, because Environment of Typ: '%s' coud not created",
+                            "PS: Error while loading Particlesystem, because Environment coud not loaded"))
         return false;
     if (env)
         setEnvironment(env);
@@ -948,13 +947,13 @@ void ParticleSystem::disableRenderNode()             { setRenderNode(0); }
  * The type-name strings; pName points at them as the constructors leave it. */
 PointParticleSystem::PointParticleSystem()
 {
-    pName_ = GS_PSNAME_POINT_SYSTEM;
+    pName_ = (char *)"PointParticleSystem";
 }
 
 /* The six corners start zeroed. */
 FaceParticleSystem::FaceParticleSystem() : flScale_(1.0f)
 {
-    pName_ = GS_PSNAME_FACE_SYSTEM;
+    pName_ = (char *)"FaceParticleSystem";
     std::fill(&flCorner_[0][0], &flCorner_[0][0] + 18, 0.0f);
 }
 
@@ -963,7 +962,7 @@ XFaceParticleSystem::XFaceParticleSystem()
     : dwCornerTableCount_(1),
       ranges{ 1.0f, 1.0f }  // size min/max; lifetime, speed and rotation are 0
 {
-    pName_ = GS_PSNAME_XFACE_SYSTEM;
+    pName_ = (char *)"XFaceParticleSystem";
 }
 
 /* The four names and sizes (0x28 / 0x30 / 0x7a / 0x96); NULL for an unknown

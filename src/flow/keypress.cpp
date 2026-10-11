@@ -24,7 +24,6 @@
 #include "cdm.h"
 
 #include "soundmanager.h"
-#include "gamestr.h"
 #include "levelselect.h"
 #include "levelthemes.h"
 #include "keys.h"
@@ -199,19 +198,19 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         input::swallow(input::KEY_RETURN);
         windev::quit(1);
         break;
-    case 0x14: rebind(self, GS_KEY_MOVE_FORWARD, 0x14); break;
-    case 0x15: rebind(self, GS_KEY_MOVE_BACK, 0x15); break;
-    case 0x16: rebind(self, GS_KEY_TURN_RIGHT, 0x16); break;
-    case 0x17: rebind(self, GS_KEY_TURN_LEFT, 0x17); break;
-    case 0x18: rebind(self, GS_KEY_ZOOM_IN, 0x18); break;
-    case 0x19: rebind(self, GS_KEY_ZOOM_OUT, 0x19); break;
-    case 0x1a: rebind(self, GS_KEY_RELEASE_BOMB, 0x1a); break;
-    case 0x1b: rebind(self, GS_KEY_HARAKIRI, 0x1b); break;
-    case 0x1c: rebind(self, GS_KEY_OVERVIEW, 0x1c); break;
-    case 0x1d: rebind(self, GS_KEY_CAM_MODE_LEFT, 0x1d); break;
-    case 0x1e: rebind(self, GS_KEY_CAM_MODE_RIGHT, 0x1e); break;
-    case 0x1f: rebind(self, GS_KEY_CAM_MODE_UP, 0x1f); break;
-    case 0x20: rebind(self, GS_KEY_CAM_MODE_DOWN, 0x20); break;
+    case 0x14: rebind(self, "John_Move_Forward", 0x14); break;
+    case 0x15: rebind(self, "John_Move_Back", 0x15); break;
+    case 0x16: rebind(self, "John_Turn_Right", 0x16); break;
+    case 0x17: rebind(self, "John_Turn_Left", 0x17); break;
+    case 0x18: rebind(self, "John_Zoom_In", 0x18); break;
+    case 0x19: rebind(self, "John_Zoom_Out", 0x19); break;
+    case 0x1a: rebind(self, "John_Release_Bomb", 0x1a); break;
+    case 0x1b: rebind(self, "John_Harakiri", 0x1b); break;
+    case 0x1c: rebind(self, "John_OverView", 0x1c); break;
+    case 0x1d: rebind(self, "CamModeLeft", 0x1d); break;
+    case 0x1e: rebind(self, "CamModeRight", 0x1e); break;
+    case 0x1f: rebind(self, "CamModeUp", 0x1f); break;
+    case 0x20: rebind(self, "CamModeDown", 0x20); break;
     case 0x21:
         if (self->world()->player()->gliding() == 0)
             self->config()->setCameraTurnsWithPlayer(self->config()->cameraTurnsWithPlayer() == 0);

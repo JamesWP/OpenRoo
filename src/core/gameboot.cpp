@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "windev.h"
-#include "gamestr.h"
 #include "logger.h"
 #include "cdm.h"
 #include "cdthemes.h"
@@ -58,7 +57,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g->audio()->fixedSounds()->crystalBank[0] = NULL;
     g->audio()->fixedSounds()->crystalBank[1] = NULL;
     g->audio()->fixedSounds()->crystalBank[2] = NULL;
-    strcpy(g->menuLevelName_, GS_GAME_DEMO_LEVEL);
+    strcpy(g->menuLevelName_, "DemoLevelForest");
     g->frontEnd()->setCreditsRestart(0);
     g->frontEnd()->setCreditsLatch(0);
 
@@ -84,7 +83,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
         g->frontEnd()->saveSlots()->writeAllSlotFiles(g->gameDir_, g->gameFileName_, SAVE_KEY);
     }
     g->levelPrepPending_ = 0;
-    if (!g->config_.loadValues(GS_CFG_FILE)) {
+    if (!g->config_.loadValues("openroo.ini")) {
         g_logger.logMessage(3, "GAME: warning - no correct config-values (or no *.cfg-file), creating default-config");
         g->config_.fillDefaults();
     } else {
@@ -140,7 +139,7 @@ void Game_Shutdown(Game *g)
     g->config_.setCameraDistanceSetting(g->camera()->zoomDistance());
     if (g->frontEnd()->highScores()->writeFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY))
         g_logger.logMessage(1, "GAME: highscore-files saved");
-    if (g->config_.save(GS_CFG_FILE))
+    if (g->config_.save("openroo.ini"))
         g_logger.logMessage(1, "GAME: config-values saved correctly");
     else
         g_logger.logMessage(3, "GAME: ** error ** while saving config-values (maybe write-protected or hd full\077) !!!");

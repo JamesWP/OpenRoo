@@ -2,7 +2,6 @@
 #include <iterator>
 #include "image.h"
 #include <string.h>
-#include "gamestr.h"
 #include "sysdev.h"
 
 bool Image_Load(const char *path, Image &out)
@@ -10,9 +9,9 @@ bool Image_Load(const char *path, Image &out)
     const char *ext = strrchr(path, '.');
     if (ext == NULL)
         return false;
-    if (strcmp(ext, GS_TEX_DOT_BMP_LOWER) == 0 || strcmp(ext, GS_TEX_DOT_BMP_UPPER) == 0)
+    if (strcmp(ext, ".bmp") == 0 || strcmp(ext, ".BMP") == 0)
         return Image_LoadBMP(path, out);
-    if (strcmp(ext, GS_TEX_DOT_TGA_LOWER) == 0 || strcmp(ext, GS_TEX_DOT_TGA_UPPER) == 0)
+    if (strcmp(ext, ".tga") == 0 || strcmp(ext, ".TGA") == 0)
         return Image_LoadTGA(path, out);
     return false;
 }

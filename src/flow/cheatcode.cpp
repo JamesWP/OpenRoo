@@ -34,7 +34,6 @@
 #include "menutree.h"
 #include "textentry.h"
 #include "player.h"
-#include "gamestr.h"
 #include "cdm.h"
 #include <algorithm>
 #include <iterator>
@@ -77,7 +76,7 @@ Flow_HandleTypedCheatCode(Game *self)
         if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
             self->setState(GameState::GameOver);
             if (self->config()->musicOn() != 0)
-                self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
+                self->audio()->cdThemes()->play("gameover");
             Score_CalculateLevelScore(self, 0x28);
             input::swallow(input::KEY_RETURN);
             g_logger.logMessage(1, "GAME: completed at level %d/%d",
@@ -88,7 +87,7 @@ Flow_HandleTypedCheatCode(Game *self)
             self->frontEnd()->menu()->setLock(1);
             self->setState(GameState::LevelComplete);
             if (self->config()->musicOn() != 0)
-                self->audio()->cdThemes()->play(GS_GAME_COMPLETED);
+                self->audio()->cdThemes()->play("completed");
             self->camera()->setMode(2);
             self->frontEnd()->menu()->rewind();
             self->frontEnd()->menu()->pop();
@@ -130,7 +129,7 @@ Flow_HandleTypedCheatCode(Game *self)
             std::copy_n(buf + 6, len - 6, frame);
             frame[len - 6] = 0;
             g_logger.logMessage(3, "GAME: lc %s", (const char *)frame);
-            snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, self->gameDir(), (const char *)frame);
+            snprintf(path, sizeof(path), "%s\134Levels\134%s.jjm", self->gameDir(), (const char *)frame);
             if (std::ifstream(sysdev::nativePath(path))) {
                 pl->setGemsCollected(0);
                 Sim_ParseLevelFiles(self, (const char *)frame);

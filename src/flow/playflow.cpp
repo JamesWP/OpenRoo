@@ -27,7 +27,6 @@
 #include "checkpoint.h"
 #include "cheatcode.h"
 #include "keys.h"
-#include "gamestr.h"
 
 
 /* floor() of a double. */
@@ -155,7 +154,7 @@ void Flow_RestartAfterDeath(Game *self)
     } else if (lives <= 0 && bonus == 0) {
         self->setState(GameState::GameOver);
         if (self->config()->musicOn() != 0)
-            self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
+            self->audio()->cdThemes()->play("gameover");
         Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
         input::swallow(input::KEY_RETURN);
         restart_tail = 0;  // game over: skip the camera reset
@@ -163,7 +162,7 @@ void Flow_RestartAfterDeath(Game *self)
         self->camera()->setMode(2);
         self->setState(GameState::LevelComplete);
         if (self->config()->musicOn() != 0)
-            self->audio()->cdThemes()->play(GS_GAME_COMPLETED);
+            self->audio()->cdThemes()->play("completed");
         Play_OpenTallyMenu(self);
         self->world()->setTimeElapsed((unsigned int)(self->world()->timeLimit() * 1000));
         Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
@@ -175,7 +174,7 @@ void Flow_RestartAfterDeath(Game *self)
         if ((unsigned int)self->session()->levelIndex() == (unsigned int)self->session()->levelCount() - 1) {
             self->setState(GameState::GameOver);
             if (self->config()->musicOn() != 0)
-                self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
+                self->audio()->cdThemes()->play("gameover");
         }
         self->session()->setRestartCount(0);
     }
@@ -194,15 +193,15 @@ static void return_to_menu(Game *self, bool lastLevel)
     const char *theme = NULL;
     if (lastLevel) {
         char name[256];
-        sprintf(name, GS_GAME_FINAL_DIR, self->gameFileName());
+        sprintf(name, "Final\134%s", self->gameFileName());
         Sim_ParseLevelFiles(self, name);
         self->frontEnd()->menu()->push(0);
         self->frontEnd()->menu()->setNode(5);
-        theme = GS_GAME_FINAL;
+        theme = "Final";
     } else {
         Sim_ClearGameState(self);
         Sim_ParseLevelFiles(self, self->menuLevelName());
-        theme = GS_GAME_MAIN;
+        theme = "Main";
     }
     if (theme != NULL)
         self->audio()->cdThemes()->setCurrentTrack((unsigned char)self->audio()->cdThemes()->findThemeIndex(theme));
@@ -240,7 +239,7 @@ void Flow_LeaveGameOver(Game *self)
 /* ENTER after high-score name entry: saves the table and returns to the menu. */
 void Flow_LeaveNameEntry(Game *self)
 {
-    self->frontEnd()->highScores()->writeFile(self->gameDir(), GS_GAME_HSFILE, 0x4b);
+    self->frontEnd()->highScores()->writeFile(self->gameDir(), "jj", 0x4b);
     bool lastLevel = (unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount();
     return_to_menu(self, lastLevel);
 }

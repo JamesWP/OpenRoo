@@ -1,7 +1,6 @@
 #include "themesounds.h"
 #include <stdio.h>
 #include <string.h>
-#include "gamestr.h"
 #include "logger.h"
 
 /* "NONE" (case-exact, on the raw wave name) disables the entry without
@@ -10,10 +9,10 @@ int ThemeSoundTable::add(const char *dir, unsigned int id, const char *waveName,
                uint32_t arg3, uint32_t arg4)
 {
     char path[256];
-    snprintf(path, sizeof(path), GS_THEME_SOUND_PATH, dir, waveName);
+    snprintf(path, sizeof(path), "%s\134%s", dir, waveName);
 
     SoundAssetName &e = entries_[id & 0xffff];
-    if (strcmp(waveName, GS_THEME_SOUND_NONE) == 0) {
+    if (strcmp(waveName, "NONE") == 0) {
         e.enabled = 0;
         return 0;
     }

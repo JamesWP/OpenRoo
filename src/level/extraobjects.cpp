@@ -42,7 +42,6 @@
 #include "logger.h"
 #include "extraobjects.h"
 #include "soundvoice.h"
-#include "gamestr.h"
 #include <stdlib.h>
 #include <algorithm>
 #include <iterator>

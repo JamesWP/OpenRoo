@@ -16,7 +16,6 @@
 #include "logger.h"
 #include "highscores.h"
 #include <stdlib.h>
-#include "gamestr.h"
 
 #include "bytes.h"
 #include <algorithm>
@@ -151,7 +150,7 @@ void HighScoreTable::fillDefaults()
         {  5235, 33 }, { 3685, 20 }, { 2785, 15 }, { 1815, 11 }, {  970,  6 },
     };
     for (int i = 0; i < (int)count_; i++)
-        strcpy(records_[i].name, GS_HIGHSCORE_DEFAULT_NAME);
+        strcpy(records_[i].name, "Open Roo");
     for (int i = 0; i < 10; i++) {
         records_[i].score = def[i].score;
         records_[i].level = def[i].level;

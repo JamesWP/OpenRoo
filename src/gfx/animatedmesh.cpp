@@ -19,7 +19,6 @@
 #include "binio.h"
 #include <string.h>
 #include "logger.h"
-#include "gamestr.h"
 #include "renderdevice.h"
 
 #define MESH_FVF        VertexFormat::Normal2  // XYZ | NORMAL | TEX2

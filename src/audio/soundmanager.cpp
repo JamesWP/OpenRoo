@@ -27,7 +27,6 @@
 #include "logger.h"
 #include <stdlib.h>
 #include <stddef.h>
-#include "gamestr.h"
 
 /* The source file named in error lines, with __LINE__. */
 static const char SRCFILE[] =

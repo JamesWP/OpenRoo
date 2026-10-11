@@ -12,7 +12,6 @@
 #include "foe.h"
 #include "player.h"
 #include "tile.h"
-#include "gamestr.h"
 #include "cdm.h"
 #include <fstream>
 
@@ -86,7 +85,7 @@ bool Cheat_LoadLevel(Game *self, unsigned char lvl)
     Sim_SetCurrentLevelName(self, lvl);
     if (lvl >= self->session()->levelCount())
         return false;
-    snprintf(path, sizeof(path), GS_CHEAT_FMT_LVL_PATH, self->gameDir(), self->world()->levelName());
+    snprintf(path, sizeof(path), "%s\134Levels\134%s.jjm", self->gameDir(), self->world()->levelName());
     g_logger.logMessage(3, "GAME: lc by number %d name:%s", (unsigned int)lvl, self->world()->levelName());
     self->session()->setLevelIndex(lvl);
     if (!std::ifstream(sysdev::nativePath(path)))

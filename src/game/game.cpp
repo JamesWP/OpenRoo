@@ -15,7 +15,6 @@
 
 #include "game.h"
 #include "windev.h"
-#include "gamestr.h"
 #include "logger.h"
 #include <stdlib.h>
 #include "extraobjects.h"

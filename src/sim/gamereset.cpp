@@ -19,7 +19,6 @@
 #include "game.h"
 #include "gamereset.h"
 #include "player.h"
-#include "gamestr.h"
 
 
 typedef unsigned int __attribute__((aligned(1))) u32_ua;

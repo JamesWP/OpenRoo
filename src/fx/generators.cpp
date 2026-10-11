@@ -19,7 +19,6 @@
 #include <new>
 #include "factory.h"
 #include "logger.h"
-#include "gamestr.h"
 #include <math.h>
 #include <stdlib.h>
 #include "binio.h"
@@ -731,7 +730,7 @@ int Environment::attachRing(RingBuffer *ring)
 /* Static type-name strings; pName points at them, never owned or freed here.
  */
 
-Environment::Environment() : pName_(GS_PSNAME_ENVIRONMENT), pRing_(NULL)
+Environment::Environment() : pName_((char *)"Environment"), pRing_(NULL)
 {
 }
 
@@ -739,13 +738,13 @@ Environment::Environment() : pName_(GS_PSNAME_ENVIRONMENT), pRing_(NULL)
  * which starts at 10. */
 GravityEnvironment::GravityEnvironment()
 {
-    pName_ = GS_PSNAME_GRAVITY_ENV;
+    pName_ = (char *)"GravityEnvironment";
     dwFadeThreshold_ = 10;
 }
 
 MagnetEnvironment::MagnetEnvironment()
 {
-    pName_ = GS_PSNAME_MAGNET_ENV;
+    pName_ = (char *)"MagnetEnvironment";
     dwFadeThreshold_ = 10;
 }
 
@@ -1425,7 +1424,7 @@ int CylinderGenerator::load(std::istream &in)
 }
 
 Generator::Generator()
-    : pName_(GS_PSNAME_GENERATOR), dwEnabled_(1), pRing_(NULL)
+    : pName_((char *)"Generator"), dwEnabled_(1), pRing_(NULL)
 {
 }
 
@@ -1434,7 +1433,7 @@ Generator::Generator()
  * this file ever fills them. */
 PointGenerator::PointGenerator()
 {
-    pName_ = GS_PSNAME_POINT_GEN;
+    pName_ = (char *)"PointGenerator";
     flAccumulator_ = 0.0f;
     dwDiffuse_ = 0xFFFFFFFF;
 }
@@ -1442,12 +1441,12 @@ PointGenerator::PointGenerator()
 /* PRESERVED: nothing past the base class is initialised. */
 BoxGenerator::BoxGenerator()
 {
-    pName_ = GS_PSNAME_BOX_GEN;
+    pName_ = (char *)"BoxGenerator";
 }
 
 StdGenerator::StdGenerator()
 {
-    pName_ = GS_PSNAME_STD_GEN;
+    pName_ = (char *)"StdGenerator";
     for (int i = 0; i < 200; i++)
         pEmitProb_[i] = 0xFFFFFFFF;
 }
@@ -1462,7 +1461,7 @@ CylinderGenerator::~CylinderGenerator()
 
 XStdGenerator::XStdGenerator()
 {
-    pName_ = GS_PSNAME_XSTD_GEN;
+    pName_ = (char *)"XStdGenerator";
 }
 
 /* DETERMINISM: builds the position table from 500 angles drawn uniformly by
@@ -1475,7 +1474,7 @@ XStdGenerator::XStdGenerator()
  */
 CylinderGenerator::CylinderGenerator()
 {
-    pName_ = GS_PSNAME_CYL_GEN;
+    pName_ = (char *)"CylinderGenerator";
     setDirection(0.0f, 1.0f, 0.0f);
     static const float IDENTITY[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 };
     std::copy(std::begin(IDENTITY), std::end(IDENTITY), flMatrix_);

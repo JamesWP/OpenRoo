@@ -1,7 +1,6 @@
 #include "inputsetup.h"
 #include "progctrl.h"
 #include "logger.h"
-#include "gamestr.h"
 #include "keycodes.h"
 #include "game.h"
 #include "player.h"
@@ -22,35 +21,35 @@ Input_Setup(Game *game, ProgableControl *progCtrl)
 {
     ProgableControl *pc = progCtrl;
     void *player = game->world()->player();
-    pc->registerAction(1, GS_ACT_TURN_LEFT,    Player_ActTurnLeft,    player);
-    pc->registerAction(1, GS_ACT_TURN_RIGHT,   Player_ActTurnRight,   player);
-    pc->registerAction(1, GS_ACT_MOVE_FORWARD, Player_ActMoveForward, player);
-    pc->registerAction(1, GS_ACT_MOVE_BACK,    Player_ActMoveBack,    player);
-    pc->registerAction(1, GS_ACT_ZOOM_IN,      Camera_ZoomIn,         game);
-    pc->registerAction(1, GS_ACT_ZOOM_OUT,     Camera_ZoomOut,        game);
-    pc->registerAction(1, GS_ACT_RELEASE_BOMB, Player_ActReleaseBomb, player);
-    pc->registerAction(1, GS_ACT_HARAKIRI,     Player_ActHarakiri,    player);
-    pc->registerAction(1, GS_ACT_OVERVIEW,     Camera_Overview,       game);
-    pc->registerAction(1, GS_ACT_CAM_RIGHT,    Camera_RotateRight,    game);
-    pc->registerAction(1, GS_ACT_CAM_LEFT,     Camera_RotateLeft,     game);
-    pc->registerAction(1, GS_ACT_CAM_UP,       Camera_TiltUp,         game);
-    pc->registerAction(1, GS_ACT_CAM_DOWN,     Camera_TiltDown,       game);
+    pc->registerAction(1, "John_Turn_Left",    Player_ActTurnLeft,    player);
+    pc->registerAction(1, "John_Turn_Right",   Player_ActTurnRight,   player);
+    pc->registerAction(1, "John_Move_Forward", Player_ActMoveForward, player);
+    pc->registerAction(1, "John_Move_Back",    Player_ActMoveBack,    player);
+    pc->registerAction(1, "John_Zoom_In",      Camera_ZoomIn,         game);
+    pc->registerAction(1, "John_Zoom_Out",     Camera_ZoomOut,        game);
+    pc->registerAction(1, "John_Release_Bomb", Player_ActReleaseBomb, player);
+    pc->registerAction(1, "John_Harakiri",     Player_ActHarakiri,    player);
+    pc->registerAction(1, "John_OverView",     Camera_Overview,       game);
+    pc->registerAction(1, "CamModeRight",    Camera_RotateRight,    game);
+    pc->registerAction(1, "CamModeLeft",     Camera_RotateLeft,     game);
+    pc->registerAction(1, "CamModeUp",       Camera_TiltUp,         game);
+    pc->registerAction(1, "CamModeDown",     Camera_TiltDown,       game);
 
     {
         using namespace input;
-        pc->bindKey(1, GS_ACT_MOVE_FORWARD, KEY_UP,       100);
-        pc->bindKey(1, GS_ACT_MOVE_BACK,    KEY_DOWN,     100);
-        pc->bindKey(1, GS_ACT_TURN_LEFT,    KEY_LEFT,     100);
-        pc->bindKey(1, GS_ACT_TURN_RIGHT,   KEY_RIGHT,    100);
-        pc->bindKey(1, GS_ACT_ZOOM_IN,      KEY_A,        100);
-        pc->bindKey(1, GS_ACT_ZOOM_OUT,     KEY_Z,        100);  // physical key: Y on a German keyboard
-        pc->bindKey(1, GS_ACT_RELEASE_BOMB, KEY_B,        100);
-        pc->bindKey(1, GS_ACT_HARAKIRI,     KEY_DELETE,   100);
-        pc->bindKey(1, GS_ACT_OVERVIEW,     KEY_TAB,      100);
-        pc->bindKey(1, GS_ACT_CAM_RIGHT,    KEY_C,        100);
-        pc->bindKey(1, GS_ACT_CAM_LEFT,     KEY_X,        100);
-        pc->bindKey(1, GS_ACT_CAM_UP,       KEY_PAGEUP,   100);
-        pc->bindKey(1, GS_ACT_CAM_DOWN,     KEY_PAGEDOWN, 100);
+        pc->bindKey(1, "John_Move_Forward", KEY_UP,       100);
+        pc->bindKey(1, "John_Move_Back",    KEY_DOWN,     100);
+        pc->bindKey(1, "John_Turn_Left",    KEY_LEFT,     100);
+        pc->bindKey(1, "John_Turn_Right",   KEY_RIGHT,    100);
+        pc->bindKey(1, "John_Zoom_In",      KEY_A,        100);
+        pc->bindKey(1, "John_Zoom_Out",     KEY_Z,        100);  // physical key: Y on a German keyboard
+        pc->bindKey(1, "John_Release_Bomb", KEY_B,        100);
+        pc->bindKey(1, "John_Harakiri",     KEY_DELETE,   100);
+        pc->bindKey(1, "John_OverView",     KEY_TAB,      100);
+        pc->bindKey(1, "CamModeRight",    KEY_C,        100);
+        pc->bindKey(1, "CamModeLeft",     KEY_X,        100);
+        pc->bindKey(1, "CamModeUp",       KEY_PAGEUP,   100);
+        pc->bindKey(1, "CamModeDown",     KEY_PAGEDOWN, 100);
     }
     pc->readBindings();  // the file changes only the actions it lists
 }

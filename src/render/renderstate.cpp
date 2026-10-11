@@ -19,7 +19,6 @@
 #include "textrenderer.h"
 #include "logger.h"
 #include "image.h"
-#include "gamestr.h"
 #include "world.h"
 #include "camerarig.h"
 #include "levelmap.h"

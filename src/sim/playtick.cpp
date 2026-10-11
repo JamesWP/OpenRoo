@@ -24,7 +24,6 @@
 #include "tilequery.h"
 #include "bridgeobject.h"
 #include "foe.h"
-#include "gamestr.h"
 
 /* The switch-triggered block, shared by the player and each foe. */
 
@@ -228,7 +227,7 @@ void Play_CheckLevelEnd(Game *self)
                 if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
                     self->setState(GameState::GameOver);
                     if (self->config()->musicOn() != 0)
-                        self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
+                        self->audio()->cdThemes()->play("gameover");
                     Score_CalculateLevelScore(self, 3);
                     g_logger.logMessage(1, "GAME: completed at level %d/%d",
                                        (unsigned int)self->session()->levelIndex() + 1,

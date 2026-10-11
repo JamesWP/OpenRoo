@@ -21,7 +21,6 @@
 #include "sysdev.h"
 #include "logger.h"
 #include "renderdevice.h"
-#include "gamestr.h"
 #include "model.h"
 #include "texture.h"
 #include "generators.h"
@@ -615,12 +614,12 @@ void ThemeParser::sky(bool inEnvironment)
         return;
     // Room for the longest token plus the face suffix.
     char up[0x110], dn[0x110], fr[0x110], bk[0x110], lf[0x110], rt[0x110];
-    snprintf(up, sizeof(up), GS_THEME_SKY_UP, tok[1]);
-    snprintf(dn, sizeof(dn), GS_THEME_SKY_DN, tok[1]);
-    snprintf(fr, sizeof(fr), GS_THEME_SKY_FR, tok[1]);
-    snprintf(bk, sizeof(bk), GS_THEME_SKY_BK, tok[1]);
-    snprintf(lf, sizeof(lf), GS_THEME_SKY_LF, tok[1]);
-    snprintf(rt, sizeof(rt), GS_THEME_SKY_RT, tok[1]);
+    snprintf(up, sizeof(up), "%s_UP.tga", tok[1]);
+    snprintf(dn, sizeof(dn), "%s_DN.tga", tok[1]);
+    snprintf(fr, sizeof(fr), "%s_FR.tga", tok[1]);
+    snprintf(bk, sizeof(bk), "%s_BK.tga", tok[1]);
+    snprintf(lf, sizeof(lf), "%s_LF.tga", tok[1]);
+    snprintf(rt, sizeof(rt), "%s_RT.tga", tok[1]);
     unsigned int ok = block->sky_.buildFromFaceNames(d3d,
                                              up, dn, fr, bk, lf, rt,
                                              d3d->bitDepth());

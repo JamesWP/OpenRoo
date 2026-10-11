@@ -7,7 +7,6 @@
 #include "model.h"
 #include "logger.h"
 #include <stdlib.h>
-#include "gamestr.h"
 
 /* ─── ModelManager ──────────────────────────────────────────────────────────
  *

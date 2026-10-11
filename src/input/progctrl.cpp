@@ -10,7 +10,6 @@
 #include "keys.h"
 #include "inputdev.h"
 #include "clock.h"
-#include "gamestr.h"
 #include "ini.h"
 #include "sysdev.h"
 #include <algorithm>
@@ -200,9 +199,9 @@ static std::vector<std::pair<std::string, int> > parse_binding_list(const std::s
 
 int ProgableControl::readBindings()
 {
-    g_logger.write("ProgCtrl::ReadBindings <- '%s'\n", GS_CFG_FILE);
+    g_logger.write("ProgCtrl::ReadBindings <- '%s'\n", "openroo.ini");
     IniFile ini;
-    if (!ini.load(GS_CFG_FILE)) {
+    if (!ini.load("openroo.ini")) {
         g_logger.write("ProgCtrl::ReadBindings: no settings file\n");
         return 0;
     }
@@ -235,9 +234,9 @@ int ProgableControl::readBindings()
 
 int ProgableControl::writeBindings()
 {
-    g_logger.write("ProgCtrl::WriteBindings -> '%s'\n", GS_CFG_FILE);
+    g_logger.write("ProgCtrl::WriteBindings -> '%s'\n", "openroo.ini");
     IniFile ini;
-    ini.load(GS_CFG_FILE);  // keep the settings; a missing file starts empty
+    ini.load("openroo.ini");  // keep the settings; a missing file starts empty
     for (int m = 0; m < 5; m++) {
         const std::string section = section_name(m);
         ini.removeSection(section.c_str());
@@ -256,7 +255,7 @@ int ProgableControl::writeBindings()
             ini.set(section.c_str(), e->name, text);
         }
     }
-    if (!ini.save(GS_CFG_FILE)) {
+    if (!ini.save("openroo.ini")) {
         g_logger.write("ProgCtrl::WriteBindings: write error\n");
         return 0;
     }

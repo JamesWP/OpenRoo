@@ -10,7 +10,6 @@
 #include "logger.h"
 #include "cdthemes.h"
 #include "cdm.h"
-#include "gamestr.h"
 #include <stdlib.h>
 #include <algorithm>
 #include <iterator>
@@ -81,10 +80,10 @@ unsigned int CdThemes::replay()
 
 static const char *const k_trackLength[10] = {
     NULL, NULL,
-    GS_CD_TRACK2_LEN, GS_CD_TRACK3_LEN,
-    GS_CD_TRACK4_LEN, GS_CD_TRACK5_LEN,
-    GS_CD_TRACK6_LEN, GS_CD_TRACK7_LEN,
-    GS_CD_TRACK8_LEN, GS_CD_TRACK9_LEN,
+    "04:38:71", "02:59:12",
+    "03:28:39", "02:46:68",
+    "03:08:54", "03:32:60",
+    "04:00:74", "02:17:74",
 };
 
 /* PRESERVED: track 1's length is fetched but never compared. */
@@ -127,7 +126,7 @@ unsigned char CdThemes::readTrackThemeTable(const char *dir, const char *name)
 {
     char path[256];
 
-    snprintf(path, sizeof(path), GS_CD_TRACKFILE_PATH, dir, name);
+    snprintf(path, sizeof(path), "%s\134CDTracks\134%s.cdt", dir, name);
     unsigned char n = 0;
     sysdev::TextFile in(path);
     count_ = 0;
@@ -142,7 +141,7 @@ unsigned char CdThemes::readTrackThemeTable(const char *dir, const char *name)
 
     // Fields are split on these; the first two of a line are the track and the
     // theme name.
-    const char *const delims = GS_CD_TRACKFILE_DELIMS;
+    const char *const delims = " ,\011\012;";
     std::string line;
     while (!in.eof()) {
         std::string next;
