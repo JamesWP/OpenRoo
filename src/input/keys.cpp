@@ -1,27 +1,55 @@
-/* Keys: the single-key polls.  input_key_down is how every key poll in the
- * game happens; the record and replay in testing/record.h sit behind it. */
 #include "keys.h"
 #include "record.h"
 #include "inputdev.h"
-#include "clock.h"
-#include "logger.h"
+#include <string.h>
 
-bool input_key_down(int key)
+namespace input {
+
+static unsigned char g_now[inputdev::KEY_COUNT];   // 0x80 while held
+static unsigned char g_prev[inputdev::KEY_COUNT];
+static bool          g_swallowed[inputdev::KEY_COUNT];
+static bool          g_started;
+
+void update()
 {
-    if (input_debug()) {  // which call sites actually execute
-        static int n = 0;
-        if (n < 40) {
-            n++;
-            g_logger.write("askdbg: frame %u vkey=0x%02X from ret=%p\n",
-                      clock_frame(), key, __builtin_return_address(0));
-        }
+    memcpy(g_prev, g_now, sizeof(g_now));
+    if (record_replaying())
+        replay_keys(g_now);
+    else
+        inputdev::readKeyboard(g_now);
+    record_keys(g_now);
+
+    // What is held as the game starts, or is carried over from the previous
+    // tick of a recording, is not pressed.
+    if (!g_started) {
+        memcpy(g_prev, g_now, sizeof(g_now));
+        g_started = true;
     }
-    bool v;
-    if (record_replaying()) {
-        replay_async(key, &v);
-        return v;
-    }
-    v = inputdev::keyDown(key);
-    record_async(key, v);
-    return v;
+    memset(g_swallowed, 0, sizeof(g_swallowed));
 }
+
+static bool valid(int key) { return key > 0 && key < inputdev::KEY_COUNT; }
+
+bool down(int key)
+{
+    return valid(key) && (g_now[key] & 0x80);
+}
+
+bool pressed(int key)
+{
+    return down(key) && !(g_prev[key] & 0x80) && !g_swallowed[key];
+}
+
+void swallow(int key)
+{
+    if (valid(key)) g_swallowed[key] = true;
+}
+
+int firstDown()
+{
+    for (int k = 1; k < inputdev::KEY_COUNT; k++)
+        if (g_now[k] & 0x80) return k;
+    return 0;
+}
+
+}  // namespace input

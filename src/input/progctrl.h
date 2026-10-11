@@ -1,16 +1,14 @@
-/* The programmable control: the keyboard and mouse devices (inputdev.h), and the
- * tables that map keys to named game actions.
+/* The programmable control: the tables that map keys to named game actions.
  *
  * Actions are registered per mode (0..4, the game state the dispatch is called
  * with); each has a callback, a context and a list of bound keys.  Once per
- * tick, Dispatch reads the keyboard and calls the callback of every action
- * with a key held.  Bindings are saved to and loaded from openroo.ini.
+ * tick, dispatch calls the callback of every action with a key held
+ * (keys.h).  Bindings are saved to and loaded from openroo.ini.
  * app owns the one instance and passes it down. */
 
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
-#include "inputdev.h"
 
 /* Called with the key that fired, the binding's strength and the context
  * given at registration. */
@@ -55,21 +53,17 @@ private:
     uint32_t        entry_count;
 };
 
-/* The whole control state.  The controller is never set up: its range and
- * dead-zone calls succeed without doing anything. */
+/* The whole control state. */
 class ProgableControl {
 public:
-    /* The destructor releases the devices and frees the action tables. */
+    /* The destructor frees the action tables. */
     ProgableControl();
     virtual ~ProgableControl();
     ProgableControl(const ProgableControl &) = delete;
     ProgableControl &operator=(const ProgableControl &) = delete;
 
-    int  setJoyDeadzone(uint32_t axis, int zone);
-
-    /* Reads the keyboard (or the replay) and calls
-     * every action in this mode with a bound key held; the first held key of
-     * each action wins.  Modes of 5 and above do nothing. */
+    /* Calls every action in this mode with a bound key held; the first held
+     * key of each action wins.  Modes of 5 and above do nothing. */
     void dispatch(unsigned short game_state);
     void clearBindings(unsigned short mode, const char *name);
 
@@ -78,10 +72,6 @@ public:
     void getBindingStr(int mode, const char *name, char *buf,
                        unsigned int bufsz);
 
-    /* The setup calls, in the order inputsetup.cpp makes them.  Each returns
-     * 1 on success, 0 on failure. */
-    int  setupDevices(void *window);
-    int  setJoyRange(int axis, int lo, int hi);
     void registerAction(unsigned short mode, const char *name,
                         ActionCallback cb, void *ctx);
 
@@ -93,25 +83,18 @@ public:
 
     /* Adds a key to an action, or updates the strength of one already bound. */
     int  bindKey(unsigned short mode, const char *name, int sc, int strength);
-    int  acquireAll();
-    int  unacquireAll();
 
-    /* Saves the bindings; releases every input device. */
+    /* Saves the bindings. */
     int  writeBindings();
-    void shutdown();
 
     /* Binds the first key currently held to the action.  Returns 1 if one
-     * was.  The axis and flags arguments are ignored. */
-    int  captureBinding(unsigned int mode, const char *name, int strength,
-                        int allow_axis, int flags);
+     * was. */
+    int  captureBinding(unsigned int mode, const char *name, int strength);
 
     /* The registered actions of one mode (0..4). */
     const ActionTable &actionTable(int mode) const { return action_tables[mode]; }
 
 private:
- 
-
-    inputdev::Devices      devices_;
     char                   sep_or[50];  // joins key names in a binding description: " or "
     ActionTable            action_tables[5];    // one per mode
 };

@@ -136,11 +136,9 @@ void MenuTree::rewind()
     push(0);
 }
 
-/* DETERMINISM: every key poll goes through input_key_down, in this
- * order, and the discarded polls are part of the recording: while locked, Up,
- * Down, Escape and Enter are polled for nothing; after Up or Down, Left and
- * Right are.  The lock clears once now is more than 200 ms past its start
- * (unsigned).  Down's wrap test is a signed compare. */
+/* Enter, Escape, Up and Down move through the tree, each on the press.
+ * While locked no key is taken: the lock clears once now is more than 200 ms
+ * past its start (unsigned).  Down's wrap test is a signed compare. */
 
 
 static int s_fx_menuwrap = -1;
@@ -150,7 +148,6 @@ void MenuTree::navigate(int now)
 #define CHANGED changed_
 #define LOCK    lock_
 #define LEAVE   leave_
-#define DEB     lastKey_
 #define CUR     cursor_
 #define DEPTH   depth_
 #define NODE    node_
@@ -169,54 +166,39 @@ void MenuTree::navigate(int now)
         unsigned int t = (unsigned int)(long long)lockStart_;
         if ((unsigned int)now - t > 200)
             LOCK = 0;
-        input_key_down(inputdev::KEY_UP);
-        input_key_down(inputdev::KEY_DOWN);
-        input_key_down(inputdev::KEY_ESCAPE);
-        input_key_down(inputdev::KEY_RETURN);
-    } else {
-        if (DEB != inputdev::KEY_RETURN && input_key_down(inputdev::KEY_RETURN) != 0) {
-            unsigned char child = children_[NODE * CHILD_STRIDE + CUR];
-            savedCursor_[NODE] = CUR;
-            CUR = 0;
+        return;
+    }
+    if (input::pressed(inputdev::KEY_RETURN)) {
+        unsigned char child = children_[NODE * CHILD_STRIDE + CUR];
+        savedCursor_[NODE] = CUR;
+        CUR = 0;
+        CHANGED = 1;
+        push(NODE);
+        NODE = child;
+    }
+    if (input::pressed(inputdev::KEY_ESCAPE)) {
+        if (DEPTH > 1) {
+            pop();
             CHANGED = 1;
-            push(NODE);
-            NODE = child;
-            DEB = inputdev::KEY_RETURN;
-        }
-        if (DEB != inputdev::KEY_ESCAPE && input_key_down(inputdev::KEY_ESCAPE) != 0) {
-            if (DEPTH > 1) {
-                pop();
-                CHANGED = 1;
-            } else {
-                LEAVE = 1;
-            }
-            DEB = inputdev::KEY_ESCAPE;
-        }
-        if (DEB != inputdev::KEY_UP && input_key_down(inputdev::KEY_UP) != 0) {
-            if (CUR > 0)
-                CUR = (unsigned char)(CUR - 1);
-            else
-                CUR = (unsigned char)(COUNT(NODE) - 1);
-            DEB = inputdev::KEY_UP;
-            input_key_down(inputdev::KEY_LEFT);
-            input_key_down(inputdev::KEY_RIGHT);
-        }
-        if (DEB != inputdev::KEY_DOWN && input_key_down(inputdev::KEY_DOWN) != 0) {
-            if ((int)CUR < (int)COUNT(NODE) - 1)
-                CUR = (unsigned char)(CUR + 1);
-            else if (!s_fx_menuwrap)
-                CUR = 0;
-            DEB = inputdev::KEY_DOWN;
-            input_key_down(inputdev::KEY_LEFT);
-            input_key_down(inputdev::KEY_RIGHT);
+        } else {
+            LEAVE = 1;
         }
     }
-    if (input_key_down(DEB) == 0)
-        DEB = 0;
+    if (input::pressed(inputdev::KEY_UP)) {
+        if (CUR > 0)
+            CUR = (unsigned char)(CUR - 1);
+        else
+            CUR = (unsigned char)(COUNT(NODE) - 1);
+    }
+    if (input::pressed(inputdev::KEY_DOWN)) {
+        if ((int)CUR < (int)COUNT(NODE) - 1)
+            CUR = (unsigned char)(CUR + 1);
+        else if (!s_fx_menuwrap)
+            CUR = 0;
+    }
 #undef CHANGED
 #undef LOCK
 #undef LEAVE
-#undef DEB
 #undef CUR
 #undef DEPTH
 #undef NODE
@@ -228,7 +210,6 @@ MenuTree::MenuTree()
 {
     depth_        = 0;
     cursor_       = 0;
-    lastKey_      = 0;
     leave_        = 0;
     lock_         = 0;
     lastNodeSeen_ = 0;

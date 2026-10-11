@@ -2,38 +2,25 @@
 #include "progctrl.h"
 #include "logger.h"
 #include "gamestr.h"
+#include "inputdev.h"
 #include "game.h"
 #include "player.h"
 #include "camerainput.h"
-#include "windev.h"
 
   void  
 Input_TrySaveSettings(ProgableControl *progCtrl)
 {
     g_logger.logMessage(1, "CONTROL: trying to save settings");
     progCtrl->writeBindings();
-    progCtrl->shutdown();
     g_logger.logMessage(1, "CONTROL: saved settings\n");
 }
 
 /* The player actions get the Player as their context, the camera actions
  * the Game.  Default keys are bound first; openroo.ini then overrides the actions it lists. */
-  int  
-Input_Setup(void *hwnd, Game *game, ProgableControl *progCtrl)
+  void
+Input_Setup(Game *game, ProgableControl *progCtrl)
 {
     ProgableControl *pc = progCtrl;
-    if (!pc->setupDevices(hwnd)) {
-        windev::messageBox(NULL, GS_CONTROL_NO_INPUT, GS_CONTROL_ERROR_CAPTION,
-                           windev::Buttons::Ok, windev::Icon::Error);
-        return 0;
-    }
-    pc->setJoyRange(0, -100, 100);
-    pc->setJoyRange(4, -100, 100);
-    pc->setJoyRange(8, -100, 100);
-    pc->setJoyDeadzone(0, 5000);
-    pc->setJoyDeadzone(4, 5000);
-    pc->setJoyDeadzone(8, 10000);
-
     void *player = game->world()->player();
     pc->registerAction(1, GS_ACT_TURN_LEFT,    Player_ActTurnLeft,    player);
     pc->registerAction(1, GS_ACT_TURN_RIGHT,   Player_ActTurnRight,   player);
@@ -66,10 +53,4 @@ Input_Setup(void *hwnd, Game *game, ProgableControl *progCtrl)
         pc->bindKey(1, GS_ACT_CAM_DOWN,     KEY_PAGEDOWN, 100);
     }
     pc->readBindings();  // the file changes only the actions it lists
-    if (!pc->acquireAll()) {
-        windev::messageBox(NULL, GS_CONTROL_NO_DEVICES, GS_CONTROL_ERROR_CAPTION,
-                           windev::Buttons::Ok, windev::Icon::Error);
-        return 0;
-    }
-    return 1;
 }

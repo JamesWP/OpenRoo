@@ -9,15 +9,13 @@ class TextEntry {
 public:
      
 
-    // Polls the keyboard once.  phase drives the cursor blink.
+    // Takes the keys pressed this tick.  phase drives the cursor blink.
     void poll(unsigned int phase);
 
     char          *buffer() const                  { return buffer_; }
     void           setBuffer(char *b)              { buffer_ = b; }
-    // The last key accepted, for debounce.  When entry ends it holds the key
-    // that ended it: 0x0d Return (accept) or 0x1b Escape.
-    unsigned char  lastKey() const                 { return lastKey_; }
-    void           setLastKey(unsigned char k)     { lastKey_ = k; }
+    // The key that ended the entry: Return (accept) or Escape.
+    unsigned char  endKey() const                  { return endKey_; }
     unsigned char  cursor() const                  { return cursor_; }
     void           setCursor(unsigned char c)      { cursor_ = c; }
     unsigned char  maxLength() const               { return maxLength_; }
@@ -36,7 +34,7 @@ private:
      
 
     char          *buffer_{};  // the owner's storage
-    unsigned char  lastKey_{};
+    unsigned char  endKey_{};
     unsigned char  cursor_{};
     unsigned char  maxLength_{};  // characters, not counting the terminator
     int            active_{};

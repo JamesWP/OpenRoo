@@ -1,6 +1,6 @@
 /* FrontEnd: the front end's state, owned by Game.  The menu tree, the text
  * entries (cheat and name), the save slots and the high-score table, and the
- * key-rebind and debounce state the menus' input handling uses.
+ * key-rebind state the menus' input handling uses.
  *
  * It reads no other part of Game; Game_Boot sets it up (gameboot.cpp).
  */
@@ -31,14 +31,6 @@ public:
     /* The save-slot table (saveslots.h). */
     SaveSlots     *saveSlots()                       { return &saveSlots_; }
 
-    /* Game's own debounce key (distinct from MenuTree's): GameTick,
-     * HandleKeypress, the tally and the cheats ignore a key equal to it
-     * until it is released.  debounceRef() is the field as an lvalue. */
-    unsigned char  debounce() const                  { return debounce_; }
-    void           setDebounce(unsigned char k)      { debounce_ = k; }
-    unsigned char &debounceRef()                     { return debounce_; }
-    /* Enter is ignored until it is released. */
-    void           debounceEnter()                   { debounce_ = inputdev::KEY_RETURN; }
     /* Key-rebind capture: the controls menu's rebind nodes name the action
      * and set the flag; HandleKeypress captures the next binding and clears
      * it.  RenderControlsRemap reads the flag. */
@@ -77,6 +69,5 @@ private:
     unsigned char  rebindCode_{};
     char           rebindAction_[0x100]{};
     int            rebindActive_{};
-    unsigned char  debounce_{};
     MenuTree       menu_;
 };

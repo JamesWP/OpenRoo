@@ -6,12 +6,13 @@ Format is documented at the top of src/testing/record.cpp.
     python3 tools/replay.py run.rec              # summary
     python3 tools/replay.py run.rec --frames 20  # first 20 frames with input
     python3 tools/replay.py a.rec b.rec          # diff two recordings
+    python3 tools/replay.py --convert-v3 a.rec   # rewrite a version 3 recording as 4
 """
 import argparse, glob, os, struct, sys
 
 KEYS = 512  # one byte per SDL scancode, 0x80 while held
 MAGIC = b"KROO"
-VERSION = 3
+VERSION = 4
 
 
 def _uvarint(blob, off):
@@ -33,7 +34,7 @@ def _put_uvarint(out, v):
 
 
 def encode(hdr, frames):
-    """hdr is as load() returns; frames are (idx, state, keys, async) tuples."""
+    """hdr is as load() returns; frames are (idx, keys) tuples."""
     saves = hdr.get("saves", {})
     label = hdr["label"].encode("ascii", "replace")[:255]
     out = bytearray(MAGIC)
@@ -46,14 +47,11 @@ def encode(hdr, frames):
         out += name.encode("ascii")
         _put_uvarint(out, len(saves[name]))
         out += saves[name]
-    prev_idx, prev_state, prev_keys = 0, 0, bytes(KEYS)
-    for idx, state, keys, async_ in frames:
+    prev_idx, prev_keys = 0, bytes(KEYS)
+    for idx, keys in frames:
         _put_uvarint(out, idx - prev_idx)
         changed = [(i, keys[i]) for i in range(KEYS) if keys[i] != prev_keys[i]]
-        out.append((1 if state != prev_state else 0) | (2 if changed else 0)
-                   | (4 if async_ else 0))
-        if state != prev_state:
-            out.append(state)
+        out.append(1 if changed else 0)
         if changed:
             _put_uvarint(out, len(changed))
             last = 0
@@ -61,22 +59,16 @@ def encode(hdr, frames):
                 _put_uvarint(out, i - last)
                 out.append(v)
                 last = i
-        if async_:
-            _put_uvarint(out, len(async_))
-            for key, down in async_:
-                _put_uvarint(out, key << 1 | (1 if down else 0))
-        prev_idx, prev_state, prev_keys = idx, state, bytes(keys)
+        prev_idx, prev_keys = idx, bytes(keys)
     return bytes(out)
 
 
-def load(path):
-    with open(path, "rb") as f:
-        blob = f.read()
+def _header(blob, path, version):
     if len(blob) < 19 or blob[:4] != MAGIC:
         sys.exit("%s: not a Ka'roo recording" % path)
     ver, flags, dt, seed, n = struct.unpack_from("<BBdIB", blob, 4)
-    if ver != VERSION:
-        sys.exit("%s: version %d, this tool reads version %d" % (path, ver, VERSION))
+    if ver != version:
+        sys.exit("%s: version %d, expected version %d" % (path, ver, version))
     label = blob[19:19 + n].decode("ascii", "replace")
     hdr = dict(version=ver, dt=dt, seed=seed, seed_set=bool(flags & 1), label=label)
 
@@ -91,17 +83,52 @@ def load(path):
         saves[name] = blob[off:off + size]
         off += size
     hdr["saves"] = saves
+    return hdr, off
 
+
+def load(path):
+    """(header, [(frame index, key array)]): the array is what is held from
+    that frame on, 0x80 per held scancode."""
+    with open(path, "rb") as f:
+        blob = f.read()
+    hdr, off = _header(blob, path, VERSION)
     frames = []
-    idx, state, keys = 0, 0, bytearray(KEYS)
+    idx, keys = 0, bytearray(KEYS)
     while off < len(blob):
         d, off = _uvarint(blob, off)
         idx += d
         fl = blob[off]
         off += 1
         if fl & 1:
-            state = blob[off]
-            off += 1
+            cnt, off = _uvarint(blob, off)
+            k = 0
+            for _ in range(cnt):
+                d, off = _uvarint(blob, off)
+                k += d
+                keys[k] = blob[off]
+                off += 1
+        frames.append((idx, bytes(keys)))
+    return hdr, frames
+
+
+def convert_v3(path):
+    """Rewrite a version 3 recording as version 4.
+
+    Version 3 recorded what the game asked for: the key array, on the frames
+    its control dispatch ran, and the answer to each single-key poll.  The
+    keys held on a frame are the array's, and any key a poll found down."""
+    with open(path, "rb") as f:
+        blob = f.read()
+    hdr, off = _header(blob, path, 3)
+    frames = []
+    idx, keys = 0, bytearray(KEYS)
+    while off < len(blob):
+        d, off = _uvarint(blob, off)
+        idx += d
+        fl = blob[off]
+        off += 1
+        if fl & 1:
+            off += 1  # the game state
         if fl & 2:
             cnt, off = _uvarint(blob, off)
             k = 0
@@ -110,14 +137,18 @@ def load(path):
                 k += d
                 keys[k] = blob[off]
                 off += 1
-        async_ = []
+        held = bytearray(keys)
         if fl & 4:
             cnt, off = _uvarint(blob, off)
             for _ in range(cnt):
                 v, off = _uvarint(blob, off)
-                async_.append((v >> 1, v & 1))
-        frames.append((idx, state, bytes(keys), async_))
-    return hdr, frames
+                if v & 1:
+                    held[v >> 1] = 0x80
+        frames.append((idx, bytes(held)))
+    hdr["version"] = VERSION
+    with open(path, "wb") as f:
+        f.write(encode(hdr, frames))
+    return len(frames)
 
 
 SAVE_GLOBS = ("jj*.sav", "JJ*.sav", "GAM.DAT")
@@ -168,17 +199,13 @@ def summarise(path):
         return hdr, frames
     idxs = [f[0] for f in frames]
     gaps = [b - a for a, b in zip(idxs, idxs[1:]) if b - a != 1]
-    keyed = sum(1 for f in frames if pressed(f[2]))
-    asyncs = sum(len(f[3]) for f in frames)
+    keyed = sum(1 for f in frames if pressed(f[1]))
     print("  %d frames, index %d..%d%s"
           % (len(frames), idxs[0], idxs[-1],
              "" if not gaps else "  (%d non-consecutive steps)" % len(gaps)))
-    print("  %d frames with a key held, %d GetAsyncKeyState queries"
-          % (keyed, asyncs))
-    states = sorted({f[1] for f in frames})
-    print("  game_state values seen: %s" % states)
-    vkeys = sorted({a[0] for f in frames for a in f[3]})
-    print("  vkeys queried: %s" % (["0x%02X" % v for v in vkeys] or "none"))
+    print("  %d frames with a key held" % keyed)
+    seen = sorted({k for f in frames for k in pressed(f[1])})
+    print("  scancodes seen held: %s" % (seen or "none"))
     return hdr, frames
 
 
@@ -187,7 +214,14 @@ def main():
     ap.add_argument("rec", nargs="+")
     ap.add_argument("--frames", type=int, default=0,
                     help="print the first N frames that carry input")
+    ap.add_argument("--convert-v3", action="store_true",
+                    help="rewrite version 3 recordings, in place, as version 4")
     args = ap.parse_args()
+
+    if args.convert_v3:
+        for path in args.rec:
+            print("%s: %d frames" % (path, convert_v3(path)))
+        return 0
 
     if len(args.rec) == 2:
         (ha, fa), (hb, fb) = load(args.rec[0]), load(args.rec[1])
@@ -208,13 +242,11 @@ def main():
     hdr, frames = summarise(args.rec[0])
     if args.frames:
         shown = 0
-        for idx, state, keys, async_ in frames:
-            p, a = pressed(keys), async_
-            if not p and not a:
+        for idx, keys in frames:
+            p = pressed(keys)
+            if not p:
                 continue
-            print("  f=%-6d state=%d keys=%s async=%s"
-                  % (idx, state, p,
-                     ["0x%02X:%d" % (v, d) for v, d in a] or "-"))
+            print("  f=%-6d keys=%s" % (idx, p))
             shown += 1
             if shown >= args.frames:
                 break
