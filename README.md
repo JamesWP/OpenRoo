@@ -12,16 +12,34 @@ Open'Roo contains **no game data and no code from the original**. You need
 your own copy of Ka'roo: the importer takes the levels, models, textures,
 sounds and the original executable's resources from it.
 
-## Build and run
+## build deps
 
-Needs `cmake` (3.20+) and Python 3, and then for the Windows build
-`x86_64-w64-mingw32-g++` and Proton (Steam's "Proton - Experimental"); for the
-Linux build `g++`, the FFmpeg development packages (`libavformat-dev
-libavcodec-dev libavutil-dev libswscale-dev libswresample-dev`), `libgl-dev` and
-what SDL3 builds against (SDL3 and SDL3_mixer are used from the system if installed, else fetched and built from source;
-see https://wiki.libsdl.org/SDL3/README-linux#build-dependencies).  The game draws with OpenGL 3.3 (core profile, GLSL
-shaders, no fixed-function pipeline), through Wine's OpenGL under Proton, so the
-graphics driver needs to offer it.
+The application needs SDL3 and FFMPEG. Optionally for building the game for windows (which is cross compiled from linux) youll need additional cross compilation toolchain and if you want to test that on linux, Proton.
+
+### For Ubuntu *26+*
+
+```bash
+$ sudo apt-get install git cmake build-essential libsdl3-dev libavformat-dev libavcodec-dev libswscale-dev libswresample-dev
+```
+
+### For Ubuntu *24* or earlier, SDL3 is built from source.
+<details>
+<summary>install the following build deps for SDL3 + FFMPEG</summary>
+``` bash
+$ sudo apt-get install build-essential git make pkg-config cmake ninja-build gnome-desktop-testing libasound2-dev libpulse-dev libaudio-dev libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev libusb-1.0-0-dev libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev libavformat-dev libavcodec-dev libswscale-dev libswresample-dev
+```
+</details>
+
+### For the windows build (from linux)
+
+In addition to the compiler package below you will also need to install steam's "Proton - Experimental"
+
+```bash
+$ sudo apt-get install mingw-w64
+```
+
+
+## Build and run
 
 ```bash
 python3 tools/import_assets.py --from KaRoo.zip   # once: fills game/ from your copy
