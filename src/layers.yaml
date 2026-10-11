@@ -26,10 +26,11 @@ layers:
   - [log]
   - [base, math, prof]
 
-  # Services the game is built on: debug, replay, graphics, sound; then input
-  # mapping, the GL backend, particles, the script player and the debug UI.
-  - [dbg, testing, gfx, audio]
-  - [input, gl, fx, script, debugui]
+  # Services the game is built on: debug, replay, graphics, sound and the key
+  # bindings; then the GL backend, particles, the script player and the debug
+  # UI.
+  - [dbg, testing, gfx, audio, input]
+  - [gl, fx, script, debugui]
 
   # The game's state: the play-through, the camera, the level map; the objects in
   # the level and the front end's menus; then the renderer of the level beside
