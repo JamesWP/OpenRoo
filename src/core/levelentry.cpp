@@ -10,7 +10,7 @@
 #include <string.h>
 #include "levelentry.h"
 #include "renderdevice.h"
-#include "image.h"
+#include "imagefile.h"
 #include "game.h"
 #include "levelmap.h"
 #include "theme.h"

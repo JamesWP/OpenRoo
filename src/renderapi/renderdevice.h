@@ -28,7 +28,6 @@
 #include <vector>
 #include "rendertypes.h"
 
-class Texture;
 struct Image;
 namespace windev { class Window; }
 
@@ -201,8 +200,6 @@ public:
 
     /* NULL unbinds the stage. */
     virtual void SetTexture(int stage, const DeviceTexture *tex) = 0;
-    void SetTexture(int stage, const Texture *tex);
-    void SetTexture(int stage, decltype(nullptr)) { SetTexture(stage, (const DeviceTexture *)nullptr); }
 
     /* Whether lit geometry shows its specular highlight, and vertices carry
      * their specular colour. */

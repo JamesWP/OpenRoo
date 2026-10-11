@@ -74,7 +74,7 @@ static void eval_path(const SceneObject *o, float t, Vec3 *out)
 
 static void select_texture(RenderDevice *dev, const SceneObject *o)
 {
-    dev->SetTexture(0, (const Texture *)o->texture);
+    bindTexture(dev, 0, o->texture);
 }
 
 /* Heading and pitch from the path tangent.

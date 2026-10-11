@@ -10,7 +10,7 @@
  * alpha bit, expanded to 0 or 255, and its 5-bit channels are expanded by bit
  * replication. */
 
-#include "image.h"
+#include "imagefile.h"
 #include <string.h>
 #include <algorithm>
 

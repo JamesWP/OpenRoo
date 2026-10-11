@@ -60,6 +60,10 @@ private:
     Image         *image_;
 };
 
+/* Binds tex's device texture to the stage; NULL, or a texture not loaded,
+ * unbinds it. */
+void bindTexture(RenderDevice *dev, int stage, const Texture *tex);
+
 /* ─── TextureManager -- the name-keyed Texture cache ───────────────────────
  *
  * The theme's instance is Renderer::textures; the Scene has its own (scene.h).

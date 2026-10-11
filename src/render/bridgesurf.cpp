@@ -144,7 +144,7 @@ void BridgeSurf_Draw(const BridgeSurfSet &bridges, ThemeAssetBlock *theme,
                 // Unlike DrawQuadBatch, SetTexture runs unconditionally: a
                 // NULL texture binds NULL rather than leaving the last one
                 // bound.
-                d3d->SetTexture(0, sub->pTexture);
+                bindTexture(d3d, 0, sub->pTexture);
 
                 d3d->SetBlend(blendFromTheme(sub->dwBlendSrc, sub->dwBlendDst));
 

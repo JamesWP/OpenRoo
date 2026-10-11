@@ -95,7 +95,7 @@ static void setup_overlay_state(RenderDevice *d3d, ThemeAssetBlock *theme)
     d3d->SetBlend(BlendState::alpha());
 
     Texture *tex = theme->image(THEME_IMG_MENU);
-    d3d->SetTexture(0, tex);
+    bindTexture(d3d, 0, tex);
 }
 
 void Score_DrawHighScoreTable(const MenuArt *art, const FrontEnd *frontEnd, ThemeAssetBlock *theme,
@@ -114,7 +114,7 @@ void Score_DrawHighScoreTable(const MenuArt *art, const FrontEnd *frontEnd, Them
         d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
                                     quad, 4, 0);
 
-    d3d->SetTexture(0, &art->tex2);
+    bindTexture(d3d, 0, &art->tex2);
     if (score_fx() != SCORE_FX_NODRAW)
         d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
                                     (const void *)art->panelQuad, 4, 0);

@@ -1,6 +1,6 @@
 #include <fstream>
 #include <iterator>
-#include "image.h"
+#include "imagefile.h"
 #include <string.h>
 #include "sysdev.h"
 

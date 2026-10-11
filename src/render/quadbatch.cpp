@@ -103,7 +103,7 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
             d3d->SetSamplerAddress(0, addr, addr);
 
             if (sub->pTexture)
-                d3d->SetTexture(0, sub->pTexture);
+                bindTexture(d3d, 0, sub->pTexture);
 
             d3d->SetBlend(quad_fx() != QUAD_FX_NOALPHA
                           ? blendFromTheme(sub->dwBlendSrc, sub->dwBlendDst)

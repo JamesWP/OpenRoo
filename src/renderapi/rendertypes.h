@@ -25,12 +25,12 @@ struct DirectionalLight {
  *
  * The device's fixed state comes in a handful of small value types, each set
  * whole.  A backend with immutable pipeline objects can hash one and look it
- * up; the Direct3D 9 backend writes it through.  The defaults are the state a
- * fresh device starts in.
+ * up; the OpenGL backend (src/gl) sets the GL state from it.  The defaults are
+ * the state a fresh device starts in.
  *
  * The enumerators' numbers are Direct3D's, and nothing relies on that: the
- * theme parser (ui/theme.cpp) names them by keyword, and every backend maps
- * them with a switch. */
+ * theme parser (render/theme.cpp) names them by keyword, and every backend
+ * maps them with a switch. */
 
 enum class BlendFactor : uint8_t {
     Zero = 1, One, SrcColor, InvSrcColor, SrcAlpha, InvSrcAlpha, DestAlpha,
