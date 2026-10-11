@@ -75,8 +75,8 @@ Flow_HandleTypedCheatCode(Game *self)
     if (streq(buf, "supa")) {
         if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
             self->setState(GameState::GameOver);
-            if (self->musicOn() != 0)
-                self->cdThemes()->play(GS_GAME_GAMEOVER);
+            if (self->config()->musicOn() != 0)
+                self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
             Score_CalculateLevelScore(self, 0x28);
             self->frontEnd()->setDebounce(inputdev::KEY_RETURN);
             g_logger.logMessage(1, "GAME: completed at level %d/%d",
@@ -86,8 +86,8 @@ Flow_HandleTypedCheatCode(Game *self)
             self->frontEnd()->menu()->setLockStart(self->lastTickTime());
             self->frontEnd()->menu()->setLock(1);
             self->setState(GameState::LevelComplete);
-            if (self->musicOn() != 0)
-                self->cdThemes()->play(GS_GAME_COMPLETED);
+            if (self->config()->musicOn() != 0)
+                self->audio()->cdThemes()->play(GS_GAME_COMPLETED);
             self->camera()->setMode(2);
             self->frontEnd()->menu()->rewind();
             self->frontEnd()->menu()->pop();

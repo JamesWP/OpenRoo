@@ -197,7 +197,7 @@ public:
         if (g_movie.handleWindowMessage(msg, wParam, lParam))
             return true;
         // A track ended: the music restarts it if it repeats.
-        return Game::instance()->cdAudio()->handleWindowMessage(msg, wParam, lParam);
+        return Game::instance()->audio()->cdAudio()->handleWindowMessage(msg, wParam, lParam);
     }
 
 private:
@@ -257,7 +257,7 @@ int Main_WinMain(const char *lpCmdLine)
     if (game == NULL)
         return 0;
 
-    while (!game->cdThemes()->validateTrackLengths()) {
+    while (!game->audio()->cdThemes()->validateTrackLengths()) {
         if (!windev::messageBox(hWnd, "Please insert the Ka'Roo - CD-ROM!",
                                 "Ka'Roo", windev::Buttons::OkCancel)) {
             delete_game(game);
@@ -310,11 +310,11 @@ int Main_WinMain(const char *lpCmdLine)
     }
 
     // 3D sound, 22050 Hz, 16-bit stereo; rolloff 0.3 if it came up.
-    SoundManager *snd = game->soundManager();
+    SoundManager *snd = game->audio()->soundManager();
     if (snd->init(1, hWnd, 2, 22050, 16))
         snd->device()->setListenerRolloff(0.3f, true);
 
-    game->cdAudio()->setWindowHandle(hWnd);
+    game->audio()->cdAudio()->setWindowHandle(hWnd);
     window.show(true);
     if (!Render_ConfigureRenderState(&s_renderer, game->world(), game->camera()->pose(), kGameDir))
         windev::quit(1);

@@ -23,6 +23,9 @@ public:
      * (the key bindings) as they are.  Returns 1 on success. */
     int save(const char *path);
 
+    /* CD music on: every CdThemes::play call is gated on it; HandleKeypress
+     * toggles it, RenderSoundOptions shows it, sound setup clears it on
+     * failure. */
     int            musicOn() const                     { return musicOn_; }
     void           setMusicOn(int on)                  { musicOn_ = on; }
     /* Music and effects volume, percent in steps of 10. */
@@ -30,10 +33,21 @@ public:
     void           setCdVolume(unsigned char p)        { cdVolume_ = p; }
     unsigned char  waveVolume() const                  { return waveVolume_; }
     void           setWaveVolume(unsigned char p)      { waveVolume_ = p; }
+    /* The same as gains, 0..1, for the audio layer. */
+    float          musicGain() const                   { return (float)cdVolume() / 100.0f; }
+    float          effectsGain() const                 { return (float)waveVolume() / 100.0f; }
+    /* The options menu's 3D-sound switch: handed to the SoundManager's
+     * setup, and InitLevelBasedSounds adds the extra-object sounds only
+     * while it is on. */
     int            sound3D() const                     { return sound3D_; }
     void           setSound3D(int on)                  { sound3D_ = on; }
+    /* The controls menu's camera option: 1 = the camera turns with the
+     * player (UpdateViewTransform, FramePose_Player).  GameTick forces it to 1
+     * while the player is gliding, parking the choice +10 in
+     * parkedCameraOption. */
     unsigned char  cameraTurnsWithPlayer() const       { return cameraTurnsWithPlayer_; }
     void           setCameraTurnsWithPlayer(unsigned char on) { cameraTurnsWithPlayer_ = on; }
+    /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
     unsigned short joyDeadzone() const                 { return joyDeadzone_; }
     void           setJoyDeadzone(unsigned short p)    { joyDeadzone_ = p; }
 

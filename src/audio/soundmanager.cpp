@@ -494,7 +494,7 @@ SoundManager::SoundManager()
     dwCreated_        = 0;
 }
 
-/* Also the reset: Init runs it first, and the Game's teardown on its own. */
+/* Also the reset: Init runs it first, and the GameAudio's teardown on its own. */
 void SoundManager::purgeAssets()
 {
     purge_list(entriesPlain_);

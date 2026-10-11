@@ -1,4 +1,4 @@
-/* The sound manager: the game's sound asset service, a sub-object of Game.
+/* The sound manager: the game's sound asset service, a sub-object of GameAudio.
  * Callers acquire a static buffer or a voice pool by file name and release it
  * when done; each file is loaded once, into an asset entry
  * (doublesoundbuff.h), and shared by duplication.  An entry is destroyed when

@@ -10,37 +10,15 @@
 #include "frontend.h"
 #include "scriptplayer.h"
 #include "camerarig.h"
-#include "cdm.h"
-#include "cdthemes.h"
+#include "gameaudio.h"
 #include "config.h"
 #include "themesounds.h"
 #include "bomb.h"
-#include "soundmanager.h"
 #include "world.h"
 #include "session.h"
 #include "playstate.h"
 
-class SoundManager;
 class ProgableControl;
-
-
-/* The fixed sounds AcquireFixedSoundBuffersAndMaybeReport loads once.  They
- * are the Game's, not the SoundManager's: only Game code writes them. */
-namespace audiodev { class Buffer; }
-class VoicePool;
-struct FixedSounds {
-    audiodev::Buffer *timeOut;
-    audiodev::Buffer *switchClick;      /* menu select */
-    VoicePool          *menuUpDown;       /* 5 voices */
-    audiodev::Buffer *count;
-    audiodev::Buffer *lastSeconds;      /* the countdown */
-    audiodev::Buffer *levelCompleted;
-    /* Three banks, 'A'..'C'; GameTick picks one by rand()%3 when the
-     * crystals are complete. */
-    audiodev::Buffer *crystalBank[3];
-    /* Set once the load has run (or found no sound); it never runs again. */
-    unsigned int        loaded;
-};
 
  
 class Bomb;
@@ -65,11 +43,11 @@ public:
     int  quitCode() const            { return quitCode_; }
     void clearQuitRequest()          { quitRequested_ = false; }
 
-    /* ── sound ──────────────────────────────────────────────────────── */
-    SoundManager *soundManager()     { return &soundManager_; }
-    /* Nonzero once sound is up. */
-    int  soundCreated() const        { return (int)soundManager_.created(); }
-    FixedSounds  *fixedSounds()      { return &fixedSounds_; }
+    /* ── sound (gameaudio.h) ────────────────────────────────────────── */
+    /* The sound manager, the fixed sounds, the theme's sound table and the CD
+     * player (gameaudio.h). */
+    GameAudio    *audio()             { return &audio_; }
+    const GameAudio *audio() const    { return &audio_; }
 
     /* ── the level in play (world.h) ─────────────────────────────────── */
     /* The level in play: its map, objects and player (world.h). */
@@ -129,10 +107,6 @@ public:
 
     /* The settings object (config.h); openroo.ini holds it. */
     Config               *config()                   { return &config_; }
-    /* The CD audio device (cdm.h); the CD-music theme table plays on it. */
-    CDM            *cdAudio()                        { return &cdAudio_; }
-    /* The CD-music theme table (cdthemes.h). */
-    CdThemes       *cdThemes()                       { return &cdThemes_; }
     /* The instruction-script player (scriptplayer.h). */
     ScriptPlayer   *scriptPlayer()                   { return &scriptPlayer_; }
 
@@ -142,67 +116,19 @@ public:
      * InsertScoreIntoHighScoreTable; PauseMenu is the ESC menu. */
     GameState      state() const                     { return state_; }
     void           setState(GameState s)             { state_ = s; }
-    /* GameTick runs InitLevelBasedSounds while this is 0, then sets it;
-     * Load, SetupLevelObjects and the 3D-sound toggle clear it. */
-    int            levelSoundsReady() const          { return levelSoundsReady_; }
-    void           setLevelSoundsReady(int r)        { levelSoundsReady_ = r; }
-
-    /* CD music on: every CdThemes::play call is gated on it; HandleKeypress
-     * toggles it, RenderSoundOptions shows it, sound setup clears it on
-     * failure.  A dword. */
-    int            musicOn() const                   { return config_.musicOn(); }
-    void           setMusicOn(int on)                { config_.setMusicOn(on); }
-
-    /* ── video quality (the options menu; config.h has the derivation) ─ */
-    unsigned char &videoShadows()                    { return config_.videoShadows(); }
-    unsigned char &videoReflection()                 { return config_.videoReflection(); }
-    unsigned char &videoHighlights()                 { return config_.videoHighlights(); }
-    unsigned char &videoParticles()                  { return config_.videoParticles(); }
-
-    /* ── volumes (the options menu, HandleKeypress 0x3e/0x3f) ────────── */
-    /* Percent, steps of 10, shown by RenderSoundOptions: the music's and the
-     * sound effects'. */
-    unsigned char  cdVolume() const                  { return config_.cdVolume(); }
-    void           setCdVolume(unsigned char p)      { config_.setCdVolume(p); }
-    unsigned char  waveVolume() const                { return config_.waveVolume(); }
-    void           setWaveVolume(unsigned char p)    { config_.setWaveVolume(p); }
-    /* The same as gains, 0..1, for the audio layer. */
-    float          musicGain() const                 { return (float)config_.cdVolume() / 100.0f; }
-    float          effectsGain() const               { return (float)config_.waveVolume() / 100.0f; }
-
     /* ── camera and controls ────────────────────────────────────────── */
     /* The camera (camerarig.h): its intent, set by the simulation, menus,
      * script player and checkpoints, and its live pose. */
     CameraRig      *camera()                         { return &camera_; }
     const CameraRig *camera() const                  { return &camera_; }
-    /* The controls menu's camera option: 1 = the camera turns with the
-     * player (UpdateViewTransform, FramePose_Player).  GameTick forces it to 1
-     * while the player is gliding, parking the choice +10 in
-     * parkedCameraOption. */
-    unsigned char  cameraTurnsWithPlayer() const     { return config_.cameraTurnsWithPlayer(); }
-    void           setCameraTurnsWithPlayer(unsigned char on) { config_.setCameraTurnsWithPlayer(on); }
-    /* The options menu's 3D-sound switch: handed to the SoundManager's
-     * setup, and InitLevelBasedSounds adds the extra-object sounds only
-     * while it is on. */
-    int            sound3D() const                   { return config_.sound3D(); }
-    void           setSound3D(int on)                { config_.setSound3D(on); }
-    /* Joystick deadzone in percent, steps of 10 (ProgCtrl gets it x100). */
-    unsigned short joyDeadzone() const               { return config_.joyDeadzone(); }
-    void           setJoyDeadzone(unsigned short p)  { config_.setJoyDeadzone(p); }
-
     BombSounds bombSounds() const
     {
-        return { themeSound(ThemeSound::MoveJumpPad), themeSound(ThemeSound::Teleporter),
-                 themeSound(ThemeSound::ExplosionBomb), themeSound(ThemeSound::FallCatcher),
-                 themeSound(ThemeSound::BombTick) };
+        return { audio_.themeSound(ThemeSound::MoveJumpPad), audio_.themeSound(ThemeSound::Teleporter),
+                 audio_.themeSound(ThemeSound::ExplosionBomb), audio_.themeSound(ThemeSound::FallCatcher),
+                 audio_.themeSound(ThemeSound::BombTick) };
     }
 
     bool initialised() const {return initialised_; }
-
-    /* The theme sound entry for a slot, which the spawns and level sounds
-     * acquire. */
-    const SoundAssetName *themeSound(ThemeSound s) const { return themeSounds_.entry(s); }
-    ThemeSoundTable      *themeSounds()             { return &themeSounds_; }
 
     /* ── the lifecycle (game.cpp) ───────────────────────────────────────
      * The members build themselves.  The constructor then reads the .gam,
@@ -227,29 +153,25 @@ private:
 
     unsigned int  mapChanged_{};
     int           initialised_{};                           /* 0 until Load completes */
-    /* The CD audio device (cdm.h).  Declared before the theme table, which
-     * plays on it, so it is torn down after the table. */
-    CDM           cdAudio_;
-    CdThemes      cdThemes_;
+    /* The game's sound (gameaudio.h): the sound manager, the fixed sounds,
+     * the theme's sound table and the CD player.  Declared before the level,
+     * whose entities hold sound handles, so the level is torn down before
+     * it. */
+    GameAudio     audio_;
     /* 256 level names, 0x100 each.  SetCurrentLevelName copies entry `levelNo & 0xff` into World's levelName_. */
     char          gameFileName_[0x80]{};
     char          gameDir_[64]{};
-    int           levelSoundsReady_{};
-    ThemeSoundTable themeSounds_;
     GameState     stateBeforeMenu_{};
     char          menuLevelName_[0x80]{};
-    SoundManager  soundManager_;
-    FixedSounds   fixedSounds_{};
-    /* The level in play (world.h).  Declared after the sound manager and the
-     * fixed sounds, so it is torn down before them. */
+    /* The level in play (world.h).  Declared after the game's sound, so it
+     * is torn down before it. */
     World         world_;
     /* The front end (frontend.h): the menu, the text entries, the save slots
-     * and the high-score table.  Declared after World, as the moved members
-     * were after the sound manager, so it is torn down before them. */
+     * and the high-score table.  Declared after World, so it is torn down
+     * before it and the game's sound. */
     FrontEnd      frontEnd_;
-    /* The play-through (session.h).  Declared after the front end, as the
-     * moved members were after the sound manager, so it is torn down before
-     * them. */
+    /* The play-through (session.h).  Declared after the front end, so it is
+     * torn down before it and the game's sound. */
     Session       session_;
     double        lastTickTime_{};
     int           levelPrepPending_{};

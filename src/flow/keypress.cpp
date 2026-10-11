@@ -57,8 +57,8 @@ static void loaded_tail(Game *game)
 {
     game->setState(GameState::Flythrough);
     game->camera()->setDistance(7.0f);
-    if (game->musicOn() != 0)
-        game->cdAudio()->stop();
+    if (game->config()->musicOn() != 0)
+        game->audio()->cdAudio()->stop();
     game->scriptPlayer()->setRunning(1);
     game->camera()->setMode(1);
     game->frontEnd()->menu()->rewind();
@@ -68,59 +68,59 @@ static void option_edit(Game *game, unsigned char key, ProgableControl *progCtrl
 {
     switch (key) {
     case 0x22: {  // the "sfx %" page edits the joystick dead zone
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && game->joyDeadzone() < 0x5a) {
-            game->setJoyDeadzone((unsigned short)(game->joyDeadzone() + 10));
-            progCtrl->setJoyDeadzone(0, game->joyDeadzone() * 100);
-            progCtrl->setJoyDeadzone(4, game->joyDeadzone() * 100);
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && game->config()->joyDeadzone() < 0x5a) {
+            game->config()->setJoyDeadzone((unsigned short)(game->config()->joyDeadzone() + 10));
+            progCtrl->setJoyDeadzone(0, game->config()->joyDeadzone() * 100);
+            progCtrl->setJoyDeadzone(4, game->config()->joyDeadzone() * 100);
             game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
         }
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && input_key_down(inputdev::KEY_LEFT) != 0 && game->joyDeadzone() > 10) {
-            game->setJoyDeadzone((unsigned short)(game->joyDeadzone() - 10));
-            progCtrl->setJoyDeadzone(0, game->joyDeadzone() * 100);
-            progCtrl->setJoyDeadzone(4, game->joyDeadzone() * 100);
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && input_key_down(inputdev::KEY_LEFT) != 0 && game->config()->joyDeadzone() > 10) {
+            game->config()->setJoyDeadzone((unsigned short)(game->config()->joyDeadzone() - 10));
+            progCtrl->setJoyDeadzone(0, game->config()->joyDeadzone() * 100);
+            progCtrl->setJoyDeadzone(4, game->config()->joyDeadzone() * 100);
             game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
         }
         break;
     }
     case 0x3e: {
         int changed = 0;
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && game->cdVolume() < 100) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && game->config()->cdVolume() < 100) {
             game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
-            game->setCdVolume((unsigned char)(game->cdVolume() + 10));
+            game->config()->setCdVolume((unsigned char)(game->config()->cdVolume() + 10));
             changed = 1;
         }
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && input_key_down(inputdev::KEY_LEFT) != 0 && game->cdVolume() != 0) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && input_key_down(inputdev::KEY_LEFT) != 0 && game->config()->cdVolume() != 0) {
             game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
-            game->setCdVolume((unsigned char)(game->cdVolume() - 10));
+            game->config()->setCdVolume((unsigned char)(game->config()->cdVolume() - 10));
         } else if (!changed) {
             break;
         }
-        game->cdAudio()->setVolume(game->musicGain());
+        game->audio()->cdAudio()->setVolume(game->config()->musicGain());
         break;
     }
     case 0x3f: {
         int changed = 0;
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && game->waveVolume() < 100) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && game->config()->waveVolume() < 100) {
             game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
-            game->setWaveVolume((unsigned char)(game->waveVolume() + 10));
+            game->config()->setWaveVolume((unsigned char)(game->config()->waveVolume() + 10));
             changed = 1;
         }
-        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && input_key_down(inputdev::KEY_LEFT) != 0 && game->waveVolume() != 0) {
+        if (game->frontEnd()->debounceRef() != inputdev::KEY_LEFT && input_key_down(inputdev::KEY_LEFT) != 0 && game->config()->waveVolume() != 0) {
             game->frontEnd()->debounceRef() = inputdev::KEY_LEFT;
-            game->setWaveVolume((unsigned char)(game->waveVolume() - 10));
+            game->config()->setWaveVolume((unsigned char)(game->config()->waveVolume() - 10));
         } else if (!changed) {
             break;
         }
-        if (game->soundCreated() != 0)
-            audiodev::setEffectsVolume(game->effectsGain());
+        if (game->audio()->soundCreated() != 0)
+            audiodev::setEffectsVolume(game->config()->effectsGain());
         break;
     }
     // The three 0..2 video-quality sliders: shadows, highlights and particles.
     // Reflection is a 0/1 toggle on its own node.
     case 0x48: case 0x49: case 0x4a: {
-        unsigned char &opt = key == 0x48 ? game->videoShadows()
-                           : key == 0x49 ? game->videoHighlights()
-                                         : game->videoParticles();
+        unsigned char &opt = key == 0x48 ? game->config()->videoShadows()
+                           : key == 0x49 ? game->config()->videoHighlights()
+                                         : game->config()->videoParticles();
         if (game->frontEnd()->debounceRef() != inputdev::KEY_RIGHT && input_key_down(inputdev::KEY_RIGHT) != 0 && opt < 2) {
             game->frontEnd()->debounceRef() = inputdev::KEY_RIGHT;
             opt = (unsigned char)(opt + 1);
@@ -151,26 +151,26 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
     int entry = 0;
     if (self->frontEnd()->rebindActive() == 0 && self->frontEnd()->textEntryActive() == 0) {
         if (input_key_down(inputdev::KEY_ESCAPE) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_ESCAPE && self->frontEnd()->menu()->changed() != 0) {
-            if (self->fixedSounds()->switchClick != NULL)
-                (self->fixedSounds()->switchClick)->play(false);
+            if (self->audio()->fixedSounds()->switchClick != NULL)
+                (self->audio()->fixedSounds()->switchClick)->play(false);
             self->frontEnd()->debounceRef() = inputdev::KEY_ESCAPE;
         }
         if (self->frontEnd()->menu()->nodeRef() != 5 && self->frontEnd()->menu()->nodeRef() != 3 && self->frontEnd()->menu()->childCount(self->frontEnd()->menu()->nodeRef()) > 1) {
             if (input_key_down(inputdev::KEY_UP) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_UP) {
-                if (self->fixedSounds()->menuUpDown != NULL)
-                    (self->fixedSounds()->menuUpDown)->cycle(0);
+                if (self->audio()->fixedSounds()->menuUpDown != NULL)
+                    (self->audio()->fixedSounds()->menuUpDown)->cycle(0);
                 self->frontEnd()->debounceRef() = inputdev::KEY_UP;
             }
             if (input_key_down(inputdev::KEY_DOWN) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_DOWN) {
-                if (self->fixedSounds()->menuUpDown != NULL)
-                    (self->fixedSounds()->menuUpDown)->cycle(0);
+                if (self->audio()->fixedSounds()->menuUpDown != NULL)
+                    (self->audio()->fixedSounds()->menuUpDown)->cycle(0);
                 self->frontEnd()->debounceRef() = inputdev::KEY_DOWN;
             }
         }
         if (input_key_down(inputdev::KEY_RETURN) != 0 && self->frontEnd()->debounceRef() != inputdev::KEY_RETURN && self->frontEnd()->menu()->changed() != 0 &&
             (unsigned short)self->frontEnd()->menu()->nodeRef() == self->frontEnd()->menu()->lastNodeSeen()) {
-            if (self->fixedSounds()->switchClick != NULL)
-                (self->fixedSounds()->switchClick)->play(false);
+            if (self->audio()->fixedSounds()->switchClick != NULL)
+                (self->audio()->fixedSounds()->switchClick)->play(false);
             self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         }
         self->frontEnd()->menu()->navigate((int)(long long)self->lastTickTime());
@@ -245,8 +245,8 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
     case 6:
         self->frontEnd()->menu()->pop();
         self->setState(GameState::Quitting);
-        if (self->musicOn() != 0)
-            self->cdAudio()->stop();
+        if (self->config()->musicOn() != 0)
+            self->audio()->cdAudio()->stop();
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         windev::quit(1);
         break;
@@ -265,28 +265,28 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
     case 0x20: rebind(self, GS_KEY_CAM_MODE_DOWN, 0x20, -1); break;
     case 0x21:
         if (self->world()->player()->gliding() == 0)
-            self->setCameraTurnsWithPlayer(self->cameraTurnsWithPlayer() == 0);
+            self->config()->setCameraTurnsWithPlayer(self->config()->cameraTurnsWithPlayer() == 0);
         self->frontEnd()->menu()->pop();
         break;
     case 0x47:
-        self->videoReflection() = (self->videoReflection() == 0);
+        self->config()->videoReflection() = (self->config()->videoReflection() == 0);
         self->frontEnd()->menu()->pop();
         break;
     case 0x3c:
-        self->setSound3D(self->sound3D() == 0);
-        self->soundManager()->setup(self->sound3D());
-        self->setLevelSoundsReady(0);
+        self->config()->setSound3D(self->config()->sound3D() == 0);
+        self->audio()->soundManager()->setup(self->config()->sound3D());
+        self->audio()->setLevelSoundsReady(0);
         self->frontEnd()->menu()->pop();
         break;
     case 0x3d:
-        if (self->musicOn() != 0) {
-            self->setMusicOn(0);
-            self->cdAudio()->stop();
+        if (self->config()->musicOn() != 0) {
+            self->config()->setMusicOn(0);
+            self->audio()->cdAudio()->stop();
             self->frontEnd()->menu()->pop();
             break;
         }
-        self->cdThemes()->replay();
-        self->setMusicOn(1);
+        self->audio()->cdThemes()->replay();
+        self->config()->setMusicOn(1);
         self->frontEnd()->menu()->pop();
         break;
     case 0x29: {
@@ -297,16 +297,16 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         Sim_SetupLevelObjects(self);
         self->setState(GameState::Flythrough);
         self->scriptPlayer()->setRunning(1);
-        if (self->musicOn() != 0)
-            self->cdAudio()->stop();
+        if (self->config()->musicOn() != 0)
+            self->audio()->cdAudio()->stop();
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         self->frontEnd()->menu()->setLockStart(self->lastTickTime());
         self->camera()->setMode(1);
         self->frontEnd()->menu()->setLock(1);
         self->frontEnd()->menu()->pop();
         g_logger.logMessage(1, "level completed - continue");
-        if (self->fixedSounds()->levelCompleted != NULL)
-            (self->fixedSounds()->levelCompleted)->stop();
+        if (self->audio()->fixedSounds()->levelCompleted != NULL)
+            (self->audio()->fixedSounds()->levelCompleted)->stop();
         break;
     }
     case 0x22: case 0x32: case 0x3e: case 0x3f:

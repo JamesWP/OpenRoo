@@ -22,16 +22,16 @@ static audiodev::Buffer *bank(Game *game, SoundVoice *cur,
     if (cur != NULL)
         static_cast<audiodev::Buffer *>(cur)->reset();
     sprintf(path, fmt, game->gameDir(), suffix);
-    return game->soundManager()->acquireStatic(path, 0);
+    return game->audio()->soundManager()->acquireStatic(path, 0);
 }
 
   void  
 Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
 {
-    SoundManager *sm = self->soundManager();
+    SoundManager *sm = self->audio()->soundManager();
     char path[256];
 
-    if (self->fixedSounds()->loaded != 0)
+    if (self->audio()->fixedSounds()->loaded != 0)
         return;
 
     if ((self->config()->save(GS_CFG_FILE) & 0xff) != 0)
@@ -40,15 +40,15 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         g_logger.logMessage(3, "GAME: ** error ** while saving config-values (maybe write-protected or hd full\077) !!!");
     self->frontEnd()->menu()->setLockStart(*self->world()->clock());
     self->frontEnd()->menu()->setLock(1);
-    if (self->musicOn() != 0)
-        self->cdThemes()->play(GS_GAME_MAIN);
-    self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(GS_GAME_MAIN));
+    if (self->config()->musicOn() != 0)
+        self->audio()->cdThemes()->play(GS_GAME_MAIN);
+    self->audio()->cdThemes()->setCurrentTrack((unsigned char)self->audio()->cdThemes()->findThemeIndex(GS_GAME_MAIN));
 
-    if (self->soundCreated() == 0) {
+    if (self->audio()->soundCreated() == 0) {
         g_logger.logMessage(1, "GAME: warning - SoundManager not created, no wave and CD-sound !!!");
-        self->setMusicOn(0);
-        if (self->soundCreated() == 0) {
-            self->fixedSounds()->loaded = 1;
+        self->config()->setMusicOn(0);
+        if (self->audio()->soundCreated() == 0) {
+            self->audio()->fixedSounds()->loaded = 1;
             return;
         }
     }
@@ -58,7 +58,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     for (unsigned int i = 0; i < 3; ++i) {
         char suffix[2] = { (char)('A' + i), 0 };
         Player *pl = self->world()->player();
-        FixedSounds *fs = self->fixedSounds();
+        FixedSounds *fs = self->audio()->fixedSounds();
         fs->crystalBank[i] = bank(self, fs->crystalBank[i], "%s\\waves\\add02%s.wav", suffix);
 #define PBANK(k, fmt) pl->setPickupSound(Player::k, i, bank(self, pl->pickupSound(Player::k, i), fmt, suffix))
         PBANK(SND_15E, "%s\\waves\\add08%s.wav");
@@ -78,20 +78,20 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     sp->setSoundManager(sm);
 
     snprintf(path, sizeof(path), GS_WAV_TIME_OUT, self->gameDir());
-    self->fixedSounds()->timeOut = sm->acquireStatic(path, 0);
+    self->audio()->fixedSounds()->timeOut = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), GS_WAV_LAST_SECONDS, self->gameDir());
-    self->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);
+    self->audio()->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), GS_WAV_COUNT, self->gameDir());
-    self->fixedSounds()->count = sm->acquireStatic(path, 0);
+    self->audio()->fixedSounds()->count = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), GS_WAV_MENU_UP_DOWN, self->gameDir());
-    self->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);
+    self->audio()->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);
     snprintf(path, sizeof(path), GS_WAV_SWITCH, self->gameDir());
-    self->fixedSounds()->switchClick = sm->acquireStatic(path, 0);
+    self->audio()->fixedSounds()->switchClick = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), GS_WAV_LEVEL_COMPLETED, self->gameDir());
-    self->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);
+    self->audio()->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), GS_WAV_SPLAT, self->gameDir());
     self->world()->player()->setSoundA7(sm->acquireStatic(path, 1));
-    sm->setup(self->sound3D());
+    sm->setup(self->config()->sound3D());
 
-    self->fixedSounds()->loaded = 1;
+    self->audio()->fixedSounds()->loaded = 1;
 }

@@ -43,11 +43,11 @@ static void trigger_switch_tile(Game *game, unsigned char sw, int u, int v)
 void Play_LoadSounds(Game *self)
 {
     Sim_AcquireFixedSoundBuffersAndMaybeReport(self);
-    if (self->levelSoundsReady() == 0 && self->levelPrepPending() == 0) {
+    if (self->audio()->levelSoundsReady() == 0 && self->levelPrepPending() == 0) {
         Sim_InitLevelBasedSounds(self);
-        self->setLevelSoundsReady(1);
-        if (self->state() == GameState::MainMenu && self->musicOn() != 0)
-            self->cdThemes()->replay();
+        self->audio()->setLevelSoundsReady(1);
+        if (self->state() == GameState::MainMenu && self->config()->musicOn() != 0)
+            self->audio()->cdThemes()->replay();
     }
 }
 
@@ -203,7 +203,7 @@ void Play_CheckLevelEnd(Game *self)
     if (pl->moveState() != 3) {
         int t = self->world()->timeLimit() * 1000;
         if (t - (int)self->world()->timeElapsed() <= 0) {
-            void *snd = self->fixedSounds()->timeOut;
+            void *snd = self->audio()->fixedSounds()->timeOut;
             self->world()->setTimeElapsed((unsigned int)t);
             pl->setMoveState(3);
             if (snd != NULL)
@@ -213,7 +213,7 @@ void Play_CheckLevelEnd(Game *self)
     if (pl->gemsCollected() >= self->world()->gemsRequired()) {
         if (self->gemsGoalReached() == 0 && self->state() != GameState::LevelComplete) {
             int r = (int)ftol80((*self->world()->clock()));
-            void *snd = self->fixedSounds()->crystalBank[r % 3];
+            void *snd = self->audio()->fixedSounds()->crystalBank[r % 3];
             if (snd != NULL)
                 ((audiodev::Buffer *)snd)->play(false);
             self->setGemsGoalReached(1);
@@ -224,12 +224,12 @@ void Play_CheckLevelEnd(Game *self)
             pl->moveState() == 0) {
             pl->setHeld(1);
             if ((unsigned int)pl->moveDir() == 0) {
-                if (self->fixedSounds()->levelCompleted != NULL)
-                    (self->fixedSounds()->levelCompleted)->play(false);
+                if (self->audio()->fixedSounds()->levelCompleted != NULL)
+                    (self->audio()->fixedSounds()->levelCompleted)->play(false);
                 if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
                     self->setState(GameState::GameOver);
-                    if (self->musicOn() != 0)
-                        self->cdThemes()->play(GS_GAME_GAMEOVER);
+                    if (self->config()->musicOn() != 0)
+                        self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
                     Score_CalculateLevelScore(self, 3);
                     self->frontEnd()->debounceEnter();
                     g_logger.logMessage(1, "GAME: completed at level %d/%d",
