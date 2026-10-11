@@ -84,7 +84,7 @@ static void tick_level_objects(Game *self)
     self->world()->tickBridges();
 }
 
-  unsigned int
+  void
 Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 {
     Player *pl = self->world()->player();
@@ -114,8 +114,8 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     if (self->state() == GameState::Flythrough)
         Flow_TickFlythrough(self);
 
-    if (self->camera()->cameraMode() == 0)
-        self->camera()->setCameraDistance(camera_sway(now, self->camera()->zoomDistance()));
+    if (self->camera()->mode() == 0)
+        self->camera()->setDistance(camera_sway(now, self->camera()->zoomDistance()));
 
     if (self->state() == GameState::LevelComplete) {
         PROF_SCOPE("menus");
@@ -137,7 +137,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     self->world()->tickBombs();
 
     {
-        unsigned char pct = completion_percent((unsigned int)pl->completionNumerator(), self->session()->field_170a65());
+        unsigned char pct = completion_percent((unsigned int)pl->completionNumerator(), self->session()->playingTime());
         self->session()->setVitalityPercent(pct);
         if (pct > 100)
             self->session()->setVitalityPercent(100);
@@ -157,22 +157,22 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     Play_PlayerSwitch(self);
 
     if (pl->moveState() != 0) {
-        self->camera()->setCameraMode(2);
+        self->camera()->setMode(2);
     } else if (self->state() == GameState::Playing) {
         self->world()->setTimeElapsed(self->world()->timeElapsed()
             + (unsigned int)ftol80(self->world()->tickStep()->value));
-        self->session()->setField170a65(self->session()->field_170a65()
+        self->session()->setPlayingTime(self->session()->playingTime()
             + (unsigned int)ftol80(self->world()->tickStep()->value));
     }
 
     if ((unsigned int)pl->gliding() != 0) {
-        self->camera()->setCameraMode(0);
+        self->camera()->setMode(0);
     } else if ((unsigned int)pl->falling() != 0) {
         long double d = (long double)(int)pl->fallStartH() - (long double)(int)pl->heightCell();
         if (d > 2.0L) {
-            self->camera()->setCameraMode(1);
-            self->camera()->setCameraEye(0, pl->posU());
-            self->camera()->setCameraEye(2, pl->posV());
+            self->camera()->setMode(1);
+            self->camera()->setFocus(0, pl->posU());
+            self->camera()->setFocus(2, pl->posV());
         }
     }
 
@@ -198,13 +198,9 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
         Flow_LeaveNameEntry(self);
 
     if (pl->moveState() != 0 && pl->moveState() != 2)
-        self->camera()->setCameraMode(2);
+        self->camera()->setMode(2);
     if (input_key_down(self->frontEnd()->debounceRef()) == 0)
         self->frontEnd()->debounceRef() = 0;
     self->camera()->setOverviewActive(0);
-    self->camera()->setField13cc90(0);
-    self->setField48b14(self->field_48b14() + 1);
-    self->setTickCount(self->tickCount() + 1);
     Core_ForwardQuit(self);
-    return self->tickCount() & 0xffffff00u;
 }

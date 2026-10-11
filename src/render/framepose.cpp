@@ -22,7 +22,7 @@
 static const float K_HALF_PI  = 1.5707964f;
 static const double K_WRAP    = 6.2831854820251465;
 static const float K_TWO_PI   = 6.2831855f;
-static const float K_SPIN     = 0.001f;  // cameraMode 2's yaw per ms
+static const float K_SPIN     = 0.001f;  // mode 2's yaw per ms
 
 /* Facing byte to yaw; false for a byte outside 1..4. */
 static bool facing_angle(unsigned char facing, float *a)
@@ -77,7 +77,7 @@ FramePose_Player(World *world, const CameraRig *camera, const Config *config,
     f[0] = 0.0f;
     facing_angle(p->facing(), &f[1]);
 
-    const unsigned char mode = camera->cameraMode();
+    const unsigned char mode = camera->mode();
     if (mode == 2) {
         f[5] = wrap(dt * K_SPIN + f[5]);
     } else if (mode == 0) {
@@ -104,9 +104,9 @@ FramePose_Player(World *world, const CameraRig *camera, const Config *config,
     if (mode == 0) {
         f[6] = f[2];  f[7] = f[3];  f[8] = f[4];
     } else {
-        f[6] = camera->cameraEye(0);
-        f[7] = camera->cameraEye(1);
-        f[8] = -camera->cameraEye(2);
+        f[6] = camera->focus(0);
+        f[7] = camera->focus(1);
+        f[8] = -camera->focus(2);
     }
 }
 

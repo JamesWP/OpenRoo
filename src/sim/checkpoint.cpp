@@ -34,12 +34,12 @@ Sim_RestoreCheckpointStateBlocks(Game *self)
         return;
 
     sp->tick(*g->world()->clock(), g->world()->tickStep()->value, g->camera()->pose()->eye());
-    g->camera()->setCameraMode(sp->cameraMode());
-    g->camera()->setCameraDistance(sp->cameraDistance());
-    g->camera()->setCameraEye(0, sp->eye(0));
-    g->camera()->setCameraEye(1, sp->eye(s_fx ? 1 : 2));
-    g->camera()->setCameraEye(2, sp->eye(s_fx ? 2 : 1));
-    g->camera()->setField13cc94(0, sp->splinePoint(0));
-    g->camera()->setField13cc94(1, sp->splinePoint(1));
-    g->camera()->setField13cc94(2, sp->splinePoint(2));
+    g->camera()->setMode(sp->cameraMode());
+    g->camera()->setDistance(sp->cameraDistance());
+    g->camera()->setFocus(0, sp->eye(0));
+    g->camera()->setFocus(1, sp->eye(s_fx ? 1 : 2));
+    g->camera()->setFocus(2, sp->eye(s_fx ? 2 : 1));
+    g->camera()->setScriptedEye(0, sp->splinePoint(0));
+    g->camera()->setScriptedEye(1, sp->splinePoint(1));
+    g->camera()->setScriptedEye(2, sp->splinePoint(2));
 }

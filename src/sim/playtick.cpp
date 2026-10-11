@@ -43,7 +43,7 @@ static void trigger_switch_tile(Game *game, unsigned char sw, int u, int v)
 void Play_LoadSounds(Game *self)
 {
     Sim_AcquireFixedSoundBuffersAndMaybeReport(self);
-    if (self->levelSoundsReady() == 0 && self->field_173584() == 0) {
+    if (self->levelSoundsReady() == 0 && self->levelPrepPending() == 0) {
         Sim_InitLevelBasedSounds(self);
         self->setLevelSoundsReady(1);
         if (self->state() == GameState::MainMenu && self->musicOn() != 0)
@@ -195,10 +195,10 @@ void Play_CheckLevelEnd(Game *self)
     Player *pl = self->world()->player();
 
     if ((unsigned int)pl->falling() == 0 && pl->moveState() == 0) {
-        self->camera()->setCameraEye(0, pl->posU());
-        self->camera()->setCameraEye(1, pl->posY());
-        self->camera()->setCameraEye(2, pl->posV());
-        self->camera()->setCameraMode(0);
+        self->camera()->setFocus(0, pl->posU());
+        self->camera()->setFocus(1, pl->posY());
+        self->camera()->setFocus(2, pl->posV());
+        self->camera()->setMode(0);
     }
     if (pl->moveState() != 3) {
         int t = self->world()->timeLimit() * 1000;
@@ -211,12 +211,12 @@ void Play_CheckLevelEnd(Game *self)
         }
     }
     if (pl->gemsCollected() >= self->world()->gemsRequired()) {
-        if (self->field_173b1a() == 0 && self->state() != GameState::LevelComplete) {
+        if (self->gemsGoalReached() == 0 && self->state() != GameState::LevelComplete) {
             int r = (int)ftol80((*self->world()->clock()));
             void *snd = self->fixedSounds()->crystalBank[r % 3];
             if (snd != NULL)
                 ((audiodev::Buffer *)snd)->play(false);
-            self->setField173b1a(1);
+            self->setGemsGoalReached(1);
         }
         self->world()->map()->tile((signed char)pl->markerCellU(), (signed char)pl->markerCellV())->setBusy(1);
         if ((unsigned char)pl->cellU() == pl->markerCellU() && (unsigned char)pl->cellV() == pl->markerCellV() &&
@@ -237,7 +237,7 @@ void Play_CheckLevelEnd(Game *self)
                                        (unsigned int)self->session()->levelCount());
                 } else {
                     self->setState(GameState::LevelComplete);
-                    self->camera()->setCameraMode(2);
+                    self->camera()->setMode(2);
                     Play_OpenTallyMenu(self);
                     Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
                     self->session()->setRestartCount(0);

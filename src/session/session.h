@@ -73,15 +73,16 @@ public:
     void           setFoesKilled(unsigned char n)    { foesKilled_ = n; }
     /* ── vitality and the score tally ───────────────────────────────── */
     /* The tally's "vitality" row, which pays it 1:1:
-     * Player::completionNumerator per second of field_170a65, times 25, capped
+     * Player::completionNumerator per second of playingTime, times 25, capped
      * at 100 -- a RATE, not health (gamestate.cpp's note: it varies with
      * movement).  Named for the row it feeds. */
     unsigned char  vitalityPercent() const           { return vitalityPercent_; }
     void           setVitalityPercent(unsigned char p) { vitalityPercent_ = p; }
-    /* The divisor: GameTick adds each tick's clock step to it and the
-     * level builder zeroes it, so likely elapsed level time.  Unconfirmed. */
-    unsigned int   field_170a65() const              { return field_170a65_; }
-    void           setField170a65(unsigned int n)    { field_170a65_ = n; }
+    /* The play time in ms: GameTick adds each tick's clock step to it only
+     * while the state is Playing (the same steps that advance World's
+     * timeElapsed), and the level builder zeroes it beside timeElapsed. */
+    unsigned int   playingTime() const              { return playingTime_; }
+    void           setPlayingTime(unsigned int n)    { playingTime_ = n; }
     /* The end-of-level tally (CalculateLevelScore fills it,
      * AnimateScoreTallyStages counts it up). */
     ScoreTally    *tally()                           { return &tally_; }
@@ -106,7 +107,7 @@ private:
     double        totalPlayTime_{};
     /* Recomputed by GameTick every tick; see vitalityPercent(). */
     unsigned char vitalityPercent_{};
-    unsigned int  field_170a65_{};
+    unsigned int  playingTime_{};
     unsigned char levelIndex_{};
     ScoreTally    tally_;
     int           tallyDone_{};

@@ -85,31 +85,22 @@ public:
 
     /* ── tiles ──────────────────────────────────────────────────────── */
     /* ── level-load flags ───────────────────────────────────────────── */
-    /* The level builder's missing-CD check fires only while it is
-     * zero.  Not decoded. */
-    int            field_0c() const                  { return field_0c_; }
     /* 1 when the last level load read a different map name from the
      * one before it (both loaders, levelparse.cpp). */
     unsigned int   mapChanged() const                { return mapChanged_; }
     void           setMapChanged(unsigned int c)     { mapChanged_ = c; }
-    /* GameTick latches it to 1 the first time the exit
-     * condition is met in a level (and plays a crystal sound); the level
-     * builder clears it.  Named by offset. */
-    int            field_173b1a() const              { return field_173b1a_; }
-    void           setField173b1a(int v)             { field_173b1a_ = v; }
+    /* GameTick latches it to 1 the first time the gems required for the exit
+     * are collected in a level (and plays a crystal sound); the level builder
+     * and Load clear it. */
+    int            gemsGoalReached() const           { return gemsGoalReached_; }
+    void           setGemsGoalReached(int v)         { gemsGoalReached_ = v; }
 
-    /* The level builder sets it to 1; GameTick loads the level
-     * sounds only while it and levelSoundsReady() are both 0.  Named by
-     * offset. */
-    int            field_173584() const              { return field_173584_; }
-    void           setField173584(int v)             { field_173584_ = v; }
-    /* GameTick adds one per tick and returns it with the low byte
-     * masked off; field_48b14 is bumped beside it.  Neither is read elsewhere
-     * in our code. */
-    unsigned int   tickCount() const                 { return tickCount_; }
-    void           setTickCount(unsigned int n)      { tickCount_ = n; }
-    unsigned int   field_48b14() const               { return field_48b14_; }
-    void           setField48b14(unsigned int n)     { field_48b14_ = n; }
+    /* The level builder sets it to 1 once a level is built; RenderGameFrame
+     * then prepares the level's assets and clears it (skipping the frame
+     * meanwhile), and GameTick loads the level sounds only while it and
+     * levelSoundsReady() are both 0. */
+    int            levelPrepPending() const          { return levelPrepPending_; }
+    void           setLevelPrepPending(int v)        { levelPrepPending_ = v; }
     /* The game file's name (the .gam, the save-slot files' base and the
      * final directory's %s), 0x80 bytes. */
     const char    *gameFileName() const              { return gameFileName_; }
@@ -234,10 +225,7 @@ private:
 private:
      
 
-    double        field_04_{};                              /* Load sets 1.0; reader not decoded */
-    int           field_0c_{};
     unsigned int  mapChanged_{};
-    unsigned int  tickCount_{};
     int           initialised_{};                           /* 0 until Load completes */
     /* The CD audio device (cdm.h).  Declared before the theme table, which
      * plays on it, so it is torn down after the table. */
@@ -249,7 +237,6 @@ private:
     int           levelSoundsReady_{};
     ThemeSoundTable themeSounds_;
     GameState     stateBeforeMenu_{};
-    unsigned int  field_48b14_{};
     char          menuLevelName_[0x80]{};
     SoundManager  soundManager_;
     FixedSounds   fixedSounds_{};
@@ -264,10 +251,9 @@ private:
      * moved members were after the sound manager, so it is torn down before
      * them. */
     Session       session_;
-    int           field_13cc84_{};                          /* Load zeroes; reader not decoded */
     double        lastTickTime_{};
-    int           field_173584_{};
-    int           field_173b1a_{};
+    int           levelPrepPending_{};
+    int           gemsGoalReached_{};
     ScriptPlayer  scriptPlayer_;
     CameraRig     camera_;
     /* The settings (config.h); music, volumes, 3D sound, the camera

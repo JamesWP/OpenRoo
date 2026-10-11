@@ -17,10 +17,10 @@ struct EntityContext {
      * World's, so it follows the level being built). */
     SwitchCells         *switches;
     const unsigned char *switchMax;
-    /* The level's name (diagnostics) and the count of foes that drop a
-     * crystal, which spawning a foe of that type raises. */
+    /* The level's name (diagnostics) and the level's crystal count (World's
+     * crystalsInLevel), which spawning a foe of type 0x0b raises. */
     const char     *levelName;
-    unsigned short *crystalFoes;
+    unsigned short *crystalsInLevel;
 };
 
 /* One kind's slots, in use up to count; N is the most the game allows. */

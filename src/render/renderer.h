@@ -72,7 +72,4 @@ struct Renderer {
      * is shown when that fails. */
     Image loadingImage;
     Image fallbackImage;
-
-    /* bitmaps\demo.bmp, loaded once at startup. */
-    Image demoImage;
 };

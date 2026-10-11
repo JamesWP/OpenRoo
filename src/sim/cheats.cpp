@@ -20,12 +20,12 @@
  * flythrough armed. */
 void Cheat_EnterLoadedState(Game *game)
 {
-    game->camera()->setCameraDistance(7.0f);
+    game->camera()->setDistance(7.0f);
     game->setState(GameState::Flythrough);
     if (game->musicOn() != 0)
         game->cdAudio()->stop();
     game->scriptPlayer()->setRunning(1);
-    game->camera()->setCameraMode(1);
+    game->camera()->setMode(1);
     game->frontEnd()->debounceEnter();
 }
 

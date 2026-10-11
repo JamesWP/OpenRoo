@@ -232,14 +232,14 @@ Sim_SetupLevelObjects(Game *self)
     self->world()->extraObjects()->releaseSounds();
     // The game also makes a no-op call here; it has no effect.
 
-    // The camera eye is zeroed and the sound listener placed at it, y 1000.
-    self->camera()->setCameraEye(0, 0.0f);
-    self->camera()->setCameraEye(1, 0.0f);
-    self->camera()->setCameraEye(2, 0.0f);
+    // The camera focus is zeroed; the scripted eye and the pose eye start at y 1000.
+    self->camera()->setFocus(0, 0.0f);
+    self->camera()->setFocus(1, 0.0f);
+    self->camera()->setFocus(2, 0.0f);
 
-    self->camera()->setField13cc94(0, 0.0f);
-    self->camera()->setField13cc94(1, 1000.0f);
-    self->camera()->setField13cc94(2, 0.0f);
+    self->camera()->setScriptedEye(0, 0.0f);
+    self->camera()->setScriptedEye(1, 1000.0f);
+    self->camera()->setScriptedEye(2, 0.0f);
 
     CameraPose *cam = self->camera()->pose();  // camerarig.h: note the eye/target conflict
     cam->eye()[0] = 0.0f;
@@ -247,14 +247,14 @@ Sim_SetupLevelObjects(Game *self)
     cam->eye()[2] = 0.0f;
 
     for (int i = 0; i < 3; i++)
-        cam->target()[i] = self->camera()->cameraEye(i);
+        cam->target()[i] = self->camera()->focus(i);
     cam->setYaw(0.0f);
     cam->setPitch(0.0f);
 
     self->world()->census()->reset();
 
-    self->world()->setField42252(0);
-    self->setField173b1a(0);
+    self->world()->setCrystalsInLevel(0);
+    self->setGemsGoalReached(0);
     self->world()->player()->setMovingBackwards(0);
     self->world()->player()->setTeleportPhase(0);
     self->world()->player()->setField11a(0);
@@ -339,7 +339,7 @@ Sim_SetupLevelObjects(Game *self)
                 t->setField202(0);
 
                 if (t->contents() == CONTENTS_CRYSTAL)
-                    self->world()->setField42252((unsigned short)(self->world()->field_42252() + 1));
+                    self->world()->setCrystalsInLevel((unsigned short)(self->world()->crystalsInLevel() + 1));
                 if (t->contents() == CONTENTS_EXTRA_LIFE) self->world()->census()->extraLives++;
 
                 if (t->objectMarker() == TILE_KIND_01) self->world()->census()->kind01++;
@@ -580,14 +580,14 @@ next_row:
 
     // Totals, and the rest of the reset.
     self->world()->player()->setPlatformSlot(0xff);
-    self->setField173584(1);
+    self->setLevelPrepPending(1);
 
     // The collectable-item count (see LevelCensus), summed in this order.
     self->world()->census()->total = (unsigned short)(self->world()->census()->grant09Items + self->world()->census()->speedUps +
                                   self->world()->census()->shadow1      + self->world()->census()->transforms +
                                   self->world()->census()->paragliders  + self->world()->census()->shadow7 +
                                   self->world()->census()->freezeItems + self->world()->census()->extraLives +
-                                  self->world()->census()->timeBonuses  + self->world()->field_42252());
+                                  self->world()->census()->timeBonuses  + self->world()->crystalsInLevel());
 
     self->world()->player()->setMoveState(0);
     self->world()->player()->setLastContact(*self->world()->clock());
@@ -613,13 +613,12 @@ next_row:
         self->session()->setItemTotal(self->world()->census()->total);
 
         if (self->scriptPlayer()->loaded() == 0) {
-            self->camera()->setCameraEye(0, (float)(int)(signed char)self->world()->player()->homeU());
-            self->camera()->setCameraEye(1, (float)(int)(signed char)self->world()->player()->homeH());
-            self->camera()->setCameraEye(2, (float)(int)(signed char)self->world()->player()->homeV());
+            self->camera()->setFocus(0, (float)(int)(signed char)self->world()->player()->homeU());
+            self->camera()->setFocus(1, (float)(int)(signed char)self->world()->player()->homeH());
+            self->camera()->setFocus(2, (float)(int)(signed char)self->world()->player()->homeV());
         }
 
         if (self->cdThemes()->validateTrackLengths() == 0 &&
-            self->field_0c() == 0 &&
             self->session()->levelIndex() > 4) {
             unsigned char cu = self->world()->player()->homeU();
             unsigned char cv = self->world()->player()->homeV();
@@ -632,7 +631,7 @@ next_row:
     }
 
     self->world()->setTimeElapsed(0);
-    self->session()->setField170a65(0);
+    self->session()->setPlayingTime(0);
 
     SCELL(M, self->world()->player()->cellU(), self->world()->player()->cellV())->setField1a1(0);
 
@@ -649,14 +648,13 @@ next_row:
     self->world()->player()->setAnim(0);
     self->world()->player()->setDying(0);
     self->world()->player()->setIdleDuration(500.0);  // 500.0
-    self->camera()->setField13cc90(0);
     self->camera()->setOverviewActive(0);
 
     g_logger.logMessage(1, "GAME: %d crystals in this level, %d needed",
-                       (unsigned int)self->world()->field_42252(),
+                       (unsigned int)self->world()->crystalsInLevel(),
                        self->world()->gemsRequired());
 
-    if ((int)((unsigned int)self->world()->player()->gemsCollected() + (unsigned int)self->world()->field_42252()) <
+    if ((int)((unsigned int)self->world()->player()->gemsCollected() + (unsigned int)self->world()->crystalsInLevel()) <
         self->world()->gemsRequired())
         g_logger.logMessage(3, "GAME: warning - not enough crystals to complete this level!!!!");
 
@@ -680,7 +678,7 @@ next_row:
                   "bridges=%u teleports=%u lifts=%u platforms=%u falling tiles=%u "
                   "foes=%u freebombs=%u timed=%u switchmax=%u\n",
                   s_calls, (unsigned)M->extentU(), (unsigned)M->extentV(),
-                  (unsigned)self->world()->field_42252(), (unsigned)self->world()->census()->total,
+                  (unsigned)self->world()->crystalsInLevel(), (unsigned)self->world()->census()->total,
                   (unsigned)self->world()->census()->bridges, (unsigned)self->world()->census()->teleports,
                   (unsigned)self->world()->liftCount(), (unsigned)self->world()->platformCount(),
                   (unsigned)self->world()->fallingCount(), (unsigned)self->world()->foeCount(),
