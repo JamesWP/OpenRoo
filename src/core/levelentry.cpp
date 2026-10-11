@@ -56,7 +56,7 @@ LevelEntry_PrepareAssets(Renderer *renderer)
     renderer->scene.buildObjectList(d3d, g->world()->extraObjects());
 
     strcpy(renderer->levelTitle, map->title());
-    renderer->lastTickMs = clock_seconds() * 1000.0;
+    renderer->lastTickMs = clock_advance() * 1000.0;
 
     // 5. The camera: a fixed offset (0, 6, -4) scaled to 255/sqrt(52), placed
     // over the middle of the grid.  Double precision; the game's

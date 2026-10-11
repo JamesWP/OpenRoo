@@ -197,7 +197,7 @@ private:
     bool keyDownDuringIntro_ = false;
 };
 
-/* Run at every clock read, which ends a frame: the state log, the recorder,
+/* Run at every clock_advance(), which ends a frame: the state log, the recorder,
  * and the end of a replay.  A replay ends on the recording's length, never on
  * wall time.  The state is dumped while the level is still live (teardown
  * clears the score), then the window is closed so the game shuts down
@@ -313,7 +313,7 @@ int Main_WinMain(const char *lpCmdLine)
     if (!Render_ConfigureRenderState(&s_renderer, game->world(), game->camera()->pose(), kGameDir))
         windev::quit(1);
     Menu_BuildMenuGeometry(&s_menuArt, s_renderer.device, kGameDir);
-    hooks_ClockInit();
+    clock_start();
 
     // The intro is only shown to a person at a display: a headless or replayed
     // run takes it as ending at once, so its frame counts do
