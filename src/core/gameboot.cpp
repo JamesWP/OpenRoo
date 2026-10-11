@@ -48,26 +48,26 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
     g->world()->setCrystalsInLevel(0);
     g->mapChanged_       = 1;
     g->initialised_      = 0;
-    g->levelSoundsReady_ = 0;
+    g->audio()->setLevelSoundsReady(0);
     g->scriptPlayer_.clearStreams();
     std::fill(std::begin(g->world()->foes().ids), std::end(g->world()->foes().ids), 0);
     std::fill(std::begin(g->world()->bombs().ids), std::end(g->world()->bombs().ids), 0);
-    g->fixedSounds_.switchClick    = NULL;
-    g->fixedSounds_.menuUpDown     = NULL;
-    g->fixedSounds_.count          = NULL;
-    g->fixedSounds_.lastSeconds    = NULL;
-    g->fixedSounds_.timeOut        = NULL;
-    g->fixedSounds_.crystalBank[0] = NULL;
-    g->fixedSounds_.crystalBank[1] = NULL;
-    g->fixedSounds_.crystalBank[2] = NULL;
+    g->audio()->fixedSounds()->switchClick    = NULL;
+    g->audio()->fixedSounds()->menuUpDown     = NULL;
+    g->audio()->fixedSounds()->count          = NULL;
+    g->audio()->fixedSounds()->lastSeconds    = NULL;
+    g->audio()->fixedSounds()->timeOut        = NULL;
+    g->audio()->fixedSounds()->crystalBank[0] = NULL;
+    g->audio()->fixedSounds()->crystalBank[1] = NULL;
+    g->audio()->fixedSounds()->crystalBank[2] = NULL;
     strcpy(g->menuLevelName_, GS_GAME_DEMO_LEVEL);
     g->frontEnd()->setCreditsRestart(0);
     g->frontEnd()->setCreditsLatch(0);
 
     snprintf(g->gameFileName_, sizeof(g->gameFileName_), "%s", gameName);
-    g->cdThemes_.readTrackThemeTable(g->gameDir_, g->gameFileName_);
-    g->cdThemes_.listTrackLengths();
-    if (g->cdThemes_.validateTrackLengths())
+    g->audio()->cdThemes()->readTrackThemeTable(g->gameDir_, g->gameFileName_);
+    g->audio()->cdThemes()->listTrackLengths();
+    if (g->audio()->cdThemes()->validateTrackLengths())
         g_logger.logMessage(2, "GAME: original CD is in the drive - OK");
     else
         g_logger.logMessage(3, "GAME: * warning * - the original CD is not in drive");
@@ -107,10 +107,10 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
     }
 
     g_logger.logMessage(2, "GAME: this is a commercial version");
-    audiodev::setEffectsVolume(g->effectsGain());
-    g->cdAudio()->setVolume(g->musicGain());
+    audiodev::setEffectsVolume(g->config()->effectsGain());
+    g->audio()->cdAudio()->setVolume(g->config()->musicGain());
     g->state_ = GameState::MainMenu;
-    g->cdAudio()->stop();
+    g->audio()->cdAudio()->stop();
     g->frontEnd()->menu()->buildDefaultGraph(g->frontEnd()->saveSlots()->count());
     g->session()->setLevelIndex(0);
     g->camera()->setZoomDistance(g->config_.cameraDistanceSetting());
@@ -127,7 +127,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir, ProgableContr
     g->camera()->setMode(1);
     g->camera()->setOverviewActive(0);
     g->world()->bridges().count      = 0;
-    g->fixedSounds_.loaded = 0;
+    g->audio()->fixedSounds()->loaded = 0;
     std::fill_n(g->frontEnd()->cheatBuffer(), 0x100, 0);
     g->frontEnd()->cheatEntry()->setMaxLength(30);
     g->frontEnd()->cheatEntry()->setCursor(0);
@@ -155,6 +155,6 @@ void Game_Shutdown(Game *g)
     g->world()->extraObjects()->releaseSounds();
     g->releaseAllSounds();
     g_logger.logMessage(1, "GAME: all sounds released successfully");
-    g->soundManager()->purgeAssets();
+    g->audio()->soundManager()->purgeAssets();
 
 }

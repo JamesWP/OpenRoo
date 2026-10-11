@@ -52,9 +52,9 @@ void Flow_TickFlythrough(Game *self)
         sp->releaseStreams();
         self->setState(GameState::Playing);
         if (self->session()->restartCount() == 0) {
-            if (self->musicOn() != 0)
-                self->cdThemes()->play(self->world()->map()->mapName());
-            self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(self->world()->map()->mapName()));
+            if (self->config()->musicOn() != 0)
+                self->audio()->cdThemes()->play(self->world()->map()->mapName());
+            self->audio()->cdThemes()->setCurrentTrack((unsigned char)self->audio()->cdThemes()->findThemeIndex(self->world()->map()->mapName()));
         }
         self->camera()->setDistance(7.0f);
         self->camera()->setMode(0);
@@ -96,11 +96,11 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
 
     if ((unsigned int)pl->gliding() != 0) {
         if (self->camera()->parkedCameraOption() == 0) {
-            self->camera()->setParkedCameraOption((unsigned char)(self->cameraTurnsWithPlayer() + 10));
-            self->setCameraTurnsWithPlayer(1);
+            self->camera()->setParkedCameraOption((unsigned char)(self->config()->cameraTurnsWithPlayer() + 10));
+            self->config()->setCameraTurnsWithPlayer(1);
         }
     } else if (self->camera()->parkedCameraOption() >= 10) {
-        self->setCameraTurnsWithPlayer((unsigned char)(self->camera()->parkedCameraOption() - 10));
+        self->config()->setCameraTurnsWithPlayer((unsigned char)(self->camera()->parkedCameraOption() - 10));
         self->camera()->setParkedCameraOption(0);
     }
 
@@ -114,8 +114,8 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
         if (rem80 > 11.0L || pl->moveState() == 3) {
             pl->setLastSecondsMark(10.0);
         } else if ((long double)pl->lastSecondsMark() > (long double)rem64) {
-            if (self->fixedSounds()->lastSeconds != NULL)
-                (self->fixedSounds()->lastSeconds)->play(false);
+            if (self->audio()->fixedSounds()->lastSeconds != NULL)
+                (self->audio()->fixedSounds()->lastSeconds)->play(false);
             pl->setLastSecondsMark(crt_floor(rem64));
         }
     }
@@ -136,8 +136,8 @@ void Flow_TickIdleControls(Game *self, ProgableControl *progCtrl)
     pl->setLastActive(*self->world()->clock());
     gamestate_note_mode(0);
     progCtrl->dispatch(0);
-    if (self->fixedSounds()->lastSeconds != NULL)
-        (self->fixedSounds()->lastSeconds)->stop();
+    if (self->audio()->fixedSounds()->lastSeconds != NULL)
+        (self->audio()->fixedSounds()->lastSeconds)->stop();
 }
 
 /* ENTER after a death: restarts the level, or ends it as game over or, on a bonus level, complete. */
@@ -155,16 +155,16 @@ void Flow_RestartAfterDeath(Game *self)
         Sim_SetupLevelObjects(self);
     } else if (lives <= 0 && bonus == 0) {
         self->setState(GameState::GameOver);
-        if (self->musicOn() != 0)
-            self->cdThemes()->play(GS_GAME_GAMEOVER);
+        if (self->config()->musicOn() != 0)
+            self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
         Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
         self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
         restart_tail = 0;  // game over: skip the camera reset
     } else {
         self->camera()->setMode(2);
         self->setState(GameState::LevelComplete);
-        if (self->musicOn() != 0)
-            self->cdThemes()->play(GS_GAME_COMPLETED);
+        if (self->config()->musicOn() != 0)
+            self->audio()->cdThemes()->play(GS_GAME_COMPLETED);
         Play_OpenTallyMenu(self);
         self->world()->setTimeElapsed((unsigned int)(self->world()->timeLimit() * 1000));
         Score_CalculateLevelScore(self, (char)static_cast<unsigned char>(self->state()));
@@ -175,8 +175,8 @@ void Flow_RestartAfterDeath(Game *self)
                            (unsigned int)self->session()->levelIndex(), (unsigned int)self->session()->levelCount());
         if ((unsigned int)self->session()->levelIndex() == (unsigned int)self->session()->levelCount() - 1) {
             self->setState(GameState::GameOver);
-            if (self->musicOn() != 0)
-                self->cdThemes()->play(GS_GAME_GAMEOVER);
+            if (self->config()->musicOn() != 0)
+                self->audio()->cdThemes()->play(GS_GAME_GAMEOVER);
         }
         self->session()->setRestartCount(0);
     }
@@ -206,7 +206,7 @@ static void return_to_menu(Game *self, bool lastLevel)
         theme = GS_GAME_MAIN;
     }
     if (theme != NULL)
-        self->cdThemes()->setCurrentTrack((unsigned char)self->cdThemes()->findThemeIndex(theme));
+        self->audio()->cdThemes()->setCurrentTrack((unsigned char)self->audio()->cdThemes()->findThemeIndex(theme));
     Sim_SetupLevelObjects(self);
     self->scriptPlayer()->setRunning(1);
     self->frontEnd()->debounceRef() = inputdev::KEY_RETURN;
@@ -221,8 +221,8 @@ void Flow_LeaveGameOver(Game *self)
         (unsigned int)pl->score(), (unsigned char)(self->session()->levelIndex() + 1));
     if ((unsigned char)r < 0xff) {
         self->setState(GameState::NameEntry);
-        if (self->musicOn() != 0)
-            self->cdAudio()->stop();
+        if (self->config()->musicOn() != 0)
+            self->audio()->cdAudio()->stop();
         self->frontEnd()->nameEntry()->setMaxLength(0x0f);
         self->frontEnd()->nameEntry()->setActive(1);
         self->frontEnd()->nameEntry()->setCursor(0);

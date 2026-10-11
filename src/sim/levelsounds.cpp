@@ -33,14 +33,14 @@ static audiodev::Buffer *acq(Game *game, const SoundAssetName *asset)
 {
     char name[256];
     strcpy(name, asset->name);
-    return game->soundManager()->acquireStatic(name, 1);
+    return game->audio()->soundManager()->acquireStatic(name, 1);
 }
 
 static VoicePool *acq_pool(Game *game, int count, const SoundAssetName *asset)
 {
     char name[256];
     strcpy(name, asset->name);
-    return game->soundManager()->acquirePool(count, name, 1);
+    return game->audio()->soundManager()->acquirePool(count, name, 1);
 }
 
 /* Resets the old buffer if there is one, then loads the named asset if it is
@@ -85,7 +85,7 @@ Sim_InitLevelBasedSounds(Game *self)
     }
 
     g_logger.logMessage(2, "GAME: trying to init level-based sounds");
-    if (self->soundCreated() != 0) {
+    if (self->audio()->soundCreated() != 0) {
         pl->setWorldSoundVariant(0);
         if (strcmp(world, GS_SND_EGYPT) == 0)
             pl->setWorldSoundVariant(0);
@@ -96,46 +96,46 @@ Sim_InitLevelBasedSounds(Game *self)
 
         if (pl->pool9f() != NULL)
             static_cast<VoicePool *>(pl->pool9f())->wipe();
-        if (game->themeSound(ThemeSound::Crystal)->enabled != 0)
-            pl->setPool9f(acq_pool(game, 3, game->themeSound(ThemeSound::Crystal)));
+        if (game->audio()->themeSound(ThemeSound::Crystal)->enabled != 0)
+            pl->setPool9f(acq_pool(game, 3, game->audio()->themeSound(ThemeSound::Crystal)));
         if (pl->poolCf() != NULL)
             static_cast<VoicePool *>(pl->poolCf())->wipe();
-        if (game->themeSound(ThemeSound::MoveJJ)->enabled != 0)
-            pl->setPoolCf(acq_pool(game, 10, game->themeSound(ThemeSound::MoveJJ)));
+        if (game->audio()->themeSound(ThemeSound::MoveJJ)->enabled != 0)
+            pl->setPoolCf(acq_pool(game, 10, game->audio()->themeSound(ThemeSound::MoveJJ)));
 
-        pl->setSoundC3(reslot(game, pl->soundC3(), game->themeSound(ThemeSound::FallJJ)));
-        pl->setSoundBf(reslot(game, pl->soundBf(), game->themeSound(ThemeSound::Glue)));
-        pl->setSoundB3(reslot(game, pl->soundB3(), game->themeSound(ThemeSound::MoveJumpPad)));
-        pl->setSoundC7(reslot(game, pl->soundC7(), game->themeSound(ThemeSound::MoveParagliding)));
-        pl->setSoundA3(reslot(game, pl->soundA3(), game->themeSound(ThemeSound::MoveParaglidingStart)));
-        pl->setSoundB7(reslot(game, pl->soundB7(), game->themeSound(ThemeSound::Teleporter)));
-        pl->setSoundBb(reslot(game, pl->soundBb(), game->themeSound(ThemeSound::Teleporter)));
-        pl->setSoundAb(reslot(game, pl->soundAb(), game->themeSound(ThemeSound::MoveIceSliding)));
-        pl->setSoundAf(reslot(game, pl->soundAf(), game->themeSound(ThemeSound::MoveSliding)));
-        pl->setSoundCb(reslot(game, pl->soundCb(), game->themeSound(ThemeSound::Switch)));
-        pl->setSoundA7(reslot(game, pl->soundA7(), game->themeSound(ThemeSound::SplatJJ)));
+        pl->setSoundC3(reslot(game, pl->soundC3(), game->audio()->themeSound(ThemeSound::FallJJ)));
+        pl->setSoundBf(reslot(game, pl->soundBf(), game->audio()->themeSound(ThemeSound::Glue)));
+        pl->setSoundB3(reslot(game, pl->soundB3(), game->audio()->themeSound(ThemeSound::MoveJumpPad)));
+        pl->setSoundC7(reslot(game, pl->soundC7(), game->audio()->themeSound(ThemeSound::MoveParagliding)));
+        pl->setSoundA3(reslot(game, pl->soundA3(), game->audio()->themeSound(ThemeSound::MoveParaglidingStart)));
+        pl->setSoundB7(reslot(game, pl->soundB7(), game->audio()->themeSound(ThemeSound::Teleporter)));
+        pl->setSoundBb(reslot(game, pl->soundBb(), game->audio()->themeSound(ThemeSound::Teleporter)));
+        pl->setSoundAb(reslot(game, pl->soundAb(), game->audio()->themeSound(ThemeSound::MoveIceSliding)));
+        pl->setSoundAf(reslot(game, pl->soundAf(), game->audio()->themeSound(ThemeSound::MoveSliding)));
+        pl->setSoundCb(reslot(game, pl->soundCb(), game->audio()->themeSound(ThemeSound::Switch)));
+        pl->setSoundA7(reslot(game, pl->soundA7(), game->audio()->themeSound(ThemeSound::SplatJJ)));
 
         for (unsigned short i = 0; i < game->world()->foeCount(); ++i)
             Sim_AcquireObjectSoundBuffersForIndex(game, game->world()->foeId(i));
 
         for (unsigned short i = 0; i < game->world()->fallingCount(); ++i) {
-            if (game->themeSound(ThemeSound::DestructStart)->enabled != 0) {
-                audiodev::Buffer *p = acq(game, game->themeSound(ThemeSound::DestructStart));
+            if (game->audio()->themeSound(ThemeSound::DestructStart)->enabled != 0) {
+                audiodev::Buffer *p = acq(game, game->audio()->themeSound(ThemeSound::DestructStart));
                 game->world()->fallingSlot(i)->setFallSound(p);
             }
-            if (game->themeSound(ThemeSound::DestructRegen)->enabled != 0) {
-                audiodev::Buffer *p = acq(game, game->themeSound(ThemeSound::DestructRegen));
+            if (game->audio()->themeSound(ThemeSound::DestructRegen)->enabled != 0) {
+                audiodev::Buffer *p = acq(game, game->audio()->themeSound(ThemeSound::DestructRegen));
                 game->world()->fallingSlot(i)->setRespawnSound(p);
             }
         }
         attachLoopSound(game, game->world(), &World::liftCount,   &World::liftSlot,
-                        game->themeSound(ThemeSound::Elevator));
+                        game->audio()->themeSound(ThemeSound::Elevator));
         attachLoopSound(game, game->world(), &World::platformCount,  &World::platformSlot,
-                        game->themeSound(ThemeSound::Platform));
+                        game->audio()->themeSound(ThemeSound::Platform));
         attachLoopSound(game, game->world(), &World::bridgeCount, &World::bridgeSlot,
-                        game->themeSound(ThemeSound::Bridge));
+                        game->audio()->themeSound(ThemeSound::Bridge));
 
-        if (game->session()->restartCount() == 0 && game->sound3D() != 0) {
+        if (game->session()->restartCount() == 0 && game->config()->sound3D() != 0) {
             g_logger.logMessage(1, "GAME: try to play level-based LEO sounds");
             // The count is re-read every pass.
             ExtraObjects *xo = game->world()->extraObjects();
@@ -145,7 +145,7 @@ Sim_InitLevelBasedSounds(Game *self)
                     continue;
                 const char *nm = E->file;
                 g_logger.logMessage(1, "GAME: try to play LEO sound %s", nm);
-                audiodev::Buffer *p = game->soundManager()->acquireStatic(nm, 1);
+                audiodev::Buffer *p = game->audio()->soundManager()->acquireStatic(nm, 1);
                 E->sound = p;
                 if (p != NULL) {
                     p->setPosition(E->position[0], E->position[2],

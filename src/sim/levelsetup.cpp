@@ -227,7 +227,7 @@ Sim_SetupLevelObjects(Game *self)
 
     g_logger.logMessage(2, "GAME: init level started");
 
-    self->setLevelSoundsReady(0);
+    self->audio()->setLevelSoundsReady(0);
     self->scriptPlayer()->releaseStreams();
     self->world()->extraObjects()->releaseSounds();
     // The game also makes a no-op call here; it has no effect.
@@ -618,7 +618,7 @@ next_row:
             self->camera()->setFocus(2, (float)(int)(signed char)self->world()->player()->homeV());
         }
 
-        if (self->cdThemes()->validateTrackLengths() == 0 &&
+        if (self->audio()->cdThemes()->validateTrackLengths() == 0 &&
             self->session()->levelIndex() > 4) {
             unsigned char cu = self->world()->player()->homeU();
             unsigned char cv = self->world()->player()->homeV();

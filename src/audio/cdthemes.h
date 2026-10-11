@@ -1,4 +1,4 @@
-/* CdThemes: the music theme table, a sub-object of Game.  CDTracks\<name>.cdt
+/* CdThemes: the music theme table, a sub-object of GameAudio.  CDTracks\<name>.cdt
  * lists, one per line, a CD track number and a theme name ("main", "gameover",
  * a level's theme...).  play() plays a theme by name and remembers its track;
  * replay() plays that track again.  The CD is recognised by its track lengths
@@ -39,7 +39,7 @@ public:
     // Stores the track count and logs each track's length.
     int           listTrackLengths();
 
-    // The CD audio device the themes play on; Game hands it in once, when it
+    // The CD audio device the themes play on; GameAudio hands it in once, when it
     // is built, before any theme is played.
     void          setCdAudio(CDM *cdAudio)           { cdAudio_ = cdAudio; }
 

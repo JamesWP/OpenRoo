@@ -115,7 +115,7 @@ static void update_listener(Game *g)
         top[0] = o[0]; top[1] = o[1]; top[2] = o[2];
     }
 
-    audiodev::Device *snd = g->soundManager()->device();
+    audiodev::Device *snd = g->audio()->soundManager()->device();
     snd->setListenerPosition(cam->eye(), true);
     snd->setListenerOrientation(front, top, true);
     snd->commit();
@@ -169,7 +169,7 @@ Render_RenderGameFrame(Renderer *renderer, const MenuArt *art, ProgableControl *
             else
                 scripted_camera(g, renderer->device);
         }
-        if (g->soundCreated() != 0) {
+        if (g->audio()->soundCreated() != 0) {
             PROF_SCOPE("audio");
             update_listener(g);
         }

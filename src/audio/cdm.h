@@ -1,7 +1,7 @@
 /* The CD audio device.  The game played its music as audio tracks from the CD;
  * here each track is a .wav in CDTracks/ (imported from the CD image), played
- * through the platform layer's music player.  Game owns the one instance
- * (game.h). */
+ * through the platform layer's music player.  GameAudio owns the one instance
+ * (gameaudio.h). */
 #pragma once
 #include <stddef.h>
 #include "audiodev.h"

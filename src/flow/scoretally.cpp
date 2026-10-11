@@ -37,7 +37,7 @@ static unsigned int ftol_low(Game *game)
 
 static void tick_sound(Game *game)
 {
-    audiodev::Buffer *s = game->fixedSounds()->count;
+    audiodev::Buffer *s = game->audio()->fixedSounds()->count;
     if (s != NULL)
         s->play(false);
 }
