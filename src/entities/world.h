@@ -105,13 +105,11 @@ public:
 
     /* ── falling tiles ────────────────────────────────────────────── */
     unsigned char  fallingCount() const              { return fallings_.count; }
-    FallingTile *fallingSlot(unsigned int i) const { return fallings_.slot[i]; }
 
     /* ── bombs (the game's "enemy" table) ───────────────────────────── */
-    /* Slots are indexed by ID; the ID list holds the live IDs, count long. */
+    /* Slots are indexed by ID; the ID list holds the live IDs, count long.
+     * bombs() walks the live bombs in ID-list order. */
     unsigned char  bombCount() const               { return bombs_.count; }
-    unsigned char  bombId(unsigned int i) const    { return bombs_.ids[i]; }
-    Bomb          *bombSlot(unsigned int id) const { return bombs_.slot[id]; }
 
     /* ── foes ───────────────────────────────────────────────────────── */
     /* The same slot/count/ID-list shape as the bombs. */
