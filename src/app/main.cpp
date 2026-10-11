@@ -104,15 +104,15 @@ static void present_movie_frame(videodev::Player &movie, RenderDevice *dev)
 static void idle(videodev::Player &movie)
 {
     inputdev::setKeyboardSuppressed(windev::debugUiCapturesKeyboard());
-    // Cleared when the movie finishes, is skipped or (stub) gets its message.
+    // Cleared when the movie finishes or is skipped (a headless one, at once).
     if (movie.playing())
         present_movie_frame(movie, s_renderer.device);
     else if (!g_norender)
         Render_RenderGameFrame(&s_renderer, &s_menuArt, &s_progCtrl);
 }
 
-/* The window's events: input devices and surfaces on focus changes, the intro
- * movie's events, and CD track repeats.
+/* The window's events: surfaces and the intro movie on focus changes, and the
+ * keys that skip the intro.
  *
  * Surfaces are restored on activation in this order: the two font atlases, the
  * six sky textures, the theme's ten images in a fixed shuffled order (skipping
@@ -190,15 +190,6 @@ public:
     {
         if (movie_.playing() && keyDownDuringIntro_)
             movie_.skip();
-    }
-
-
-    bool onNativeMessage(unsigned msg, unsigned long wParam, long lParam) override
-    {
-        if (movie_.handleWindowMessage(msg, wParam, lParam))
-            return true;
-        // A track ended: the music restarts it if it repeats.
-        return Game::instance()->audio()->cdAudio()->handleWindowMessage(msg, wParam, lParam);
     }
 
 private:
@@ -315,10 +306,9 @@ int Main_WinMain(const char *lpCmdLine)
 
     // 3D sound, 22050 Hz, 16-bit stereo; rolloff 0.3 if it came up.
     SoundManager *snd = game->audio()->soundManager();
-    if (snd->init(1, hWnd, 2, 22050, 16))
+    if (snd->init(1, 2, 22050, 16))
         snd->device()->setListenerRolloff(0.3f, true);
 
-    game->audio()->cdAudio()->setWindowHandle(hWnd);
     window.show(true);
     if (!Render_ConfigureRenderState(&s_renderer, game->world(), game->camera()->pose(), kGameDir))
         windev::quit(1);
@@ -330,7 +320,7 @@ int Main_WinMain(const char *lpCmdLine)
     // not depend on it.
     const bool show = !d3d->headless() && !record_replaying();
     const std::string path = std::string(kGameDir) + "/video/INTRO.AVI";
-    if (movie.load(hWnd, sysdev::nativePath(path.c_str()).c_str(), show))
+    if (movie.load(sysdev::nativePath(path.c_str()).c_str(), show))
         movie.play();
     else
         g_logger.logMessage(3, "MAIN: Couldn't load %s .", path.c_str());

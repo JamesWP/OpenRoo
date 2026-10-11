@@ -38,7 +38,6 @@ void setMusicVolume(float gain);
 void playSystemSound(const char *path, bool async);
 
 struct DeviceConfig {
-    void *window;        // the native window handle that owns the sound
     bool  enable3D;      // create the 3D listener too
     int   channels;
     int   sampleRate;
@@ -150,16 +149,9 @@ public:
     Music(const Music &) = delete;
     Music &operator=(const Music &) = delete;
 
-    /* Unused: nothing needs the window any more. */
-    void setWindow(void *window);
-
     /* Plays path, replacing whatever was playing. */
     void play(const char *path, bool repeat);
     void stop();
-
-    /* Offered every window message; always false now that the track restarts
-     * itself. */
-    bool handleWindowMessage(unsigned msg, unsigned long wParam, long lParam);
 
 private:
     MusicState *state_;

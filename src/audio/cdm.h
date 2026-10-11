@@ -14,14 +14,6 @@ public:
     CDM(const CDM &) = delete;
     CDM &operator=(const CDM &) = delete;
 
-    /* The window that receives the music's end-of-track message. */
-    void  setWindowHandle(void *hwnd);
-    void *windowHandle() const { return window_; }
-
-    /* Offered every window message by the window procedure; true if it was a
-     * music message and has been handled. */
-    bool  handleWindowMessage(unsigned msg, unsigned long wParam, long lParam);
-
     int   getTrackCount();
     const char *getTrackLength(int track);
     void  playTrack(int tracknumber, bool repeat);
@@ -32,5 +24,4 @@ public:
 
 private:
     audiodev::Music music_;
-    void           *window_;       // the game window
 };

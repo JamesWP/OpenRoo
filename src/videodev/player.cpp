@@ -16,9 +16,6 @@ static LogFn g_log = NULL;
 void setLog(LogFn fn) { g_log = fn; }
 #define VD_LOG(...) do { if (g_log) g_log(__VA_ARGS__); } while (0)
 
-/* The SDL user event code the window passes on when a stub movie ends. */
-static const int MOVIE_ENDED = 0x464;
-
 struct Decoded {
     std::vector<unsigned char> rgba;
     int    width = 0, height = 0;
@@ -175,7 +172,7 @@ Player::~Player()
     delete state_;
 }
 
-bool Player::load(void *, const char *path, bool show)
+bool Player::load(const char *path, bool show)
 {
     VD_LOG("videodev: load(path=\"%s\" show=%d)\n", path ? path : "(null)", (int)show);
     PlayerState *s = state_;
@@ -197,10 +194,7 @@ void Player::play()
     VD_LOG("videodev: play\n");
     PlayerState *s = state_;
     if (!s->show) {
-        SDL_Event e = {};
-        e.type = SDL_EVENT_USER;
-        e.user.code = MOVIE_ENDED;
-        SDL_PushEvent(&e);
+        playing_ = false;
         return;
     }
     if (s->running)
@@ -271,14 +265,6 @@ const unsigned char *Player::frame(int *width, int *height) const
     *width = d.width;
     *height = d.height;
     return d.rgba.data();
-}
-
-bool Player::handleWindowMessage(unsigned msg, unsigned long, long)
-{
-    if (msg != (unsigned)MOVIE_ENDED)
-        return false;
-    playing_ = false;
-    return true;
 }
 
 }  // namespace videodev

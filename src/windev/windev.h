@@ -39,11 +39,6 @@ public:
     virtual void onKeyUp() {}
     /* The window was destroyed (closed). */
     virtual void onDestroyed() {}
-    /* Every message, after the above; true if the handler consumed it.  The
-     * platform libraries' own messages (the movie ending) arrive here, as SDL
-     * user events: msg is the event's code, wParam and lParam are 0. */
-    virtual bool onNativeMessage(unsigned msg, unsigned long wParam, long lParam)
-    { (void)msg; (void)wParam; (void)lParam; return false; }
 };
 
 /* What the OpenGL context must provide: a core profile of at least
@@ -76,7 +71,7 @@ public:
     void destroy();
     void show(bool visible);
 
-    /* The native window handle (an HWND), for the input and video devices. */
+    /* The native window handle, as the parent of a messageBox. */
     void *handle() const { return handle_; }
 
     // ── The OpenGL context, for the rendering backend (src/gl) ──

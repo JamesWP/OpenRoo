@@ -19,10 +19,6 @@ Music::~Music()
     delete state_;
 }
 
-void Music::setWindow(void *)
-{
-}
-
 void Music::play(const char *path, bool repeat)
 {
     stop();
@@ -51,11 +47,6 @@ void Music::stop()
         state_->track = NULL;
     }
     state_->audio.reset();
-}
-
-bool Music::handleWindowMessage(unsigned, unsigned long, long)
-{
-    return false;
 }
 
 }  // namespace audiodev
