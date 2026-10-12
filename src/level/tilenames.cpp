@@ -15,7 +15,7 @@ const char *Tile_ContentsName(uint8_t c)
     case CONTENTS_SPEED_UP:    return "speed up";
     case CONTENTS_REVERSED:    return "reversed controls";
     case CONTENTS_SPEED_DOWN:  return "slow down";
-    case CONTENTS_TRANSFORM:   return "transform";
+    case CONTENTS_PROTECTION:  return "protection";
     case CONTENTS_FREE_BOMB:   return "bomb";
     case CONTENTS_TIMED_SPAWN: return "foe spawner";
     default:                   return "item";

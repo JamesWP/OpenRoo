@@ -426,7 +426,7 @@ Sim_SetupLevelObjects(Game *self)
                 }
 
                 // The snapshot: the cell as the file gave it.
-                if (s->contents() == CONTENTS_TRANSFORM) self->world()->census()->transforms++;
+                if (s->contents() == CONTENTS_PROTECTION) self->world()->census()->protections++;
                 if (s->contents() == CONTENTS_FREEZE) self->world()->census()->freezeItems++;
                 if (s->contents() == CONTENTS_TIME_BONUS) self->world()->census()->timeBonuses++;
                 if (s->contents() == CONTENTS_PARAGLIDER) self->world()->census()->paragliders++;
@@ -531,7 +531,7 @@ next_row:
 
     // The collectable-item count (see LevelCensus), summed in this order.
     self->world()->census()->total = (unsigned short)(self->world()->census()->grant09Items + self->world()->census()->speedUps +
-                                  self->world()->census()->shadow1      + self->world()->census()->transforms +
+                                  self->world()->census()->shadow1      + self->world()->census()->protections +
                                   self->world()->census()->paragliders  + self->world()->census()->shadow7 +
                                   self->world()->census()->freezeItems + self->world()->census()->extraLives +
                                   self->world()->census()->timeBonuses  + self->world()->crystalsInLevel());
@@ -584,7 +584,7 @@ next_row:
 
     self->world()->player()->setGlides(0);
     self->world()->player()->setBombsCarried(0);
-    self->world()->player()->setEffectDActive(0);
+    self->world()->player()->setProtectionActive(0);
     self->world()->player()->setFalling(0);
     self->world()->player()->setIdleStarted(0);
     self->world()->player()->setGliding(0);

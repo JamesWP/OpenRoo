@@ -51,7 +51,7 @@ struct LevelCensus {
     // Contents count over the live grid.
     unsigned short extraLives{};  // CONTENTS_EXTRA_LIFE
 
-    unsigned short transforms{};  // CONTENTS_TRANSFORM, snapshot
+    unsigned short protections{}; // CONTENTS_PROTECTION, snapshot
 
     // The two concealed-item counters keep numeric names: each is counted from
     // two places that do not agree.  shadow1 counts a bombable hiding a
@@ -70,9 +70,8 @@ struct LevelCensus {
     unsigned short jumpPads{};      // TILE_JUMP_PAD
 
     // total is the level's collectable-item count: grant09Items + speedUps +
-    // shadow1 + transforms + paragliders + shadow7 + freezeItems + extraLives
-    // + timeBonuses + the World's crystal count.  It counts CONTENTS_TRANSFORM,
-    // which a pickup test that ignores transforms would not.  It is not
+    // shadow1 + protections + paragliders + shadow7 + freezeItems + extraLives
+    // + timeBonuses + the World's crystal count.  It is not
     // Session::itemTotal().
 
     // Zeroes the counts, in the game's store order, leaving field_e5 as the
@@ -81,7 +80,7 @@ struct LevelCensus {
     {
         teleports = 0; bombables = 0; kind01 = 0; total = 0; bridges = 0;
         unusedEb = 0; stickyPads = 0; slideTiles = 0; iceTiles = 0; freezeItems = 0;
-        timeBonuses = 0; transforms = 0; speedUps = 0; paragliders = 0; shadow1 = 0;
+        timeBonuses = 0; protections = 0; speedUps = 0; paragliders = 0; shadow1 = 0;
         shadow7 = 0; jumpPads = 0; extraLives = 0; grant09Items = 0; freeBombs = 0;
         timed = 0;
     }

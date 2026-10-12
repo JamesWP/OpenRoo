@@ -52,12 +52,12 @@ void Cheat_AddBombs(Game *g)
 void Cheat_Invulnerable(Game *g)
 {
     Player *pl = g->world()->player();
-    if (pl->effectDActive() == 0)
+    if (pl->protectionActive() == 0)
         pl->appendEffect(0x0d);
-    pl->setEffectDActive(1);
+    pl->setProtectionActive(1);
     pl->setKind(3);
     pl->curTile()->setOccupant(3);
-    pl->setEffectDStart(*g->world()->clock());
+    pl->setProtectionStart(*g->world()->clock());
 }
 
 void Cheat_FreezeFoes(Game *g)

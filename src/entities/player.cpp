@@ -113,7 +113,7 @@ unsigned int Player::updateTileEffects()
 
         effectBActive_ = 0;
         freezeActive_ = 0;
-        effectDActive_ = 0;
+        protectionActive_ = 0;
         effectCActive_ = 0;
         effectAActive_ = 0;
 
@@ -288,16 +288,16 @@ unsigned int Player::updateTileEffects()
             pickedUp_ = 0xc;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_TRANSFORM) {
-            if (effectDActive_ == 0)
+        if ((signed char)curTile()->contents() == CONTENTS_PROTECTION) {
+            if (protectionActive_ == 0)
                 appendEffect(0xd);
 
-            effectDActive_ = 1;
+            protectionActive_ = 1;
             kind_     = 3;
             curTile()->setOccupant(3);
 
             //             // PRESERVED: stamped after the flag, unlike the other four.
-            copy8(&effectDStart_, &now_);
+            copy8(&protectionStart_, &now_);
 
             curTile()->setContents(0);
             itemsCollected_ += 1;
@@ -341,9 +341,9 @@ expire:
         }
     }
 
-    if (effectDActive_ != 0) {
-        if (now_ - effectDStart_ > K_EFFECT_MS) {
-            effectDActive_ = 0;
+    if (protectionActive_ != 0) {
+        if (now_ - protectionStart_ > K_EFFECT_MS) {
+            protectionActive_ = 0;
             kind_     = 4;
             curTile()->setOccupant(4);
             endEffect(0xd);
@@ -528,7 +528,7 @@ static uint8_t player_conditions(const Player *p)
     uint8_t c = 0;
     if (p->glides() != 0 || p->gliding() != 0)
         c |= draw::COND_GLIDING;
-    if (p->effectDActive() != 0)
+    if (p->protectionActive() != 0)
         c |= draw::COND_PROTECTED;
     return c;
 }
@@ -541,7 +541,7 @@ void Player::draw(draw::Frame &f, draw::Pass pass) const
     if (moveState_ != 0)
         in.animTime = 0.0f;
     const bool dead = anim() == ANIM_GHOST;
-    const bool aura = effectDActive() != 0 && !dead;
+    const bool aura = protectionActive() != 0 && !dead;
     const bool gliding = anim() == ANIM_PARAGLIDE;
 
     switch (pass) {

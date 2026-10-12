@@ -133,19 +133,19 @@ public:
     int   freezeActive() const                     { return freezeActive_; }
     void  setFreezeActive(int n)                   { freezeActive_ = n; }
     void  setFreezeStart(double d)                { freezeStart_ = d; }
-    void  setEffectDStart(double d)                { effectDStart_ = d; }
-    int   effectDActive() const                     { return effectDActive_; }
+    void  setProtectionStart(double d)                { protectionStart_ = d; }
+    int   protectionActive() const                     { return protectionActive_; }
     int   effectAActive() const                     { return effectAActive_; }
     // When each timed effect started, in clock ms; the HUD counts down from
     // them.
     double effectBStart() const                     { return effectBStart_; }
     double freezeStart() const                     { return freezeStart_; }
-    double effectDStart() const                     { return effectDStart_; }
+    double protectionStart() const                     { return protectionStart_; }
     double effectCStart() const                     { return effectCStart_; }
     double effectAStart() const                     { return effectAStart_; }
     // The active timed-effect codes, for the HUD.
     const std::vector<int> &effectList() const      { return effectList_; }
-    void  setEffectDActive(int n)                   { effectDActive_ = n; }
+    void  setProtectionActive(int n)                   { protectionActive_ = n; }
     void  setEffectCActive(int n)                   { effectCActive_ = n; }
     void  setEffectAActive(int n)                   { effectAActive_ = n; }
     // Stored in the order u, h, v, as the caller stores them.
@@ -194,8 +194,8 @@ private:
     int                 effectBActive_{};
     double              freezeStart_{};
     int                 freezeActive_{};
-    double              effectDStart_{};
-    int                 effectDActive_{};
+    double              protectionStart_{};
+    int                 protectionActive_{};
     double              effectCStart_{};
     int                 effectCActive_{};
     double              effectAStart_{};

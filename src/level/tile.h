@@ -5,7 +5,7 @@
  *
  * The kind byte and the contents byte have separate value spaces: the same
  * number means unrelated things in each (0x0d is a falling tile kind but the
- * transform contents), hence the two enums with unlike prefixes. */
+ * protection contents), hence the two enums with unlike prefixes. */
 
 #pragma once
 
@@ -116,9 +116,9 @@ enum TileContents {
     // Timed: reverses forward movement.
     CONTENTS_REVERSED    = 0x0b,
     CONTENTS_SPEED_DOWN  = 0x0c,
-    // Timed: transforms the player and the cell's occupant.  The one contents
-    // value that is not an item.
-    CONTENTS_TRANSFORM   = 0x0d,
+    // Timed (10 s): protection.  The player wears its aura, and stands on its
+    // cell as occupant 3 rather than 4, which the foes' paths read.
+    CONTENTS_PROTECTION  = 0x0d,
     // A build marker: the builder files the cell into the free-bomb list and
     // stamps the clock.
     CONTENTS_FREE_BOMB   = 0x4d,
@@ -127,7 +127,7 @@ enum TileContents {
 
     // Rolls its own contents when the player arrives: rand() * 8 / 0x7fff + 5,
     // an 8-bit add, a uniform pick over 5..12 (paraglider to slower).  It
-    // cannot roll the transform or itself.
+    // cannot roll protection or itself.
     CONTENTS_RANDOM      = -1,
 };
 

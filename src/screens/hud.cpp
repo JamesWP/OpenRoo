@@ -283,7 +283,7 @@ void Hud_DrawMessages(RenderDevice *d3d, TextRenderer *font, const ThemeAssetBlo
         case 10: img = THEME_IMG_SPEED;          start = pl->effectAStart(); break;
         case 11: img = THEME_IMG_INVERSECONTROL; start = pl->effectBStart(); break;
         case 12: img = THEME_IMG_SLOWDOWN;       start = pl->effectCStart(); break;
-        case 13: img = THEME_IMG_PROTECTION;     start = pl->effectDStart(); break;
+        case 13: img = THEME_IMG_PROTECTION;     start = pl->protectionStart(); break;
         default: icon = false; img = THEME_IMG_HUD; break;
         }
         if (icon && theme->image(img) != NULL) {

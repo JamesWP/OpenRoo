@@ -33,7 +33,7 @@ static bool item_look(unsigned char contents, ThemeObjectType *out)
     case CONTENTS_FREEZE:      *out = THEME_OBJ_ITEM_FREEZE;     return true;
     case CONTENTS_GRANT_09:    *out = THEME_OBJ_ITEM_BOMBS; return true;
     case CONTENTS_SPEED_UP:    *out = THEME_OBJ_ITEM_SPEED_UP;      return true;
-    case CONTENTS_TRANSFORM:   *out = THEME_OBJ_ITEM_PROTECTION; return true;
+    case CONTENTS_PROTECTION:  *out = THEME_OBJ_ITEM_PROTECTION; return true;
     case 0xff:                 *out = THEME_OBJ_ITEM_RANDOM;   return true;  // CONTENTS_RANDOM
     default:                   return false;
     }
