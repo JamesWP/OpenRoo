@@ -17,7 +17,6 @@
     "  (stuck budget is derived from frame count; see replaytest.py)",
     "  expect.state fields from the KAROO_STATE_DUMP JSON that must match exactly;",
     "               omit a field to leave it unasserted",
-    "  fast         optional; false = never run under --fast (the default), for a recording that guards something on the render path",
     "  notes        anything a reader needs before trusting the entry"
   ],
   "defaults": {
@@ -1798,8 +1797,7 @@
         },
         "seconds": 0.9
       },
-      "notes": "Named for the crash it used to reproduce; kept under that name because docs/TESTING.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced identical end-state dumps. --fast is the suite default, and this entry sets \"fast\": false to opt out of it: --fast skips the ddraw draw calls, and the fault this recording guards happened INSIDE DrawPrimitiveStrided, so running it fast would silently retire the only render-path crash guard the suite has. Costs about 10 s. Remove the field to make the whole suite fast unconditionally.",
-      "fast": false
+      "notes": "Named for the crash it used to reproduce; kept under that name because docs/TESTING.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced identical end-state dumps. The fault it guarded happened INSIDE DrawPrimitiveStrided; headless runs skip the draw calls, so only --no-headless exercises that path."
     },
     {
       "name": "bridge01",

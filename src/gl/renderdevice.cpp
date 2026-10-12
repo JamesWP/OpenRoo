@@ -11,7 +11,7 @@
  * RenderDevice has no context (glnative_internal.h).
  *
  * KAROO_RENDER_FX=nodraw: every draw returns success without reaching
- * OpenGL.  The replay suite's fast mode sets it: draws are pure output that
+ * OpenGL.  A headless replay sets it: draws are pure output that
  * nothing in the simulation reads back. */
 
 #include "glnative_internal.h"

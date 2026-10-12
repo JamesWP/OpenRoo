@@ -9,56 +9,28 @@ python3 tools/replaytest.py              # run every catalogued recording
 python3 tools/replaytest.py --list       # what is catalogued, and why
 python3 tools/replaytest.py NAME         # run one
 python3 tools/replaytest.py --all        # the suite plus the playthroughs
-python3 tools/replaytest.py --no-fast    # render every frame for real
+python3 tools/replaytest.py --no-headless  # open a window, render every frame for real
 ```
 
-## `--fast` is the default
+## `--headless` is the default -- no window, no graphics, no display
 
-A replay already runs on the virtual clock and with vsync off, so the loop is
-uncapped. What is left is real work, and most of the per-frame half of it is
-rendering the game does not need to do to be tested: the suite asserts *game
-state*, and draw calls are pure output that nothing reads back.
-
-Fast mode sets two switches the DLL already has -- `KAROO_RENDER_FX=nodraw`, which
-makes `RenderDevice::Draw`/`DrawBuffer` return without reaching the device, and `KAROO_FLIP_FX=noblt`, which skips the Blt in
-`RenderDevice::PresentImage`. Measured over the whole suite:
-
-| Run | Wall | Result |
-|---|---|---|
-| `--no-fast` | 216.0 s | 12/12 |
-| default (fast) | 171.6 s (-21%) | 12/12 |
-
-Measured 2026-09-05 over all twelve recordings. On the seven-recording suite
-this was first measured on it was 106.5 s -> 79.2 s, -26%; the ratio moved
-because `bombstart-crash` now opts out and renders for real.
-
-Per recording that is roughly 5.9 s of fixed launch cost plus 3.9 ms a frame,
-which fast mode takes to about 2.2 ms. Every recording passes either way,
-water01 and freezestart with all 31 asserted fields, which is the evidence that
-draw calls are pure output: nothing in the game reads them back, so removing
-them cannot move the simulation.
-
-`--no-fast` renders every frame for real. `--fast` still exists so a run can
-say so explicitly.
-
-## `--headless` -- no window, no graphics, no display
-
-`--fast` stops the game *asking* the driver to draw. `--headless` removes the
-driver: with `KAROO_HEADLESS=1`, `GLRenderDevice::Create` (`src/gl/createdevice.cpp`)
+With `KAROO_HEADLESS=1`, `GLRenderDevice::Create` (`src/gl/createdevice.cpp`)
 creates no OpenGL context at all, and the game's one window is created
 message-only so Wine needs no display driver for it. Nothing appears on
 screen, nothing takes focus, no desktop mode is switched, and the run works
 with `DISPLAY` unset entirely.
 
+A headless run also skips the render work itself, with two switches the DLL
+already has -- `KAROO_RENDER_FX=nodraw`, which makes
+`RenderDevice::Draw`/`DrawBuffer` return without reaching the device, and
+`KAROO_FLIP_FX=noblt`, which skips the Blt in `RenderDevice::PresentImage`.
+The suite asserts *game state*, and draw calls are pure output that nothing
+reads back, so removing them cannot move the simulation.
+
 ```bash
-python3 tools/replaytest.py --headless          # the whole suite, in the background
+python3 tools/replaytest.py                     # the whole suite, in the background
 bash launch.sh --headless --auto-exit 40        # one run
 ```
-
-This is the mode to use when the suite is running while somebody is working on
-the machine, or on a box with no X server at all. It is orthogonal to
-`--fast`: fast skips the draw calls, headless removes what they would have
-gone to, and the two compose.
 
 **How it works.** A headless `RenderDevice` is a `RenderDevice` with no OpenGL
 context (`Native::active` is false). Every method that would reach OpenGL checks for that and
@@ -72,46 +44,27 @@ does nothing; everything else is the real code. The pieces that matter:
   Vertex buffers keep a CPU copy of their vertices too.
 - Textures are converted exactly as on a real device -- same format choice,
   same pixels -- and then dropped, unless `KAROO_TEXTURE_DUMP` wants them
-  hashed. `tools/texdump.py` therefore gives the same answer headless and not.
-- Draws that build their vertices in game code (`SceneQuad_Draw`) still read
-  every one of them before `Draw` finds there is no device to give them to,
-  which is what keeps the guard below working.
+  hashed.
 
 The game reads little of what the driver reports (the mode list, and which
 texture format and depth buffer it got), and none of it reaches the simulation,
 so nothing here has to be a recording of a real driver.
 
-### The one recording that never runs fast
+## `--no-headless` -- render for real
 
-`bombstart-crash` carries `"fast": false` in the manifest and always renders for
-real, whatever the suite was invoked with.
+`--no-headless` passes `--skip-launcher` instead, so nobody has to click
+through the launcher dialog, but the game opens a window and renders every
+frame on screen. It needs a display. It is the only way to exercise the draw
+path: `bombstart-crash` guards the CRASH.md fault, a bad pointer that faulted
+*inside* a strided draw, and only a `--no-headless` run hands the driver a
+pointer at all. `tools/drawtrace.py` uses it too.
 
-It exists to guard the CRASH.md fault: a bad pointer handed to the driver, which
-faulted *inside* a strided draw (since replaced by `SceneQuad_Draw` interleaving the vertices itself). Skip the draw call and that pointer is
-never handed over, so the only class of fault this suite has actually caught in
-anger would go unnoticed. It costs about 10 s of the run, which is a better
-trade than losing the guard.
-
-Any recording can opt out the same way. Deleting the field would make the suite
-fast unconditionally -- and would retire that guard, so do it deliberately.
-
-Two things that look like wins and are not, both measured rather than assumed:
-
-- Skipping the Blt on its own is worth 2%. It is bundled in because it is
-  free, not because it matters.
-- Turning Wine's tracing off (`WINEDEBUG=-all`; Proton's `PROTON_LOG_DIR`
-  otherwise sets `+seh,+loaddll,+mscoree`) is worth 1-2%, inside the noise --
-  and it would silently break `grep -c c000001d steam-123456.log`, which is the
-  project's primary evidence that no call site was missed, because that string
-  only appears in `trace:seh` lines. Our own VEH does not catch illegal
-  instructions: a run with 9 UD2 hits logged 0 VEH lines. Not worth 2%.
+Turning Wine's tracing off (`WINEDEBUG=-all`) was measured as well: worth 1-2%,
+inside the noise, and it would silently break `grep -c c000001d steam-123456.log`,
+the project's primary evidence that no call site was missed. Not worth it.
 
 Exit code 0 means every selected recording behaved exactly as `manifest.json`
 says it should. Non-zero means one did not, and the output names the field.
-
-A replay is unattended, not headless: the harness passes `--skip-launcher`, so
-nobody has to click through the launcher dialog, but the game still opens a
-window and renders each run on screen. These tests need a display.
 
 ## What is here
 
