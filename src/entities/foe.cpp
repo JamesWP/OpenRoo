@@ -22,6 +22,7 @@
 #include "bomb.h"
 #include "tilequery.h"
 #include "logger.h"
+#include "themedraw.h"
 
 #include <new>
 
@@ -57,7 +58,7 @@ Foe *Foe::create()
 Foe::Foe()
 {
     zeroSoundSlots();
-    field_7a         = 0;
+    deathFxPending_  = false;
     dyingStarted_         = 0;
     removeRequested_ = 0;
     dying_         = 0;
@@ -809,5 +810,44 @@ void Foe::debugDraw(unsigned id) const
             m.tip("frozen");
         if (dyingStarted())
             m.tip("dying");
+    }
+}
+
+void Foe::draw(draw::Frame &f, draw::Pass pass)
+{
+    // Kind 2 is a catcher, 3 a thrower; any other kind has no look.
+    if (kind_ != 2 && kind_ != 3)
+        return;
+    const bool dying = dyingStarted_ != 0;
+    ThemeObjectType look = kind_ == 2 ? THEME_OBJ_CATCHER : THEME_OBJ_THROWER;
+    if (dying)
+        look = kind_ == 2 ? THEME_OBJ_CATCHERFX : THEME_OBJ_THROWERFX;
+    draw::Instance in = pose();
+    if (dying) {
+        in.conditions = draw::COND_DEAD;
+        in.animCode = 0;
+        in.animTime = 0.0f;
+    }
+
+    switch (pass) {
+    case draw::Pass::Opaque:
+        if (dying) {
+            draw::fireEffects(f, look, deathFxPending_);
+            deathFxPending_ = false;
+        }
+        draw::objects(f, look, &in);
+        break;
+    case draw::Pass::Shadows:
+        if (!dying)
+            draw::shadows(f, look, &in);
+        break;
+    case draw::Pass::Particles:
+        if (f.opts.particles > 0)
+            draw::particles(f, look, &in);
+        if (f.opts.particles > 1 && pickedUp_ == CONTENTS_CRYSTAL)
+            draw::spawnBurst(f, THEME_OBJ_CRYSTALFX, in.pos);
+        break;
+    default:
+        break;
     }
 }

@@ -6,6 +6,7 @@
 #include "movableentity.h"
 #include "sysdev.h"
 #include "animcode.h"
+#include "themedraw.h"
 #include <stdlib.h>
 
 MovableEntity::MovableEntity()
@@ -37,6 +38,35 @@ void MovableEntity::zeroSoundSlots()
     sound_a3_ = 0;
     sound_cb_ = 0;
     sound_cf_ = 0;
+}
+
+/* The yaw each facing draws at: 1 looks along -V, and each turn right a
+ * quarter turn clockwise from there. */
+static float facing_yaw(unsigned char facing)
+{
+    switch (facing) {
+    case 2:  return -1.5707964f;
+    case 3:  return 3.1415927f;
+    case 4:  return 1.5707964f;
+    default: return 0.0f;
+    }
+}
+
+draw::Instance MovableEntity::pose() const
+{
+    draw::Instance in;
+    in.pos = { posU_, posY_, -posV_ };
+    in.rot.y = facing_yaw(facing_);
+    in.animCode = anim_;
+    if (moveDir_ != 0 || anim_ >= ANIM_IDLE1) {
+        in.animTime = (float)((*clock_ - animStart_) / animDuration_);
+        // A turn on the spot (moveDir past 10) swings the yaw as it plays.
+        if (moveDir_ > 10 && turnKind_ == 2)
+            in.rot.y -= in.animTime * 1.5707964f;
+        else if (moveDir_ > 10 && turnKind_ == 4)
+            in.rot.y += in.animTime * 1.5707964f;
+    }
+    return in;
 }
 
 /* MovableEntity::updateMovement(): the movement integrator every entity
@@ -143,7 +173,7 @@ unsigned int MovableEntity::updateMovement()
         if (dyingStarted_ == 0) {
             copy8(&dyingSince_, &now_);
             dyingStarted_ = 1;
-            field_7a = (void *)1;
+            deathFxPending_ = true;
             pendingMove_ = 0;
             moveDir_ = 0;
             return 1;

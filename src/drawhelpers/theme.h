@@ -1,5 +1,6 @@
 /* The theme asset block: everything a theme file (themes\<name>.thm) defines,
- * in one ThemeAssetBlock owned by the Renderer (renderer.h).  For each of 38 object types (the player, foes, tiles,
+ * in one ThemeAssetBlock, which the Renderer owns (render/renderer.h); themedraw.h
+ * draws its looks.  For each of 38 object types (the player, foes, tiles,
  * pickups...) up to eight records of meshes, animations, billboards and
  * particle systems; then the HUD and menu images, the text colours, fog, the
  * sky and the side height.  Loading a theme releases the old one first.
@@ -137,7 +138,12 @@ public:
  
     float *pump() { return flPump_; }
     const float *pump() const { return flPump_; }
- 
+
+    /* Once a frame: true the first time it is asked at this frame clock, so a
+     * look drawn at several instances advances its debris (or ticks its
+     * particle systems) once, not once per instance. */
+    bool debrisDue(double now)    { return due(&debrisAt_, now); }
+    bool particlesDue(double now) { return due(&particlesAt_, now); }
 
 private:
     friend class ThemeParser;          // theme.cpp fills the records
@@ -181,6 +187,16 @@ private:
     float  flOscillationFrequency_{};
     float  flOscillationPhase_{};
     float  flPump_[4]{};
+    double debrisAt_ = -1.0;     // the frame clock of the last debrisDue
+    double particlesAt_ = -1.0;  // and of the last particlesDue
+
+    static bool due(double *at, double now)
+    {
+        if (*at == now)
+            return false;
+        *at = now;
+        return true;
+    }
 
      
 };

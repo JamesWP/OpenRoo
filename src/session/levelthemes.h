@@ -1,6 +1,6 @@
 /* The level select's theme table: the game file's levels grouped by the theme
  * folder that prefixes their names in JJ.GAM ("Forest\Start" is Forest), and
- * the page's scroll position.  flow/levelselect.cpp builds it when the page
+ * the page's scroll position.  sequencer/levelselect.cpp builds it when the page
  * opens; the level select's menu nodes are 0x60 + t for theme t. */
 #pragma once
 

@@ -5,6 +5,7 @@
 #pragma once
 #include "entitycontext.h"
 #include "tickstep.h"
+#include "drawfwd.h"
 
  
 
@@ -31,10 +32,13 @@ public:
     // (levelsounds.cpp).
     void setSound(SoundVoice *p) { sound_ = p; }
 
-    // Where it is drawn (LevelPlacements::drawLifts): u, live height, v.
+    // Where it stands: u, live height, v.
     float posU() const   { return posU_; }
     float height() const { return height_; }
     float posV() const   { return posV_; }
+
+    // Draws the lift, in the opaque pass.
+    void draw(draw::Frame &f, draw::Pass pass) const;
 
 private:
 

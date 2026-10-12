@@ -17,7 +17,7 @@
 #include "player.h"
 #include "theme.h"
 #include "camera.h"
-#include "framepose.h"
+#include "foe.h"
 #include "renderer.h"
 
 /* ─── The HUD ─────────────────────────────────────────────────────────── */
@@ -163,9 +163,8 @@ void Hud_Draw(Renderer *renderer, World *world, Session *session, GameState stat
 
     /* A blip for every foe within 13 cells, turned into the camera's frame
      * (RotY(-yaw)) and scaled by 4; drawn untextured. */
-    for (unsigned char i = 0; i < world->foeCount(); ++i) {
-        const float *fp = renderer->foePoses[i].pos();
-        Vec3 a = { fp[0], 0.0f, fp[2] }, d;
+    for (const Foe *e : world->foes()) {
+        Vec3 a = { e->posU(), 0.0f, -e->posV() }, d;
         Math_Vec3Sub(&d, &a, &me);
         if (!(Math_Vec3Length(&d) < 13.0))
             continue;

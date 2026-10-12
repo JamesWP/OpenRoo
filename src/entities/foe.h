@@ -3,8 +3,8 @@
  * they are declared there (protected).
  *
  * The sound attachment, the cheats, the tile queries and the movement code
- * treat a foe as a plain entity, and RenderGameFrame draws it.  Its
- * pathfinder is FoePath (foepath.cpp). */
+ * treat a foe as a plain entity; it draws itself (draw()).  Its pathfinder
+ * is FoePath (foepath.cpp). */
 
 #pragma once
 
@@ -12,6 +12,7 @@
 #include "entitycontext.h"
 #include "bomb.h"
 #include "movableentity.h"
+#include "drawfwd.h"
 
 class SoundLibrary;
 class Tile;
@@ -37,6 +38,11 @@ public:
     // Draws it on the debug map and adds it to the tooltip; id is its slot
     // in the World's foe table.
     void debugDraw(unsigned id) const;
+
+    // Draws the foe for one pass of the frame: a catcher or thrower model
+    // (its dying look, firing its death effects, once it is dying), its
+    // shadow and its particles.
+    void draw(draw::Frame &f, draw::Pass pass);
 
     // One tick, towards the player's cell (or whatever target GameTick chose).
     void step(unsigned char playerU, unsigned char playerV);

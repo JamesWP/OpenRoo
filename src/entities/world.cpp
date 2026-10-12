@@ -9,6 +9,7 @@
 #include "platformobject.h"
 #include "bridgeobject.h"
 #include "fallingtile.h"
+#include "themedraw.h"
 
 void World::clearObjects()
 {
@@ -82,5 +83,32 @@ void World::tickBombs()
         bombs_.slot[id]->debugDraw(id);
         if (bombs_.slot[id]->removeRequested() != 0)
             Bomb::remove(entityContext(), bombs_, id);
+    }
+}
+
+void World::draw(draw::Frame &f, draw::Pass pass)
+{
+    for (LiftObject *l : lifts_)
+        l->draw(f, pass);
+    for (PlatformObject *p : platforms_)
+        p->draw(f, pass);
+    for (BridgeObject *b : bridges_)
+        b->draw(f, pass);
+    for (FallingTile *t : fallings_)
+        t->draw(f, pass);
+    player_.draw(f, pass);
+    for (Bomb *b : bombs_)
+        b->draw(f, pass);
+    for (Foe *e : foes_)
+        e->draw(f, pass);
+
+    if (pass == draw::Pass::Particles) {
+        if (f.opts.particles > 0)
+            draw::bursts(f, THEME_OBJ_DESTRUCTFIELDFX);
+        if (f.opts.particles > 1) {
+            const BlendState additive = BlendState::additive();
+            draw::bursts(f, THEME_OBJ_CRYSTALFX, &additive);
+            draw::bursts(f, THEME_OBJ_COLLFX, &additive);
+        }
     }
 }

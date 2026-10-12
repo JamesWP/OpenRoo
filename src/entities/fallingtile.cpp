@@ -28,6 +28,7 @@
 #include "levelmap.h"
 #include "tile.h"
 #include "logger.h"
+#include "themedraw.h"
 
 static const double FALL_DELAY_MS    = 1500.0;
 static const double RESPAWN_DELAY_MS = 5000.0;
@@ -256,3 +257,11 @@ void FallingTile::tick()
     }
 }
 
+
+void FallingTile::draw(draw::Frame &f, draw::Pass pass) const
+{
+    if (pass != draw::Pass::Particles || justFell_ == 0 || f.opts.particles == 0)
+        return;
+    draw::spawnBurst(f, THEME_OBJ_DESTRUCTFIELDFX,
+                     { (float)cellU_, (float)heightCell_, -(float)cellV_ });
+}

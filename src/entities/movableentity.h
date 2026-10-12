@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include "tickstep.h"
 #include "tile.h"
+#include "drawfwd.h"
 
 class SoundVoice;
 class LevelMap;
@@ -50,7 +51,7 @@ public:
     // Recomputed every movement tick: taking a stair or sliding this tick.
     // Stops UpdateViewTransform's camera lift while it holds.
     int   onStairOrSlide() const               { return onStairOrSlide_; }
-    // The step phase, which framepose.cpp turns into a 0..1 fraction.
+    // The step phase, which pose() turns into a 0..1 fraction.
     unsigned char turnKind() const             { return turnKind_; }
     double animDuration() const                { return animDuration_; }
     double animStart() const                   { return animStart_; }
@@ -64,10 +65,6 @@ public:
     unsigned char anim() const                 { return anim_; }
     // The tile contents picked up this tick, 0 if none (1 = a crystal).
     unsigned char pickedUp() const             { return pickedUp_; }
-    // RenderGameFrame's "start the explosion debris" latch: set by the tick,
-    // consumed (cleared) by the next frame.
-    bool  debrisPending() const                { return field_7a != NULL; }
-    void  clearDebrisPending()                 { field_7a = NULL; }
     // Paraglider charges, and whether it is open.
     unsigned char glides() const               { return glides_; }
     int   gliding() const                      { return gliding_; }
@@ -83,6 +80,11 @@ public:
     unsigned char moveState() const            { return moveState_; }
     void  setMoveState(unsigned char s)        { moveState_ = s; }
     FoePath *pathfinder() const                { return pathfinder_; }
+
+    // Where it draws and how far through its step: (u, height, -v), turned
+    // to its facing and through any turn in progress, playing its animation
+    // at the step's fraction (0 when still).
+    draw::Instance pose() const;
 
     // The sound handles: soundobj.cpp writes them for foes, levelsounds.cpp
     // and fixedsounds.cpp for the Player.
@@ -129,7 +131,7 @@ protected:
     TickStep        *tickStep_{};
     unsigned char       facing_{};
     TickStep         tickStepCopy_;
-    // World position (U, height, V), read every frame by RenderGameFrame.
+    // World position (U, height, V).
     float               posU_{};
     float               posY_{};
     float               posV_{};
@@ -162,9 +164,11 @@ protected:
     int                 idleStarted_{};
     // The clock the idle timeout counts from.
     double              lastActive_{};
-    void               *field_7a{};
+    // Set the tick dying starts; the next draw fires the death effects (the
+    // dying look's debris and particles) and clears it.
+    bool                deathFxPending_{};
     int                 removeRequested_{};
-    int                 dyingStarted_{};  // Read by RenderGameFrame once the entity starts dying.
+    int                 dyingStarted_{};  // Set once the entity starts dying: it draws its dying look.
     int                 dying_{};  // Set on being crushed or blasted; starts the death sequence.
     double              dyingSince_{};  // Dying clock; removeRequested_ is set once it is half a second old.
     // The animation state: 0 = still, 0xfa = the idle animation; 0x16..0x1b

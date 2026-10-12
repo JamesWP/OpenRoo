@@ -1,7 +1,6 @@
 /* Bomb: a dropped bomb.  A 2 s fuse during which it rolls forward, then a 3x3
  * kill zone for 0.4 s.  A MovableEntity plus its own fields.  The World's
- * second entity table holds only bombs.  RenderGameFrame reads its position,
- * dyingStarted and droppedAt, and reads and clears the debris latch, and the
+ * second entity table holds only bombs.  It draws itself (draw()), and the
  * movement code treats a bomb as a plain entity. */
 
 #pragma once
@@ -9,6 +8,7 @@
  
 #include "entitycontext.h"
 #include "movableentity.h"
+#include "drawfwd.h"
 #include "soundasset.h"
 
 class SoundVoice;
@@ -44,9 +44,9 @@ public:
     // Draws it on the debug map; id is its slot in the World's bomb table.
     void debugDraw(unsigned id) const;
 
-    // The clock when it was dropped; RenderGameFrame switches its model 2 s
-    // later.
-    double droppedAt() const { return droppedAt_; }
+    // Draws the bomb for one pass of the frame: the bomb, or once it has
+    // gone off the explosion (firing its debris), and its particles.
+    void draw(draw::Frame &f, draw::Pass pass);
 
 private:
     // Allocates and constructs one; NULL if the allocation fails.

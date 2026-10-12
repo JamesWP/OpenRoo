@@ -23,6 +23,7 @@
 #include "levelmap.h"
 #include "tile.h"
 #include "logger.h"
+#include "themedraw.h"
 
 static const float  K_MS_TO_HEIGHT = 0.005f;
 static const double K_PARK_DWELL   = 1500.0;
@@ -312,3 +313,12 @@ void LiftObject::tick()
     posV_ = (float)(int)cellV_;
 }
 
+
+void LiftObject::draw(draw::Frame &f, draw::Pass pass) const
+{
+    if (pass != draw::Pass::Opaque)
+        return;
+    draw::Instance in;
+    in.pos = { posU_, height_, -posV_ };
+    draw::objects(f, THEME_OBJ_ELEVATOR, &in);
+}

@@ -32,16 +32,24 @@ layers:
   - [dbg, testing, gfx, audio, input]
   - [gl, fx, script, debugui]
 
+  # Drawing a theme object: the world's looks and the one walk they are drawn
+  # through.  Told everything it depends on, so it knows no game state: the
+  # objects above draw themselves through it.
+  - [drawhelpers]
+
   # The game's state: the play-through, the camera, the level map; the objects in
-  # the level and the front end's menus; then the renderer of the level beside
-  # the Game that owns all that state.
+  # the level, which tick, sound and draw themselves, and the front end's menus;
+  # then the renderer of the level's fixed picture beside the Game that owns
+  # all that state.
   - [session, camera, level]
   - [entities, ui]
   - [render, game]
 
-  # Drawing the game (screens) and running it (sim); the input and menu flow
-  # above both; the drivers; the executable.
+  # Drawing the game's screens and running it (sim); then the sequencer, the
+  # order things happen in -- the frame's draw passes, and what each game state
+  # does with the keys.  It decides the order and calls; the logic it calls
+  # lives below.  Then the drivers and the executable.
   - [screens, sim]
-  - [flow]
+  - [sequencer]
   - [core]
   - [app]

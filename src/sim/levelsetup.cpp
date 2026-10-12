@@ -280,8 +280,8 @@ Sim_SetupLevelObjects(Game *self)
 
                 t->setOccupant(0);
                 t->setField1f6(0);
-                t->setField203(0);
-                t->setField20f(0);
+                t->setBlasting(false);
+                t->setBlastFxPending(false);
                 t->setBlastHeight(0);
                 t->setField1a1(0);
                 t->setBusy(0);

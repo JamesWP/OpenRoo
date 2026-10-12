@@ -1,13 +1,12 @@
 /* renderer.h -- the render state kept between frames and levels: the rendering
  * device and the fixed assets (textures, models, fonts), the level's
- * placements and scene, the theme's assets, the camera focus and foe poses of
- * the frame, and the level-entry images.  app owns one (app/main.cpp) and
+ * fixed picture and scene, the theme's assets, the camera focus of the frame,
+ * and the level-entry images.  app owns one (app/main.cpp) and
  * passes it down to the frame renderer, the level entry and the render setup. */
 #pragma once
 
 #include "image.h"
 #include "camera.h"
-#include "framepose.h"
 #include "levelplacements.h"
 #include "scene.h"
 #include "theme.h"
@@ -45,8 +44,6 @@ struct Renderer {
      * zeroes it. */
     CameraFocus cameraFocus{};
 
-    /* One record per live foe, in foe-list order; RenderGameFrame draws from it. */
-    FoePose foePoses[500]{};
 
     /* The level's placement lists, built at level entry. */
     LevelPlacements levelPlacements;

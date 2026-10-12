@@ -4,11 +4,8 @@
 class Renderer;
 class RenderDevice;
 class Scene;
-class World;
-/* cdecl(renderer, dev, world, camera eye, two unread dwords, now). */
-  void  
-Scene_DrawSceneObjects(Renderer *renderer, RenderDevice *dev, const World *world, float *cam,
-                        uint32_t a3, uint32_t a4, double t);
+/* The level's scene objects, seen from the camera eye, at clock now (ms). */
+void Scene_DrawSceneObjects(Renderer *renderer, RenderDevice *dev, float *cam, double t);
 /* cdecl(scene, show paths, show control polygons, dev, camera eye, dt ms, now).
  * The two flags are the F3/F4 debug views (Renderer's showSplinePaths and
  * showSplineControlPolygons). */

@@ -1,12 +1,13 @@
 /* FallingTile: a floor tile (kind TILE_FALLING) that drops away a moment
  * after someone stands on it and, unless its param says otherwise, comes back.
  * Every function that touches a FallingTile field is in fallingtile.cpp;
- * the fields are private.  RenderGameFrame reads the just-fell flag and the
- * cell bytes to place the falling-tile effect. */
+ * the fields are private.  The tile it leaves is the level's to draw; the
+ * tile itself draws only the burst of dust it falls in (draw()). */
 
 #pragma once
 #include "entitycontext.h"
 #include "tickstep.h"
+#include "drawfwd.h"
 
  
 
@@ -35,9 +36,11 @@ public:
     void setFallSound(SoundVoice *p)    { fallSound_ = p; }
     void setRespawnSound(SoundVoice *p) { respawnSound_ = p; }
 
-    // Read by RenderGameFrame to start a destruct-field burst on the tick a
-    // falling tile falls: the flag, and the cell (read signed).
+    // Set for the tick it falls.
     int  justFell() const                      { return justFell_; }
+
+    // The tick it falls, starts a burst of dust on its cell (particles pass).
+    void draw(draw::Frame &f, draw::Pass pass) const;
     signed char cellU() const                  { return cellU_; }
     signed char cellV() const                  { return cellV_; }
     signed char heightCell() const             { return heightCell_; }

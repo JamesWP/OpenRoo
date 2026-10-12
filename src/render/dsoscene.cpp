@@ -37,8 +37,6 @@
 #include "particles.h"
 #include "camera.h"
 #include "renderdevice.h"
-#include "framepose.h"
-#include "world.h"
 
 /* The scene list is GG_SCENE->objects; each value is a SceneObject (scene.h).
  */
@@ -130,7 +128,7 @@ static uint32_t animation_frame(const SceneObject *o, double t)
 
 /* KAROO_CAM_DIAG=1: log the camera pose (eye, target, yaw, pitch) as raw
  * bits every frame, after UpdateViewTransform has run. */
-static void cam_diag(const Renderer *renderer, const World *world, const float *cam)
+static void cam_diag(const Renderer *renderer, const float *cam)
 {
     static const bool on = sysdev::envFlag("KAROO_CAM_DIAG");
     if (!on)
@@ -139,24 +137,17 @@ static void cam_diag(const Renderer *renderer, const World *world, const float *
     memcpy(b, cam, sizeof b);
     g_logger.write("CAM %08lx %08lx %08lx  %08lx %08lx %08lx  %08lx %08lx\n",
               b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7]);
-    // framepose.cpp's outputs: the focus block, and an FNV-1a hash over the
-    // live foes' pose records.
+    // framepose.cpp's output, the focus block.
     uint32_t f[9];
     memcpy(f, renderer->cameraFocus.f, sizeof f);
     g_logger.write("FOCUS %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx %08lx\n",
               f[0], f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8]);
-    unsigned n = world ? world->foeCount() : 0;
-    const unsigned char *r = (const unsigned char *)renderer->foePoses;
-    uint32_t h = 2166136261u;
-    for (unsigned i = 0; i < n * 0x1d; i++)
-        h = (h ^ r[i]) * 16777619u;
-    g_logger.write("FOES %u %08lx\n", n, h);
 }
 
   void  
-Scene_DrawSceneObjects(Renderer *renderer, RenderDevice *dev, const World *world, float *cam, uint32_t , uint32_t , double t)
+Scene_DrawSceneObjects(Renderer *renderer, RenderDevice *dev, float *cam, double t)
 {
-    cam_diag(renderer, world, cam);
+    cam_diag(renderer, cam);
     for (size_t oi = 0; oi < renderer->scene.objects().size(); ++oi) {
         const SceneObject *o = renderer->scene.objects()[oi];
         if (o == NULL)

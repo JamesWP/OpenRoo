@@ -1,20 +1,22 @@
-/* The draw half of a frame (frame.h), in order:
+/* The draw half of a frame (drawframe.h), in order:
  *
- *   1. clear, BeginFrame, the sky, then the opaque passes: the static
- *      placement lists, the bombable blocks, the player, the grid items, the
- *      bombs, the foes;
- *   2. scene objects, bridges, the player's effect models, the stencil
- *      shadows;
- *   3. the translucent passes (particle effects) when particles are on;
- *   4. the HUD and the menus, EndFrame, the present.
+ *   1. clear, BeginFrame, the sky;
+ *   2. the scene, pass by pass (themedraw.h's Pass): the level's fixed
+ *      picture and its objects opaque; the scene objects, then the effects
+ *      (bridges, auras); the stencil shadows; the particles;
+ *   3. the HUD and the menus, EndFrame, the present.
+ *
+ * Each pass sets the device state its draws share; the level (render's
+ * LevelPlacements) and its objects (World::draw) draw themselves in it.
  */
 #include "prof.h"
-#include "frame.h"
+#include "drawframe.h"
 #include "renderstates.h"
 #include "renderdevice.h"
 #include "game.h"
 #include "theme.h"
-#include "scenepasses.h"
+#include "themedraw.h"
+#include "dsoscene.h"
 #include "hud.h"
 #include "menuscreens.h"
 #include "menuart.h"
@@ -23,10 +25,73 @@
 #include "renderer.h"
 #include "keys.h"
 
-void Core_DrawFrame(Game *g, Renderer *renderer, const MenuArt *art, ProgableControl *progCtrl,
-                    const FrameTime &t)
+/* What every draw needs of this frame. */
+static draw::Frame frame_for(Game *g, Renderer *renderer, const FrameTime &t)
 {
-    const double now = t.now, elapsed = t.elapsed, dt = t.dt;
+    const CameraPose *cam = g->camera()->pose();
+    const Config *c = g->config();
+    draw::Frame f;
+    f.dev     = renderer->device;
+    f.theme   = &renderer->themeBlock;
+    f.eye     = { cam->eye()[0], cam->eye()[1], cam->eye()[2] };
+    f.target  = { cam->target()[0], cam->target()[1], cam->target()[2] };
+    f.opts    = { c->videoReflection() != 0, c->videoHighlights() != 0,
+                  (int)c->videoShadows(), (int)c->videoParticles() };
+    f.now     = t.now;
+    f.elapsed = t.elapsed;
+    return f;
+}
+
+/* The scene, pass by pass. */
+static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
+{
+    World *world = g->world();
+    LevelPlacements *level = &renderer->levelPlacements;
+    RenderDevice *d3d = renderer->device;
+    float *eye = g->camera()->pose()->eye();
+
+    {
+        PROF_SCOPE("opaque");
+        level->draw(f, draw::Pass::Opaque, world->map());
+        world->draw(f, draw::Pass::Opaque);
+    }
+    {
+        PROF_SCOPE("effects");
+        Scene_DrawSceneObjects(renderer, d3d, eye, f.now);
+        set_stencil_enable(d3d, false);
+        world->draw(f, draw::Pass::Effects);
+    }
+    /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option.
+     * Each shadow decrements the stencil the scene set, so overlapping
+     * shadows darken once. */
+    if (d3d->hasStencil() && d3d->bitDepth() > 16 && f.opts.shadows > 0) {
+        PROF_SCOPE("shadows");
+        bindTexture(d3d, 0, &renderer->texShadow);
+        d3d->SetBlend(BlendState::alpha());
+        StencilState st = d3d->stencil();
+        st.enable = true;
+        st.ref    = 1;
+        st.func   = CompareFunc::Equal;
+        st.pass   = StencilOp::DecrSat;
+        d3d->SetStencil(st);
+        world->draw(f, draw::Pass::Shadows);
+        level->draw(f, draw::Pass::Shadows, world->map());
+        set_stencil_enable(d3d, false);
+    }
+    set_depth_write(d3d, false);
+    {
+        PROF_SCOPE("translucent");
+        level->draw(f, draw::Pass::Particles, world->map());
+        world->draw(f, draw::Pass::Particles);
+        Scene_DrawParticleSystems(&renderer->scene, renderer->showSplinePaths,
+                                  renderer->showSplineControlPolygons, d3d, eye, dt, f.now);
+    }
+}
+
+void Seq_DrawFrame(Game *g, Renderer *renderer, const MenuArt *art, ProgableControl *progCtrl,
+                   const FrameTime &t)
+{
+    const double now = t.now;
     PROF_SCOPE("draw");
     RenderDevice *d3d = renderer->device;
     /* The sky covers the whole target, so only depth (and stencil) clear. */
@@ -55,18 +120,9 @@ void Core_DrawFrame(Game *g, Renderer *renderer, const MenuArt *art, ProgableCon
 
     renderer->showSplinePaths = input::down(input::KEY_F3);
     renderer->showSplineControlPolygons = input::down(input::KEY_F4);
-    {
-        PROF_SCOPE("opaque");
-        Scene_OpaquePasses(renderer, g->world(), g->camera()->pose(), g->config(), now, elapsed);
-    }
-    {
-        PROF_SCOPE("effects and shadows");
-        Scene_EffectsAndShadows(renderer, g->world(), g->camera()->pose(), g->config(), now, dt);
-    }
-    {
-        PROF_SCOPE("translucent");
-        Scene_TranslucentPasses(renderer, g->world(), g->camera()->pose(), g->config(), now, elapsed, dt);
-    }
+
+    draw::Frame f = frame_for(g, renderer, t);
+    draw_scene(g, renderer, f, t.dt);
 
     set_depth(d3d, false, true);
     d3d->SetSamplerAddress(0, AddressMode::Clamp, AddressMode::Clamp);
