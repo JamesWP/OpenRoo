@@ -31,7 +31,7 @@ public:
 
     /* Draws the level's fixed picture for one pass of the frame.  Fires and
      * clears a blasted block's pending debris. */
-    void draw(draw::Frame &f, draw::Pass pass, LevelMap *map);
+    void draw(draw::Frame &f, draw::Pass pass, const LevelMap *map);
 
     LevelPlacements() = default;
     ~LevelPlacements() { release(); }
@@ -48,6 +48,8 @@ private:
     struct Cell {
         draw::Instance in;
         unsigned char  u, v;
+        // A bombable block: the blast time its debris last fired for.
+        double         firedBlast = -1.0;
     };
 
     void buildWalls(const LevelMap *map, float depth);
@@ -55,7 +57,7 @@ private:
     const std::vector<draw::Instance> &instances(Group g, const LevelMap *map);
     void group(draw::Frame &f, Group g, ThemeObjectType look, const LevelMap *map,
                bool particles);
-    void bombables(draw::Frame &f, LevelMap *map);
+    void bombables(draw::Frame &f, const LevelMap *map);
     /* The items lying about, one instance each (looks[i] is items_[i]'s). */
     void collectItems(const LevelMap *map);
 

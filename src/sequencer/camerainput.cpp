@@ -14,7 +14,7 @@ static const float  ZOOM_MIN   = 2.0f;
 static const float  PITCH_MAX  = 89.0f;
 static const float  PITCH_MIN  = 50.0f;
 
-static inline double dt(Game *g) { return g->world()->tickStep()->value; }
+static inline double dt(const Game *g) { return g->world()->tickStep()->value; }
 
  
 

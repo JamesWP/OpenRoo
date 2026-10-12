@@ -58,7 +58,7 @@ public:
     // The switch that operates it (World::bridge finds it by this).
     unsigned char switchSlot() const { return slot_; }
     // A switch fires: arm, and start the phase at the clock.
-    void arm(const double *clock)    { armed_ = 1; phaseStart_ = *clock; }
+    void arm(double now)             { armed_ = 1; phaseStart_ = now; }
     // The player's switch also starts the moving-loop sound.
     void playArmSound();
 

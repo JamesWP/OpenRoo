@@ -25,7 +25,7 @@ struct CameraFocus { float f[9]; };
 /* cdecl(d3d, world, camera, config, focus BY VALUE, double dt): eases the
  * camera's pose (camera->pose()) and sets the VIEW transform.  One caller,
  * RenderGameFrame. */
-void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *camera,
+void Camera_UpdateViewTransform(RenderDevice *d3d, const World *world, CameraRig *camera,
                                 const Config *config, Scene *scene, CameraFocus focus, double dt);
 
 

@@ -50,6 +50,21 @@ static void level_picker(Game *g)
     }
 }
 
+/* The level's state at a glance: read-only. */
+static void level_stats(const World *w, unsigned foesKilled)
+{
+    if (w->map()->extentU() == 0 || w->map()->extentV() == 0)
+        return;  // a menu, or the level torn down
+    const Player *pl = w->player();
+    ImGui::Text("gems %d / %d   lives %u   foes killed %u", pl->gemsCollected(), w->gemsRequired(),
+                (unsigned)pl->lives(), foesKilled);
+    ImGui::Text("player U%u V%u H%u   exit U%u V%u H%u", (unsigned)(uint8_t)pl->cellU(),
+                (unsigned)(uint8_t)pl->cellV(), (unsigned)(uint8_t)pl->heightCell(),
+                (unsigned)pl->markerCellU(), (unsigned)pl->markerCellV(), (unsigned)pl->markerCellH());
+    ImGui::Text("%u foes, %u bombs%s", (unsigned)w->foes().size(), (unsigned)w->bombs().size(),
+                pl->held() ? "   [complete]" : "");
+}
+
 void Game_DebugPanel(Game *g)
 {
     if (!dbg::active())
@@ -73,16 +88,7 @@ void Game_DebugPanel(Game *g)
     ImGui::SameLine();
     ImGui::TextDisabled("%u s of %d", g->world()->timeElapsed() / 1000, g->world()->timeLimit());
 
-    if (g->world()->map()->extentU() == 0 || g->world()->map()->extentV() == 0)
-        return;  // a menu, or the level torn down
-    const Player *pl = g->world()->player();
-    ImGui::Text("gems %d / %d   lives %u   foes killed %u", pl->gemsCollected(), g->world()->gemsRequired(),
-                (unsigned)pl->lives(), (unsigned)g->session()->foesKilled());
-    ImGui::Text("player U%u V%u H%u   exit U%u V%u H%u", (unsigned)(uint8_t)pl->cellU(),
-                (unsigned)(uint8_t)pl->cellV(), (unsigned)(uint8_t)pl->heightCell(),
-                (unsigned)pl->markerCellU(), (unsigned)pl->markerCellV(), (unsigned)pl->markerCellH());
-    ImGui::Text("%u foes, %u bombs%s", (unsigned)g->world()->foes().size(), (unsigned)g->world()->bombs().size(),
-                pl->held() ? "   [complete]" : "");
+    level_stats(g->world(), g->session()->foesKilled());
 }
 
 void Cheat_DebugPanel(Game *g)

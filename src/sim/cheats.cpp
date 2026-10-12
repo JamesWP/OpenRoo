@@ -57,7 +57,7 @@ void Cheat_Invulnerable(Game *g)
     pl->setProtectionActive(1);
     pl->setKind(3);
     pl->curTile()->setOccupant(3);
-    pl->setProtectionStart(*g->world()->clock());
+    pl->setProtectionStart(g->world()->now());
 }
 
 void Cheat_FreezeFoes(Game *g)
@@ -65,7 +65,7 @@ void Cheat_FreezeFoes(Game *g)
     Player *pl = g->world()->player();
     if (pl->freezeActive() == 0)
         pl->appendEffect(8);
-    pl->setFreezeStart(*g->world()->clock());
+    pl->setFreezeStart(g->world()->now());
     pl->setFreezeActive(1);
 }
 

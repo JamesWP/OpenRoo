@@ -62,6 +62,10 @@ struct Renderer {
      * first frame ticks from there. */
     double lastTickMs{};
 
+    /* World::deaths() at the last frame drawn; the deaths after it fire
+     * their effects in the next. */
+    unsigned deathsDrawn{};
+
     /* A copy of the LevelMap's title, made at level entry. */
     char levelTitle[128]{};
 

@@ -27,7 +27,7 @@
 /* The clock truncated to whole milliseconds, low word. */
 static unsigned int ftol_low(Game *game)
 {
-    double d = *game->world()->clock();
+    double d = game->world()->now();
     return (unsigned int)(long long)d;
 }
 

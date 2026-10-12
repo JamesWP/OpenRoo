@@ -51,7 +51,6 @@ Tile *Foe::tile(int u, int v) const
 Foe::Foe()
 {
     zeroSoundSlots();
-    deathFxPending_  = false;
     dyingStarted_         = 0;
     removeRequested_ = 0;
     dying_         = 0;
@@ -232,6 +231,7 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
     }
 
     p->map_ = ctx.map;
+    p->deathCounter_ = ctx.deaths;
     p->type_     = type;
 
     if (type > 0x64) {
@@ -779,7 +779,7 @@ void Foe::debugDraw(unsigned n) const
     }
 }
 
-void Foe::draw(draw::Frame &f, draw::Pass pass)
+void Foe::draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const
 {
     // Kind 2 is a catcher, 3 a thrower; any other kind has no look.
     if (!isCatcher() && !isThrower())
@@ -798,8 +798,7 @@ void Foe::draw(draw::Frame &f, draw::Pass pass)
     switch (pass) {
     case draw::Pass::Opaque:
         if (dying) {
-            draw::fireEffects(f, look, deathFxPending_);
-            deathFxPending_ = false;
+            draw::fireEffects(f, look, deathNumber_ > deathsDrawn);
         }
         draw::objects(f, look, &in);
         break;

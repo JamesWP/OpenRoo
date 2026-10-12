@@ -57,7 +57,7 @@ void Play_SpawnTimedFoes(Game *self)
     // The timed foe spawners (levelcensus.h).
     for (int i = 0; i < (int)self->world()->census()->timed; ++i) {
         TimedSpawner *E = self->world()->timedSpawner((unsigned)i);
-        double since = (double)(*self->world()->clock()) - (double)E->lastSpawn;
+        double since = (double)self->world()->now() - (double)E->lastSpawn;
         if (!(since > (double)E->interval))
             continue;
         signed char u = (signed char)E->u, v = (signed char)E->v;
@@ -72,7 +72,7 @@ void Play_SpawnTimedFoes(Game *self)
             Sim_AcquireFoeSounds(self, foe);
         }
         // The last-spawn time, from the clock.
-        E->lastSpawn = *self->world()->clock();
+        E->lastSpawn = self->world()->now();
     }
 }
 
@@ -85,7 +85,7 @@ void Play_DropPlayerBomb(Game *self)
         unsigned int timed = (unsigned int)pl->moveDir();
         int spawn = 1, offset = 0;
         if (timed != 0) {
-            double since = (double)(*self->world()->clock()) - (double)pl->animStart();
+            double since = (double)self->world()->now() - (double)pl->animStart();
             if (since < 50.0)
                 offset = 1;
             else
@@ -114,7 +114,7 @@ void Play_PlayerSwitch(Game *self)
     if (BridgeObject *br = idle_bridge(self->world(), sw)) {
         g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
         trigger_switch_tile(br, self->world()->map()->tile(pl->cellU(), pl->cellV()));
-        br->arm(self->world()->clock());
+        br->arm(self->world()->now());
         br->playArmSound();
         Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(), br->phase(), sw);
         pl->setSwitchSlot(0xff);
@@ -138,7 +138,7 @@ void Play_TickFoes(Game *self)
         if (BridgeObject *br = idle_bridge(self->world(), sw)) {
             g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
             trigger_switch_tile(br, self->world()->map()->tile(foe.cellU(), foe.cellV()));
-            br->arm(self->world()->clock());
+            br->arm(self->world()->now());
             Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(), br->phase(), sw);
             foe.clearSwitchSlot();
         }
@@ -204,7 +204,7 @@ void Play_CheckLevelEnd(Game *self)
     }
     if (pl->gemsCollected() >= self->world()->gemsRequired()) {
         if (self->gemsGoalReached() == 0 && self->state() != GameState::LevelComplete) {
-            int r = (int)(long long)((*self->world()->clock()));
+            int r = (int)(long long)(self->world()->now());
             void *snd = self->audio()->fixedSounds()->crystalBank[r % 3];
             if (snd != NULL)
                 ((audiodev::Buffer *)snd)->play(false);

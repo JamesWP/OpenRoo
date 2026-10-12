@@ -55,6 +55,8 @@ public:
     double animStart() const                   { return animStart_; }
     unsigned char type() const                 { return type_; }
     int   dyingStarted() const                 { return dyingStarted_; }
+    // Which death this was in the level's count (0 while alive).
+    unsigned deathNumber() const               { return deathNumber_; }
     // The foe's hold flag, or the Player's level-complete flag.  Either way,
     // updateMovement() drops the queued move while it is set.
     int   held() const                         { return held_; }
@@ -165,9 +167,13 @@ protected:
     int                 idleStarted_{};
     // The clock the idle timeout counts from.
     double              lastActive_{};
-    // Set the tick dying starts; the next draw fires the death effects (the
-    // dying look's debris and particles) and clears it.
-    bool                deathFxPending_{};
+    // The level's death counter (World::deaths), and this entity's number in
+    // it, taken the tick dying starts.  A draw fires the death effects (the
+    // dying look's debris and particles) for a death newer than the last one
+    // drawn, so drawing changes nothing here.  Null for the player, whose
+    // death has no effects.
+    unsigned           *deathCounter_{};
+    unsigned            deathNumber_{};
     int                 removeRequested_{};
     int                 dyingStarted_{};  // Set once the entity starts dying: it draws its dying look.
     int                 dying_{};  // Set on being crushed or blasted; starts the death sequence.

@@ -282,11 +282,11 @@ void LevelPlacements::group(draw::Frame &f, Group g, ThemeObjectType look,
 }
 
 /* The bombable blocks: whole, or while blasting their exploding look, which
- * fires its debris the first frame. */
-void LevelPlacements::bombables(draw::Frame &f, LevelMap *map)
+ * fires its debris the first frame of each blast. */
+void LevelPlacements::bombables(draw::Frame &f, const LevelMap *map)
 {
-    for (const Cell &c : cells_[GROUP_BOMBABLE]) {
-        Tile *t = map->tile(c.u, c.v);
+    for (Cell &c : cells_[GROUP_BOMBABLE]) {
+        const Tile *t = map->tile(c.u, c.v);
         draw::Instance in = c.in;
         in.conditions = cell_conditions(t);
         in.phase = t->itemPhase();
@@ -294,8 +294,9 @@ void LevelPlacements::bombables(draw::Frame &f, LevelMap *map)
             draw::objects(f, THEME_OBJ_BOMBABLE, &in);
             continue;
         }
-        draw::fireEffects(f, THEME_OBJ_BOMBABLE_EXPLODING, t->blastFxPending());
-        t->setBlastFxPending(false);
+        const bool fire = t->blastTime() != c.firedBlast;
+        c.firedBlast = t->blastTime();
+        draw::fireEffects(f, THEME_OBJ_BOMBABLE_EXPLODING, fire);
         draw::objects(f, THEME_OBJ_BOMBABLE_EXPLODING, &in);
     }
 }
@@ -319,7 +320,7 @@ void LevelPlacements::collectItems(const LevelMap *map)
         }
 }
 
-void LevelPlacements::draw(draw::Frame &f, draw::Pass pass, LevelMap *map)
+void LevelPlacements::draw(draw::Frame &f, draw::Pass pass, const LevelMap *map)
 {
     switch (pass) {
     case draw::Pass::Opaque:

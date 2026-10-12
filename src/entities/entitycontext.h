@@ -22,4 +22,7 @@ struct EntityContext {
      * crystalsInLevel), which spawning a foe of type 0x0b raises. */
     const char     *levelName;
     unsigned short *crystalsInLevel;
+    /* The level's death counter (World::deaths), which a foe or bomb that
+     * starts dying advances. */
+    unsigned       *deaths;
 };

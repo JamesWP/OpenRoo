@@ -126,7 +126,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
     }
 
     if (entry) {  // save-name text entry
-        self->frontEnd()->nameEntry()->poll((unsigned int)(long long)*self->world()->clock());
+        self->frontEnd()->nameEntry()->poll((unsigned int)(long long)self->world()->now());
         if (self->frontEnd()->nameEntry()->active() == 0) {
             if (self->frontEnd()->nameEntry()->endKey() == input::KEY_RETURN)
                 self->frontEnd()->saveSlots()->writeAllSlotFiles(self->gameDir(), self->gameFileName(), 0x37);

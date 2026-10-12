@@ -82,7 +82,6 @@ Bomb::Bomb()
     rollSound_        = 0;
     blastSound_       = 0;
     zeroSoundSlots();
-    deathFxPending_   = false;
     dyingStarted_          = 0;
     removeRequested_  = 0;
     dying_          = 0;
@@ -195,6 +194,7 @@ void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,
     b.clock_    = ctx.clock;
     b.tickStep_ = ctx.tickStep;
     b.map_      = ctx.map;
+    b.deathCounter_ = ctx.deaths;
     b.facing_   = f;
 
     b.cellU_      = (signed char)u;
@@ -363,7 +363,6 @@ void Bomb::tick()
                 t->setBusy(1);  // spent
                 t->setBlastTime(now_);
                 t->setBlasting(true);
-                t->setBlastFxPending(true);
 
                 g_logger.logMessage(1,
                                    "GAME: obstacle is exploding at:%d,%d,%d",
@@ -438,7 +437,7 @@ void Bomb::debugDraw(unsigned n) const
     }
 }
 
-void Bomb::draw(draw::Frame &f, draw::Pass pass)
+void Bomb::draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const
 {
     const bool exploded = dyingStarted_ != 0;
     const ThemeObjectType look = exploded ? THEME_OBJ_BOMB_EXPLODING : THEME_OBJ_BOMB;
@@ -448,8 +447,7 @@ void Bomb::draw(draw::Frame &f, draw::Pass pass)
     switch (pass) {
     case draw::Pass::Opaque:
         if (exploded) {
-            draw::fireEffects(f, look, deathFxPending_);
-            deathFxPending_ = false;
+            draw::fireEffects(f, look, deathNumber_ > deathsDrawn);
         }
         draw::objects(f, look, &in);
         break;

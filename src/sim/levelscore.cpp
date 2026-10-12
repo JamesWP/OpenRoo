@@ -108,6 +108,6 @@ Score_CalculateLevelScore(Game *self, char endReason)
 
     // Hand the tally animation stage 0 and its start time.
     t->stage      = 0;
-    t->stageStart = (int)*self->world()->clock();
+    t->stageStart = (int)self->world()->now();
     self->session()->setTallyDone(1);
 }
