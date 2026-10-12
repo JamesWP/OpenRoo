@@ -22,7 +22,7 @@ static unsigned s_eval_empty = 0, s_eval_maxpts = 0;
 
 static void run_selfcheck(void);
 
-static void fx_init(void)
+static void diag_init(void)
 {
     char  buf[64];
     uint32_t n;
@@ -31,9 +31,7 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = sysdev::getEnv("KAROO_SPLINE_SELFCHECK", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
-        s_selfcheck = 1;
+    s_selfcheck = sysdev::envFlag("KAROO_SPLINE_SELFCHECK");
 
     n = sysdev::getEnv("KAROO_SPLINE_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0) {
@@ -48,14 +46,14 @@ static void fx_init(void)
 
 SplinePath::SplinePath()
 {
-    fx_init();
+    diag_init();
     if (s_diag)
         ++s_ctors;
 }
 
 SplinePath::~SplinePath()
 {
-    fx_init();
+    diag_init();
     if (s_diag)
         ++s_dtors;
     purgeControlPoints();
@@ -63,7 +61,7 @@ SplinePath::~SplinePath()
 
 void SplinePath::addControlPoint(float x, float y, float z)
 {
-    fx_init();
+    diag_init();
     if (s_diag)
         ++s_adds;
 
@@ -76,7 +74,7 @@ void SplinePath::addControlPoint(float x, float y, float z)
 
 void SplinePath::purgeControlPoints()
 {
-    fx_init();
+    diag_init();
     if (s_diag)
         ++s_purges;
 
@@ -89,7 +87,7 @@ float *SplinePath::evalBezierPath(float *out, float t)
     float           ax = 0.0f, ay = 0.0f, az = 0.0f;
     unsigned int    i;
 
-    fx_init();
+    diag_init();
     if (s_diag) {
         ++s_evals;
         if (n == 0)

@@ -28,8 +28,8 @@
 static void mesh_diag(RenderDevice *dev, uint32_t flags)
 {
     static std::atomic<long> once = 0;
-    char buf[8];
-    if (!sysdev::getEnv("KAROO_MESH_DIAG", buf, sizeof(buf)) || buf[0] == '0')
+    static const bool on = sysdev::envFlag("KAROO_MESH_DIAG");
+    if (!on)
         return;
     if (once.exchange(1) != 0)
         return;

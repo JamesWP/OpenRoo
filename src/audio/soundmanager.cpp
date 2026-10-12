@@ -36,13 +36,8 @@ static const char SRCFILE[] =
  * acquires, releases, loads and setups. */
 static bool sndmgr_diag(void)
 {
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[32];
-        uint32_t n = sysdev::getEnv("KAROO_SNDMGR_DIAG", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && strcasecmp(buf, "0") != 0) ? 1 : 0;
-    }
-    return cached != 0;
+    static const bool on = sysdev::envFlag("KAROO_SNDMGR_DIAG");
+    return on;
 }
 
 static unsigned long g_acqStatic, g_acqStaticHit, g_acqStaticNew;

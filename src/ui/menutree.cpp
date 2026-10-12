@@ -25,18 +25,14 @@ static int s_logged_push   = 0;
 static int s_logged_pop    = 0;
 static int s_logged_rewind = 0;
 
-static void fx_init(void)
+static void diag_init(void)
 {
-    char buf[64];
-    uint32_t n;
 
     if (s_init)
         return;
     s_init = 1;
 
-    n = sysdev::getEnv("KAROO_MENUSTACK_DIAG", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
-        s_diag = 1;
+    s_diag = sysdev::envFlag("KAROO_MENUSTACK_DIAG");
 }
 
 static void diag_census(void)
@@ -52,7 +48,7 @@ void MenuTree::push(unsigned char node)
 {
     unsigned char depth;
 
-    fx_init();
+    diag_init();
 
     depth = depth_;
     stack_[depth] = node;
@@ -75,7 +71,7 @@ void MenuTree::pop()
     unsigned char depth;
     unsigned char node;
 
-    fx_init();
+    diag_init();
 
     depth = depth_;
     // PRESERVED: indexes from the depth byte itself, one below the array, with
@@ -98,7 +94,7 @@ void MenuTree::pop()
 
 void MenuTree::rewind()
 {
-    fx_init();
+    diag_init();
 
     depth_  = 0;
     cursor_ = 0;

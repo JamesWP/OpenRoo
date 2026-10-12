@@ -65,22 +65,15 @@ static int s_diag_spawn   = 0;
 static int s_diag_remove  = 0;
 static int s_init         = 0;
 
-static int env_on(const char *name)
-{
-    char buf[64];
-    uint32_t n = sysdev::getEnv(name, buf, sizeof(buf));
-    return n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0;
-}
-
-static void fx_init(void)
+static void diag_init(void)
 {
     if (s_init)
         return;
     s_init = 1;
 
-    s_diag_bomb   = env_on("KAROO_BOMB_DIAG");
-    s_diag_spawn  = env_on("KAROO_SPAWN_DIAG");
-    s_diag_remove = env_on("KAROO_REMOVE_DIAG");
+    s_diag_bomb   = sysdev::envFlag("KAROO_BOMB_DIAG");
+    s_diag_spawn  = sysdev::envFlag("KAROO_SPAWN_DIAG");
+    s_diag_remove = sysdev::envFlag("KAROO_REMOVE_DIAG");
 }
 
 /* Construction: the MovableEntity base, then the bomb's own stores in a fixed
@@ -196,7 +189,7 @@ void Bomb::spawn(const EntityContext &ctx, BombTable &bombs,
     Bomb  *p;
     Bomb **slot;
 
-    fx_init();
+    diag_init();
 
     id = Object_ClaimSpareId(bombs.ids, &bombs.count);
 
@@ -281,7 +274,7 @@ void Bomb::remove(const EntityContext &ctx, BombTable &bombs, unsigned int idArg
     Bomb        **slot = &bombs.slot[id];
     SoundLibrary *sm   = ctx.sound;
 
-    fx_init();
+    diag_init();
 
     if (*slot == 0)
         return;
@@ -327,7 +320,7 @@ void Bomb::tick()
 {
     double diff;
 
-    fx_init();
+    diag_init();
 
     if (!s_logged_first) {
         s_logged_first = 1;

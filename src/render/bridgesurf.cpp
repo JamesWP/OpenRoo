@@ -50,12 +50,7 @@
 static void bridge_note_variant(uint32_t k, int axis, int dir, int n,
                                 float vnear, float vfar)
 {
-    static int enabled = -1;
-    if (enabled < 0) {
-        char b[8];
-        enabled = (sysdev::getEnv("KAROO_BRIDGE_DIAG", b, sizeof(b))
-                   && b[0] != '0') ? 1 : 0;
-    }
+    static const bool enabled = sysdev::envFlag("KAROO_BRIDGE_DIAG");
     if (!enabled)
         return;
 

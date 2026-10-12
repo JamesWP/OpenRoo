@@ -11,13 +11,8 @@
  * pool" from "the gates build pools and assert nothing about them". */
 static int pool_diag(void)
 {
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[32];
-        uint32_t n = sysdev::getEnv("KAROO_POOL_DIAG", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && strcasecmp(buf, "0") != 0) ? 1 : 0;
-    }
-    return cached != 0;
+    static const bool on = sysdev::envFlag("KAROO_POOL_DIAG");
+    return on;
 }
 
 static unsigned long g_nBlank, g_nWipe, g_nClone,

@@ -35,26 +35,16 @@ static int s_diag_place     = 0;
 static int s_diag_reset     = 0;
 static int s_init           = 0;
 
-static int env_set(const char *name, char *buf, uint32_t cb)
+static void diag_init(void)
 {
-    uint32_t n = sysdev::getEnv(name, buf, cb);
-    return n > 0 && n < cb;
-}
-
-static void fx_init(void)
-{
-    char buf[64];
 
     if (s_init)
         return;
     s_init = 1;
 
-    if (env_set("KAROO_BLOCK_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
-        s_diag_block = 1;
-    if (env_set("KAROO_PLACE_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
-        s_diag_place = 1;
-    if (env_set("KAROO_RESET_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
-        s_diag_reset = 1;
+    s_diag_block = sysdev::envFlag("KAROO_BLOCK_DIAG");
+    s_diag_place = sysdev::envFlag("KAROO_PLACE_DIAG");
+    s_diag_reset = sysdev::envFlag("KAROO_RESET_DIAG");
 }
 
 PlatformObject *PlatformObject::create()
@@ -86,7 +76,7 @@ void PlatformObject::spawn(const EntityContext &ctx, PlatformSlots &slots, unsig
     PlatformObject *obj;
     Tile *tile;
 
-    fx_init();
+    diag_init();
 
     u      = uArg & 0xff;
     v      = vArg & 0xff;
@@ -200,7 +190,7 @@ void PlatformObject::purgeAll(const EntityContext &ctx, PlatformSlots &slots)
 {
     unsigned char i;
 
-    fx_init();
+    diag_init();
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
@@ -259,7 +249,7 @@ void PlatformObject::tick()
 {
     Tile *t;
 
-    fx_init();
+    diag_init();
 
     if (!s_logged_first) {
         s_logged_first = 1;

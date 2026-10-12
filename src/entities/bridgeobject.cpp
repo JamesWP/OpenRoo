@@ -35,26 +35,16 @@ static int s_diag_place     = 0;
 static int s_diag_reset     = 0;
 static int s_init           = 0;
 
-static int env_set(const char *name, char *buf, uint32_t cb)
+static void diag_init(void)
 {
-    uint32_t n = sysdev::getEnv(name, buf, cb);
-    return n > 0 && n < cb;
-}
-
-static void fx_init(void)
-{
-    char buf[64];
 
     if (s_init)
         return;
     s_init = 1;
 
-    if (env_set("KAROO_DECK_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
-        s_diag_deck = 1;
-    if (env_set("KAROO_PLACE_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
-        s_diag_place = 1;
-    if (env_set("KAROO_RESET_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
-        s_diag_reset = 1;
+    s_diag_deck = sysdev::envFlag("KAROO_DECK_DIAG");
+    s_diag_place = sysdev::envFlag("KAROO_PLACE_DIAG");
+    s_diag_reset = sysdev::envFlag("KAROO_RESET_DIAG");
 }
 
 BridgeObject *BridgeObject::create()
@@ -92,7 +82,7 @@ void BridgeObject::spawn(const EntityContext &ctx, BridgeSlots &slots, unsigned 
     BridgeObject *obj;
     Tile *tile;
 
-    fx_init();
+    diag_init();
 
     u      = uArg & 0xff;
     v      = vArg & 0xff;
@@ -215,7 +205,7 @@ void BridgeObject::purgeAll(const EntityContext &ctx, BridgeSlots &slots)
 {
     int i;
 
-    fx_init();
+    diag_init();
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
@@ -270,7 +260,7 @@ void BridgeObject::tick()
     double span100;
     signed char cu, cv;
 
-    fx_init();
+    diag_init();
 
     if (!s_logged_first) {
         s_logged_first = 1;

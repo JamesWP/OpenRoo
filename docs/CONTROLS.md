@@ -3,7 +3,8 @@
 Every env-var mode that makes a replacement's effect observable.  The negative
 controls (`KAROO_*_FX`) that deliberately broke a piece of the game to prove a
 gate could see it were removed once the replay suite was established; a row
-below that cites one records what was shown at the time. The *principles* for
+below that cites one records what was shown at the time.  An on/off switch is
+read with `sysdev::envFlag` (on unless unset, empty or starting with `0`). The *principles* for
 designing one live in CLAUDE.md ("Verify visually, not just in logs"); this is the
 catalogue. Add a row when you add a mode. Plan documents (GAMETICK_PLAN.md,
 RENDER_PLAN.md, PARTICLE_PLAN.md) hold the full story behind each result.

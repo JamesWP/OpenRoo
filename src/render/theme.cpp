@@ -52,11 +52,8 @@ static void lower_inplace(char *s)
 
 static int struct_diag_enabled(void)
 {
-    char v[32];
-    uint32_t n = sysdev::getEnv("KAROO_THEME_STRUCT_DIAG", v, sizeof(v));
-    if (n == 0 || n >= sizeof(v))
-        return 0;
-    return v[0] != '0';
+    static const bool on = sysdev::envFlag("KAROO_THEME_STRUCT_DIAG");
+    return on;
 }
 
 static int ptr_plausible(const void *p)

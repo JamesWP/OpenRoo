@@ -60,10 +60,7 @@ static uint32_t     g_frame;
 bool gamestate_enabled(void)
 {
     if (g_on < 0) {
-        char buf[16];
-        g_on = 0;
-        if (sysdev::getEnv("KAROO_STATE_LOG", buf, sizeof(buf)) && buf[0] && buf[0] != '0')
-            g_on = 1;
+        g_on = sysdev::envFlag("KAROO_STATE_LOG") ? 1 : 0;
         g_logger.write("gamestate: state log %s\n", g_on ? "enabled" : "disabled");
     }
     return g_on > 0;

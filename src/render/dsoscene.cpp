@@ -132,12 +132,7 @@ static uint32_t animation_frame(const SceneObject *o, double t)
  * bits every frame, after UpdateViewTransform has run. */
 static void cam_diag(const Renderer *renderer, const World *world, const float *cam)
 {
-    static int on = -1;
-    if (on < 0) {
-        char buf[8];
-        uint32_t n = sysdev::getEnv("KAROO_CAM_DIAG", buf, sizeof(buf));
-        on = (n > 0 && n < sizeof(buf) && buf[0] == '1') ? 1 : 0;
-    }
+    static const bool on = sysdev::envFlag("KAROO_CAM_DIAG");
     if (!on)
         return;
     uint32_t b[8];

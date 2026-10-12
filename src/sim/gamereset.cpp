@@ -28,18 +28,14 @@ static int s_init           = 0;
 static unsigned s_calls        = 0;
 static int s_logged_clear      = 0;
 
-static void fx_init(void)
+static void diag_init(void)
 {
-    char buf[64];
-    uint32_t n;
 
     if (s_init)
         return;
     s_init = 1;
 
-    n = sysdev::getEnv("KAROO_RESET_DIAG", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
-        s_diag = 1;
+    s_diag = sysdev::envFlag("KAROO_RESET_DIAG");
 }
 
 static void diag_tick(void)
@@ -54,7 +50,7 @@ Sim_ClearGameState(Game *self)
 {
     unsigned char gamefile_ok;
 
-    fx_init();
+    diag_init();
     diag_tick();
 
     if (s_diag && !s_logged_clear) {

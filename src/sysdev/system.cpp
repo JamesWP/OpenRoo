@@ -61,6 +61,12 @@ std::string getEnv(const char *name)
     return value ? value : "";
 }
 
+bool envFlag(const char *name)
+{
+    const std::string v = getEnv(name);
+    return !v.empty() && v[0] != '0';
+}
+
 std::string executableDir()
 {
     const char *dir = SDL_GetBasePath();

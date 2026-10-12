@@ -33,22 +33,15 @@ static int s_diag_remove  = 0;
 static int s_diag_step    = 0;
 static int s_init         = 0;
 
-static int env_on(const char *name)
-{
-    char buf[64];
-    uint32_t n = sysdev::getEnv(name, buf, sizeof(buf));
-    return n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0;
-}
-
-static void fx_init(void)
+static void diag_init(void)
 {
     if (s_init)
         return;
     s_init = 1;
 
-    s_diag_spawn  = env_on("KAROO_SPAWN_DIAG");
-    s_diag_remove = env_on("KAROO_REMOVE_DIAG");
-    s_diag_step   = env_on("KAROO_FOESTEP_DIAG");
+    s_diag_spawn  = sysdev::envFlag("KAROO_SPAWN_DIAG");
+    s_diag_remove = sysdev::envFlag("KAROO_REMOVE_DIAG");
+    s_diag_step   = sysdev::envFlag("KAROO_FOESTEP_DIAG");
 }
 
 Tile *Foe::tile(int u, int v) const
@@ -192,7 +185,7 @@ unsigned char Foe::spawn(const EntityContext &ctx, FoeTable &foes,
     Foe         **slot;
     Foe          *p;
 
-    fx_init();
+    diag_init();
 
     id = Object_ClaimSpareId(foes.ids, &foes.count);
 
@@ -323,7 +316,7 @@ void Foe::remove(const EntityContext &ctx, FoeTable &foes, unsigned int idArg)
     Foe         **slot = &foes.slot[id];
     SoundLibrary *sm   = ctx.sound;
 
-    fx_init();
+    diag_init();
 
     if (*slot == 0)
         return;
@@ -385,7 +378,7 @@ static int           s_logged_frozen  = 0;
 
 void Foe::step(unsigned char playerU, unsigned char playerV)
 {
-    fx_init();
+    diag_init();
 
     if (!s_logged_first) {
         s_logged_first = 1;
@@ -536,7 +529,7 @@ static inline unsigned ftol32(double v)
 unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
                          unsigned short speed)
 {
-    fx_init();
+    diag_init();
 
     pathfinder_->setCap(speed);
     pathfinder_->setTarget(targetU, targetV);

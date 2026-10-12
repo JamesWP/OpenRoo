@@ -17,13 +17,8 @@
  * would show if the spare half were dead. */
 static int dsb_diag(void)
 {
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[32];
-        uint32_t n = sysdev::getEnv("KAROO_DSB_DIAG", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && strcasecmp(buf, "0") != 0) ? 1 : 0;
-    }
-    return cached != 0;
+    static const bool on = sysdev::envFlag("KAROO_DSB_DIAG");
+    return on;
 }
 
 static unsigned long g_nInit, g_nDestruct, g_nClear,

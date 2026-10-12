@@ -61,14 +61,10 @@ static DeltaState g_wr;  // record
 static DeltaState g_rd;  // replay
 
 /* KAROO_INPUT_DEBUG=1 logs the first few replayed key records. */
-static int      g_dbg = -1;
 bool input_debug(void)
 {
-    if (g_dbg < 0) {
-        char b[8];
-        g_dbg = (sysdev::getEnv("KAROO_INPUT_DEBUG", b, sizeof(b)) && b[0] && b[0] != '0');
-    }
-    return g_dbg > 0;
+    static const bool on = sysdev::envFlag("KAROO_INPUT_DEBUG");
+    return on;
 }
 
 static double   g_dt;
