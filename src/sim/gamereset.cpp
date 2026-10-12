@@ -57,11 +57,11 @@ Sim_ClearGameState(Game *self)
         s_logged_clear = 1;
         g_logger.write("gamereset: first ClearGameState -- foes=%u enemies=%u "
                   "lift=%u platform=%u break=%u bridge=%u\n",
-                  (unsigned)self->world()->foeCount(), (unsigned)self->world()->bombCount(),
-                  (unsigned)self->world()->liftCount(),
-                  (unsigned)self->world()->platformCount(),
-                  (unsigned)self->world()->fallingCount(),
-                  (unsigned)self->world()->bridgeCount());
+                  (unsigned)self->world()->foes().size(), (unsigned)self->world()->bombs().size(),
+                  (unsigned)self->world()->lifts().size(),
+                  (unsigned)self->world()->platforms().size(),
+                  (unsigned)self->world()->fallings().size(),
+                  (unsigned)self->world()->bridges().size());
     }
 
     // Read before the stores; acted on after them.

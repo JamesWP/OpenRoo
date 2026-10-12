@@ -2,8 +2,8 @@
 #pragma once
 
 class Game;
+class Foe;
 
-/* Loads each sound whose name is set into the foe in slot objArg (low byte);
- * kind 2 foes get their own three.  Returns 1 in the low byte. */
-  unsigned int  
-Sim_AcquireObjectSoundBuffersForIndex(Game *self, unsigned int objArg);
+/* Loads each sound whose name is set into the foe; catchers and
+ * throwers each get their own three. */
+void Sim_AcquireFoeSounds(Game *g, Foe &foe);

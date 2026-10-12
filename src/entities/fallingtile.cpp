@@ -34,7 +34,6 @@ static const double FALL_DELAY_MS    = 1500.0;
 static const double RESPAWN_DELAY_MS = 5000.0;
 
 static int s_diag_place     = 0;
-static int s_diag_reset     = 0;
 static int s_init           = 0;
 
 static void diag_init(void)
@@ -45,12 +44,6 @@ static void diag_init(void)
     s_init = 1;
 
     s_diag_place = sysdev::envFlag("KAROO_PLACE_DIAG");
-    s_diag_reset = sysdev::envFlag("KAROO_RESET_DIAG");
-}
-
-FallingTile *FallingTile::create()
-{
-    return new (std::nothrow) FallingTile;
 }
 
 FallingTile::FallingTile()
@@ -72,13 +65,11 @@ FallingTile::~FallingTile()
 
 static unsigned s_spawns       = 0;
 static int      s_logged_spawn = 0;
-static int      s_logged_oom   = 0;
 
-unsigned int FallingTile::spawn(const EntityContext &ctx, FallingSlots &slots, unsigned int uArg,
-                                  unsigned int vArg, unsigned int heightArg,
-                                  unsigned int paramArg)
+void FallingTile::spawn(const EntityContext &ctx, EntityList<FallingTile> &fallings, unsigned int uArg,
+                        unsigned int vArg, unsigned int heightArg, unsigned int paramArg)
 {
-    unsigned int u, v, height, idx;
+    unsigned int u, v, height;
     unsigned char n;
     FallingTile *obj;
 
@@ -91,15 +82,8 @@ unsigned int FallingTile::spawn(const EntityContext &ctx, FallingSlots &slots, u
     v = vArg & 0xff;
     height = heightArg & 0xff;
 
-    obj = create();
-    if (obj == 0 && s_diag_place && !s_logged_oom) {
-        s_logged_oom = 1;
-        g_logger.write("fallingtile: ALLOCATION FAILED in spawn -- the original "
-                  "would store through the slot, which now holds NULL\n");
-    }
-
-    n = slots.count;
-    slots.slot[n] = obj;
+    n   = (unsigned char)fallings.size();
+    obj = &fallings.add(std::unique_ptr<FallingTile>(new FallingTile));
 
     if (s_diag_place && !s_logged_spawn) {
         s_logged_spawn = 1;
@@ -123,66 +107,20 @@ unsigned int FallingTile::spawn(const EntityContext &ctx, FallingSlots &slots, u
 
     obj->noRespawn_ = (int)(paramArg & 0xff);
 
-    //     // PRESERVED: cellV_ is written a second time, with the same value.
-    obj->cellV_ = (signed char)v;
-
     //     // The TILE_FALLING marker is read back by SetupLevelObjects when it
     //     // places further objects, which is why placeaxis also fails
     //     // the level load.
-    idx = v + u * 100;
     ctx.map->tile( (int)u, (int)v)->setObjectMarker(TILE_FALLING);
-
-    slots.count = (unsigned char)(n + 1);
-
-    return idx & 0xffffff00;
 }
 
-static int      s_logged_purge   = 0;
-static int      s_logged_release = 0;
-static unsigned s_live_purges    = 0;
-
-static void release_sound(SoundLibrary *sound, SoundVoice *h)
+void FallingTile::releaseSounds(SoundLibrary *sm)
 {
-    if (h == 0)
-        return;
-    if (s_diag_reset && !s_logged_release) {
-        s_logged_release = 1;
-        g_logger.write("fallingtile: first sound release -- h=%p\n", (void *)h);
-    }
-    sound->releaseVoice(h, true);
-}
-
-void FallingTile::purgeAll(const EntityContext &ctx, FallingSlots &slots)
-{
-    unsigned char i;
-
-    diag_init();
-
-    if (s_diag_reset && !s_logged_purge) {
-        s_logged_purge = 1;
-        g_logger.write("fallingtile: first purge -- count=%u\n",
-                  (unsigned)slots.count);
-    }
-
-    i = 0;
-    if (slots.count != 0) {
-        if (s_diag_reset)
-            g_logger.write("fallingtile: LIVE purge #%u -- count=%u\n",
-                      ++s_live_purges, (unsigned)slots.count);
-        do {
-            //             // The two releases are siblings: a null fall sound does not skip
-            //             // the respawn sound.
-            if (ctx.sound->active()) {
-                release_sound(ctx.sound, slots.slot[i]->fallSound_);
-                release_sound(ctx.sound, slots.slot[i]->respawnSound_);
-            }
-            FallingTile *obj = slots.slot[i];
-            if (obj != 0)
-                delete obj;
-            i++;
-        } while (i < slots.count);
-    }
-    slots.count = 0;
+    if (sm->active() && fallSound_ != 0)
+        sm->releaseVoice(fallSound_, true);
+    fallSound_ = 0;
+    if (sm->active() && respawnSound_ != 0)
+        sm->releaseVoice(respawnSound_, true);
+    respawnSound_ = 0;
 }
 
 Tile *FallingTile::tile() const

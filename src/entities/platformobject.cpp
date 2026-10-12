@@ -35,7 +35,6 @@ static const double K_PARK_DWELL = 1500.0;
 
 static int s_diag_block     = 0;
 static int s_diag_place     = 0;
-static int s_diag_reset     = 0;
 static int s_init           = 0;
 
 static void diag_init(void)
@@ -47,12 +46,6 @@ static void diag_init(void)
 
     s_diag_block = sysdev::envFlag("KAROO_BLOCK_DIAG");
     s_diag_place = sysdev::envFlag("KAROO_PLACE_DIAG");
-    s_diag_reset = sysdev::envFlag("KAROO_RESET_DIAG");
-}
-
-PlatformObject *PlatformObject::create()
-{
-    return new (std::nothrow) PlatformObject;
 }
 
 PlatformObject::PlatformObject()
@@ -68,9 +61,8 @@ PlatformObject::~PlatformObject()
 }
 
 static int s_logged_spawn = 0;
-static int s_logged_oom   = 0;
 
-void PlatformObject::spawn(const EntityContext &ctx, PlatformSlots &slots, unsigned int uArg, unsigned int vArg,
+void PlatformObject::spawn(const EntityContext &ctx, EntityList<PlatformObject> &platforms, unsigned int uArg, unsigned int vArg,
                         unsigned int heightArg, unsigned int kindArg)
 {
     unsigned int u, v, height, kind;
@@ -95,16 +87,8 @@ void PlatformObject::spawn(const EntityContext &ctx, PlatformSlots &slots, unsig
     tile->setSlideDir(0);
     tile->setField202(0);
 
-    //     // PRESERVED: a failed allocation is not checked; the first store faults.
-    obj = create();
-    if (obj == 0 && s_diag_place && !s_logged_oom) {
-        s_logged_oom = 1;
-        g_logger.write("platformobject: ALLOCATION FAILED in spawn -- the original "
-                  "would store through the slot, which now holds NULL\n");
-    }
-
-    n = slots.count;
-    slots.slot[n] = obj;
+    n   = (unsigned char)platforms.size();
+    obj = &platforms.add(std::unique_ptr<PlatformObject>(new PlatformObject));
 
     if (s_diag_place) {
         s_logged_spawn++;
@@ -183,42 +167,13 @@ void PlatformObject::spawn(const EntityContext &ctx, PlatformSlots &slots, unsig
     obj->span_  = (unsigned char)(obj->limit_ - obj->trackStart_);
     obj->sound_ = 0;
 
-    slots.count = (unsigned char)(n + 1);
 }
 
-static int s_logged_purge = 0;
-static unsigned s_live_purges = 0;
-
-void PlatformObject::purgeAll(const EntityContext &ctx, PlatformSlots &slots)
+void PlatformObject::releaseSounds(SoundLibrary *sm)
 {
-    unsigned char i;
-
-    diag_init();
-
-    if (s_diag_reset && !s_logged_purge) {
-        s_logged_purge = 1;
-        g_logger.write("platformobject: first purge -- count=%u\n",
-                  (unsigned)slots.count);
-    }
-
-    i = 0;
-    if (slots.count != 0) {
-        if (s_diag_reset)
-            g_logger.write("platformobject: LIVE purge #%u -- count=%u\n",
-                      ++s_live_purges, (unsigned)slots.count);
-        do {
-            if (ctx.sound->active()) {
-                SoundVoice *h = slots.slot[i]->sound_;
-                if (h != 0)
-                    ctx.sound->releaseVoice(h, true);
-            }
-            PlatformObject *obj = slots.slot[i];
-            if (obj != 0)
-                delete obj;
-            i++;
-        } while (i < slots.count);
-    }
-    slots.count = 0;
+    if (sm->active() && sound_ != 0)
+        sm->releaseVoice(sound_, true);
+    sound_ = 0;
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte.  Each branch below

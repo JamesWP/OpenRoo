@@ -4,26 +4,25 @@
 
 #pragma once
 #include "entitycontext.h"
+#include "entitylist.h"
 #include "tickstep.h"
 #include "drawfwd.h"
 
  
 
 class SoundVoice;
-
-class PlatformObject;
-typedef EntitySlots<PlatformObject, 100> PlatformSlots;
+class SoundLibrary;
 
 class PlatformObject {
 public:
      
 
     // Spawns a platform; the arguments are masked to bytes.
-    static void spawn(const EntityContext &ctx, PlatformSlots &slots, unsigned int uArg, unsigned int vArg,
+    static void spawn(const EntityContext &ctx, EntityList<PlatformObject> &platforms, unsigned int uArg, unsigned int vArg,
                       unsigned int heightArg, unsigned int kindArg);
 
-    // Destroys every platform and zeroes the count.
-    static void purgeAll(const EntityContext &ctx, PlatformSlots &slots);
+    // Releases its sounds, before World destroys it.
+    void releaseSounds(SoundLibrary *sm);
 
     // One tick.
     void tick();
@@ -42,12 +41,11 @@ public:
     // (levelsounds.cpp).
     void setSound(SoundVoice *p) { sound_ = p; }
 
+    ~PlatformObject();
+
 private:
 
-    // Allocates and constructs one; NULL if the allocation fails.
-    static PlatformObject *create();
     PlatformObject();
-    virtual ~PlatformObject();
     PlatformObject(const PlatformObject &) = delete;
     PlatformObject &operator=(const PlatformObject &) = delete;
 

@@ -32,23 +32,12 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     // The tally is read by the state dump before any level has been scored.
     *g->session()->tally() = ScoreTally();
     g->world()->switchCells()->clearCounts();
-    // PRESERVED: only the first 256 of each 500-slot table.
-    std::fill_n(g->world()->bombs().slot, 0x100, nullptr);
-    std::fill_n(g->world()->foes().slot, 0x100, nullptr);
-    g->world()->fallings().count = 0;
-    g->world()->foes().count       = 0;
-    g->world()->lifts().count      = 0;
-    g->world()->platforms().count     = 0;
-    g->world()->bombs().count      = 0;
-    g->world()->bridges().count    = 0;
     Sim_ResetLevelObjectCounters(g);
     g->world()->setCrystalsInLevel(0);
     g->mapChanged_       = 1;
     g->initialised_      = 0;
     g->audio()->setLevelSoundsReady(0);
     g->scriptPlayer_.clearStreams();
-    std::fill(std::begin(g->world()->foes().ids), std::end(g->world()->foes().ids), 0);
-    std::fill(std::begin(g->world()->bombs().ids), std::end(g->world()->bombs().ids), 0);
     g->audio()->fixedSounds()->switchClick    = NULL;
     g->audio()->fixedSounds()->menuUpDown     = NULL;
     g->audio()->fixedSounds()->count          = NULL;
@@ -119,7 +108,6 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g->frontEnd()->setTextEntryActive(0);
     g->camera()->setMode(1);
     g->camera()->setOverviewActive(0);
-    g->world()->bridges().count      = 0;
     g->audio()->fixedSounds()->loaded = 0;
     std::fill_n(g->frontEnd()->cheatBuffer(), 0x100, 0);
     g->frontEnd()->cheatEntry()->setMaxLength(30);

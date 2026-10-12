@@ -3,9 +3,6 @@
  * the foes, and the level end.
  *
  * PRESERVED:
- *   - the bomb and foe loops re-read their counts every pass and do not step
- *     back after a removal, so the entry moved into a removed slot is skipped
- *     for one tick;
  *   - a bomb drop or foe bomb refused as too soon also leaves its request
  *     flag set;
  *   - the game-over branch of the restart skips the camera reset;
@@ -27,14 +24,19 @@
 
 /* The switch-triggered block, shared by the player and each foe. */
 
-static void trigger_switch_tile(Game *game, unsigned char sw, int u, int v)
+static void trigger_switch_tile(BridgeObject *br, Tile *t)
 {
-    BridgeObject *br = game->world()->bridgeSlot(sw);
-    Tile *t = game->world()->map()->tile(u, v);
-    if (br->phase() == 0)
-        t->setBusy(1);
-    else
-        t->setBusy(0);
+    t->setBusy(br->phase() == 0 ? 1 : 0);
+}
+
+/* The bridge a switch slot operates, if it is one (0xff is none) and the
+ * bridge is at rest. */
+static BridgeObject *idle_bridge(World *w, unsigned char sw)
+{
+    if (sw == 0xff)
+        return nullptr;
+    BridgeObject *br = w->bridge(sw);
+    return (br != nullptr && br->armed() == 0) ? br : nullptr;
 }
 
 /* Acquires the fixed sound buffers, and loads the level sounds on the first tick they are ready. */
@@ -59,16 +61,15 @@ void Play_SpawnTimedFoes(Game *self)
         if (!(since > (double)E->interval))
             continue;
         signed char u = (signed char)E->u, v = (signed char)E->v;
-        if (self->world()->map()->tile(u, v)->occupant() == 0 &&self->world()->foeCount() < E->maxFoes) {
-            unsigned char id = Foe::spawn(self->world()->entityContext(), self->world()->foes(), (unsigned char)u,
-                                          (unsigned char)v, E->height, 2,
-                                          (unsigned char)(E->field_0b + 100));
-            Foe *foe = self->world()->foeSlot(id);
+        if (self->world()->map()->tile(u, v)->occupant() == 0 && self->world()->foes().size() < E->maxFoes) {
+            Foe &foe = Foe::spawn(self->world()->entityContext(), self->world()->foes(), (unsigned char)u,
+                                  (unsigned char)v, E->height, 2,
+                                  (unsigned char)(E->field_0b + 100));
             if (((int)self->session()->foesKilled() + 1) % 15 == 0)
-                foe->setDropContents(7);
+                foe.setDropContents(7);
             else
-                foe->setDropContents(1);
-            Sim_AcquireObjectSoundBuffersForIndex(self, id);
+                foe.setDropContents(1);
+            Sim_AcquireFoeSounds(self, foe);
         }
         // The last-spawn time, from the clock.
         E->lastSpawn = *self->world()->clock();
@@ -110,67 +111,60 @@ void Play_PlayerSwitch(Game *self)
     Player *pl = self->world()->player();
 
     unsigned char sw = pl->switchSlot();
-    if (sw < 0xff && self->world()->bridgeSlot(sw)->armed() == 0) {
+    if (BridgeObject *br = idle_bridge(self->world(), sw)) {
         g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
-        trigger_switch_tile(self, pl->switchSlot(), pl->cellU(), pl->cellV());
-        BridgeObject *br = self->world()->bridgeSlot(pl->switchSlot());
+        trigger_switch_tile(br, self->world()->map()->tile(pl->cellU(), pl->cellV()));
         br->arm(self->world()->clock());
         br->playArmSound();
-        Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(),
-                                               self->world()->bridgeSlot(pl->switchSlot() & 0xff)->phase(),
-                                               pl->switchSlot());
+        Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(), br->phase(), sw);
         pl->setSwitchSlot(0xff);
     }
 }
 
-/* The foes.  Their pieces are Foe methods (foe.cpp); the slot is re-read
- * for each piece. */
+/* The foes.  Their pieces are Foe methods (foe.cpp). */
 void Play_TickFoes(Game *self)
 {
     Player *pl = self->world()->player();
+    EntityList<Foe> &foes = self->world()->foes();
 
-    if (self->world()->foeCount() != 0) {
-        PROF_SCOPE("foes");
-        for (int i = 0; i < (int)self->world()->foeCount(); ++i) {
-            unsigned char id = self->world()->foeId(i);
-            Foe **slot = self->world()->foeSlotRef(id);
-            unsigned char tu, tv;
+    if (foes.empty())
+        return;
+    PROF_SCOPE("foes");
+    for (std::size_t i = 0; i < foes.size();) {
+        Foe &foe = foes[i];
+        unsigned char tu, tv;
 
-            {
-                unsigned char sw = (*slot)->switchSlot();
-                if (sw < 0xff && self->world()->bridgeSlot(sw)->armed() == 0) {
-                    g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
-                    trigger_switch_tile(self, (*slot)->switchSlot(), (*slot)->cellU(), (*slot)->cellV());
-                    self->world()->bridgeSlot((*slot)->switchSlot())->arm(self->world()->clock());
-                    Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(),
-                                                           self->world()->bridgeSlot((*slot)->switchSlot() & 0xff)->phase(),
-                                                           (*slot)->switchSlot());
-                    (*slot)->clearSwitchSlot();
-                }
-            }
+        unsigned char sw = foe.switchSlot();
+        if (BridgeObject *br = idle_bridge(self->world(), sw)) {
+            g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
+            trigger_switch_tile(br, self->world()->map()->tile(foe.cellU(), foe.cellV()));
+            br->arm(self->world()->clock());
+            Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(), br->phase(), sw);
+            foe.clearSwitchSlot();
+        }
 
-            int hold = ((unsigned int)pl->freezeActive() == 0 && self->state() == GameState::Playing) ? 0 : 1;
-            if (self->state() == GameState::LevelComplete)
-                hold = 1;
-            if (pl->moveState() != 0)
-                hold = 1;
-            {
-                PROF_SCOPE("choose target");
-                (*slot)->chooseTarget(self->world()->entityContext(), self->world()->foes(), hold, (unsigned char)pl->cellU(), (unsigned char)pl->cellV(),
-                                      pl->markerCellU(), pl->markerCellV(), &tu, &tv);
-            }
-            {
-                PROF_SCOPE("step");
-                (*slot)->step(tu, tv);
-            }
-            (*slot)->debugDraw(id);
-            (*slot)->dropBomb(self->world()->entityContext(), self->world()->bombs(), self->bombSounds());
-            (*slot)->checkPlayerContact(pl->moveStateRef(),
-                                        pl->posU(), pl->posY(), pl->posV());
-            if ((*slot)->finishDespawn(self->world()->map())) {
-                Foe::remove(self->world()->entityContext(), self->world()->foes(), id);
-                self->session()->setFoesKilled((unsigned char)(self->session()->foesKilled() + 1));
-            }
+        int hold = ((unsigned int)pl->freezeActive() == 0 && self->state() == GameState::Playing) ? 0 : 1;
+        if (self->state() == GameState::LevelComplete)
+            hold = 1;
+        if (pl->moveState() != 0)
+            hold = 1;
+        {
+            PROF_SCOPE("choose target");
+            foe.chooseTarget(self->world()->entityContext(), foes, hold, (unsigned char)pl->cellU(),
+                             (unsigned char)pl->cellV(), pl->markerCellU(), pl->markerCellV(), &tu, &tv);
+        }
+        {
+            PROF_SCOPE("step");
+            foe.step(tu, tv);
+        }
+        foe.debugDraw((unsigned)i);
+        foe.dropBomb(self->world()->entityContext(), self->world()->bombs(), self->bombSounds());
+        foe.checkPlayerContact(pl->moveStateRef(), pl->posU(), pl->posY(), pl->posV());
+        if (foe.finishDespawn(self->world()->map())) {
+            Foe::remove(self->world()->entityContext(), foes, i);  // the next moves into i
+            self->session()->setFoesKilled((unsigned char)(self->session()->foesKilled() + 1));
+        } else {
+            ++i;
         }
     }
 }

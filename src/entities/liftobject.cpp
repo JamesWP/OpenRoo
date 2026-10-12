@@ -30,7 +30,6 @@ static const double K_PARK_DWELL   = 1500.0;
 
 static int s_diag_lift      = 0;
 static int s_diag_place     = 0;
-static int s_diag_reset     = 0;
 static int s_init           = 0;
 
 static void diag_init(void)
@@ -42,12 +41,6 @@ static void diag_init(void)
 
     s_diag_lift = sysdev::envFlag("KAROO_LIFT_DIAG");
     s_diag_place = sysdev::envFlag("KAROO_PLACE_DIAG");
-    s_diag_reset = sysdev::envFlag("KAROO_RESET_DIAG");
-}
-
-LiftObject *LiftObject::create()
-{
-    return new (std::nothrow) LiftObject;
 }
 
 /* Only the fields the original constructors write; the rest is left as `new`
@@ -67,16 +60,14 @@ LiftObject::~LiftObject()
 }
 
 static int s_logged_spawn = 0;
-static int s_logged_oom   = 0;
 
-void LiftObject::spawn(const EntityContext &ctx, LiftSlots &slots, unsigned int uArg, unsigned int vArg,
-                       unsigned int baseArg, unsigned int topArg)
+void LiftObject::spawn(const EntityContext &ctx, EntityList<LiftObject> &lifts, unsigned int uArg,
+                       unsigned int vArg, unsigned int baseArg, unsigned int topArg)
 {
     unsigned int u, v, base, top;
     unsigned char n;
     LiftObject *obj;
     Tile *tile;
-    void *raw;
 
     diag_init();
 
@@ -85,18 +76,8 @@ void LiftObject::spawn(const EntityContext &ctx, LiftSlots &slots, unsigned int 
     base = baseArg & 0xff;
     top  = topArg & 0xff;
 
-    raw = create();
-    if (raw == 0) {
-        if (s_diag_place && !s_logged_oom) {
-            s_logged_oom = 1;
-            g_logger.write("liftobject: ALLOCATION FAILED in spawn -- the original "
-                      "would store through the slot, which now holds NULL\n");
-        }
-    }
-
-    n = slots.count;
-    slots.slot[n] = (LiftObject *)raw;
-    obj  = (LiftObject *)raw;
+    n    = (unsigned char)lifts.size();
+    obj  = &lifts.add(std::unique_ptr<LiftObject>(new LiftObject));
     tile = ctx.map->tile( (int)u, (int)v);
 
     if (s_diag_place && !s_logged_spawn) {
@@ -129,43 +110,13 @@ void LiftObject::spawn(const EntityContext &ctx, LiftSlots &slots, unsigned int 
 
     obj->atTop_ = 0;
     obj->state_ = 1;
-
-    slots.count = (unsigned char)(n + 1);
 }
 
-static int s_logged_purge = 0;
-static unsigned s_live_purges = 0;
-
-void LiftObject::purgeAll(const EntityContext &ctx, LiftSlots &slots)
+void LiftObject::releaseSounds(SoundLibrary *sm)
 {
-    unsigned char i;
-
-    diag_init();
-
-    if (s_diag_reset && !s_logged_purge) {
-        s_logged_purge = 1;
-        g_logger.write("liftobject: first purge -- count=%u\n",
-                  (unsigned)slots.count);
-    }
-
-    i = 0;
-    if (slots.count != 0) {
-        if (s_diag_reset)
-            g_logger.write("liftobject: LIVE purge #%u -- count=%u\n",
-                      ++s_live_purges, (unsigned)slots.count);
-        do {
-            if (ctx.sound->active()) {
-                SoundVoice *h = slots.slot[i]->sound_;
-                if (h != 0)
-                    ctx.sound->releaseVoice(h, true);
-            }
-            LiftObject *obj = slots.slot[i];
-            if (obj != 0)
-                delete obj;
-            i++;
-        } while (i < slots.count);
-    }
-    slots.count = 0;
+    if (sm->active() && sound_ != 0)
+        sm->releaseVoice(sound_, true);
+    sound_ = 0;
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte.  The tick passes

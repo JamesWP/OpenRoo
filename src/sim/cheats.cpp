@@ -30,8 +30,8 @@ void Cheat_EnterLoadedState(Game *game)
 void Cheat_KillFoes(Game *g)
 {
     // Only the move state is set: no foe is added or removed.
-    for (Foe *f : g->world()->foes())
-        f->setMoveState(4);
+    for (Foe &f : g->world()->foes())
+        f.setMoveState(4);
 }
 
 void Cheat_AddLife(Game *g, int n)

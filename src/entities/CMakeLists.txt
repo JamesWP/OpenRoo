@@ -7,7 +7,6 @@ add_library(entities OBJECT
     foepath.cpp
     liftobject.cpp
     movableentity.cpp
-    objectremove.cpp
     player.cpp
     platformobject.cpp
     world.cpp)

@@ -1,18 +1,20 @@
 /* BridgeObject: a switch-operated bridge.  A switch arms it, and while armed
  * it extends, or retracts, one deck cell at a time, stamping each cell it
  * covers.  Every function that touches a BridgeObject field is in
- * bridgeobject.cpp: the spawn, tick and purge, the drawing of its deck, and
+ * bridgeobject.cpp: the spawn, tick and sound release, the drawing of its deck, and
  * the switch accessors GameTick and tilequery.cpp use. */
 
 #pragma once
 #include <stdint.h>
 #include "entitycontext.h"
+#include "entitylist.h"
 #include "tickstep.h"
 #include "drawfwd.h"
 
  
 
 class SoundVoice;
+class SoundLibrary;
 struct Diffuse1Vertex;
 
 /* A bridge's extent for the debug map, in cell-edge coordinates: the deck
@@ -28,21 +30,19 @@ struct BridgeExtent {
     int   phase;      // 0: extends next; 1: retracts next
 };
 
-class BridgeObject;
 class SwitchCells;
-typedef EntitySlots<BridgeObject, 256> BridgeSlots;
 
 class BridgeObject {
 public:
      
 
     // Spawns a bridge; the arguments are masked to bytes.
-    static void spawn(const EntityContext &ctx, BridgeSlots &slots, unsigned int uArg, unsigned int vArg,
+    static void spawn(const EntityContext &ctx, EntityList<BridgeObject> &bridges, unsigned int uArg, unsigned int vArg,
                       unsigned int heightArg, unsigned int slotArg,
                       unsigned int axisArg);
 
-    // Destroys every bridge and zeroes the count.
-    static void purgeAll(const EntityContext &ctx, BridgeSlots &slots);
+    // Releases its sounds, before World destroys it.
+    void releaseSounds(SoundLibrary *sm);
 
     // One tick.
     void tick();
@@ -55,6 +55,8 @@ public:
     int  armed() const               { return armed_; }
     // 0: the next move extends; 1: it retracts.
     int  phase() const               { return phase_; }
+    // The switch that operates it (World::bridge finds it by this).
+    unsigned char switchSlot() const { return slot_; }
     // A switch fires: arm, and start the phase at the clock.
     void arm(const double *clock)    { armed_ = 1; phaseStart_ = *clock; }
     // The player's switch also starts the moving-loop sound.
@@ -73,16 +75,14 @@ public:
     // (levelsounds.cpp).
     void setSound(SoundVoice *p) { sound_ = p; }
 
+    ~BridgeObject();
+
 private:
     // The deck quad (draw::FieldVertex) for clock t, ms; false while there
     // is no deck, never armed and in phase 0.
     bool deck(Diffuse1Vertex v[4], double t) const;
 
-
-    // Allocates and constructs one; NULL if the allocation fails.
-    static BridgeObject *create();
     BridgeObject();
-    virtual ~BridgeObject();
     BridgeObject(const BridgeObject &) = delete;
     BridgeObject &operator=(const BridgeObject &) = delete;
 

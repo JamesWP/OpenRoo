@@ -627,8 +627,8 @@ next_row:
                   s_calls, (unsigned)M->extentU(), (unsigned)M->extentV(),
                   (unsigned)self->world()->crystalsInLevel(), (unsigned)self->world()->census()->total,
                   (unsigned)self->world()->census()->bridges, (unsigned)self->world()->census()->teleports,
-                  (unsigned)self->world()->liftCount(), (unsigned)self->world()->platformCount(),
-                  (unsigned)self->world()->fallingCount(), (unsigned)self->world()->foeCount(),
+                  (unsigned)self->world()->lifts().size(), (unsigned)self->world()->platforms().size(),
+                  (unsigned)self->world()->fallings().size(), (unsigned)self->world()->foes().size(),
                   (unsigned)self->world()->census()->freeBombs, (unsigned)self->world()->census()->timed,
                   (unsigned)self->world()->switchMax());
 

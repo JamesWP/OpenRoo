@@ -278,7 +278,7 @@ unsigned int MovableEntity::updateMovement()
         Tile *t = CUR;
         if ((signed char)t->objectMarker() == TILE_SWITCH && (unsigned)t->height() == (unsigned)(int)GH &&
             ((signed char)kind_) != 9 && field_d3 == 0) {
-            field_d7 = t->field1f3();
+            switchSlot_ = t->field1f3();
             snd_at(sound_cb_, (float)(int)GU, (float)(int)GH, -(float)(int)GV, 0);
             field_d3 = 1;
         }

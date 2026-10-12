@@ -23,9 +23,7 @@ public:
      
 
     // The level's map, copied in at spawn from World::map().
-    // Public because tilequery.cpp's farthest-tile search takes a
-    // MovableEntity and reaches the map through it.
-    LevelMap *map() const { return map_; }
+    const LevelMap *map() const { return map_; }
 
     // Zero the twelve sound handles.
     void zeroSoundSlots();
@@ -79,7 +77,8 @@ public:
     // nonzero while dead or respawning.
     unsigned char moveState() const            { return moveState_; }
     void  setMoveState(unsigned char s)        { moveState_ = s; }
-    FoePath *pathfinder() const                { return pathfinder_; }
+    const FoePath *pathfinder() const          { return pathfinder_; }
+    FoePath       *pathfinder()                { return pathfinder_; }
 
     // Where it draws and how far through its step: (u, height, -v), turned
     // to its facing and through any turn in progress, playing its animation
@@ -120,6 +119,8 @@ protected:
     // Our own subclasses use only the base's field work, the three zeroed
     // position floats.
     MovableEntity();
+
+    LevelMap *map() { return map_; }
 
 public:
     // Virtual, so a Foe or Bomb is destroyed through a MovableEntity pointer.
@@ -189,7 +190,7 @@ protected:
     SoundVoice *sound_cb_;
     SoundVoice *sound_cf_;
     int                 field_d3{};
-    unsigned char       field_d7{};  // The switch this foe is standing on, when it is standing on one.
+    unsigned char       switchSlot_{};  // The switch stepped on and not yet acted on; 0xff for none.
     int                 field_d8{};
     double              lastContact_{};      // Foe: the clock of its last contact.
     int                 bombDropRequest_{};  // Requests a bomb be dropped this tick.

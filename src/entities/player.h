@@ -38,7 +38,8 @@ public:
 
 
     // The tile the player stands on, from its signed cell coordinates.
-    Tile *curTile() const;
+    Tile       *curTile();
+    const Tile *curTile() const;
 
     void  setClock(double *c)                  { clock_ = c; }
     void  setTickStep(TickStep *r)            { tickStep_ = r; }
@@ -68,8 +69,8 @@ public:
     void  setOnLift(int n)                    { onLift_ = n; }
     void  setFieldD3(int n)                    { field_d3 = n; }
     // The switch the player is standing on; 0xff means none.
-    unsigned char switchSlot() const           { return field_d7; }
-    void  setSwitchSlot(unsigned char s)       { field_d7 = s; }
+    unsigned char switchSlot() const           { return switchSlot_; }
+    void  setSwitchSlot(unsigned char s)       { switchSlot_ = s; }
     int   completionNumerator() const          { return field_d8; }
     void  setCompletionNumerator(int n)        { field_d8 = n; }
     void  setLastContact(double d)                 { lastContact_ = d; }

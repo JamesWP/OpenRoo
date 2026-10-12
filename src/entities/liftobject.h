@@ -4,26 +4,25 @@
 
 #pragma once
 #include "entitycontext.h"
+#include "entitylist.h"
 #include "tickstep.h"
 #include "drawfwd.h"
 
  
 
 class SoundVoice;
-
-class LiftObject;
-typedef EntitySlots<LiftObject, 256> LiftSlots;
+class SoundLibrary;
 
 class LiftObject {
 public:
      
 
     // Spawns a lift; the arguments are masked to bytes.
-    static void spawn(const EntityContext &ctx, LiftSlots &slots, unsigned int uArg, unsigned int vArg,
-                      unsigned int baseArg, unsigned int topArg);
+    static void spawn(const EntityContext &ctx, EntityList<LiftObject> &lifts, unsigned int uArg,
+                      unsigned int vArg, unsigned int baseArg, unsigned int topArg);
 
-    // Destroys every lift and zeroes the count.
-    static void purgeAll(const EntityContext &ctx, LiftSlots &slots);
+    // Releases its sound, before World destroys it.
+    void releaseSounds(SoundLibrary *sm);
 
     // One tick.
     void tick();
@@ -40,12 +39,10 @@ public:
     // Draws the lift, in the opaque pass.
     void draw(draw::Frame &f, draw::Pass pass) const;
 
-private:
+    ~LiftObject();
 
-    // Allocates and constructs one; NULL if the allocation fails.
-    static LiftObject *create();
+private:
     LiftObject();
-    virtual ~LiftObject();
     LiftObject(const LiftObject &) = delete;
     LiftObject &operator=(const LiftObject &) = delete;
 
@@ -65,7 +62,7 @@ private:
     signed char         baseHeight_;
     signed char         topHeight_;
     SoundVoice *sound_;       // the moving loop; may be NULL
-    unsigned char       slot_;        // its index in World's lift slots
+    unsigned char       slot_;        // its index in World's lift list
     int                 atTop_;       // 1: parked at the top
     signed char         state_;       // 0 parked, 1 rising, 2 falling
     double              phaseStart_;
