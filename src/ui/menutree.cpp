@@ -1,11 +1,6 @@
 /* The node stack and the navigator.  The rewind leaves node 0 on the stack at
  * depth 1, which is why the navigator's back-out test is depth < 2.
  *
- * Negative controls (KAROO_SIM_FX), both unable to fail the suite, as
- * docs/CONTROLS.md records: "stacktop" makes the pop read one past the top,
- * but every pop in the recordings is overwritten before anything reads it;
- * "menuroot" opens every menu on its second item, but only frames_run moves (+1, the
- * music-on signature).  "menuwrap" stops Down wrapping at the last entry.
  * KAROO_MENUSTACK_DIAG=1 logs every push, pop and rewind with running counts
  * and the deepest depth reached. */
 
@@ -19,8 +14,6 @@
 #include <stdlib.h>
 #include "keys.h"
 
-static int s_fx_menuroot = 0;
-static int s_fx_stacktop = 0;
 static int s_diag        = 0;
 static int s_init        = 0;
 
@@ -40,20 +33,6 @@ static void fx_init(void)
     if (s_init)
         return;
     s_init = 1;
-
-    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcmp(buf, "menuroot") == 0) {
-            s_fx_menuroot = 1;
-            g_logger.write("menustack: KAROO_SIM_FX=menuroot -- the rewind seeds "
-                      "the cursor at 1, so every menu opens on the second "
-                      "item\n");
-        } else if (strcmp(buf, "stacktop") == 0) {
-            s_fx_stacktop = 1;
-            g_logger.write("menustack: KAROO_SIM_FX=stacktop -- the pop reads one "
-                      "entry PAST the top of the stack\n");
-        }
-    }
 
     n = sysdev::getEnv("KAROO_MENUSTACK_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
@@ -103,7 +82,7 @@ void MenuTree::pop()
     // the depth not yet decremented.  The two errors cancel and read
     // stack[depth - 1]; fixing either alone would change behaviour.  A pop at
     // depth 0 reads the depth byte as a node and wraps the depth to 0xff.
-    node = s_fx_stacktop ? stack_[depth] : (&depth_)[depth];
+    node = (&depth_)[depth];
     depth_  = (unsigned char)(depth - 1);
     node_   = node;
     cursor_ = savedCursor_[node];
@@ -122,7 +101,7 @@ void MenuTree::rewind()
     fx_init();
 
     depth_  = 0;
-    cursor_ = s_fx_menuroot ? 1 : 0;
+    cursor_ = 0;
     node_   = 0;
     leave_  = 0;
 
@@ -141,8 +120,6 @@ void MenuTree::rewind()
  * past its start (unsigned).  Down's wrap test is a signed compare. */
 
 
-static int s_fx_menuwrap = -1;
-
 void MenuTree::navigate(int now)
 {
 #define CHANGED changed_
@@ -152,14 +129,6 @@ void MenuTree::navigate(int now)
 #define DEPTH   depth_
 #define NODE    node_
 #define COUNT(n) childCount_[n]
-
-    if (s_fx_menuwrap < 0) {
-        char e[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
-        s_fx_menuwrap = (n > 0 && n < sizeof(e) && strcmp(e, "menuwrap") == 0);
-        if (s_fx_menuwrap)
-            g_logger.write("menunav: KAROO_SIM_FX=menuwrap -- DOWN does not wrap\n");
-    }
 
     CHANGED = 0;
     if (LOCK != 0) {
@@ -193,7 +162,7 @@ void MenuTree::navigate(int now)
     if (input::pressed(input::KEY_DOWN)) {
         if ((int)CUR < (int)COUNT(NODE) - 1)
             CUR = (unsigned char)(CUR + 1);
-        else if (!s_fx_menuwrap)
+        else
             CUR = 0;
     }
 #undef CHANGED

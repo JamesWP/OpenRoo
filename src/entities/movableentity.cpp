@@ -83,32 +83,6 @@ static const double K_IDLE_MS      = 5000.0;
 static const float  K_GLIDE_DROP   = 2.0f;
 static const double K_STAIRS_EPS     = 0.2;
 
-/* KAROO_SIM_FX, read by value: "floaty" divides the fall acceleration by five
- * so a fatal drop visibly slows; "hop" quadruples the jump-pad arc so a pad
- * throws the entity far higher than normal. */
-static int s_fx = -1;
-static void fx_init(void)
-{
-    if (s_fx >= 0)
-        return;
-    char buf[32];
-    uint32_t n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    s_fx = 0;
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcasecmp(buf, "floaty") == 0) {
-            s_fx = 1;
-            g_logger.write("entitymove: KAROO_SIM_FX=floaty -- fall accel %.3f, not %.3f\n",
-                      (double)(K_FALL_ACCEL / 5.0f), (double)K_FALL_ACCEL);
-        } else if (strcasecmp(buf, "hop") == 0) {
-            s_fx = 2;
-            g_logger.write("entitymove: KAROO_SIM_FX=hop -- arc bias %.1f, not %.1f\n",
-                      (double)(K_ARC_BIAS * 4.0f), (double)K_ARC_BIAS);
-        }
-    }
-}
-static inline float fall_accel(void) { return s_fx == 1 ? K_FALL_ACCEL / 5.0f : K_FALL_ACCEL; }
-static inline float arc_bias(void)   { return s_fx == 2 ? K_ARC_BIAS * 4.0f  : K_ARC_BIAS; }
-
 /* Copies eight bytes rather than assigning a double, so a stored NaN payload
  * survives identically. */
 static inline void copy8(void *dst, const void *src) { memcpy(dst, src, 8); }
@@ -158,8 +132,6 @@ static inline unsigned ftol32(double v)
 
 unsigned int MovableEntity::updateMovement()
 {
-    fx_init();
-
     if (moveDir_ == 0 && ((signed char)moveState_) == 0)
         anim_ = 0;
 
@@ -548,7 +520,7 @@ unsigned int MovableEntity::updateMovement()
                         pendingMove_ = 0;
 
                     double ts = ms * (double)K_MS_TO_S_F;
-                    double h  = ((double)fallSpeed_ - ts * (double)fall_accel()) * ts
+                    double h  = ((double)fallSpeed_ - ts * (double)K_FALL_ACCEL) * ts
                                 + (double)(unsigned)fallStartH_;
                     posY_ = (float)h;
                     heightCell_ = (signed char)((unsigned char)(unsigned)(long long)h + 1);  // PRESERVED: truncates to a byte and wraps at 256 rather than saturating
@@ -630,7 +602,7 @@ unsigned int MovableEntity::updateMovement()
                 unsigned char top = c->field1f1();
                 if (posY_ < (float)top) {
                     double v0 = sqrt(((double)(unsigned char)(top - (unsigned char)GH)
-                                      + (double)arc_bias()) * (double)K_GRAVITY_TWO);
+                                      + (double)K_ARC_BIAS) * (double)K_GRAVITY_TWO);
                     posY_ = (float)((v0 - ts * (double)K_GRAVITY_HALF) * ts
                                       + (double)(int)GH);
                     if (sound_b3_ != 0)

@@ -53,28 +53,6 @@ static void quad_dump(const void *data, uint32_t quads)
     g_logger.write("quadbatch: dumped %lu quads to %s\n", quads, path);
 }
 
-/* KAROO_QUAD_FX: noalpha forces ALPHABLENDENABLE off for every sub-object (no
- * visible effect where a sub-object's blend factors are already zero); nodraw
- * skips the DrawPrimitive, leaving every render state set as usual. */
-enum QuadFxMode { QUAD_FX_OFF = 0, QUAD_FX_NOALPHA, QUAD_FX_NODRAW };
-
-static QuadFxMode quad_fx(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = QUAD_FX_OFF;
-        if (sysdev::getEnv("KAROO_QUAD_FX", buf, sizeof(buf))) {
-            if (strcasecmp(buf, "noalpha") == 0) cached = QUAD_FX_NOALPHA;
-            else if (strcasecmp(buf, "nodraw") == 0) cached = QUAD_FX_NODRAW;
-        }
-        g_logger.write("quadbatch: FX mode = %s\n",
-                  cached == QUAD_FX_NOALPHA ? "noalpha" :
-                  cached == QUAD_FX_NODRAW  ? "nodraw"  : "off");
-    }
-    return (QuadFxMode)cached;
-}
-
 void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
                     RenderDevice *d3d)
 {
@@ -105,9 +83,7 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
             if (sub->pTexture)
                 bindTexture(d3d, 0, sub->pTexture);
 
-            d3d->SetBlend(quad_fx() != QUAD_FX_NOALPHA
-                          ? blendFromTheme(sub->dwBlendSrc, sub->dwBlendDst)
-                          : BlendState::off());
+            d3d->SetBlend(blendFromTheme(sub->dwBlendSrc, sub->dwBlendDst));
 
             // The draw itself only runs for draw-kind 2, but the
             // render state above it is set for every sub-object regardless;
@@ -118,11 +94,9 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
                 m4_identity(&ident);
                 d3d->SetWorld(ident);
                 quad_dump(pl->wallStripVerts(), (uint32_t)pl->wallStripCount());
-                bool ok = true;
-                if (quad_fx() != QUAD_FX_NODRAW)
-                    ok = d3d->DrawBuffer(
-                        Prim::TriangleList, pl->wallStripBuffer(d3d), 0,
-                        (uint32_t)pl->wallStripCount() * 6);
+                bool ok = d3d->DrawBuffer(
+                    Prim::TriangleList, pl->wallStripBuffer(d3d), 0,
+                    (uint32_t)pl->wallStripCount() * 6);
 
                 static std::atomic<long> logged = 0;
                 if (++logged <= QUAD_LOG_FIRST)

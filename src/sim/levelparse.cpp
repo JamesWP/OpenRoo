@@ -18,10 +18,6 @@
  *   - Both loaders return 0 on every path.
  *   - Paths are formatted unbounded into 256-byte buffers.
  *
- * Negative controls (KAROO_SIM_FX): "levelshift" loads level N+1 whenever N is
- * asked for, failing every recording; "samelevel" saves the map name after the
- * read, so mapChanged is always 0 (the suite cannot see it).
- * KAROO_CRT_FX=path swaps the path's two parts, so no level loads.
  * KAROO_LEVELPARSE_DIAG=1 logs every load, the peek and the sound release. */
 
 #include <stdint.h>
@@ -43,9 +39,6 @@
 namespace audiodev { class Buffer; }
 
 
-static int s_fx_samelevel  = 0;
-static int s_fx_crtpath    = 0;
-static int s_fx_levelshift = 0;
 static int s_diag         = 0;
 static int s_init         = 0;
 
@@ -60,31 +53,6 @@ static void fx_init(void)
     if (s_init)
         return;
     s_init = 1;
-
-    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcmp(buf, "samelevel") == 0) {
-            s_fx_samelevel = 1;
-            g_logger.write("levelparse: KAROO_SIM_FX=samelevel -- the previous map "
-                      "name is copied AFTER the read, so the +0x10 "
-                      "map-changed flag is stuck at 0\n");
-        } else if (strcmp(buf, "levelshift") == 0) {
-            s_fx_levelshift = 1;
-            g_logger.write("levelparse: KAROO_SIM_FX=levelshift -- the level-name "
-                      "lookup reads entry N+1, so every load opens the NEXT "
-                      "level's map and script\n");
-        }
-    }
-
-    // KAROO_CRT_FX=path: swapping the two %s arguments breaks the path's
-    // structure, so every recording fails at load.
-    n = sysdev::getEnv("KAROO_CRT_FX", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "path") == 0) {
-        s_fx_crtpath = 1;
-        g_logger.write("levelparse: KAROO_CRT_FX=path -- the two %%s arguments to "
-                  "our sprintf are swapped, so every level path is "
-                  "nonsense\n");
-    }
 
     n = sysdev::getEnv("KAROO_LEVELPARSE_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
@@ -122,20 +90,12 @@ Sim_ParseLevelFiles(Game *self, const char *name)
 
     inline_strcpy(self->world()->levelNameBuffer(), name);
 
-    if (s_fx_crtpath)
-        snprintf(path, sizeof(path), "%s\134Levels\134%s", name, self->gameDir());
-    else
-        snprintf(path, sizeof(path), "%s\134Levels\134%s", self->gameDir(), name);
+    snprintf(path, sizeof(path), "%s\134Levels\134%s", self->gameDir(), name);
 
-    // Saved before the read overwrites it: the mapChanged mechanism.  The
-    // samelevel control moves this copy after the read.
-    if (!s_fx_samelevel)
-        inline_strcpy(prev, self->world()->map()->mapName());
+    // Saved before the read overwrites it: the mapChanged mechanism.
+    inline_strcpy(prev, self->world()->map()->mapName());
 
     ok = self->world()->map()->readFile(path);
-
-    if (s_fx_samelevel)
-        inline_strcpy(prev, self->world()->map()->mapName());
 
     if ((char)ok != 0) {
         self->world()->extraObjects()->releaseSounds();
@@ -176,10 +136,6 @@ Sim_ParseLevelFiles(Game *self, const char *name)
   unsigned int  
 Sim_SetCurrentLevelName(Game *self, unsigned int levelNo)
 {
-
-    if (s_fx_levelshift)
-        levelNo = levelNo + 1;
-
     inline_strcpy(self->world()->levelNameBuffer(),
                   self->session()->levelNameTableEntry((unsigned char)(levelNo & 0xff)));
 
@@ -222,13 +178,9 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
                        self->world()->levelName());
 
     // Saved before the read (see the top of the file).
-    if (!s_fx_samelevel)
-        inline_strcpy(prev, self->world()->map()->mapName());
+    inline_strcpy(prev, self->world()->map()->mapName());
 
     ok = self->world()->map()->readFile(path);
-
-    if (s_fx_samelevel)
-        inline_strcpy(prev, self->world()->map()->mapName());
 
     if ((char)ok != 0) {
         self->world()->extraObjects()->releaseSounds();

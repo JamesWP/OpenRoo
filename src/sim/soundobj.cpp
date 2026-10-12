@@ -1,9 +1,5 @@
 /* Each sound is loaded from a stack copy of its name, and only when its
- * "enabled" word is set.
- *
- * KAROO_SIM_FX=soundswap is a negative control: two of the foe's sounds swap
- * names.  Sound is outside every asserted field, so the suite is expected to
- * pass: the effect is audible, not simulated. */
+ * "enabled" word is set. */
 
 #include <stdint.h>
 #include "sysdev.h"
@@ -14,8 +10,6 @@
 #include "soundmanager.h"
 #include "voicepool.h"
 #include "soundobj.h"
-
-static int s_fx = -1;
 
 static audiodev::Buffer *acq(Game *g, const SoundAssetName *asset)
 {
@@ -38,18 +32,6 @@ Sim_AcquireObjectSoundBuffersForIndex(Game *g, unsigned int objArg)
     const SoundAssetName *assetAB = g->audio()->themeSound(ThemeSound::MoveIceSliding);
     const SoundAssetName *assetAF = g->audio()->themeSound(ThemeSound::MoveSliding);
     unsigned int last;
-
-    if (s_fx < 0) {
-        char e[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
-        s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "soundswap") == 0);
-        if (s_fx)
-            g_logger.write("soundobj: KAROO_SIM_FX=soundswap -- +0xab/+0xaf swapped\n");
-    }
-    if (s_fx) {
-        assetAB = g->audio()->themeSound(ThemeSound::MoveSliding);
-        assetAF = g->audio()->themeSound(ThemeSound::MoveIceSliding);
-    }
 
     if (g->audio()->themeSound(ThemeSound::Crystal)->enabled)
         g->world()->foeSlot(idx)->setPool9f(acq_pool(g, 3, g->audio()->themeSound(ThemeSound::Crystal)));

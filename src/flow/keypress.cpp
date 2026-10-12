@@ -1,7 +1,3 @@
-/* KAROO_SIM_FX=slotshift is a negative control: loading save slot k restores
- * slot k+1.  Every recording loads a slot through here, so it must fail them
- * all. */
-
 #include "keycodes.h"
 #include <stdint.h>
 #include "sysdev.h"
@@ -29,7 +25,6 @@
 #include "keys.h"
 
 
-static int s_fx = -1;
 
 /* The key-rebind prompts: copy the action name, arm key capture and pop back. */
 static void rebind(Game *game, const char *name, unsigned char code)
@@ -113,14 +108,6 @@ static void option_edit(Game *game, unsigned char key)
   void  
 Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
 {
-
-    if (s_fx < 0) {
-        char e[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
-        s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "slotshift") == 0);
-        if (s_fx)
-            g_logger.write("keypress: KAROO_SIM_FX=slotshift -- load restores slot k+1\n");
-    }
 
     int entry = 0;
     if (self->frontEnd()->rebindActive() == 0 && self->frontEnd()->textEntryActive() == 0) {
@@ -283,8 +270,6 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         unsigned int node = self->frontEnd()->menu()->nodeRef();
         if (node >= 200 && (int)node < (int)(n + 200)) {
             unsigned char slot = (unsigned char)(node + 0x38);
-            if (s_fx)
-                slot = (unsigned char)(slot + 1);
             if (self->frontEnd()->saveSlots()->slot(slot)->inUse != 0) {
                 Sim_ClearGameState(self);
                 SaveGame_RestoreFromSaveSlot(self->frontEnd(), self->session(), self->world(), slot);

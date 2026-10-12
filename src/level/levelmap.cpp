@@ -16,10 +16,7 @@
  *      10000 are zeroed first (not the rest of the record, not the
  *      snapshot).
  *   5. End of file is not detected: a truncated file gives 0xff cells, and
- *      only a failed open returns 0.
- *
- * KAROO_JJM_FX=flipx is a negative control: the map is mirrored left to right
- * as it is read. */
+ *      only a failed open returns 0. */
 
 #include <strings.h>
 #include "sysdev.h"
@@ -32,19 +29,6 @@
 #include <stdlib.h>
 
 #define LM_LOG_FIRST     8
-
-static bool fx_flipx(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (sysdev::getEnv("KAROO_JJM_FX", buf, sizeof(buf)))
-            cached = (strcasecmp(buf, "flipx") == 0);
-        g_logger.write("levelmap: FX mode = %s\n", cached ? "flipx" : "off");
-    }
-    return cached != 0;
-}
 
 /* The four file bytes of a tile. */
 static void clear_file_bytes(Tile *t)
@@ -84,8 +68,7 @@ int LevelMap::readFile(const char *path)
 
     for (y = 0; y < height; y++) {
         for (x = 0; x < width; x++) {
-            unsigned dx = fx_flipx() ? (width - 1 - x) : x;
-            Tile *cell = tile((int)dx, (int)y);
+            Tile *cell = tile((int)x, (int)y);
             // The stored byte is the low byte of get's result: end of file
             // lands as 0xff.
             cell->setHeight((unsigned char)in.get());
@@ -93,14 +76,12 @@ int LevelMap::readFile(const char *path)
             cell->setParam((unsigned char)in.get());
             cell->setContents((unsigned char)in.get());
 
-            // The border clear comes after the read, and tests the loop's x,
-            // not the flipped one; under flipx the border is the border either
-            // way.
+            // The border clear comes after the read.
             if (y == 0 || x == 0 || y == height - 1 || x == width - 1)
                 clear_file_bytes(cell);
 
             // The snapshot copy, after the clear.
-            Tile *snap = snapshot((int)dx, (int)y);
+            Tile *snap = snapshot((int)x, (int)y);
             snap->setHeight(cell->height());
             snap->setObjectMarker(cell->objectMarker());
             snap->setParam(cell->param());

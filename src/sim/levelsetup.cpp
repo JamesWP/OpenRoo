@@ -25,13 +25,8 @@
  *     param - 100 and 5000 ms.
  *   - The census reset leaves field_e5 alone.
  *
- * Negative controls (KAROO_SIM_FX): "setupflip" transposes u and v at the one
- * place the walk forms a cell address, so the whole level transposes
- * coherently; "noshadow" keeps bombable cells' items in the open, which
- * moves only the census split, not the total, and is safe on both gates.
  * KAROO_SETUP_DIAG=1 logs the extents, the spawn census and the totals. */
 
-#include <strings.h>
 #include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
@@ -82,8 +77,6 @@ typedef double         __attribute__((aligned(1))) f64_ua;
 
 /* The Player is a fixed part of the World. */
 
-static int s_fx_setupflip = 0;
-static int s_fx_noshadow  = 0;
 static int s_diag         = 0;
 static int s_init         = 0;
 
@@ -98,32 +91,14 @@ static void fx_init(void)
         return;
     s_init = 1;
 
-    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcmp(buf, "setupflip") == 0) {
-            s_fx_setupflip = 1;
-            g_logger.write("levelsetup: KAROO_SIM_FX=setupflip -- the tilemap walk "
-                      "transposes u and v at the one point it forms the "
-                      "index\n");
-        } else if (strcmp(buf, "noshadow") == 0) {
-            s_fx_noshadow = 1;
-            g_logger.write("levelsetup: KAROO_SIM_FX=noshadow -- a type-0x17 cell "
-                      "no longer moves its item byte to the shadow slot, so "
-                      "the item counts land in the other pair of counters\n");
-        }
-    }
-
     n = sysdev::getEnv("KAROO_SETUP_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
         s_diag = 1;
 }
 
-/* The cell at (u, v).  The setupflip control transposes the two terms here and
- * nowhere else, so everything moves together. */
+/* The cell at (u, v). */
 static inline Tile *CELL(LevelMap *m, unsigned u, unsigned v)
 {
-    if (s_fx_setupflip)
-        return m->tile((int)v, (int)u);
     return m->tile((int)u, (int)v);
 }
 
@@ -131,8 +106,6 @@ static inline Tile *CELL(LevelMap *m, unsigned u, unsigned v)
  */
 static inline Tile *SCELL(LevelMap *m, int u, int v)
 {
-    if (s_fx_setupflip)
-        return m->tile(v, u);
     return m->tile(u, v);
 }
 
@@ -176,23 +149,6 @@ Sim_FindTileByTypeMarker(LevelMap *map, unsigned int markerArg,
     } while (v < map->extentV());
 
     return 0;
-}
-
-/* KAROO_CRT_FX=seed flips the low bit of the level seed.  Neither gate sees
- * it: nothing asserted depends on this seed (the layout comes from the .jjm).
- * KAROO_CRT_DIAG=1 is the census that shows the seed is live. */
-static unsigned int levelsetup_seed_fx(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (sysdev::getEnv("KAROO_CRT_FX", buf, sizeof(buf)) &&
-            strcasecmp(buf, "seed") == 0)
-            cached = 1;
-        g_logger.write("levelsetup: CRT FX seed xor = %d\n", cached);
-    }
-    return (unsigned int)cached;
 }
 
 /* KAROO_CRT_DIAG=1 logs the value in the game's seed global right after it is
@@ -295,7 +251,7 @@ Sim_SetupLevelObjects(Game *self)
     // seed.
     {
         const unsigned int seed =
-            (unsigned int)hooks_GameTime(0) ^ levelsetup_seed_fx();
+            (unsigned int)hooks_GameTime(0);
         crt_srand(seed);
         levelsetup_seed_diag(seed);
     }
@@ -351,8 +307,6 @@ Sim_SetupLevelObjects(Game *self)
                     self->world()->census()->bombables++;
                     t->setBusy(0);
                     item = t->contents();
-                    if (s_fx_noshadow)
-                        item = 0;  // KAROO_SIM_FX=noshadow: the move never happens
                     if (item != 0) {
                         t->setField202(item);
                         t->setContents(0);

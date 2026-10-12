@@ -8,8 +8,8 @@
  * The x87 helpers keep a value on the FPU across a chain where the result
  * depends on it, rather than trusting the compiler's spills.
  *
- * KAROO_SIM_FX=tickorder, a negative control: the lift and platform loops run in
- * the other order.  Both change the tile map, so the order is observable. */
+ * The lifts tick before the platforms.  Both change the tile map, so the order
+ * is observable. */
 
 #include "gametick.h"
 #include "keycodes.h"
@@ -30,9 +30,6 @@
 #include "keys.h"
 #include "playtick.h"
 #include "playflow.h"
-
-
-static int s_fx = -1;
 
 /* float(sin(now * 0.0025f) * 0.2 + base), evaluated in extended precision. */
 static float camera_sway(double now, float base)
@@ -72,13 +69,8 @@ static void advance_clock(Game *self, double dt, double now)
 static void tick_level_objects(Game *self)
 {
     Tile_DebugDrawMap(self);
-    if (!s_fx) {
-        self->world()->tickLifts();
-        self->world()->tickPlatforms();
-    } else {
-        self->world()->tickPlatforms();
-        self->world()->tickLifts();
-    }
+    self->world()->tickLifts();
+    self->world()->tickPlatforms();
     self->world()->tickFallings();
     self->world()->tickBridges();
 }
@@ -89,14 +81,6 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     Player *pl = self->world()->player();
 
     input::update();
-
-    if (s_fx < 0) {
-        char e[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
-        s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "tickorder") == 0);
-        if (s_fx)
-            g_logger.write("gametick: KAROO_SIM_FX=tickorder -- platforms tick before lifts\n");
-    }
 
     Play_LoadSounds(self);
     if (self->state() == GameState::Quitting && input::pressed(input::KEY_RETURN)) {

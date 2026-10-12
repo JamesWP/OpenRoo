@@ -15,8 +15,7 @@ struct VertexBuffer;
  * region [pRingCurrent, pRingTail].  Generators claim at pRingCurrent;
  * environments age and retire. */
 struct ParticleNode {
-    /* The diffuse the fills write: dwDiffuse, or the KAROO_PARTICLE_FX=tint
-     * colour. */
+    /* The diffuse the fills write. */
     uint32_t colour() const;
 
     ParticleNode *pPrev;

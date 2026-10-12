@@ -54,28 +54,6 @@ static void dsb_census(void)
               g_nBorrowerCount, g_nWasFullyReleased, g_nFullyReleased);
 }
 
-/* KAROO_DSB_FX=stickyentry is a negative control: an entry is never fully
- * released, so every sound stays loaded for good.  It can only leak, never
- * free something in use, so both gates can host it; KAROO_DSB_DIAG's
- * fullyReleased count shows it (0 of N). */
-enum DsbFx { DSB_FX_OFF = 0, DSB_FX_STICKYENTRY = 1 };
-
-static DsbFx dsb_fx(void)
-{
-    static int cached = -1;
-    if (cached >= 0) return (DsbFx)cached;
-    char buf[32];
-    uint32_t n = sysdev::getEnv("KAROO_DSB_FX", buf, sizeof(buf));
-    DsbFx fx = DSB_FX_OFF;
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcasecmp(buf, "stickyentry") == 0) fx = DSB_FX_STICKYENTRY;
-    }
-    g_logger.write("doublesoundbuff: FX mode = %s\n",
-              fx == DSB_FX_STICKYENTRY ? "stickyentry" : "off");
-    cached = (int)fx;
-    return fx;
-}
-
 /* Both buffers, then both lists, then the two lent-out flags. */
 doublesoundbuff::doublesoundbuff()
     : dwMasterTaken_(0), dwSpareTaken_(0)
@@ -193,9 +171,6 @@ int doublesoundbuff::borrowerCount()
 int doublesoundbuff::isFullyReleased()
 {
     ++g_nFullyReleased; { static unsigned long seen; dsb_first("IsFullyReleased", &seen); }
-
-    if (dsb_fx() == DSB_FX_STICKYENTRY)
-        return 0;  // KAROO_DSB_FX=stickyentry: nothing is ever freed
 
     if (borrowerCount() > 0)
         return 0;

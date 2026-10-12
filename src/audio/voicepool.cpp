@@ -44,27 +44,6 @@ static void pool_census(void)
               g_nCopyFail);
 }
 
-/* KAROO_POOL_FX=onevoice is a negative control: Clone builds one
- * voice, whatever count is asked for.  A one-voice pool cannot overlap a sound
- * with itself.  KAROO_POOL_DIAG's voice total reads it directly. */
-enum PoolFx { POOL_FX_OFF = 0, POOL_FX_ONEVOICE = 1 };
-
-static PoolFx pool_fx(void)
-{
-    static int cached = -1;
-    if (cached >= 0) return (PoolFx)cached;
-    char buf[32];
-    uint32_t n = sysdev::getEnv("KAROO_POOL_FX", buf, sizeof(buf));
-    PoolFx fx = POOL_FX_OFF;
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcasecmp(buf, "onevoice") == 0) fx = POOL_FX_ONEVOICE;
-    }
-    g_logger.write("voicepool: FX mode = %s\n",
-              fx == POOL_FX_ONEVOICE ? "onevoice" : "off");
-    cached = (int)fx;
-    return fx;
-}
-
 /* PRESERVED: it halts and re-triggers the same slot; the increment only
  * decides where the next call lands.  The cursor is stored unwrapped before
  * the trigger and wrapped after it, with a signed compare.  Only the voices
@@ -144,8 +123,6 @@ bool VoicePool::clone(int count, audiodev::Device &dev,
 {
     ++g_nClone; { static unsigned long seen; pool_first("Clone", &seen); }
     pool_census();
-    if (pool_fx() == POOL_FX_ONEVOICE && count > 1)
-        count = 1;  // KAROO_POOL_FX=onevoice
 
     if (count < 1)
         return false;

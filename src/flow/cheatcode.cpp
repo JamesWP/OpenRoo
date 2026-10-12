@@ -11,11 +11,7 @@
  *
  * PRESERVED: jjmapnr and jjmap are prefix compares (7 and 5 bytes), and
  * "jjmapnr..." also matches jjmap; it misses only because the jjmapnr branch
- * clears the buffer first, and only when it was taken (strlen > 8).
- *
- * KAROO_SIM_FX=cheatlife is a negative control: mausuruh gives two lives.  No
- * recording types a cheat, so the suite is expected to pass; it waits for a
- * recording that does. */
+ * clears the buffer first, and only when it was taken (strlen > 8). */
 
 #include "keys.h"
 #include "keycodes.h"
@@ -41,7 +37,6 @@
 
 class CDM;
 
-static int s_fx = -1;
 
 static int streq(const unsigned char *a, const char *b)
 {
@@ -55,14 +50,6 @@ Flow_HandleTypedCheatCode(Game *self)
     unsigned char *buf = self->frontEnd()->cheatBuffer();
     unsigned char frame[256];
     char path[384];
-
-    if (s_fx < 0) {
-        char e[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
-        s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "cheatlife") == 0);
-        if (s_fx)
-            g_logger.write("cheatcode: KAROO_SIM_FX=cheatlife -- mausuruh gives 2\n");
-    }
 
     self->frontEnd()->cheatEntry()->poll((unsigned int)(long long)*self->world()->clock());
     if (self->frontEnd()->cheatEntry()->active() != 0)
@@ -142,7 +129,7 @@ Flow_HandleTypedCheatCode(Game *self)
     }
 
     if (streq(buf, "mausuruh"))
-        Cheat_AddLife(self, s_fx ? 2 : 1);
+        Cheat_AddLife(self, 1);
     if (streq(buf, "sportsman"))
         Cheat_AddGlide(self);
     if (streq(buf, "boommaker"))

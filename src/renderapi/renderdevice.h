@@ -109,11 +109,9 @@ public:
     virtual bool EnumerateAdapters(std::vector<Adapter> &out) const = 0;
 
     /* The modes Create's nModeIndex indexes, on the given adapter (NULL for
-     * the default): the 4:3 modes of 32 bits and then of 16.  anyAspect lifts
-     * the 4:3 restriction, which makes the indices disagree with Create's. */
+     * the default): the 4:3 modes of 32 bits and then of 16. */
     virtual bool EnumerateDisplayModes(const AdapterId *adapter,
-                                       std::vector<DisplayMode> &out,
-                                       bool anyAspect = false) const = 0;
+                                       std::vector<DisplayMode> &out) const = 0;
 
     // ── Display ──
 

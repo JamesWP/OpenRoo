@@ -29,14 +29,7 @@
  *   - the device is re-read before every call, and both inner loop bounds
  *     every pass;
  *   - SPECULARENABLE is turned off for every type-2 object, including those
- *     that never turned it on and those with no sub-objects.
- *
- * KAROO_BRIDGE_FX, visual controls:
- *   tint      diffuse 0xFFFF00FF: only this code builds these vertices, so a
- *             magenta deck is ours;
- *   nodraw    skip the draw, leaving every render state as set;
- *   backward  negate the scroll: a direction change, so it proves the
- *             fmod and clock arithmetic. */
+ *     that never turned it on and those with no sub-objects. */
 
 #include <strings.h>
 #include <atomic>
@@ -50,28 +43,6 @@
 
 #define BRIDGE_FVF        VertexFormat::Diffuse2
 #define BRIDGE_LOG_FIRST  8
-
-enum BridgeFxMode { BRIDGE_FX_OFF = 0, BRIDGE_FX_TINT, BRIDGE_FX_NODRAW,
-                    BRIDGE_FX_BACKWARD };
-
-static BridgeFxMode bridge_fx(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = BRIDGE_FX_OFF;
-        if (sysdev::getEnv("KAROO_BRIDGE_FX", buf, sizeof(buf))) {
-            if (strcasecmp(buf, "tint") == 0)          cached = BRIDGE_FX_TINT;
-            else if (strcasecmp(buf, "nodraw") == 0)   cached = BRIDGE_FX_NODRAW;
-            else if (strcasecmp(buf, "backward") == 0) cached = BRIDGE_FX_BACKWARD;
-        }
-        g_logger.write("bridgesurf: FX mode = %s\n",
-                  cached == BRIDGE_FX_TINT     ? "tint" :
-                  cached == BRIDGE_FX_NODRAW   ? "nodraw" :
-                  cached == BRIDGE_FX_BACKWARD ? "backward" : "off");
-    }
-    return (BridgeFxMode)cached;
-}
 
 /* KAROO_BRIDGE_DIAG=1 logs each distinct (bridge, axis, direction, n) once
  * over the run, to show which orientations a level reaches, and so whether
@@ -115,9 +86,6 @@ void BridgeSurf_Draw(const BridgeSurfSet &bridges, ThemeAssetBlock *theme,
     world.m[0] = world.m[5] = world.m[10] = world.m[15] = 1.0f;
     d3d->SetWorld(world);
 
-    const uint32_t diffuse =
-        bridge_fx() == BRIDGE_FX_TINT ? 0xFFFF00FF : 0xFFFFFFFF;
-
     ThemeObjectTypeSlot *slot = theme->slot(THEME_OBJ_BRIDGE);
     if (slot->instanceCount() == 0)
         return;
@@ -159,17 +127,10 @@ void BridgeSurf_Draw(const BridgeSurfSet &bridges, ThemeAssetBlock *theme,
                     // BridgeObject::buildSurface builds the vertices.
                     BridgeVertex v[4];
                     BridgeSurfaceInfo info;
-                    if (!cv->buildSurface(v, t,
-                                          bridge_fx() == BRIDGE_FX_BACKWARD,
-                                          &info))
+                    if (!cv->buildSurface(v, t, &info))
                         continue;
-                    for (int q = 0; q < 4; q++)
-                        v[q].diffuse = diffuse;
 
-                    bool ok = true;
-                    if (bridge_fx() != BRIDGE_FX_NODRAW)
-                        ok = d3d->Draw(
-                            Prim::TriangleStrip, BRIDGE_FVF, v, 4, 0);
+                    bool ok = d3d->Draw(Prim::TriangleStrip, BRIDGE_FVF, v, 4, 0);
 
                     static std::atomic<long> logged = 0;
                     if (++logged <= BRIDGE_LOG_FIRST)

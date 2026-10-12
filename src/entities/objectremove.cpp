@@ -9,11 +9,8 @@
 #include "objectremove.h"
 #include "movableentity.h"
 
-/* KAROO_SIM_FX=keepid and =lowid are negative controls on the free list;
- * KAROO_REMOVE_DIAG=1 logs a census of claims and the first destroy and shift.
- */
-static int s_fx_keepid = 0;
-static int s_fx_lowid  = 0;
+/* KAROO_REMOVE_DIAG=1 logs a census of claims and the first destroy and
+ * shift. */
 static int s_diag      = 0;
 static int s_init      = 0;
 
@@ -25,21 +22,6 @@ static void fx_init(void)
     if (s_init)
         return;
     s_init = 1;
-
-    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "keepid") == 0) {
-        s_fx_keepid = 1;
-        g_logger.write("objectremove: KAROO_SIM_FX=keepid -- the ID free-list "
-                  "compaction shift is suppressed, so the list keeps the "
-                  "removed ID and every later tick addresses the wrong "
-                  "object\n");
-    }
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "lowid") == 0) {
-        s_fx_lowid = 1;
-        g_logger.write("objectremove: KAROO_SIM_FX=lowid -- the ID allocator's gap "
-                  "scan BREAKS on the first hit, so it issues the lowest "
-                  "unused ID instead of the highest\n");
-    }
 
     n = sysdev::getEnv("KAROO_REMOVE_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
@@ -69,24 +51,18 @@ unsigned char Object_ClaimSpareId(unsigned char *ids, unsigned char *count)
     //     // PRESERVED: the gap scan does not break, so each unused candidate
     //     // overwrites the last and the ID issued is the highest unused value below
     //     // the count, not the lowest.  The two differ once two or more IDs are
-    //     // free at once, as after several removals in one frame.  KAROO_SIM_FX=lowid
-    //     // adds the break: it changes which valid ID an object gets, never whether
-    //     // it is valid.
+    //     // free at once, as after several removals in one frame.
     for (unsigned char cand = 0; cand < n; ++cand) {
         unsigned char used = 0;
         for (i = 0; i < n; ++i)
             if (ids[i] == cand)
                 used = 1;
-        if (!used) {
+        if (!used)
             id = cand;
-            if (s_fx_lowid)
-                break;
-        }
     }
 
-    //     // The census counts gaps per claim and how often lowest and highest
-    //     // differ, so a passing lowid run can be told from one where lowid never
-    //     // acted.
+    //     // The census counts gaps per claim and how often the lowest unused ID
+    //     // differs from the one issued.
     if (s_diag) {
         unsigned char lowest = id, gaps = 0;
         for (unsigned char cand = 0; cand < n; ++cand) {
@@ -147,8 +123,7 @@ void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
             unsigned char c = pIds[i];
 
             if (found && i != 0) {
-                if (!s_fx_keepid)
-                    pIds[i - 1] = c;
+                pIds[i - 1] = c;
                 if (s_diag && !s_logged_shift) {
                     s_logged_shift = 1;
                     g_logger.write("objectremove: first compaction shift -- "

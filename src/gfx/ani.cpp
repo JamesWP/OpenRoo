@@ -12,11 +12,7 @@
  *     fps = atoi(token[3]).
  *   - If there are more than 4 tokens and token[4] lowercases to "r", the
  *     slot's reverse flag is set.
- * The destination table is cleared up front.
- *
- * KAROO_ANI_FX=freeze forces every loaded slot to one frame (numFrames = 1),
- * so animated models hold their first frame while everything else about them
- * stays. */
+ * The destination table is cleared up front. */
 
 #include <strings.h>
 #include <stdio.h>
@@ -55,19 +51,6 @@ static const struct { const char *key; unsigned off; } ANI_SLOTS[] = {
     { "turn_left",        0x160 }, { "turn_right",       0x170 },
 };
 #define ANI_SLOT_COUNT (sizeof(ANI_SLOTS) / sizeof(ANI_SLOTS[0]))
-
-static bool fx_freeze(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (sysdev::getEnv("KAROO_ANI_FX", buf, sizeof(buf)))
-            cached = (strcasecmp(buf, "freeze") == 0);
-        g_logger.write("ani: FX mode = %s\n", cached ? "freeze" : "off");
-    }
-    return cached != 0;
-}
 
 /* 'A'..'Z' += 0x20. */
 static char ani_lower(char c)
@@ -118,9 +101,6 @@ int AnimTable::load(const char *path)
         slot->firstFrame_ = atoi(tok[1].c_str());
         slot->numFrames_  = atoi(tok[2].c_str());
         slot->fps_        = atoi(tok[3].c_str());
-
-        if (fx_freeze())
-            slot->numFrames_ = 1;  // hold the first frame
 
         if (count > 4) {
             std::transform(tok[4].begin(), tok[4].end(), tok[4].begin(), ani_lower);

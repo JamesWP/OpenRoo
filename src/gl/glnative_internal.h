@@ -122,8 +122,7 @@ public:
     const char *lastError() const override { return lastError_; }
     bool EnumerateAdapters(std::vector<Adapter> &out) const override;
     bool EnumerateDisplayModes(const AdapterId *adapter,
-        std::vector<DisplayMode> &out,
-        bool anyAspect) const override;
+        std::vector<DisplayMode> &out) const override;
     unsigned width() const override { return mode_->dwWidth; }
     unsigned height() const override { return mode_->dwHeight; }
     unsigned overlayWidth() const override;

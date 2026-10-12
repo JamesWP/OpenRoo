@@ -40,9 +40,9 @@ bool GLRenderDevice::headless() const
     return cached != 0;
 }
 
-/* The display's modes: 4:3 only unless anyAspect, 32-bit ones and then
- * 16-bit ones, each group sorted by size. */
-static void list_modes(unsigned display, bool anyAspect, std::vector<DisplayMode> &out)
+/* The display's 4:3 modes, 32-bit ones and then 16-bit ones, each group
+ * sorted by size. */
+static void list_modes(unsigned display, std::vector<DisplayMode> &out)
 {
     std::vector<windev::DisplaySize> sizes;
     windev::listDisplayModes(display, sizes);
@@ -53,7 +53,7 @@ static void list_modes(unsigned display, bool anyAspect, std::vector<DisplayMode
     for (unsigned depth : { 32u, 16u })
         for (const windev::DisplaySize &s : sizes) {
             const float aspect = (float)((double)s.width / (double)s.height);
-            if (anyAspect || (aspect < 1.4f && aspect > 1.3f))
+            if (aspect < 1.4f && aspect > 1.3f)
                 out.push_back({ s.width, s.height, depth });
         }
 }
@@ -72,18 +72,6 @@ static bool find_display(const AdapterId *id, windev::DisplayInfo *out)
             if (memcmp(d.stableId, id, sizeof(AdapterId)) == 0)
                 *out = d;
     return true;
-}
-
-/* KAROO_DEVICE_FX: controls that change geometry, which only Create decides.
- *   halfvp -- halve the viewport: the scene renders into the top-left
- *             quarter of the screen.
- *   mode0  -- force nModeIndex to 0: the game comes up in a different
- *             resolution from openroo.ini's. */
-static bool devfx_is(const char *name)
-{
-    char buf[16];
-    return sysdev::getEnv("KAROO_DEVICE_FX", buf, sizeof(buf))
-           && strcasecmp(buf, name) == 0;
 }
 
 /* The objects every draw shares: the program, a vertex array, the uniform
@@ -156,15 +144,13 @@ bool GLRenderDevice::Create(windev::Window *window, const AdapterId *adapter, in
         }
         n->window  = window;
         n->display = display.id;
-        list_modes(display.id, false, modes_);
+        list_modes(display.id, modes_);
     }
     if (modes_.empty()) {
         strcpy(lastError_, "No usable display mode.");
         return false;
     }
 
-    if (devfx_is("mode0"))
-        nModeIndex = 0;
     // An index that is out of range gets the first mode.
     if (nModeIndex < 0 || (size_t)nModeIndex >= modes_.size())
         nModeIndex = 0;
@@ -243,12 +229,6 @@ bool GLRenderDevice::Create(windev::Window *window, const AdapterId *adapter, in
         n->vpH = (unsigned)((uint64_t)w * n->modeH / n->modeW);
     n->vpX = (w - n->vpW) / 2;
     n->vpY = (h - n->vpH) / 2;
-    if (devfx_is("halfvp")) {
-        n->vpW = w / 2;
-        n->vpH = h / 2;
-        n->vpX = 0;
-        n->vpY = h - n->vpH;
-    }
     n->dirty = GLDirty::All;
 
     g_logger.write("renderdevice: Create display=%u (%s) mode=%d -> %lux%lux%lu, "
@@ -280,13 +260,12 @@ bool GLRenderDevice::EnumerateAdapters(std::vector<Adapter> &out) const
 }
 
 bool GLRenderDevice::EnumerateDisplayModes(const AdapterId *adapter,
-                                         std::vector<DisplayMode> &out,
-                                         bool anyAspect) const
+                                         std::vector<DisplayMode> &out) const
 {
     windev::DisplayInfo display;
     if (!find_display(adapter, &display))
         return false;
-    list_modes(display.id, anyAspect, out);
+    list_modes(display.id, out);
     return !out.empty();
 }
 

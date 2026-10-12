@@ -1,6 +1,3 @@
-/* KAROO_LAUNCHERDLG_FX=allaspect is a negative control: the device dialog
- * lists every aspect ratio instead of 4:3 only. */
-
 #include <strings.h>
 #include "sysdev.h"
 #include <stdio.h>
@@ -18,18 +15,6 @@
 static const char SND_SWITCH[] = "waves\\switch.wav";
 static const char SND_IMPACT[] = "waves\\mineimpact.wav";
 static const char SND_UGH[]    = "waves\\ugh.wav";
-
-static bool fx_allaspect()
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = sysdev::getEnv("KAROO_LAUNCHERDLG_FX", buf, sizeof(buf))
-                 && strcasecmp(buf, "allaspect") == 0;
-        g_logger.write("launcherdlg: FX mode = %s\n", cached ? "allaspect" : "off");
-    }
-    return cached != 0;
-}
 
 /* The display adapters and modes, from the render device, and the choice into
  * the Config. */
@@ -64,7 +49,7 @@ public:
         const AdapterId *id = adapter >= 0 && adapters_[adapter].hasGuid
                             ? &adapters_[adapter].id : NULL;
         std::vector<DisplayMode> modes;
-        if (!dev_.EnumerateDisplayModes(id, modes, fx_allaspect()))
+        if (!dev_.EnumerateDisplayModes(id, modes))
             return false;
         for (size_t i = 0; i < modes.size(); i++) {
             char text[64];

@@ -33,9 +33,7 @@
  *     destroys a shared buffer), re-reading the slot for each, and unlike the
  *     foe remove leaves the slot dangling.
  *
- * KAROO_SIM_FX=shortfuse halves the three thresholds; =spawnswap exchanges u
- * and v in the spawn (shared with foe.cpp); =keepid and =lowid are in the
- * remove tail (objectremove.cpp).  KAROO_BOMB_DIAG=1 logs the first blast and
+ * KAROO_BOMB_DIAG=1 logs the first blast and
  * a tick count every 5000; KAROO_SPAWN_DIAG=1 the first sound acquire and a
  * spawn count every 500; KAROO_REMOVE_DIAG=1 the first release and a removal
  * count every 500.  The first tick, spawn and removal are logged always, so
@@ -61,9 +59,7 @@ static const double K_FUSE_MS   = 2000.0;
 static const double K_CLEAR_MS  = 2400.0;
 static const double K_REMOVE_MS = 2600.0;
 
-/* Controls and diagnostics, read by value. */
-static int s_fx_shortfuse = 0;
-static int s_fx_spawnswap = 0;
+/* Diagnostics, read by value. */
 static int s_diag_bomb    = 0;
 static int s_diag_spawn   = 0;
 static int s_diag_remove  = 0;
@@ -78,34 +74,14 @@ static int env_on(const char *name)
 
 static void fx_init(void)
 {
-    char buf[64];
-    uint32_t n;
-
     if (s_init)
         return;
     s_init = 1;
-
-    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcmp(buf, "shortfuse") == 0) {
-            s_fx_shortfuse = 1;
-            g_logger.write("bomb: KAROO_SIM_FX=shortfuse -- fuse %.0f ms, not %.0f\n",
-                      K_FUSE_MS / 2.0, K_FUSE_MS);
-        } else if (strcmp(buf, "spawnswap") == 0) {
-            s_fx_spawnswap = 1;
-            g_logger.write("bomb: KAROO_SIM_FX=spawnswap -- the bomb spawn tile is "
-                      "transposed\n");
-        }
-    }
 
     s_diag_bomb   = env_on("KAROO_BOMB_DIAG");
     s_diag_spawn  = env_on("KAROO_SPAWN_DIAG");
     s_diag_remove = env_on("KAROO_REMOVE_DIAG");
 }
-
-static inline double fuse_ms(void)   { return s_fx_shortfuse ? K_FUSE_MS   / 2.0 : K_FUSE_MS;   }
-static inline double clear_ms(void)  { return s_fx_shortfuse ? K_CLEAR_MS  / 2.0 : K_CLEAR_MS;  }
-static inline double remove_ms(void) { return s_fx_shortfuse ? K_REMOVE_MS / 2.0 : K_REMOVE_MS; }
 
 /* Construction: the MovableEntity base, then the bomb's own stores in a fixed
  * order.  PRESERVED: the sound slots +0xab..+0xcb are cleared a second time
@@ -221,10 +197,6 @@ void Bomb::spawn(const EntityContext &ctx, BombTable &bombs,
     Bomb **slot;
 
     fx_init();
-
-    if (s_fx_spawnswap) {
-        unsigned char t = u; u = v; v = t;
-    }
 
     id = Object_ClaimSpareId(bombs.ids, &bombs.count);
 
@@ -385,7 +357,7 @@ void Bomb::tick()
 
     // Roll: still fusing.
     diff = now_ - droppedAt_;
-    if (!(diff >= fuse_ms())) {
+    if (!(diff >= K_FUSE_MS)) {
         pendingMove_ = facing_;
         updateMovement();
         if (moveDir_ != 0)
@@ -447,7 +419,7 @@ void Bomb::tick()
 
     // Clear: the kill zone closes.
     diff = now_ - droppedAt_;
-    if (diff >= clear_ms() && zoneCleared_ == 0) {
+    if (diff >= K_CLEAR_MS && zoneCleared_ == 0) {
         for (int u = (int)cellU_ - 1; u <= (int)cellU_ + 1; ++u) {
             for (int v = (int)cellV_ - 1; v <= (int)cellV_ + 1; ++v) {
                 Tile *t = tile(u, v);
@@ -464,7 +436,7 @@ void Bomb::tick()
 
     // Remove.
     diff = now_ - droppedAt_;
-    if (diff >= remove_ms() && zoneCleared_ == 0) {
+    if (diff >= K_REMOVE_MS && zoneCleared_ == 0) {
         zoneCleared_ = 1;
         moveState_   = 4;  // despawn
         updateMovement();

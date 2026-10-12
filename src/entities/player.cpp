@@ -8,10 +8,7 @@
  * the byte and plays a sound.  The blocks run in a fixed order and each
  * re-reads the byte, so at most one fires.  The five timed effects push their
  * code onto the active list if not already running and stamp a start time; the
- * expiry section removes them.
- *
- * KAROO_SIM_FX=nopickup forces the tile gate to fail, so nothing is ever
- * consumed; it moves items_collected and elapsed_ms. */
+ * expiry section removes them. */
 
 #include <algorithm>
 #include <stdint.h>
@@ -40,25 +37,6 @@ static const float  K_CENTRE_TOL  = 0.3f;
 static const float  K_CENTRE_W    = 3.0f;
 static const double K_FREEZE_MS  = 5000.0;
 static const double K_EFFECT_MS   = 10000.0;
-
-static int s_fx_nopickup = 0;
-static int s_init = 0;
-
-static void fx_init(void)
-{
-    char buf[64];
-    uint32_t n;
-
-    if (s_init)
-        return;
-    s_init = 1;
-
-    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "nopickup") == 0) {
-        s_fx_nopickup = 1;
-        g_logger.write("tileeffects: KAROO_SIM_FX=nopickup -- tile gate always fails\n");
-    }
-}
 
 /* Copies a double as eight bytes, as the original does. */
 static inline void copy8(void *dst, const void *src) { memcpy(dst, src, 8); }
@@ -119,7 +97,6 @@ void Player::endEffect(int code)
 
 unsigned int Player::updateTileEffects()
 {
-    fx_init();
 
     copy8(&tickStepCopy_, tickStep_);
     copy8(&now_, clock_);
@@ -186,9 +163,6 @@ unsigned int Player::updateTileEffects()
 
             onTile = centred || (moveDir_ == 0);
         }
-
-        if (s_fx_nopickup)
-            onTile = 0;
 
         if (!onTile)
             goto expire;

@@ -4,10 +4,7 @@
  * PRESERVED:
  *   - Shift is read only for an accepted letter; unshifted is lower case.
  *   - Backspace clears the byte after the new cursor (where the blink
- *     character was), not the one the cursor now sits on.
- *
- * KAROO_SIM_FX=entrycase is a negative control: the shift sense is inverted,
- * so what is typed, and any cheat or name compared downstream, changes. */
+ *     character was), not the one the cursor now sits on. */
 
 #include <math.h>
 #include <stdint.h>
@@ -18,8 +15,6 @@
 #include <stdlib.h>
 #include "keys.h"
 #include "keycodes.h"
-
-static int s_fx = -1;
 
 /* True when sin(phase * 0.01) > 0: the cursor shows '_', else ' '.  The sine
  * is taken in extended precision, as the game computes it; it only chooses
@@ -36,14 +31,6 @@ void TextEntry::poll(unsigned int phase)
 #define CUR    cursor_
 #define MAXL   maxLength_
 #define ACTIVE active_
-
-    if (s_fx < 0) {
-        char b[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", b, sizeof(b));
-        s_fx = (n > 0 && n < sizeof(b) && strcmp(b, "entrycase") == 0);
-        if (s_fx)
-            g_logger.write("textentry: KAROO_SIM_FX=entrycase -- shift inverted\n");
-    }
 
     if (ACTIVE == 0)
         return;
@@ -71,8 +58,6 @@ void TextEntry::poll(unsigned int phase)
         if (input::pressed(k) && CUR < MAXL) {
             int shifted = input::down(input::KEY_LSHIFT)
                           || input::down(input::KEY_RSHIFT);
-            if (s_fx)
-                shifted = !shifted;
             const unsigned char upper = (unsigned char)('A' + (k - input::KEY_A));
             BUF[CUR] = shifted ? upper : (unsigned char)(upper + 0x20);
             CUR = (unsigned char)(CUR + 1);

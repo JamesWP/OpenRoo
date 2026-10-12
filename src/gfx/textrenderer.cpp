@@ -43,40 +43,6 @@ struct TextVertex {
     float u, v;
 };
 
-/* KAROO_TEXT_FX -- controls that change direction, each of which only one
- * piece of this file can produce:
- *   mirror    the pen advances by -(cellW * spacing), so every string runs
- *             right to left from its first glyph; centring still uses the
- *             true width.
- *   loadswap  the .fon loader swaps columns and rows, re-indexing every
- *             glyph of the 4x3 numbers font (font1 is 16x16, its own
- *             transpose).
- *   bigwave   drawWobble's per-glyph phase steps by -2 instead of +2, so the
- *             wave travels along the string the other way. */
-enum TextFx { TEXT_FX_OFF = 0, TEXT_FX_MIRROR = 1, TEXT_FX_LOADSWAP = 2,
-              TEXT_FX_BIGWAVE = 3 };
-
-static TextFx text_fx(void)
-{
-    static int cached = -1;
-    if (cached >= 0)
-        return (TextFx)cached;
-    char buf[32];
-    uint32_t n = sysdev::getEnv("KAROO_TEXT_FX", buf, sizeof(buf));
-    TextFx fx = TEXT_FX_OFF;
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcasecmp(buf, "mirror") == 0)   fx = TEXT_FX_MIRROR;
-        if (strcasecmp(buf, "loadswap") == 0) fx = TEXT_FX_LOADSWAP;
-        if (strcasecmp(buf, "bigwave") == 0)  fx = TEXT_FX_BIGWAVE;
-    }
-    g_logger.write("textrenderer: FX mode = %s\n",
-              fx == TEXT_FX_MIRROR   ? "mirror" :
-              fx == TEXT_FX_LOADSWAP ? "loadswap" :
-              fx == TEXT_FX_BIGWAVE  ? "bigwave" : "off");
-    cached = (int)fx;
-    return fx;
-}
-
 /* KAROO_TEXT_DIAG=1: which entry points run, and how many glyphs each draws.
  * Every function announces its first call as well as feeding the periodic
  * tally. */
@@ -152,9 +118,7 @@ void TextRenderer::drawLeft(float x, float y, float cellW, float cellH,
     }
 
     const float yBottom = y + cellH;
-    float advance = cellW * spacing;
-    if (text_fx() == TEXT_FX_MIRROR)
-        advance = -advance;
+    const float advance = cellW * spacing;
 
     TextVertex quad[4];
     for (int k = 0; k < 4; k++) {
@@ -220,12 +184,6 @@ unsigned int TextRenderer::load(const char *path, RenderDevice *d3d)
     if (!(in >> rows) || rows == 0)
         return 0;
     rows_ = (unsigned int)rows;
-
-    if (text_fx() == TEXT_FX_LOADSWAP) {
-        const unsigned int t = cols_;
-        cols_ = rows_;
-        rows_ = t;
-    }
 
     if (text_diag())
         g_logger.write("textrenderer: loaded %s -- %u x %u cells\n",
@@ -309,8 +267,8 @@ void TextRenderer::drawWobble(float x, float y, float cellW, float cellH,
     const float halfH = cellH * 0.5f;
     const float advance = cellW * spacing;
 
-    // The per-glyph phase step; KAROO_TEXT_FX=bigwave reverses it.
-    const int step = (text_fx() == TEXT_FX_BIGWAVE) ? -2 : 2;
+    // The per-glyph phase step.
+    const int step = 2;
 
     TextVertex quad[4];
     for (int k = 0; k < 4; k++) {
