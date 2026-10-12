@@ -65,9 +65,8 @@ void QuadBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
         uint32_t nsub = obj->subObjectCount();
         {  // KAROO_QUAD_DIAG=1: log each object's draw-kind and sub-object count.
             static std::atomic<long> diag = 0;
-            char dbuf[8];
-            if (sysdev::getEnv("KAROO_QUAD_DIAG", dbuf, sizeof(dbuf))
-                && dbuf[0] != '0' && ++diag <= 24)
+            static const bool on = sysdev::envFlag("KAROO_QUAD_DIAG");
+            if (on && ++diag <= 24)
                 g_logger.write("quadbatch: diag obj=%lu kind=%lu nsub=%lu\n",
                           i, (uint32_t)obj->kind(), nsub);
         }

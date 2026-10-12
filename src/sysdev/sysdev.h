@@ -41,6 +41,10 @@ unsigned getEnv(const char *name, char *buf, unsigned size);
 /* The environment variable name, or an empty string if it is unset or empty. */
 std::string getEnv(const char *name);
 
+/* An on/off switch in the environment (the KAROO_*_DIAG logs): on when name
+ * is set to anything that does not start with '0'. */
+bool envFlag(const char *name);
+
 /* The directory the executable lives in, with a trailing separator, or an
  * empty string if it is unknown. */
 std::string executableDir();

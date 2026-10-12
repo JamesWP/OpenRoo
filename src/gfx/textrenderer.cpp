@@ -48,13 +48,8 @@ struct TextVertex {
  * tally. */
 static bool text_diag(void)
 {
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[32];
-        uint32_t n = sysdev::getEnv("KAROO_TEXT_DIAG", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && strcasecmp(buf, "0") != 0) ? 1 : 0;
-    }
-    return cached != 0;
+    static const bool on = sysdev::envFlag("KAROO_TEXT_DIAG");
+    return on;
 }
 
 static unsigned long g_nRender, g_nGlyphs, g_nEmpty, g_nCentred, g_nRight;

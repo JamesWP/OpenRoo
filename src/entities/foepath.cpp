@@ -28,13 +28,8 @@ static FoePathDiag g_diag;
 
 static int diag_on(void)
 {
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[64];
-        uint32_t n = sysdev::getEnv("KAROO_FOEPATH_DIAG", buf, sizeof(buf));
-        cached = (n > 0 && n < sizeof(buf) && buf[0] != '0') ? 1 : 0;
-    }
-    return cached;
+    static const bool on = sysdev::envFlag("KAROO_FOEPATH_DIAG");
+    return on;
 }
 
 static void diag_report(void)

@@ -45,18 +45,14 @@ static int s_init         = 0;
 static unsigned s_parses    = 0;
 static unsigned s_opens     = 0;
 
-static void fx_init(void)
+static void diag_init(void)
 {
-    char buf[64];
-    uint32_t n;
 
     if (s_init)
         return;
     s_init = 1;
 
-    n = sysdev::getEnv("KAROO_LEVELPARSE_DIAG", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
-        s_diag = 1;
+    s_diag = sysdev::envFlag("KAROO_LEVELPARSE_DIAG");
 }
 
 /* The MSVC inline string primitives. */
@@ -86,7 +82,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
     char prev[256];  // the map name before the read
     int ok;
 
-    fx_init();
+    diag_init();
 
     inline_strcpy(self->world()->levelNameBuffer(), name);
 
@@ -150,7 +146,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     char prev[256];  // the map name before the read
     int ok;
 
-    fx_init();
+    diag_init();
 
     self->session()->setNextLevelBonus(0);
 

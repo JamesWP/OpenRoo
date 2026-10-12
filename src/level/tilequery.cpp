@@ -39,18 +39,14 @@
 static int s_diag = 0;
 static int s_init = 0;
 
-static void fx_init(void)
+static void diag_init(void)
 {
-    char buf[64];
-    uint32_t n;
 
     if (s_init)
         return;
     s_init = 1;
 
-    n = sysdev::getEnv("KAROO_TILEQ_DIAG", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
-        s_diag = 1;
+    s_diag = sysdev::envFlag("KAROO_TILEQ_DIAG");
 }
 
 #include "levelmap.h"
@@ -119,7 +115,7 @@ Sim_MarkListedTilesBlockedByObject(SwitchCells *sw, LevelMap *map,
     unsigned int   value;
     int            i;
 
-    fx_init();
+    diag_init();
     diag_enter(Q_MARK, sw);
 
     // PRESERVED: blocked when the phase is zero.  Read once, before the loop.
@@ -156,7 +152,7 @@ Sim_FindNearestListedObjectTile(SwitchCells *sw, unsigned char switchMax,
     unsigned char  bestU    = 0, bestV = 0;
     unsigned int   list;
 
-    fx_init();
+    diag_init();
     diag_enter(Q_LIST, sw);
 
     // PRESERVED: this guard cannot fail.
@@ -225,7 +221,7 @@ Sim_FindNearestFlaggedTileInRadius(LevelMap *map, unsigned char *pu,
     unsigned char  bestU   = 0, bestV = 0;
     int            v, vEnd, uBeg, uEnd;
 
-    fx_init();
+    diag_init();
     diag_enter(Q_RADIUS, map);
 
     // PRESERVED: half-open, radius tiles one way and radius - 1 the other.
@@ -292,7 +288,7 @@ Sim_FindFarthestOccupiedTile(LevelMap *map, unsigned char *pu,
     double         best  = 0.0;
     unsigned char  v;
 
-    fx_init();
+    diag_init();
     diag_enter(Q_FAR, map);
 
     if (hdr->extentV() != 0) {

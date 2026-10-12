@@ -14,18 +14,14 @@
 static int s_diag      = 0;
 static int s_init      = 0;
 
-static void fx_init(void)
+static void diag_init(void)
 {
-    char buf[64];
-    uint32_t n;
 
     if (s_init)
         return;
     s_init = 1;
 
-    n = sysdev::getEnv("KAROO_REMOVE_DIAG", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
-        s_diag = 1;
+    s_diag = sysdev::envFlag("KAROO_REMOVE_DIAG");
 }
 
 static unsigned s_claims              = 0;
@@ -38,7 +34,7 @@ unsigned char Object_ClaimSpareId(unsigned char *ids, unsigned char *count)
     unsigned char id;
     unsigned int  i;
 
-    fx_init();
+    diag_init();
 
     id = 0;
     //     // PRESERVED: with n == 0 the max scan is skipped but the increment still
@@ -103,7 +99,7 @@ void Object_DestroyAndCompactId(void **slot, unsigned char *pCount,
     unsigned char found = 0;
     unsigned char i     = 0;
 
-    fx_init();
+    diag_init();
 
     if (obj != 0) {
         delete (MovableEntity *)obj;

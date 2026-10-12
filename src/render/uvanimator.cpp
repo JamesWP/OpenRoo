@@ -41,14 +41,8 @@ static inline unsigned int snapshot_count(AnimatedMesh *mesh)
 
 static bool wrap_diag(void)
 {
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (sysdev::getEnv("KAROO_UVANIM_DIAG", buf, sizeof(buf)))
-            cached = (buf[0] != '0');
-    }
-    return cached != 0;
+    static const bool on = sysdev::envFlag("KAROO_UVANIM_DIAG");
+    return on;
 }
 
 enum WrapEntry { WE_SETMESH = 0, WE_RELEASE, WE_FLUSH, WE_SINE, WE_SCROLL,

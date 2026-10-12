@@ -268,13 +268,8 @@ static const char JJS_DELIMS[] = " ,\t\n;";
 
 static bool jjs_diag(void)
 {
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = sysdev::getEnv("KAROO_JJS_DIAG", buf, sizeof(buf))
-                 && buf[0] == '1';
-    }
-    return cached != 0;
+    static const bool on = sysdev::envFlag("KAROO_JJS_DIAG");
+    return on;
 }
 
 /* Truncation toward zero to 64 bits; callers keep the bits they need. */

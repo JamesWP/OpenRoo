@@ -21,24 +21,20 @@
 static int s_diag = 0, s_init = 0;
 static unsigned s_calls = 0;
 
-static void fx_init(void)
+static void diag_init(void)
 {
-    char buf[64];
-    uint32_t n;
 
     if (s_init)
         return;
     s_init = 1;
 
-    n = sysdev::getEnv("KAROO_GRIDRESTORE_DIAG", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
-        s_diag = 1;
+    s_diag = sysdev::envFlag("KAROO_GRIDRESTORE_DIAG");
 }
 
   void  
 Sim_RestoreTileGridFromSnapshot(LevelMap *map)
 {
-    fx_init();
+    diag_init();
     ++s_calls;
     if (s_diag)
         g_logger.write("gridrestore: call %u extents 727=%u 728=%u\n", s_calls,

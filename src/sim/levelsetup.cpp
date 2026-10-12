@@ -82,18 +82,14 @@ static int s_init         = 0;
 
 static unsigned s_calls = 0;
 
-static void fx_init(void)
+static void diag_init(void)
 {
-    char buf[64];
-    uint32_t n;
 
     if (s_init)
         return;
     s_init = 1;
 
-    n = sysdev::getEnv("KAROO_SETUP_DIAG", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
-        s_diag = 1;
+    s_diag = sysdev::envFlag("KAROO_SETUP_DIAG");
 }
 
 /* The cell at (u, v). */
@@ -155,9 +151,7 @@ Sim_FindTileByTypeMarker(LevelMap *map, unsigned int markerArg,
  * stored: a read-back, which costs no rand() call. */
 static void levelsetup_seed_diag(unsigned int seed)
 {
-    char buf[16];
-    if (sysdev::getEnv("KAROO_CRT_DIAG", buf, sizeof(buf)) == 0 ||
-        buf[0] == '0')
+    if (!sysdev::envFlag("KAROO_CRT_DIAG"))
         return;
 
     g_logger.write("levelsetup: crt_srand(%u) -> CRT seed = %u\n",
@@ -172,7 +166,7 @@ Sim_SetupLevelObjects(Game *self)
     unsigned char w, h;
     Tile *t, *s;
 
-    fx_init();
+    diag_init();
 
     // The run state.
     // The level-complete node offers Save only when there is no next-level

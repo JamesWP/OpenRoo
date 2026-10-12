@@ -216,13 +216,9 @@ static int      s_logged_release = 0;
 
 static void diag_init(void)
 {
-    char buf[64];
-    uint32_t n;
-
     if (s_rel_diag >= 0)
         return;
-    n = sysdev::getEnv("KAROO_LEVELPARSE_DIAG", buf, sizeof(buf));
-    s_rel_diag = (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0);
+    s_rel_diag = sysdev::envFlag("KAROO_LEVELPARSE_DIAG") ? 1 : 0;
 }
 
 unsigned ExtraObjects::releasedCount()

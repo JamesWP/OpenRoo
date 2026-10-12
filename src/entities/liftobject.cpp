@@ -32,26 +32,16 @@ static int s_diag_place     = 0;
 static int s_diag_reset     = 0;
 static int s_init           = 0;
 
-static int env_set(const char *name, char *buf, uint32_t cb)
+static void diag_init(void)
 {
-    uint32_t n = sysdev::getEnv(name, buf, cb);
-    return n > 0 && n < cb;
-}
-
-static void fx_init(void)
-{
-    char buf[64];
 
     if (s_init)
         return;
     s_init = 1;
 
-    if (env_set("KAROO_LIFT_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
-        s_diag_lift = 1;
-    if (env_set("KAROO_PLACE_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
-        s_diag_place = 1;
-    if (env_set("KAROO_RESET_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
-        s_diag_reset = 1;
+    s_diag_lift = sysdev::envFlag("KAROO_LIFT_DIAG");
+    s_diag_place = sysdev::envFlag("KAROO_PLACE_DIAG");
+    s_diag_reset = sysdev::envFlag("KAROO_RESET_DIAG");
 }
 
 LiftObject *LiftObject::create()
@@ -87,7 +77,7 @@ void LiftObject::spawn(const EntityContext &ctx, LiftSlots &slots, unsigned int 
     Tile *tile;
     void *raw;
 
-    fx_init();
+    diag_init();
 
     u = uArg & 0xff;
     v = vArg & 0xff;
@@ -149,7 +139,7 @@ void LiftObject::purgeAll(const EntityContext &ctx, LiftSlots &slots)
 {
     unsigned char i;
 
-    fx_init();
+    diag_init();
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
@@ -195,7 +185,7 @@ void LiftObject::tick()
 {
     Tile *t;
 
-    fx_init();
+    diag_init();
 
     //     // Logged even with the diag off, so a log shows whether any lift ran.
     if (!s_logged_first) {

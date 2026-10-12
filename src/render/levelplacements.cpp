@@ -63,13 +63,8 @@ static void set3(float *d, float x, float y, float z) { d[0] = x; d[1] = y; d[2]
 
 static int diag_on()
 {
-    static int v = -1;
-    if (v < 0) {
-        char buf[8];
-        uint32_t n = sysdev::getEnv("KAROO_PLACEMENT_DIAG", buf, sizeof buf);
-        v = (n > 0 && n < sizeof buf && buf[0] == '1');
-    }
-    return v;
+    static const bool on = sysdev::envFlag("KAROO_PLACEMENT_DIAG");
+    return on;
 }
 
 void PlacementList::release()

@@ -11,9 +11,7 @@
  * with no console, so anything the game writes to stderr goes nowhere. */
 static void crt_stderr_probe(void)
 {
-    char buf[16];
-    if (sysdev::getEnv("KAROO_CRT_DIAG", buf, sizeof(buf)) == 0 ||
-        buf[0] == '0')
+    if (!sysdev::envFlag("KAROO_CRT_DIAG"))
         return;
 
     static const char msg[] = "karoo: CRT_PLAN Stage B stderr probe\n";
