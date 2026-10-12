@@ -5,6 +5,7 @@
 #pragma once
 #include "entitycontext.h"
 #include "tickstep.h"
+#include "drawfwd.h"
 
  
 
@@ -27,12 +28,15 @@ public:
     // One tick.
     void tick();
 
-    // Where it is drawn (LevelPlacements::drawPlatforms), and its axis: kind 0x0a
-    // runs along U, any other along V.
+    // Where it stands, and its axis: kind 0x0a runs along U, any other
+    // along V.
     float posU() const          { return posU_; }
     float posY() const          { return posY_; }
     float posV() const          { return posV_; }
     signed char kind() const    { return kind_; }
+
+    // Draws the platform, in the opaque pass.
+    void draw(draw::Frame &f, draw::Pass pass) const;
 
     // The moving-loop sound, attached by InitLevelBasedSounds
     // (levelsounds.cpp).

@@ -1,26 +1,19 @@
 /* BridgeObject: a switch-operated bridge.  A switch arms it, and while armed
  * it extends, or retracts, one deck cell at a time, stamping each cell it
  * covers.  Every function that touches a BridgeObject field is in
- * bridgeobject.cpp: the spawn, tick and purge, the deck quad
- * DrawBridgeSurfaces draws (bridgesurf.cpp), and the switch accessors GameTick
- * and tilequery.cpp use. */
+ * bridgeobject.cpp: the spawn, tick and purge, the drawing of its deck, and
+ * the switch accessors GameTick and tilequery.cpp use. */
 
 #pragma once
 #include <stdint.h>
 #include "entitycontext.h"
 #include "tickstep.h"
+#include "drawfwd.h"
 
  
 
 class SoundVoice;
-
-/* An FVF 0x242 vertex: XYZ, diffuse, two texture-coordinate sets. */
-struct BridgeVertex {
-    float x, y, z;
-    uint32_t diffuse;
-    float u0, v0;
-    float u1, v1;
-};
+struct Diffuse1Vertex;
 
 /* A bridge's extent for the debug map, in cell-edge coordinates: the deck
  * runs along its axis from `rest` (the anchor) towards `rest + step * span`,
@@ -33,12 +26,6 @@ struct BridgeExtent {
     int   slot;       // the switch that operates it
     bool  armed;      // moving
     int   phase;      // 0: extends next; 1: retracts next
-};
-
-/* What buildSurface() computed, for bridgesurf.cpp's logs. */
-struct BridgeSurfaceInfo {
-    int   axis, dir, n;
-    float len, f;
 };
 
 class BridgeObject;
@@ -73,11 +60,8 @@ public:
     // The player's switch also starts the moving-loop sound.
     void playArmSound();
 
-    // The renderer (bridgesurf.cpp).
-    // Builds this bridge's scrolling deck quad for animation time t (ms).
-    // False, with v untouched, when the bridge is not drawn (never armed and
-    // in phase 0).  The diffuse is white.
-    bool buildSurface(BridgeVertex v[4], double t, BridgeSurfaceInfo *info) const;
+    // Draws the bridge's deck, in the effects pass.
+    void draw(draw::Frame &f, draw::Pass pass) const;
 
     // A read-only view for the debug map.
     BridgeExtent extent() const
@@ -90,6 +74,10 @@ public:
     void setSound(SoundVoice *p) { sound_ = p; }
 
 private:
+    // The deck quad (draw::FieldVertex) for clock t, ms; false while there
+    // is no deck, never armed and in phase 0.
+    bool deck(Diffuse1Vertex v[4], double t) const;
+
 
     // Allocates and constructs one; NULL if the allocation fails.
     static BridgeObject *create();

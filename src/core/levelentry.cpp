@@ -50,7 +50,7 @@ void LevelEntry_PrepareAssets(Game *g, Renderer *renderer)
     }
 
     // 4. What the frame renderer draws.
-    renderer->levelPlacements.build(g->world(), &renderer->themeBlock);
+    renderer->levelPlacements.build(g->world()->map(), renderer->themeBlock.sideHeight());
     renderer->scene.buildObjectList(d3d, g->world()->extraObjects());
 
     strcpy(renderer->levelTitle, map->title());

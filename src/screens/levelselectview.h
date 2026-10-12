@@ -1,5 +1,5 @@
 /* The level select page's view: what Menu_RenderLevelSelect draws.  The
- * page's logic is flow/levelselect.h; its theme table is session/levelthemes.h. */
+ * page's logic is sequencer/levelselect.h; its theme table is session/levelthemes.h. */
 #pragma once
 
 class FrontEnd;

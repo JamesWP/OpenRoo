@@ -12,6 +12,7 @@
 #include "tickstep.h"
 #include "entitycontext.h"
 #include "player.h"
+#include "drawfwd.h"
 
 class SoundLibrary;
 class Bomb;
@@ -130,6 +131,10 @@ public:
     /* Ticks and debug-draws each bomb, removing those that asked to be;
      * a removal can make the next bomb be skipped (kept as the original). */
     void tickBombs();
+
+    /* Draws every object in the level for one pass of the frame, each as it
+     * draws itself, then the bursts they started. */
+    void draw(draw::Frame &f, draw::Pass pass);
 
 private:
     TimedSpawner  timedSpawners_[256];

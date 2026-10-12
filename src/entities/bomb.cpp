@@ -52,6 +52,7 @@
 #include "movableentity.h"
 #include "objectremove.h"
 #include "logger.h"
+#include "themedraw.h"
 
 #include <new>  // std::nothrow
 
@@ -91,7 +92,7 @@ Bomb::Bomb()
     rollSound_        = 0;
     blastSound_       = 0;
     zeroSoundSlots();
-    field_7a          = 0;
+    deathFxPending_   = false;
     dyingStarted_          = 0;
     removeRequested_  = 0;
     dying_          = 0;
@@ -393,8 +394,8 @@ void Bomb::tick()
 
                 t->setBusy(1);  // spent
                 t->setBlastTime(now_);
-                t->setField203(1);
-                t->setField20f(1);
+                t->setBlasting(true);
+                t->setBlastFxPending(true);
 
                 g_logger.logMessage(1,
                                    "GAME: obstacle is exploding at:%d,%d,%d",
@@ -422,7 +423,7 @@ void Bomb::tick()
                 // No busy test here: PRESERVED.
                 if ((signed char)t->objectMarker() == TILE_BOMBABLE &&
                     (int)heightCell_ == (int)t->height())
-                    t->setField203(0);
+                    t->setBlasting(false);
             }
         }
     }
@@ -466,5 +467,29 @@ void Bomb::debugDraw(unsigned id) const
             m.tip("frozen");
         if (dyingStarted())
             m.tip("dying");
+    }
+}
+
+void Bomb::draw(draw::Frame &f, draw::Pass pass)
+{
+    const bool exploded = dyingStarted_ != 0;
+    const ThemeObjectType look = exploded ? THEME_OBJ_EXPLOSION : THEME_OBJ_BOMB;
+    draw::Instance in;
+    in.pos = { posU_, posY_, -posV_ };
+
+    switch (pass) {
+    case draw::Pass::Opaque:
+        if (exploded) {
+            draw::fireEffects(f, look, deathFxPending_);
+            deathFxPending_ = false;
+        }
+        draw::objects(f, look, &in);
+        break;
+    case draw::Pass::Particles:
+        if (f.opts.particles > 0)
+            draw::particles(f, look, &in);
+        break;
+    default:
+        break;
     }
 }

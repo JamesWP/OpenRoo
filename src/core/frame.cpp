@@ -1,4 +1,5 @@
-/* The frame driver and the update half of a frame (frame.h). */
+/* The frame driver and the update half of a frame (frame.h); the draw half is
+ * the sequencer's (sequencer/drawframe.cpp). */
 #include <math.h>
 #include "frame.h"
 #include "prof.h"
@@ -98,7 +99,7 @@ void Core_RunFrame(Game *g, Renderer *renderer, const MenuArt *art, ProgableCont
     PROF_SCOPE("frame");
     FrameTime t;
     if (Core_UpdateFrame(g, renderer, progCtrl, &t))
-        Core_DrawFrame(g, renderer, art, progCtrl, t);
+        Seq_DrawFrame(g, renderer, art, progCtrl, t);
 }
 
 bool Core_UpdateFrame(Game *g, Renderer *renderer, ProgableControl *progCtrl, FrameTime *t)
@@ -132,9 +133,8 @@ bool Core_UpdateFrame(Game *g, Renderer *renderer, ProgableControl *progCtrl, Fr
         if (g->levelPrepPending() != 0)
             return false;
         {
-            PROF_SCOPE("poses");
-            FramePose_Player(g->world(), g->camera(), g->config(), now, dt, &renderer->cameraFocus);
-            FramePose_Foes(g->world(), now, dt, renderer->foePoses);
+            PROF_SCOPE("camera focus");
+            FramePose_Player(g->world(), g->camera(), g->config(), dt, &renderer->cameraFocus);
         }
         {
             PROF_SCOPE("camera");

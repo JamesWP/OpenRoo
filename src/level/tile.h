@@ -223,14 +223,13 @@ public:
     void setContents(unsigned char c)          { contents_ = c; }
     // The bombable block's hidden contents.
     unsigned char field202() const             { return field_202; }
-    // Meaning unknown: raised by a blast on a bombable block; field_203
-    // drops again when the blast clears.
-    void setField203(int b)                    { field_203 = b; }
-    void setField20f(int b)                    { field_20f = b; }
-    // Read by the frame renderer: field_203 while a bombable block is
-    // blasted draws the effect model; field_20f starts the debris burst once.
-    int  field203() const                      { return field_203; }
-    int  field20f() const                      { return field_20f; }
+    // A bombable block being blown up: set by the blast and cleared when the
+    // blast's kill zone closes; the block draws its exploding look meanwhile.
+    void setBlasting(bool b)                   { blasting_ = b; }
+    bool blasting() const                      { return blasting_; }
+    // Set with blasting; the next draw fires the block's debris and clears it.
+    void setBlastFxPending(bool b)             { blastFxPending_ = b; }
+    bool blastFxPending() const                { return blastFxPending_; }
     void setBlastTime(double t)                { blastTime_ = t; }
 
     // Read by a foe (foe.cpp).
@@ -318,9 +317,9 @@ private:
     unsigned char bridgeAxis_{};  // 1 along u, 2 along v
     int           field_1f6{};
     unsigned char field_202{};
-    int           field_203{};
+    bool          blasting_{};       // a bombable block mid-explosion
     double        blastTime_{};  // when a blast spent this cell
-    int           field_20f{};
+    bool          blastFxPending_{}; // its debris is yet to fire
     float         itemPhase_{};  // an item's random phase
     int           busy_{};       // a pad, teleporter or falling tile is in use
 };

@@ -3,7 +3,7 @@
  * countdown, the player's bomb drop and switches, the foes, the lifts and
  * platforms; then, by game state, the camera and exit while playing, the restart
  * or game-over tally on ENTER, and high-score entry.  The notes on what
- * those steps do are in sim/playtick.cpp and flow/playflow.cpp.
+ * those steps do are in sim/playtick.cpp and sequencer/playflow.cpp.
  *
  * The x87 helpers keep a value on the FPU across a chain where the result
  * depends on it, rather than trusting the compiler's spills.
