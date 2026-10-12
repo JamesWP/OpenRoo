@@ -11,8 +11,8 @@ that draw the same pictures leave identical traces, so diffing the traces of a
 replay before and after a change to the rendering code shows whether it moved
 a draw, a vertex or a state -- however differently the code now gets there.
 
-The replays run against the real device (--no-headless, which needs a display)
-and render every frame (--no-fast); a headless or fast run reaches no draw.
+The replays run against the real device and render every frame (--no-headless,
+which needs a display); a headless run reaches no draw.
 A few draws can differ between two runs of the very same build (two of the
 sixteen recordings have one each); compare the number of differing draws, and
 run the "before" build twice when it matters.  Build the "before" side from a clean checkout: launch.sh rebuilds the tree it
@@ -37,7 +37,7 @@ def collect(out, names):
         env = dict(os.environ, KAROO_DRAW_TRACE=path,
                    KAROO_STUCK_SECONDS=os.environ.get("KAROO_STUCK_SECONDS", "240"))
         cmd = [sys.executable, os.path.join(REPO, "tools", "replaytest.py"),
-               "--no-headless", "--no-fast", n]
+               "--no-headless", n]
         r = subprocess.run(cmd, env=env, capture_output=True, text=True)
         verdict = "pass" if r.returncode == 0 else "FAIL"
         draws = sum(1 for _ in open(path)) if os.path.exists(path) else 0

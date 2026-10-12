@@ -135,7 +135,7 @@ def check_header(entry, cfg, rec_path):
 #
 # The per-frame rates are rough, fitted by eye to the blessed recordings in
 # tests/manifest.json (headless: ~1.5 s launch + ~0.6 ms/frame, so Playthrough-01
-# at 34659 frames takes ~23 s).  The display rates were timed on water01 (4147 frames: 5.1 s fast, 14.6 s full)
+# at 34659 frames takes ~23 s).  The display rate was timed on water01 (4147 frames: 14.6 s)
 # and are rounded.  They need only be good enough to notice a run taking more
 # than SECONDS_MARGIN (2x) the expected time; this is not a benchmark.
 #
@@ -149,13 +149,12 @@ SECONDS_MARGIN = 2
 LAUNCH_SECONDS = 3.0
 MS_PER_FRAME = {
     "headless": 0.7,
-    "fast": 1.0,
     "full": 3.0,
 }
 
 
-def stuck_budget(frames, fast, headless):
-    config = "headless" if headless else "fast" if fast else "full"
+def stuck_budget(frames, headless):
+    config = "headless" if headless else "full"
     expected = LAUNCH_SECONDS + frames * MS_PER_FRAME[config] / 1000.0
     return max(STUCK_SECONDS, expected * SECONDS_MARGIN) * STUCK_SCALE
 
@@ -230,85 +229,40 @@ def apply_turbo(env):
     return env
 
 
-# --fast: stop rendering, keep simulating.
-#
-# Turbo above removed the *pacing* on presentation; this removes the rendering
-# work itself, using two switches the DLL already has:
+# Headless also stops the rendering work, using two switches the DLL already
+# has (draws are pure output that nothing reads back, so the simulation cannot
+# move):
 #
 #   KAROO_RENDER_FX=nodraw   RenderDevice::Draw/DrawBuffer return without
-#                         reaching the device
-#   KAROO_FLIP_FX=noblt   RenderDevice::PresentImage skips the Blt to the back
-#                         buffer (it still Flips)
+#                            reaching the device
+#   KAROO_FLIP_FX=noblt      RenderDevice::PresentImage skips the Blt to the
+#                            back buffer (it still Flips)
 #
-# Measured on this machine, whole suite, 12 recordings (2026-09-05):
+# --no-headless renders every frame for real on a real device, for the tools
+# (drawtrace.py, texdump.py) that need draws to reach it.
 #
-#   --no-fast   216.0 s
-#   default     171.6 s      -21%
-#
-# 12/12 pass either way.  On the 7-recording suite this was first measured on,
-# the same change was 106.5 s -> 79.2 s, -26%; the ratio moved because
-# bombstart-crash now opts out and renders for real.
-#
-# Per recording the shape is about 5.9 s of fixed launch cost plus 3.9 ms a
-# frame, and fast mode takes the per-frame figure to about 2.2 ms.  water01 and
-# freezestart pass with all 31 asserted fields either way, which is the point:
-# draw calls are pure output.  Nothing in the game reads them back, so removing
-# them cannot move the simulation -- and if it ever did, the suite would say so.
-#
-# THIS IS THE DEFAULT.  --no-fast restores the full render path.
-#
-# One recording opts out of it permanently (unless headless is specified), and the reason is worth keeping in
-# view.  bombstart-crash exists to guard the CRASH.md fault: a bad pointer
-# handed to the driver, which faulted *inside* the strided draw.  Skipping the
-# draw call means that pointer is never handed over, so that entire class of
-# fault -- the only one this suite has actually caught in anger -- would go
-# unnoticed.  Rather than trade it away for the ~10 s that recording costs, the
-# manifest entry carries "fast": false and it always runs the real render path.
-#
-# So the suite is fast by default and still guards the thing it was built to
-# guard.  Any recording can opt out the same way; see entry_fast() below.
-#
-# Two things deliberately NOT done here, both measured:
-#
-#   Skipping the Blt alone is worth 2%.  It is bundled into --fast because it
-#   is free, not because it matters.
-#
-#   Turning Wine's tracing off (WINEDEBUG=-all, which Proton's PROTON_LOG_DIR
-#   otherwise sets to +seh,+loaddll,+mscoree) is worth 1-2%, inside the noise,
-#   and it would silently break the project's primary evidence that no call
-#   site was missed: `grep -c c000001d steam-123456.log` counts trace:seh
-#   lines that would no longer be written.  Our own VEH does not catch illegal
-#   instructions -- checked, a run with 9 UD2 hits logged 0 VEH lines -- so
-#   there is no replacement for that check.  Not worth 2%.
-FAST_ENV = {
+# Turning Wine's tracing off (WINEDEBUG=-all) was measured too: 1-2%, inside
+# the noise, and it would silently break `grep -c c000001d steam-123456.log`,
+# the project's evidence that no call site was missed.  Not worth it.
+HEADLESS_ENV = {
     "KAROO_RENDER_FX":  "nodraw",
     "KAROO_FLIP_FX": "noblt",
 }
 
 
-def apply_fast(env, fast):
+def apply_headless(env, headless):
     """Skip the render work.  Caller-set values win, so a run can override."""
-    if not fast:
+    if not headless:
         return env
-    for k, v in FAST_ENV.items():
+    for k, v in HEADLESS_ENV.items():
         env.setdefault(k, v)
     return env
 
 
-def entry_fast(entry, fast):
-    """Whether THIS recording runs fast.
-
-    A recording whose value is guarding something on the render path sets
-    "fast": false in the manifest and is never run fast, however the suite was
-    invoked.  --no-fast still turns it off for everything.
-    """
-    return fast and entry.get("fast", True)
-
-
-def launch(entry, cfg, rec_path, dump_path, fast=True,
+def launch(entry, cfg, rec_path, dump_path,
            headless=True, game_seconds=0, frames=0):
     """Returns (stuck, wall_seconds); on a stuck run the seconds are the budget."""
-    env = apply_fast(apply_turbo(dict(os.environ)), fast)
+    env = apply_headless(apply_turbo(dict(os.environ)), headless)
     env["KAROO_REPLAY"] = rec_path
     env["KAROO_STATE_DUMP"] = dump_path
     env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
@@ -318,8 +272,7 @@ def launch(entry, cfg, rec_path, dump_path, fast=True,
     # --headless creates the render device with no OpenGL behind it
     # (src/gl/createdevice.cpp) and makes the game's window message-only, so
     # the run needs no display, opens nothing on screen and takes no focus.
-    # It implies --skip-launcher.  Orthogonal to --fast: fast skips the draw
-    # CALLS, headless removes the driver underneath them.
+    # It implies --skip-launcher.
     cmd = ["bash", os.path.join(REPO, "launch.sh"),
            "--headless" if headless else "--skip-launcher",
            "--auto-exit", str(auto_exit)]
@@ -329,7 +282,7 @@ def launch(entry, cfg, rec_path, dump_path, fast=True,
     # mid-run, an unbounded wait blocks the whole suite indefinitely (seen
     # 2026-08-31 on a laptop that slept).  The margin is deliberately wide —
     # a slow run must not be reported as a hang — but finite.
-    budget = stuck_budget(frames, fast, headless)
+    budget = stuck_budget(frames, headless)
     started = time.perf_counter()
 
     # start_new_session so the whole tree gets signalled: killing the bash
@@ -413,7 +366,7 @@ def compare_state(expected, actual):
     return bad
 
 
-def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
+def run_one(m, entry, bless=False, headless=True, verbose=False):
     cfg = entry_defaults(m, entry)
     name = entry["name"]
     rec_path = os.path.join(RECORDINGS, entry["file"])
@@ -447,12 +400,7 @@ def run_one(m, entry, bless=False, fast=True, headless=False, verbose=False):
         if os.path.exists(stale):
             os.remove(stale)
 
-    if not entry_fast(entry, fast) and headless:
-        if verbose:
-            print("ignoring fastonly test due to headless being enabled")
-
     stuck, wall = launch(entry, cfg, rec_path, dump_path,
-                         fast=entry_fast(entry, fast) or headless,
                          headless=headless, game_seconds=len(frames) * hdr["dt"],
                          frames=len(frames))
     if stuck:
@@ -669,23 +617,17 @@ def main():
                          "(by default they run only when named)")
     ap.add_argument("--list", action="store_true",
                     help="show the catalogue and exit")
-    ap.add_argument("--fast", dest="fast", action="store_true", default=True,
-                    help="skip the render work (KAROO_RENDER_FX=nodraw, "
-                         "KAROO_FLIP_FX=noblt). This is the DEFAULT; the flag "
-                         "is kept so it can be stated explicitly.")
-    ap.add_argument("--no-fast", dest="fast", action="store_false",
-                    help="render every frame for real. Slower (~216 s vs "
-                         "~172 s for the suite), and the only way to exercise "
-                         "the draw path for every recording.")
-    ap.add_argument("--no-headless", dest="headless", action="store_false", 
-                    help="disable the headless mode which is enabled by default")
+    ap.add_argument("--no-headless", dest="headless", action="store_false",
+                    help="open a window and render every frame for real "
+                         "(needs a display); the only way to exercise the "
+                         "draw path")
     ap.add_argument("--headless", dest="headless", action="store_true", default=True,
                     help="run with no window and no graphics at all: "
-                         "the render device is created with no Direct3D behind it and "
+                         "the render device is created with no OpenGL behind it and "
                          "the game's window is made message-only, so the suite "
                          "can run in the background without stealing focus and "
-                         "without a display. Implies --skip-launcher. also means"
-                         " test fast flag is ignored")
+                         "without a display, and the draw calls are skipped. "
+                         "Implies --skip-launcher. This is the DEFAULT.")
     ap.add_argument("--bless", action="store_true",
                     help="write the run's own end state into the manifest as "
                          "the expectation — only after you believe the run")
@@ -702,7 +644,7 @@ def main():
     if args.bless and len(entries) != 1:
         sys.exit("--bless takes exactly one recording name")
 
-    results = [(e["name"], run_one(m, e, bless=args.bless, fast=args.fast,
+    results = [(e["name"], run_one(m, e, bless=args.bless,
                                    headless=args.headless, verbose=args.verbose))
                for e in entries]
     if args.bless:
