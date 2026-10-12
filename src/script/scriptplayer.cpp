@@ -10,9 +10,7 @@
  * frame; a frame that fetches a line does no waiting or gliding, and a wait
  * that expires fetches the next line only on the frame after.
  *
- * KAROO_JJS_FX is a negative control: "blank" stores every entry as ".", so
- * the instruction captions come up empty; "glide" reverses every movetoxyz
- * direction.  KAROO_JJS_DIAG=1 logs each command run, and
+ * KAROO_JJS_DIAG=1 logs each command run, and
  * KAROO_JJS_DUMP=<file> appends each script's entry count and an FNV-1a hash
  * of its lines. */
 
@@ -55,19 +53,6 @@ void ScriptPlayer::releaseStreams()
 static char s_entry[0x10000];
 
 #define JJS_LOG_FIRST 6
-
-static bool fx_blank(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (sysdev::getEnv("KAROO_JJS_FX", buf, sizeof(buf)))
-            cached = (strcasecmp(buf, "blank") == 0);
-        g_logger.write("jjscript: FX mode = %s\n", cached ? "blank" : "off");
-    }
-    return cached != 0;
-}
 
 int ScriptPlayer::readForLevel(const char *path)
 {
@@ -116,10 +101,7 @@ int ScriptPlayer::readForLevel(const char *path)
             strcat(s_entry, "\n");
             idx = 0;
 
-            if (fx_blank())
-                strcpy(rec, ".\n");
-            else
-                strcpy(rec, s_entry);
+            strcpy(rec, s_entry);
 
             lineCount_ = (uint16_t)(n + 1);
 
@@ -284,17 +266,6 @@ int ScriptPlayer::readTextsForReport(const char *path, std::ostream &sink)
 
 static const char JJS_DELIMS[] = " ,\t\n;";
 
-static bool jjs_fx_glide(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = sysdev::getEnv("KAROO_JJS_FX", buf, sizeof(buf))
-                 && strcasecmp(buf, "glide") == 0;
-    }
-    return cached != 0;
-}
-
 static bool jjs_diag(void)
 {
     static int cached = -1;
@@ -349,9 +320,6 @@ unsigned char ScriptPlayer::playScript(const char *line)
         dir_[0] = dx / len;
         dir_[1] = dy / len;
         dir_[2] = dz / len;
-        if (jjs_fx_glide())
-            for (int i = 0; i < 3; ++i)
-                dir_[i] = -dir_[i];
         return 3;
     }
     if (strcmp(cmd, "observe") == 0) {

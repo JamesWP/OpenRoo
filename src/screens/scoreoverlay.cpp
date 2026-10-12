@@ -6,11 +6,7 @@
  * Everything is laid out in a 640-wide virtual space scaled by width/640.
  * PRESERVED: both axes scale by the width, so on a mode that is not 4:3 the
  * layout stays square and does not fill the screen vertically.  Every text row
- * uses a 12x14 cell at scale 0.75.
- *
- * KAROO_SCORE_FX is a visual negative control: "tint" makes the backdrop
- * magenta (only these functions build it), "nodraw" skips the quads and leaves
- * the text. */
+ * uses a 12x14 cell at scale 0.75. */
 
 #include <strings.h>
 #include <atomic>
@@ -40,28 +36,6 @@
  * colour, stored 0x00RRGGBB (the file gives six hex digits). */
 #define THEME_COL(slot) theme->textColor(slot).color1, theme->textColor(slot).color2
 
-enum ScoreFx { SCORE_FX_OFF = 0, SCORE_FX_TINT, SCORE_FX_NODRAW };
-
-static ScoreFx score_fx(void)
-{
-    static int cached = -1;
-    if (cached >= 0)
-        return (ScoreFx)cached;
-    char buf[32];
-    // By value, not by presence.
-    uint32_t n = sysdev::getEnv("KAROO_SCORE_FX", buf, sizeof(buf));
-    ScoreFx fx = SCORE_FX_OFF;
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcasecmp(buf, "tint") == 0)        fx = SCORE_FX_TINT;
-        else if (strcasecmp(buf, "nodraw") == 0) fx = SCORE_FX_NODRAW;
-    }
-    g_logger.write("scoreoverlay: FX mode = %s\n",
-               fx == SCORE_FX_TINT   ? "tint"   :
-               fx == SCORE_FX_NODRAW ? "nodraw" : "off");
-    cached = (int)fx;
-    return fx;
-}
-
 struct TLVertex {  // FVF 0x1c4
     float x, y, z, rhw;
     uint32_t diffuse, specular;
@@ -71,7 +45,7 @@ struct TLVertex {  // FVF 0x1c4
 /* The four-vertex strip: (w,0) (w,h) (0,0) (0,h), z 0, rhw 10. */
 static void build_backdrop(TLVertex v[4], float w, float h)
 {
-    const uint32_t diffuse = (score_fx() == SCORE_FX_TINT) ? 0xffff00ff : 0xffffffff;
+    const uint32_t diffuse = 0xffffffff;
     static const float u[4] = { 0.6f, 0.6f, 0.4f, 0.4f };
     static const float t[4] = { 0.4f, 0.6f, 0.4f, 0.6f };
     const float xs[4] = { w, w, 0.0f, 0.0f };
@@ -110,14 +84,10 @@ void Score_DrawHighScoreTable(const MenuArt *art, const FrontEnd *frontEnd, Them
     build_backdrop(quad, w, h);
 
     setup_overlay_state(d3d, theme);
-    if (score_fx() != SCORE_FX_NODRAW)
-        d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
-                                    quad, 4, 0);
+    d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF, quad, 4, 0);
 
     bindTexture(d3d, 0, &art->tex2);
-    if (score_fx() != SCORE_FX_NODRAW)
-        d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
-                                    (const void *)art->panelQuad, 4, 0);
+    d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF, (const void *)art->panelQuad, 4, 0);
 
     static std::atomic<long> calls = 0;
     if (++calls <= SCORE_LOG_FIRST)
@@ -202,9 +172,7 @@ static void draw_summary(const Session *session, ThemeAssetBlock *theme, RenderD
     build_backdrop(quad, w, h);
 
     setup_overlay_state(d3d, theme);
-    if (score_fx() != SCORE_FX_NODRAW)
-        d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF,
-                                    quad, 4, 0);
+    d3d->Draw(Prim::TriangleStrip, OVERLAY_FVF, quad, 4, 0);
 
     const float S = w * VSCALE;  // one virtual unit, in pixels
 

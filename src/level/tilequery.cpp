@@ -25,9 +25,6 @@
  * 11. The two nearest searches accept unsigned, strictly, and reject a
  *      distance of 0.
  *
- * Negative controls (KAROO_SIM_FX), each changing which candidate wins rather
- * than whether one does: "blockinvert" inverts the blocked flag, "listfar" and
- * "radiusfar" pick the farthest candidate, "farnear" the nearest.
  * KAROO_TILEQ_DIAG=1 logs the first call and first hit of each query and a
  * count every 5000 calls. */
 
@@ -39,10 +36,6 @@
 #include "logger.h"
 #include "tilequery.h"
 
-/* By value, not by presence. */
-enum { FX_NONE = 0, FX_BLOCKINVERT, FX_LISTFAR, FX_RADIUSFAR, FX_FARNEAR };
-
-static int s_fx   = FX_NONE;
 static int s_diag = 0;
 static int s_init = 0;
 
@@ -54,27 +47,6 @@ static void fx_init(void)
     if (s_init)
         return;
     s_init = 1;
-
-    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcmp(buf, "blockinvert") == 0) {
-            s_fx = FX_BLOCKINVERT;
-            g_logger.write("tilequery: KAROO_SIM_FX=blockinvert -- blocked flag "
-                      "inverted\n");
-        } else if (strcmp(buf, "listfar") == 0) {
-            s_fx = FX_LISTFAR;
-            g_logger.write("tilequery: KAROO_SIM_FX=listfar -- listed-object "
-                      "search picks the farthest\n");
-        } else if (strcmp(buf, "radiusfar") == 0) {
-            s_fx = FX_RADIUSFAR;
-            g_logger.write("tilequery: KAROO_SIM_FX=radiusfar -- radius search "
-                      "picks the farthest\n");
-        } else if (strcmp(buf, "farnear") == 0) {
-            s_fx = FX_FARNEAR;
-            g_logger.write("tilequery: KAROO_SIM_FX=farnear -- farthest-tile "
-                      "search picks the nearest\n");
-        }
-    }
 
     n = sysdev::getEnv("KAROO_TILEQ_DIAG", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
@@ -154,9 +126,6 @@ Sim_MarkListedTilesBlockedByObject(SwitchCells *sw, LevelMap *map,
     flagged = bridgePhase;
     value   = (unsigned int)(flagged == 0);
 
-    if (s_fx == FX_BLOCKINVERT)
-        value = !value;
-
     if (sw->count(li) == 0)
         return;
 
@@ -185,9 +154,6 @@ Sim_FindNearestListedObjectTile(SwitchCells *sw, unsigned char switchMax,
     unsigned char  v0 = *pv;
     unsigned char  best     = maxDist;
     unsigned char  bestU    = 0, bestV = 0;
-    unsigned char  farDist  = 0;  // KAROO_SIM_FX=listfar only
-    unsigned char  farU     = 0, farV = 0;
-    int            haveFar  = 0;
     unsigned int   list;
 
     fx_init();
@@ -220,15 +186,6 @@ Sim_FindNearestListedObjectTile(SwitchCells *sw, unsigned char switchMax,
                             bestU = u;
                             bestV = v;
                         }
-                        // The same candidates the other way round, for the
-                        // listfar control only.
-                        if (d != 0 && d < maxDist &&
-                            (!haveFar || d > farDist)) {
-                            haveFar = 1;
-                            farDist = d;
-                            farU    = u;
-                            farV    = v;
-                        }
                     }
 
                     // An 8-bit counter compared unsigned against the count.
@@ -244,10 +201,6 @@ Sim_FindNearestListedObjectTile(SwitchCells *sw, unsigned char switchMax,
         }
 
         if (best < maxDist) {
-            if (s_fx == FX_LISTFAR && haveFar) {
-                bestU = farU;
-                bestV = farV;
-            }
             *pu = bestU;
             *pv = bestV;
             diag_hit(Q_LIST, bestU, bestV);
@@ -270,9 +223,6 @@ Sim_FindNearestFlaggedTileInRadius(LevelMap *map, unsigned char *pu,
     unsigned char  v0 = *pv;
     unsigned char  best    = radius;
     unsigned char  bestU   = 0, bestV = 0;
-    unsigned char  farDist = 0;  // KAROO_SIM_FX=radiusfar only
-    unsigned char  farU    = 0, farV = 0;
-    int            haveFar = 0;
     int            v, vEnd, uBeg, uEnd;
 
     fx_init();
@@ -305,13 +255,6 @@ Sim_FindNearestFlaggedTileInRadius(LevelMap *map, unsigned char *pu,
                             bestU = (unsigned char)u;
                             bestV = (unsigned char)v;
                         }
-                        if (d != 0 && d < radius &&
-                            (!haveFar || d > farDist)) {
-                            haveFar = 1;
-                            farDist = d;
-                            farU    = (unsigned char)u;
-                            farV    = (unsigned char)v;
-                        }
                     }
 
                     // One step of u.
@@ -322,10 +265,6 @@ Sim_FindNearestFlaggedTileInRadius(LevelMap *map, unsigned char *pu,
         } while (v < vEnd);
 
         if (best < radius) {
-            if (s_fx == FX_RADIUSFAR && haveFar) {
-                bestU = farU;
-                bestV = farV;
-            }
             *pu = bestU;
             *pv = bestV;
             diag_hit(Q_RADIUS, bestU, bestV);
@@ -350,10 +289,7 @@ Sim_FindFarthestOccupiedTile(LevelMap *map, unsigned char *pu,
     unsigned char  v0    = *pv;
     unsigned char  bestU = *pu;  // seeded from the inputs, not zeroed
     unsigned char  bestV = *pv;
-    unsigned char  nearU = 0, nearV = 0;  // KAROO_SIM_FX=farnear only
     double         best  = 0.0;
-    double         near_ = 0.0;
-    int            haveNear = 0;
     unsigned char  v;
 
     fx_init();
@@ -384,12 +320,6 @@ Sim_FindFarthestOccupiedTile(LevelMap *map, unsigned char *pu,
                             // ...and only then rounded to double on store.
                             best  = (double)d;
                         }
-                        if (!haveNear || d < (double)near_) {
-                            haveNear = 1;
-                            near_    = (double)d;
-                            nearV    = v;
-                            nearU    = u;
-                        }
                     }
 
                     // PRESERVED: an 8-bit index read back sign-extended.
@@ -402,10 +332,6 @@ Sim_FindFarthestOccupiedTile(LevelMap *map, unsigned char *pu,
 
         // PRESERVED: strict; a NaN best returns 0.
         if (best > 0.0) {
-            if (s_fx == FX_FARNEAR && haveNear) {
-                bestU = nearU;
-                bestV = nearV;
-            }
             *pu = bestU;
             *pv = bestV;
             diag_hit(Q_FAR, bestU, bestV);

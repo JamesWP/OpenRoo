@@ -10,10 +10,7 @@
  *     with the same elapsed time.
  *   - Stages 3..5 read the clock again for the next stage's start; 0..2 use
  *     the reading they began with.
- *   - Enter skips the count.
- *
- * KAROO_SIM_FX=tallyfast is a negative control: every stage takes a tenth of
- * the time, so the frame at which the tally finishes moves. */
+ *   - Enter skips the count. */
 
 #include "keycodes.h"
 #include <stdint.h>
@@ -26,7 +23,6 @@
 #include "menutree.h"
 #include "keys.h"
 
-static int s_fx = -1;
 
 /* The clock truncated to whole milliseconds, low word. */
 static unsigned int ftol_low(Game *game)
@@ -48,14 +44,6 @@ Flow_AnimateScoreTallyStages(Game *self)
     unsigned int now, el, lim, n;
     unsigned char st;
 
-    if (s_fx < 0) {
-        char b[32];
-        uint32_t k = sysdev::getEnv("KAROO_SIM_FX", b, sizeof(b));
-        s_fx = (k > 0 && k < sizeof(b) && strcmp(b, "tallyfast") == 0);
-        if (s_fx)
-            g_logger.write("scoretally: KAROO_SIM_FX=tallyfast -- stages x0.1\n");
-    }
-#define LIM(x)  (s_fx ? (x) / 10 : (x))
 
     ScoreTally *T = self->session()->tally();
 
@@ -65,7 +53,7 @@ Flow_AnimateScoreTallyStages(Game *self)
 
     if (st == 0) {
         n = (unsigned int)T->count[TALLY_GEMS];
-        lim = LIM((n * 5 + 5) * 10);
+        lim = (n * 5 + 5) * 10;
         if (el >= lim) {
             T->stageStart = (int)now;
             T->stage = 1;
@@ -80,7 +68,7 @@ Flow_AnimateScoreTallyStages(Game *self)
     }
     if (st == 1) {
         n = (unsigned int)T->count[TALLY_SURPLUS];
-        lim = LIM((n * 5 + 5) * 10);
+        lim = (n * 5 + 5) * 10;
         if (el >= lim) {
             T->stageStart = (int)now;
             T->stage = 2;
@@ -95,7 +83,7 @@ Flow_AnimateScoreTallyStages(Game *self)
     }
     if (st == 2) {
         n = (unsigned int)T->count[TALLY_FOES];
-        lim = LIM((n * 5 + 5) * 20);
+        lim = (n * 5 + 5) * 20;
         if (el >= lim) {
             T->stageStart = (int)now;
             T->stage = 3;
@@ -113,7 +101,7 @@ Flow_AnimateScoreTallyStages(Game *self)
     st = T->stage;
     if (st == 3) {
         n = (unsigned int)T->count[TALLY_TIME];
-        lim = LIM((n * 5 + 5) * 2);
+        lim = (n * 5 + 5) * 2;
         if (el >= lim) {
             T->stage = 4;
             T->stageStart = (int)ftol_low(self);
@@ -126,7 +114,7 @@ Flow_AnimateScoreTallyStages(Game *self)
         }
     } else if (st == 4) {
         n = (unsigned int)T->count[TALLY_ALLITEMS];
-        lim = LIM((n * 5 + 5) * 20);
+        lim = (n * 5 + 5) * 20;
         if (el >= lim) {
             T->stage = 5;
             T->stageStart = (int)ftol_low(self);
@@ -139,7 +127,7 @@ Flow_AnimateScoreTallyStages(Game *self)
         }
     } else if (st == 5) {
         n = (unsigned int)T->count[TALLY_VITALITY];
-        lim = LIM((n * 5 + 5) * 10);
+        lim = (n * 5 + 5) * 10;
         if (el >= lim) {
             T->stage = 6;
             T->stageStart = (int)ftol_low(self);
@@ -168,5 +156,4 @@ totals:
             self->session()->setTallyDone(1);
         return (t & 0xffffff00u) | 0xffu;
     }
-#undef LIM
 }

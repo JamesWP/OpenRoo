@@ -8,9 +8,7 @@
  * same for every object in a frame.
  *
  * No recorded level has an object with a non-NULL mesh, so the rotation branch
- * is never exercised by the replay suite.  KAROO_MESHBATCH_FX=norot drops its
- * rotation (identity 3x3, translation kept); it too is only visible on such a
- * level. */
+ * is never exercised by the replay suite. */
 
 #include <strings.h>
 #include <atomic>
@@ -29,19 +27,6 @@
 #define MESH_LOG_FIRST  8
 
 #define g_flMeshBatchAngle 0x1.921fb6p+0  // (double)(float)(pi/2)
-
-static bool fx_norot(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (sysdev::getEnv("KAROO_MESHBATCH_FX", buf, sizeof buf))
-            cached = (strcasecmp(buf, "norot") == 0);
-        g_logger.write("meshbatch: FX mode = %s\n", cached ? "norot" : "off");
-    }
-    return cached != 0;
-}
 
 void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
                     RenderDevice *d3d)
@@ -94,12 +79,8 @@ void MeshBatch_Draw(const LevelPlacements *pl, const ThemeAssetBlock *theme,
                 for (int k = 0; k < 16; k++)
                     m[k] = 0.0f;
                 m[0] = 1.0f;
-                if (fx_norot()) {
-                    m[5] = 1.0f; m[10] = 1.0f;
-                } else {
-                    m[5] = cs;  m[6]  = -sn;
-                    m[9] = sn;  m[10] = cs;
-                }
+                m[5] = cs;  m[6]  = -sn;
+                m[9] = sn;  m[10] = cs;
                 m[12] = pl->exitPos()[0];
                 m[13] = pl->exitPos()[1];
                 m[14] = pl->exitPos()[2];

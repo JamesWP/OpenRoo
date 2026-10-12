@@ -11,11 +11,7 @@
  * tick.  Every tick it then re-stamps its marker and height on its current
  * tile and publishes its live position on its ORIGIN tile.
  *
- * Despite their names, blockstay and KAROO_BLOCK_DIAG act on platforms.
- *
- * Controls: KAROO_SIM_FX=blockstay stops the vacated-tile clear, leaving a
- * trail of solid cells; =slideaxis exchanges the spawn's two track kinds;
- * =keepobjects makes the purge do nothing.  KAROO_BLOCK_DIAG=1 logs the first
+ * Despite its name, KAROO_BLOCK_DIAG acts on platforms: =1 logs the first
  * vacate, arrival, return and departure and a tick count; KAROO_PLACE_DIAG=1
  * logs every spawn with its scan kind; KAROO_RESET_DIAG=1 logs purges. */
 
@@ -34,9 +30,6 @@
 static const float  K_MS_TO_TILE = 0.005f;
 static const double K_PARK_DWELL = 1500.0;
 
-static int s_fx_blockstay   = 0;
-static int s_fx_slideaxis   = 0;
-static int s_fx_keepobjects = 0;
 static int s_diag_block     = 0;
 static int s_diag_place     = 0;
 static int s_diag_reset     = 0;
@@ -55,24 +48,6 @@ static void fx_init(void)
     if (s_init)
         return;
     s_init = 1;
-
-    if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
-        if (strcmp(buf, "blockstay") == 0) {
-            s_fx_blockstay = 1;
-            g_logger.write("platformobject: KAROO_SIM_FX=blockstay -- vacated tiles "
-                      "are never released\n");
-        } else if (strcmp(buf, "slideaxis") == 0) {
-            s_fx_slideaxis = 1;
-            g_logger.write("platformobject: KAROO_SIM_FX=slideaxis -- the two "
-                      "platform-track kind codes are exchanged, so a track meant "
-                      "to run along U is scanned along V and vice versa; scan, "
-                      "stamping and recorded span all move together\n");
-        } else if (strcmp(buf, "keepobjects") == 0) {
-            s_fx_keepobjects = 1;
-            g_logger.write("platformobject: KAROO_SIM_FX=keepobjects -- platform purge "
-                      "does nothing\n");
-        }
-    }
 
     if (env_set("KAROO_BLOCK_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
         s_diag_block = 1;
@@ -117,13 +92,6 @@ void PlatformObject::spawn(const EntityContext &ctx, PlatformSlots &slots, unsig
     v      = vArg & 0xff;
     height = heightArg & 0xff;
     kind   = kindArg & 0xff;
-
-    if (s_fx_slideaxis) {
-        if (kind == TILE_PLATFORM_U)
-            kind = 0x0b;
-        else if (kind == TILE_PLATFORM_V)
-            kind = 0x0a;
-    }
 
     base = ctx.map;
     tile = base->tile( (int)u, (int)v);
@@ -234,9 +202,6 @@ void PlatformObject::purgeAll(const EntityContext &ctx, PlatformSlots &slots)
 
     fx_init();
 
-    if (s_fx_keepobjects)
-        return;
-
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
         g_logger.write("platformobject: first purge -- count=%u\n",
@@ -281,8 +246,6 @@ static int s_logged_depart  = 0;
 
 void PlatformObject::vacate()
 {
-    if (s_fx_blockstay)
-        return;
     if (s_diag_block && !s_logged_vacate) {
         s_logged_vacate = 1;
         g_logger.write("platformobject: first vacate -- cell=(%d,%d)\n",

@@ -1,5 +1,3 @@
-/* KAROO_SIM_FX=themeoff is a negative control: a match returns the next
- * theme's track, so every level gets its neighbour's music. */
 #include <stdint.h>
 #include "sysdev.h"
 #include <string.h>
@@ -13,8 +11,6 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <iterator>
-
-static int s_fx = -1;
 
 /* The C-locale lowercase: 'A'..'Z' compared as signed chars. */
 static void crt_strlwr(char *p)
@@ -31,20 +27,12 @@ unsigned int CdThemes::findThemeIndex(const char *name)
     char want[128];
     char have[128];
 
-    if (s_fx < 0) {
-        char b[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", b, sizeof(b));
-        s_fx = (n > 0 && n < sizeof(b) && strcmp(b, "themeoff") == 0);
-        if (s_fx)
-            g_logger.write("themeindex: KAROO_SIM_FX=themeoff -- neighbour index\n");
-    }
-
     strcpy(want, name);
     crt_strlwr(want);
     for (int i = 0; i < (int)count_; ++i) {
         strcpy(have, names_[i]);
         crt_strlwr(have);
-        unsigned char result = trackOf_[i + (s_fx ? 1 : 0)];
+        unsigned char result = trackOf_[i];
         if (strcmp(want, have) == 0)
             return result;
     }

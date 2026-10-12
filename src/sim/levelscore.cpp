@@ -16,11 +16,7 @@
  *      ((-q) << 31) - q + limit, times 2 in 32 bits, where q is the whole
  *      seconds elapsed.  It equals (limit - q) * 2 for every input.
  *   3. The all-items test is an unsigned 16-bit compare of two different
- *      counters, and is also denied on a restart.
- *
- * KAROO_SIM_FX=score is a negative control: every score doubles while its
- * count does not, so on the tally screen each row's count and score disagree
- * by exactly two times. */
+ *      counters, and is also denied on a restart. */
 
 #include <strings.h>
 #include <stdint.h>
@@ -32,20 +28,6 @@
 
 /* The counts, scores, totals and animation state are the Session's tally
  * (ScoreTally, session.h). */
-
-static int s_fxDouble = -1;
-
-static int fx_double(void)
-{
-    if (s_fxDouble < 0) {
-        char buf[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-        s_fxDouble = (n > 0 && n < sizeof(buf) && strcasecmp(buf, "score") == 0);
-        if (s_fxDouble)
-            g_logger.write("levelscore: KAROO_SIM_FX=score -- scores doubled, counts left alone\n");
-    }
-    return s_fxDouble;
-}
 
   void  
 Score_CalculateLevelScore(Game *self, char endReason)
@@ -101,10 +83,6 @@ Score_CalculateLevelScore(Game *self, char endReason)
     t->shownScore[TALLY_GEMS] = 0;  // zeroed here, before the rest
     t->score[TALLY_VITALITY]  = (int)vitality;
     t->count[TALLY_VITALITY]  = (int)vitality;
-
-    if (fx_double())
-        for (int r = 0; r < TALLY_ROWS; r++)
-            t->score[r] *= 2;
 
     // The totals, summed in this order.  The game adds the vitality value
     // still in a register rather than re-reading the score; they are the same

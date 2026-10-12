@@ -76,10 +76,8 @@ public:
     // The renderer (bridgesurf.cpp).
     // Builds this bridge's scrolling deck quad for animation time t (ms).
     // False, with v untouched, when the bridge is not drawn (never armed and
-    // in phase 0).  backward is KAROO_BRIDGE_FX=backward.  The diffuse is left
-    // 0xFFFFFFFF for the caller to overwrite.
-    bool buildSurface(BridgeVertex v[4], double t, bool backward,
-                      BridgeSurfaceInfo *info) const;
+    // in phase 0).  The diffuse is white.
+    bool buildSurface(BridgeVertex v[4], double t, BridgeSurfaceInfo *info) const;
 
     // A read-only view for the debug map.
     BridgeExtent extent() const

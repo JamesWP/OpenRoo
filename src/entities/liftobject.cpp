@@ -9,8 +9,6 @@
  * At 0.005 per ms a lift covers one height unit in 200 ms.  The state tests
  * are separate ifs, so a lift that arrives parks in the same tick.
  *
- * Controls: KAROO_SIM_FX=liftflip reverses the departure direction, =placeaxis
- * exchanges u and v in the spawn, =keepobjects makes the purge do nothing.
  * KAROO_LIFT_DIAG=1 logs the first rise, fall and departure and a tick count;
  * KAROO_PLACE_DIAG and KAROO_RESET_DIAG log spawns and purges. */
 
@@ -29,9 +27,6 @@
 static const float  K_MS_TO_HEIGHT = 0.005f;
 static const double K_PARK_DWELL   = 1500.0;
 
-static int s_fx_liftflip    = 0;
-static int s_fx_placeaxis   = 0;
-static int s_fx_keepobjects = 0;
 static int s_diag_lift      = 0;
 static int s_diag_place     = 0;
 static int s_diag_reset     = 0;
@@ -50,22 +45,6 @@ static void fx_init(void)
     if (s_init)
         return;
     s_init = 1;
-
-    if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
-        if (strcmp(buf, "liftflip") == 0) {
-            s_fx_liftflip = 1;
-            g_logger.write("liftobject: KAROO_SIM_FX=liftflip -- departure "
-                      "direction inverted\n");
-        } else if (strcmp(buf, "placeaxis") == 0) {
-            s_fx_placeaxis = 1;
-            g_logger.write("liftobject: KAROO_SIM_FX=placeaxis -- lift spawn "
-                      "exchanges u and v\n");
-        } else if (strcmp(buf, "keepobjects") == 0) {
-            s_fx_keepobjects = 1;
-            g_logger.write("liftobject: KAROO_SIM_FX=keepobjects -- lift purge "
-                      "does nothing\n");
-        }
-    }
 
     if (env_set("KAROO_LIFT_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
         s_diag_lift = 1;
@@ -110,14 +89,8 @@ void LiftObject::spawn(const EntityContext &ctx, LiftSlots &slots, unsigned int 
 
     fx_init();
 
-    //     // The only place the spawn reads u and v: placeaxis swaps them here.
     u = uArg & 0xff;
     v = vArg & 0xff;
-    if (s_fx_placeaxis) {
-        unsigned int t = u;
-        u = v;
-        v = t;
-    }
     base = baseArg & 0xff;
     top  = topArg & 0xff;
 
@@ -177,9 +150,6 @@ void LiftObject::purgeAll(const EntityContext &ctx, LiftSlots &slots)
     unsigned char i;
 
     fx_init();
-
-    if (s_fx_keepobjects)
-        return;
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
@@ -320,9 +290,6 @@ void LiftObject::tick()
         //         // A NaN does not depart.
         if (now_ - phaseStart_ >= K_PARK_DWELL) {
             int latch = atTop_;
-
-            if (s_fx_liftflip)
-                latch = (latch != 0) ? 0 : 1;
 
             phaseStart_ = now_;
             state_ = (signed char)((latch != 0) + 1);  // atTop_ set: fall; clear: rise.

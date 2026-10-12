@@ -32,30 +32,6 @@
 static const char SRCFILE[] =
     "src/audio/soundmanager.cpp";
 
-/* KAROO_SNDMGR_FX=nosharemaster is a negative control: the first acquirer
- * never gets the master, only a duplicate like everyone else.  It only costs
- * one extra duplicate per sound and moves no geometry, so both gates can host
- * it.  KAROO_SNDMGR_DIAG's masterGrants goes to 0 and clones rises by as many;
- * KAROO_DSB_DIAG's masterLent falls to 0. */
-enum SndMgrFx { SM_FX_OFF = 0, SM_FX_NOSHAREMASTER = 1 };
-
-static SndMgrFx sndmgr_fx(void)
-{
-    static int cached = -1;
-    if (cached >= 0)
-        return (SndMgrFx)cached;
-    char buf[32];
-    uint32_t n = sysdev::getEnv("KAROO_SNDMGR_FX", buf, sizeof(buf));
-    SndMgrFx fx = SM_FX_OFF;
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcasecmp(buf, "nosharemaster") == 0) fx = SM_FX_NOSHAREMASTER;
-    }
-    g_logger.write("soundmgr: FX mode = %s\n",
-              fx == SM_FX_NOSHAREMASTER ? "nosharemaster" : "off");
-    cached = (int)fx;
-    return fx;
-}
-
 /* KAROO_SNDMGR_DIAG=1 logs each function's first call and a census of
  * acquires, releases, loads and setups. */
 static bool sndmgr_diag(void)
@@ -267,7 +243,7 @@ audiodev::Buffer *SoundManager::acquireStatic(const char *name, int bWant3D)
     ++g_acqStaticHit;
     doublesoundbuff *entry = e->entry;
 
-    if (entry->masterTaken() == 0 && sndmgr_fx() != SM_FX_NOSHAREMASTER) {
+    if (entry->masterTaken() == 0) {
         entry->setMasterTaken(1);
         ++g_masterGrants;
         return entry->master();

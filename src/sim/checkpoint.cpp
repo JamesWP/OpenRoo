@@ -3,9 +3,7 @@
  * script's camera mode, distance and eye, and its spline point, into the Game.
  *
  * PRESERVED: eye[1] and eye[2] are copied crossed, script eye[2] into the
- * Game's eye[1] and eye[1] into eye[2].
- *
- * KAROO_SIM_FX=camswap, a negative control, copies them straight. */
+ * Game's eye[1] and eye[1] into eye[2]. */
 
 #include <stdint.h>
 #include "sysdev.h"
@@ -14,21 +12,11 @@
 #include "game.h"
 #include "checkpoint.h"
 
-static int s_fx = -1;
-
   void  
 Sim_RestoreCheckpointStateBlocks(Game *self)
 {
     Game         *g  = self;
     ScriptPlayer *sp = g->scriptPlayer();
-
-    if (s_fx < 0) {
-        char e[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
-        s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "camswap") == 0);
-        if (s_fx)
-            g_logger.write("checkpoint: KAROO_SIM_FX=camswap -- straight copy\n");
-    }
 
     if (sp->running() == 0 || sp->loaded() == 0)
         return;
@@ -37,8 +25,8 @@ Sim_RestoreCheckpointStateBlocks(Game *self)
     g->camera()->setMode(sp->cameraMode());
     g->camera()->setDistance(sp->cameraDistance());
     g->camera()->setFocus(0, sp->eye(0));
-    g->camera()->setFocus(1, sp->eye(s_fx ? 1 : 2));
-    g->camera()->setFocus(2, sp->eye(s_fx ? 2 : 1));
+    g->camera()->setFocus(1, sp->eye(2));
+    g->camera()->setFocus(2, sp->eye(1));
     g->camera()->setScriptedEye(0, sp->splinePoint(0));
     g->camera()->setScriptedEye(1, sp->splinePoint(1));
     g->camera()->setScriptedEye(2, sp->splinePoint(2));

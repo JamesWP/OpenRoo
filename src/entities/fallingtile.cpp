@@ -13,9 +13,7 @@
  * re-arms it and it drops again 1.5 s later.  tests/destr-bait.rec waits out
  * that second fall.
  *
- * Controls: KAROO_SIM_FX=slowfall triples the fall delay (about 270 frames
- * instead of 90 on Forest\DestrStart), =placeaxis exchanges u and v in the
- * spawn, =keepobjects makes the purge do nothing.  KAROO_PLACE_DIAG=1 logs
+ * KAROO_PLACE_DIAG=1 logs
  * spawns and a failed allocation; KAROO_RESET_DIAG=1 logs purges and sound
  * releases. */
 
@@ -34,9 +32,6 @@
 static const double FALL_DELAY_MS    = 1500.0;
 static const double RESPAWN_DELAY_MS = 5000.0;
 
-static int s_fx_slowfall    = 0;
-static int s_fx_placeaxis   = 0;
-static int s_fx_keepobjects = 0;
 static int s_diag_place     = 0;
 static int s_diag_reset     = 0;
 static int s_init           = 0;
@@ -54,23 +49,6 @@ static void fx_init(void)
     if (s_init)
         return;
     s_init = 1;
-
-    if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
-        if (strcasecmp(buf, "slowfall") == 0) {
-            s_fx_slowfall = 1;
-            g_logger.write("fallingtile: KAROO_SIM_FX=slowfall -- fall delay "
-                      "%.0f ms, not %.0f\n",
-                      FALL_DELAY_MS * 3.0, FALL_DELAY_MS);
-        } else if (strcmp(buf, "placeaxis") == 0) {
-            s_fx_placeaxis = 1;
-            g_logger.write("fallingtile: KAROO_SIM_FX=placeaxis -- u and v are "
-                      "exchanged at the single point the spawn reads them\n");
-        } else if (strcmp(buf, "keepobjects") == 0) {
-            s_fx_keepobjects = 1;
-            g_logger.write("fallingtile: KAROO_SIM_FX=keepobjects -- falling tile "
-                      "purge does nothing\n");
-        }
-    }
 
     if (env_set("KAROO_PLACE_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
         s_diag_place = 1;
@@ -119,13 +97,6 @@ unsigned int FallingTile::spawn(const EntityContext &ctx, FallingSlots &slots, u
 
     u = uArg & 0xff;
     v = vArg & 0xff;
-    //     // The only place the spawn reads its coordinates: placeaxis swaps them
-    //     // here.
-    if (s_fx_placeaxis) {
-        unsigned int t = u;
-        u = v;
-        v = t;
-    }
     height = heightArg & 0xff;
 
     obj = create();
@@ -195,9 +166,6 @@ void FallingTile::purgeAll(const EntityContext &ctx, FallingSlots &slots)
 
     fx_init();
 
-    if (s_fx_keepobjects)
-        return;
-
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
         g_logger.write("fallingtile: first purge -- count=%u\n",
@@ -242,7 +210,7 @@ void FallingTile::playAtTile(SoundVoice *snd, const Tile *t) const
 void FallingTile::tick()
 {
     fx_init();
-    const double fallDelay = s_fx_slowfall ? FALL_DELAY_MS * 3.0 : FALL_DELAY_MS;
+    const double fallDelay = FALL_DELAY_MS;
 
     tickStepCopy_ = *tickStep_;
     now_        = *clock_;

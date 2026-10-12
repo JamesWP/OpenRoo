@@ -25,11 +25,7 @@
  *   8. The spline point count is unbounded.
  *   9. atof, atoi and strcpy are handed a missing (NULL) word where the
  *      game does, and Sound and Particle build "<game dir>\(null)" from a
- *      missing name.
- *
- * KAROO_LEO_FX is a negative control: "nomodels" drops every Model entry, so
- * the extra models vanish; "pathrev" stores every spline backwards, so the
- * Water01 ray swims its loop the other way. */
+ *      missing name. */
 
 #include <strings.h>
 #include <stdio.h>
@@ -49,19 +45,6 @@
 #define LEO_LOG_FIRST    6
 
 static char s_entry[0x10000];  // the 16-bit index's full range
-
-static bool fx_nomodels(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (sysdev::getEnv("KAROO_LEO_FX", buf, sizeof(buf)))
-            cached = (strcasecmp(buf, "nomodels") == 0);
-        g_logger.write("leo: FX mode = %s\n", cached ? "nomodels" : "off");
-    }
-    return cached != 0;
-}
 
 /* KAROO_LEO_RECDUMP=<path> appends every record built, field by field, with an
  * FNV-1a hash of each, records 0..objectCount inclusive (the one past the end
@@ -275,18 +258,6 @@ static const char LEO_DELIMS[] = " ,\t\n;";
 
 static char *leo_tok(void) { return strtok(NULL, LEO_DELIMS); }
 
-/* KAROO_LEO_FX=pathrev. */
-static bool fx_pathrev(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = sysdev::getEnv("KAROO_LEO_FX", buf, sizeof(buf))
-                 && strcasecmp(buf, "pathrev") == 0;
-    }
-    return cached != 0;
-}
-
 /* D3DBLEND by name; 0 for anything else, NONE included. */
 int ExtraObjects::blendFromName(const char *name)
 {
@@ -378,13 +349,6 @@ void ExtraObjects::parseSpline(const char *mode)
         r->splinePointCount++;
     }
     r->splinePointCount--;
-    if (fx_pathrev())
-        for (unsigned i = 0, j = r->splinePointCount - 1u; r->splinePointCount && i < j; i++, j--)
-            for (int k = 0; k < 3; k++) {
-                float tmp = r->splinePoints[i][k];
-                r->splinePoints[i][k] = r->splinePoints[j][k];
-                r->splinePoints[j][k] = tmp;
-            }
     g_logger.logMessage(1, "LEO: Spline-points:%d", r->splinePointCount);
 }
 
@@ -546,11 +510,7 @@ int ExtraObjects::parseEntry(const char *entry)
     for (char *w = strtok(buf, LEO_DELIMS); w != NULL; w = leo_tok()) {
         if (strcmp(w, "Sound") == 0)          parseSound();
         else if (strcmp(w, "Particle") == 0)  parseParticle();
-        else if (strcmp(w, "Model") == 0) {
-            if (fx_nomodels())
-                return 1;  // KAROO_LEO_FX=nomodels: no record
-            parseModel();
-        }
+        else if (strcmp(w, "Model") == 0)     parseModel();
         else if (strcmp(w, "Billboard") == 0) parseBillboard();
         else continue;
         objectCount_++;

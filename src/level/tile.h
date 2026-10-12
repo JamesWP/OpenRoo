@@ -78,8 +78,7 @@ enum TileKind {
     TILE_ICE         = 0x15,
     // Blocked unconditionally.  On screen it is whatever the level's .leo
     // object at that cell is (a crate, a beehive, a bush); nothing links the
-    // two files, so under KAROO_LEO_FX=nomodels the cells stay blocked and
-    // bare.
+    // two files.
     TILE_IMPASSABLE  = 0x16,
     // A bombable block (the game's "obstacle"): a bomb's blast spends it
     // and promotes its hidden contents (field202()) into contents() to be

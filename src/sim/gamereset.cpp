@@ -7,8 +7,7 @@
  * acts on it after them, so every store happens even when the game file is
  * bad, and the objects are still purged after the quit request.
  *
- * KAROO_SIM_FX=keepobjects (a negative control, in each purge) leaves the
- * objects and their counts alive.  KAROO_RESET_DIAG=1 logs the first call, the
+ * KAROO_RESET_DIAG=1 logs the first call, the
  * first foe and bomb removal, and a count every 500 calls. */
 
 #include <stdint.h>

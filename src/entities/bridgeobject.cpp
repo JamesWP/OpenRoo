@@ -7,11 +7,7 @@
  * disarms, the phase flips and the coordinate snaps.  While moving, each cell
  * short of the guard is stamped as deck (extending) or cleared (retracting).
  *
- * Controls: KAROO_SIM_FX=deckaxis swaps the travel axis 1 and 2 in the tick,
- * =bridgespan exchanges the spawn's two far-end arms, =keepobjects makes the
- * purge do nothing.  Exchanging the spawn's axis codes instead walks a scan
- * out of the tile array on Space\Bridge01, so bridgespan leaves the scan
- * alone.  KAROO_DECK_DIAG=1 logs the first stamp and unstamp and a tick count;
+ * KAROO_DECK_DIAG=1 logs the first stamp and unstamp and a tick count;
  * KAROO_PLACE_DIAG=1 logs every spawn with its scan axis; KAROO_RESET_DIAG=1
  * logs purges. */
 
@@ -34,9 +30,6 @@
 /* The float nearest 0.01; widened where it is multiplied. */
 static const float K_MS_TO_TILE = 0.01f;
 
-static int s_fx_deckaxis  = 0;
-static int s_fx_bridgespan  = 0;
-static int s_fx_keepobjects = 0;
 static int s_diag_deck    = 0;
 static int s_diag_place     = 0;
 static int s_diag_reset     = 0;
@@ -55,25 +48,6 @@ static void fx_init(void)
     if (s_init)
         return;
     s_init = 1;
-
-    if (env_set("KAROO_SIM_FX", buf, sizeof(buf))) {
-        if (strcmp(buf, "deckaxis") == 0) {
-            s_fx_deckaxis = 1;
-            g_logger.write("bridgeobject: KAROO_SIM_FX=deckaxis -- travel axis "
-                      "1<->2 flipped\n");
-        } else if (strcmp(buf, "bridgespan") == 0) {
-            s_fx_bridgespan = 1;
-            g_logger.write("bridgeobject: KAROO_SIM_FX=bridgespan -- the two arms "
-                      "that compute the bridge's far end (+0x38) are "
-                      "exchanged, so a forward run records the backward extent "
-                      "and vice versa.  The SCAN is untouched, so this stays "
-                      "in bounds\n");
-        } else if (strcmp(buf, "keepobjects") == 0) {
-            s_fx_keepobjects = 1;
-            g_logger.write("bridgeobject: KAROO_SIM_FX=keepobjects -- bridge purge "
-                      "does nothing\n");
-        }
-    }
 
     if (env_set("KAROO_DECK_DIAG", buf, sizeof(buf)) && strcmp(buf, "0") != 0)
         s_diag_deck = 1;
@@ -175,7 +149,7 @@ void BridgeObject::spawn(const EntityContext &ctx, BridgeSlots &slots, unsigned 
             obj->span_ = (signed char)(obj->span_ + 1);
         }
 
-        if ((obj->step_ == 1) != (s_fx_bridgespan != 0))
+        if (obj->step_ == 1)
             obj->guard_ = (unsigned char)(obj->endU_ + (unsigned char)obj->span_);
         else
             obj->guard_ = obj->endU_;
@@ -194,7 +168,7 @@ void BridgeObject::spawn(const EntityContext &ctx, BridgeSlots &slots, unsigned 
             obj->span_ = (signed char)(obj->span_ + 1);
         }
 
-        if ((obj->step_ == 1) != (s_fx_bridgespan != 0))
+        if (obj->step_ == 1)
             obj->guard_ = (unsigned char)(obj->endV_ + (unsigned char)obj->span_);
         else
             obj->guard_ = obj->endV_;
@@ -242,9 +216,6 @@ void BridgeObject::purgeAll(const EntityContext &ctx, BridgeSlots &slots)
     int i;
 
     fx_init();
-
-    if (s_fx_keepobjects)
-        return;
 
     if (s_diag_reset && !s_logged_purge) {
         s_logged_purge = 1;
@@ -314,13 +285,7 @@ void BridgeObject::tick()
     tickStepCopy_ = *tickStep_;
     now_ = *clock_;
 
-    //     // deckaxis flips the axis here, the one point every axis decision
-    //     // reads.
     axis = axis_;
-    if (s_fx_deckaxis) {
-        if (axis == 1)      axis = 2;
-        else if (axis == 2) axis = 1;
-    }
 
     if (armed_ == 0)
         return;
@@ -462,15 +427,14 @@ void BridgeObject::tick()
 
 /* The deck quad from the anchor to the live end, z negated, one unit wide;
  * bridgesurf.cpp sets the render states and draws it. */
-bool BridgeObject::buildSurface(BridgeVertex v[4], double t, bool backward,
-                                BridgeSurfaceInfo *info) const
+bool BridgeObject::buildSurface(BridgeVertex v[4], double t, BridgeSurfaceInfo *info) const
 {
     if (armed_ == 0 && phase_ == 0)
         return false;
 
     for (int q = 0; q < 4; q++) {
         v[q].x = v[q].y = v[q].z = 0.0f;
-        v[q].diffuse = 0xFFFFFFFF;  // PRESERVED: dead; the caller rewrites it.
+        v[q].diffuse = 0xFFFFFFFF;
         v[q].u0 = v[q].v0 = v[q].u1 = v[q].v1 = 0.0f;
     }
 
@@ -487,8 +451,6 @@ bool BridgeObject::buildSurface(BridgeVertex v[4], double t, bool backward,
     float vs  = len * 0.25f;
 
     float f = (float)fmod(t * (double)0.001f / n, 1.0);
-    if (backward)
-        f = -f;
     float fn = f * n;
 
     if ((signed char)axis_ == 1) {

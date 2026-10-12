@@ -2,11 +2,7 @@
  * launcher dialog, the Direct3D device (three attempts), input, sound, CD
  * audio, render state and clock, the intro movie, then the message loop, which
  * renders a frame whenever no movie is playing.  Shutdown releases in a fixed
- * order.
- *
- * KAROO_WINMAIN_FX=norender is a negative control: the loop never renders, as
- * if the intro never ended.  Messages are still pumped, so --auto-exit still
- * ends the run; every recording fails on frames_run. */
+ * order. */
 
 #include <strings.h>
 #include <stdio.h>
@@ -64,18 +60,8 @@ static MenuArt s_menuArt;
  * outlives the Game, so the bindings can be saved after the Game is deleted. */
 static ProgableControl s_progCtrl;
 
-static bool winmain_fx_norender()
-{
-    char buf[16];
-    bool on = sysdev::getEnv("KAROO_WINMAIN_FX", buf, sizeof(buf))
-              && strcasecmp(buf, "norender") == 0;
-    g_logger.write("winmain: FX mode = %s\n", on ? "norender" : "off");
-    return on;
-}
-
 static void delete_game(Game *g)       { Game_Shutdown(g); delete g; }
 
-static bool g_norender;
 
 /* Draws the intro's current frame, when there is a new one. */
 static void present_movie_frame(videodev::Player &movie, RenderDevice *dev)
@@ -107,7 +93,7 @@ static void idle(Game *game, videodev::Player &movie)
     // Cleared when the movie finishes or is skipped (a headless one, at once).
     if (movie.playing())
         present_movie_frame(movie, s_renderer.device);
-    else if (!g_norender)
+    else
         Core_RunFrame(game, &s_renderer, &s_menuArt, &s_progCtrl);
 }
 
@@ -143,28 +129,13 @@ static void restore_surfaces(Renderer *renderer)
         tail[i]->reupload(dev);
 }
 
-/* KAROO_WNDPROC_FX=noquit is a negative control: closing the window does not
- * post WM_QUIT, so the run never ends by itself. */
-static bool wndproc_fx_noquit()
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = sysdev::getEnv("KAROO_WNDPROC_FX", buf, sizeof(buf))
-                 && strcasecmp(buf, "noquit") == 0;
-        g_logger.write("wndproc: FX mode = %s\n", cached ? "noquit" : "off");
-    }
-    return cached != 0;
-}
-
 class MainWindow : public windev::WindowHandler {
 public:
     explicit MainWindow(videodev::Player &movie) : movie_(movie) {}
 
     void onDestroyed() override
     {
-        if (!wndproc_fx_noquit())
-            windev::quit(1);
+        windev::quit(1);
     }
 
     void onActivate(bool active) override
@@ -328,7 +299,6 @@ int Main_WinMain(const char *lpCmdLine)
     if (!d3d->headless())
         debugui::init(*d3d);
 
-    g_norender = winmain_fx_norender();
     prof::initSlowFrames();
     const int exitCode = windev::runMessageLoop([game, &movie] { idle(game, movie); });
     prof::dumpSlowFrames();

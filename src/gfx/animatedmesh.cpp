@@ -2,10 +2,7 @@
  *
  * Both draws clamp the 16-bit frame index against wFrameCount, index into the
  * flat per-frame vertex array, and issue one DrawPrimitive(TRIANGLELIST);
- * DrawMeshBuffer passes flags 0x08, DrawFramedModel 0x18.
- *
- * KAROO_ANIMMESH_FX=half draws only the first half of each mesh's triangles.
- */
+ * DrawMeshBuffer passes flags 0x08, DrawFramedModel 0x18. */
 
 #include <algorithm>
 #include <strings.h>
@@ -24,19 +21,6 @@
 #define MESH_FVF        VertexFormat::Normal2  // XYZ | NORMAL | TEX2
 #define MESH_LOG_FIRST  8
 #define MDL_VERTEX_STRIDE sizeof(MeshVertex)
-
-static bool fx_half(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (sysdev::getEnv("KAROO_ANIMMESH_FX", buf, sizeof(buf)))
-            cached = (strcasecmp(buf, "half") == 0);
-        g_logger.write("animatedmesh: FX mode = %s\n", cached ? "half" : "off");
-    }
-    return cached != 0;
-}
 
 /* KAROO_MESH_DIAG=1: dump the pipeline state the first time a mesh is drawn.
  * The mesh FVF carries no vertex colour, so a tinted mesh is being coloured by
@@ -63,8 +47,6 @@ long AnimatedMesh::drawMesh(RenderDevice *dev, uint32_t frame,
     if (frame >= wFrameCount_)
         frame = 0;
     uint32_t count = this->vertexCount();
-    if (fx_half())
-        count = (count / 2 / 3) * 3;  // keep it a whole number of triangles
 
     if (!vb_ && !vertexData_.empty()) {
         vb_ = dev->CreateVertexBuffer(MESH_FVF, (uint32_t)vertexData_.size(),
@@ -170,27 +152,11 @@ AnimatedMesh::~AnimatedMesh()
  *          for each vertex v:
  *              10 x uint32_t        -> vertexData_[f*vertexCount + v]
  * Opened "rb".  Every read is a separate 4-byte fread; the header's two are 2
- * and 4 bytes.
- *
- * KAROO_MDL_FX=scale halves every vertex position as it is read, so every
- * model comes out at half size. */
+ * and 4 bytes. */
 
 #define MDL_FRAME_REC_SIZE 0x18
 #define MDL_VERTEX_SIZE    0x28
 #define MDL_LOG_FIRST      8
-
-static bool fx_scale(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (sysdev::getEnv("KAROO_MDL_FX", buf, sizeof(buf)))
-            cached = (strcasecmp(buf, "scale") == 0);
-        g_logger.write("model: FX mode = %s\n", cached ? "scale" : "off");
-    }
-    return cached != 0;
-}
 
 static unsigned long fnv1a(const void *p, unsigned len)
 {
@@ -241,12 +207,6 @@ int AnimatedMesh::importSceneModels(const char *path)
         for (unsigned v = 0; v < dwVertexCount_; v++) {
             unsigned char *vert = (unsigned char *)&vertexData_[f * dwVertexCount_ + v];
             readBytes(vert, MDL_VERTEX_SIZE);
-
-            if (fx_scale()) {
-                ((float *)vert)[0] *= 0.5f;
-                ((float *)vert)[1] *= 0.5f;
-                ((float *)vert)[2] *= 0.5f;
-            }
         }
     }
 

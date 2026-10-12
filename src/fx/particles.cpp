@@ -3,10 +3,7 @@
  * (particles.h).
  *
  * Fill writes only xyz + diffuse into the scratch vertex buffer; psize,
- * specular and u/v stay as the allocators left them.
- *
- * KAROO_PARTICLE_FX=tint forces every particle magenta; =spin exaggerates
- * XFace rotation velocities x10. */
+ * specular and u/v stay as the allocators left them. */
 
 #include <strings.h>
 #include <atomic>
@@ -30,28 +27,10 @@
 
 #define PARTICLE_FVF       VertexFormat::Lit  // XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1, 0x20 stride
 #define PARTICLE_LOG_FIRST 8
-#define FX_TINT_COLOUR     0xFFFF00FF
-
-/* KAROO_PARTICLE_FX, read once per mode by each caller. */
-static bool fx_is(const char *mode)
-{
-    char buf[16];
-    return sysdev::getEnv("KAROO_PARTICLE_FX", buf, sizeof(buf))
-        && strcasecmp(buf, mode) == 0;
-}
-
-static bool fx_tint(void)
-{
-    static const bool on = fx_is("tint");
-    static std::atomic<long> logged = 0;
-    if (logged.exchange(1) == 0)
-        g_logger.write("particle: FX mode = %s\n", on ? "tint" : "off");
-    return on;
-}
 
 uint32_t ParticleNode::colour() const
 {
-    return fx_tint() ? FX_TINT_COLOUR : dwDiffuse;
+    return dwDiffuse;
 }
 
 /* Per-class state so one busy class can't hide the others: the first
@@ -242,15 +221,6 @@ static void mat_rot_z(PMat4 m, float a)
 /* A rotation angle is baked into the corners once it exceeds this. */
 #define ROT_STEP_THRESHOLD 0.01
 
-static bool fx_spin(void)
-{
-    static const bool on = fx_is("spin");
-    static std::atomic<long> logged = 0;
-    if (on && logged.exchange(1) == 0)
-        g_logger.write("particle: FX mode = spin\n");
-    return on;
-}
-
 void ParticleSystem::tick(float dt)
 {
     static std::atomic<long> once = 0;
@@ -270,14 +240,13 @@ void XFaceParticleSystem::tick(float dt)
         g_logger.write("particle: XFaceTick active (this=%p entries=%lu)\n",
                   this, dwCornerTableCount_);
     if (pCornerTable_) {
-        float spin = fx_spin() ? 10.0f : 1.0f;
         for (uint32_t i = 0; i < dwCornerTableCount_; i++) {
             XFaceCornerEntry *e = &pCornerTable_[i];
             PMat4 m;
             mat_identity(m);
             bool fired = false;
             for (int axis = 0; axis < 3; axis++)
-                e->flRotAccum[axis] += e->flRotVel[axis] * spin;
+                e->flRotAccum[axis] += e->flRotVel[axis];
             for (int axis = 0; axis < 3; axis++) {
                 if ((double)e->flRotAccum[axis] > ROT_STEP_THRESHOLD) {
                     PMat4 rot;

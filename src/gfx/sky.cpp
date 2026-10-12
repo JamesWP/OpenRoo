@@ -3,9 +3,7 @@
  * DrawSkyBackground draws the cube with the z-buffer off, under WORLD =
  * RotY(flYawAngle) with the caller's centre as the translation, so the sky
  * follows the viewer.  The centre is a 12-byte struct passed by value after
- * the device; dropping the translation pins the sky at the world origin.
- *
- * KAROO_SKY_FX=noskip draws only the first of the six quads. */
+ * the device; dropping the translation pins the sky at the world origin. */
 
 #include <strings.h>
 #include <atomic>
@@ -23,19 +21,6 @@
 #define SKY_FVF        VertexFormat::Lit
 #define SKY_QUADS      6
 #define SKY_LOG_FIRST  8
-
-static bool fx_one_quad(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        cached = 0;
-        if (sysdev::getEnv("KAROO_SKY_FX", buf, sizeof(buf)))
-            cached = (strcasecmp(buf, "noskip") == 0);
-        g_logger.write("sky: FX mode = %s\n", cached ? "noskip (1 quad only)" : "off");
-    }
-    return cached != 0;
-}
 
 float *SkyBackground::draw(RenderDevice *dev,
                       float flCentreX, float flCentreY, float flCentreZ)
@@ -68,8 +53,7 @@ float *SkyBackground::draw(RenderDevice *dev,
     if (!vb_)
         vb_ = dev->CreateVertexBuffer(SKY_FVF, SKY_QUADS * 4, BufferUsage::Static, QuadVerts_);
 
-    const int nquads = fx_one_quad() ? 1 : SKY_QUADS;
-    for (int i = 0; i < nquads; i++) {
+    for (int i = 0; i < SKY_QUADS; i++) {
         const Texture *tex = &Textures_[i];
         bindTexture(dev, 0, tex);
         bool ok = dev->DrawBuffer(Prim::TriangleStrip, vb_, i * 4, 4);

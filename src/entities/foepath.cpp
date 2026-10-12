@@ -19,73 +19,8 @@
 #include "levelmap.h"
 #include "entitymath.h"
 
-/* KAROO_SIM_FX flags for this search, read by value, never by presence:
- *   blindfoe     every cell reports impassable
- *   keyclash     node keys drop the column, breaking key injectivity
- *   popsecond    the open list pops the second-best node instead of the best
- *   nolookup     the open/closed lookups always report "not present"
- *   shortsearch  the iteration cap is forced to one
- *   fwdsearch    the search runs forward, target to foe, instead of backward
- *   revexpand    neighbours are expanded in reverse order
- *   freestep     every step between cells is declared legal
- *   truedist     the heuristic is a true distance, not squared
- *   facingramp   ramp step codes use the movement facing pairing instead
- *   nocostfix    cost re-propagation is skipped entirely
- *   nopropagate  cost improvements are found but never cascade to descendants
- *   nosort       the open list is pushed at the front, not cost-ordered
- * KAROO_FOEPATH_DIAG=1 logs a running count of the cost-repropagation work
+/* KAROO_FOEPATH_DIAG=1 logs a running count of the cost-repropagation work
  * (cascades, rewritten children, worklist pushes/pops, deepest drain). */
-static int fx_is(const char *mode)
-{
-    char buf[64];
-    uint32_t n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    return (n > 0 && n < sizeof(buf) && strcasecmp(buf, mode) == 0) ? 1 : 0;
-}
-
-static int fx_blindfoe(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("blindfoe");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=blindfoe -- every cell reports impassable\n");
-    }
-    return cached;
-}
-
-static int fx_keyclash(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("keyclash");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=keyclash -- node keys drop the column\n");
-    }
-    return cached;
-}
-
-static int fx_popsecond(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("popsecond");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=popsecond -- expanding the second-best node\n");
-    }
-    return cached;
-}
-
-static int fx_nolookup(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("nolookup");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=nolookup -- both list lookups report absent\n");
-    }
-    return cached;
-}
-
 struct FoePathDiag {
     unsigned cascades, reparent, pushes, pops, deepest, cur_drain;
 };
@@ -116,110 +51,8 @@ static void diag_report(void)
               g_diag.pops, g_diag.deepest);
 }
 
-static int fx_shortsearch(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("shortsearch");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=shortsearch -- one expansion per search\n");
-    }
-    return cached;
-}
-
-static int fx_fwdsearch(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("fwdsearch");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=fwdsearch -- endpoints swapped, search runs forward\n");
-    }
-    return cached;
-}
-
-static int fx_revexpand(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("revexpand");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=revexpand -- neighbours expanded in reverse\n");
-    }
-    return cached;
-}
-
-static int fx_freestep(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("freestep");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=freestep -- every cell step reports legal\n");
-    }
-    return cached;
-}
-
-static int fx_truedist(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("truedist");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=truedist -- admissible heuristic, not squared\n");
-    }
-    return cached;
-}
-
-static int fx_facingramp(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("facingramp");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=facingramp -- ramp codes use the facing pairing\n");
-    }
-    return cached;
-}
-
-static int fx_nocostfix(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("nocostfix");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=nocostfix -- no cost re-propagation at all\n");
-    }
-    return cached;
-}
-
-static int fx_nopropagate(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("nopropagate");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=nopropagate -- cost improvements do not cascade\n");
-    }
-    return cached;
-}
-
-static int fx_nosort(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        cached = fx_is("nosort");
-        if (cached)
-            g_logger.write("foepath: KAROO_SIM_FX=nosort -- open list pushed at the front\n");
-    }
-    return cached;
-}
-
 int FoePath::passable(int u, int v)
 {
-    if (fx_blindfoe())
-        return 0;
-
     const Tile *t = map()->tile( u, v);
     const unsigned char kind = t->objectMarker();
 
@@ -249,9 +82,6 @@ int FoePath::cellKey(int u, int v)
 {
     const int stride = keyStride_;
 
-    if (fx_keyclash())
-        return stride * v;
-
     return stride * v + u;
 }
 
@@ -263,14 +93,6 @@ PathNode *FoePath::popBestOpen()
     PathNode *head = open->next_;
     if (head == 0)
         return 0;
-
-    if (fx_popsecond()) {
-        PathNode *second = head->next_;
-        if (second != 0) {
-            open = head;
-            head = second;
-        }
-    }
 
     open->next_ = head->next_;
 
@@ -368,15 +190,11 @@ PathNode *FoePath::findByKey(PathNode *hdr, int key)
 
 PathNode *FoePath::findOpen(int key)
 {
-    if (fx_nolookup())
-        return 0;
     return findByKey(open_, key);
 }
 
 PathNode *FoePath::findClosed(int key)
 {
-    if (fx_nolookup())
-        return 0;
     return findByKey(closed_, key);
 }
 
@@ -401,21 +219,12 @@ void FoePath::insertOpenByCost(PathNode *n)
         cur = cur->next_;
     }
 
-    if (fx_nosort()) {
-        n->next_   = hdr->next_;
-        hdr->next_ = n;
-        return;
-    }
-
     n->next_    = cur;
     prev->next_ = n;
 }
 
 void FoePath::pushPending(PathNode *node)
 {
-    if (fx_nopropagate())
-        return;
-
     ++g_diag.pushes;
 
     PendingCell *cell = new PendingCell();
@@ -442,9 +251,6 @@ PathNode *FoePath::popPending()
 
 void FoePath::propagate(PathNode *p)
 {
-    if (fx_nocostfix())
-        return;
-
     ++g_diag.cascades;
     g_diag.cur_drain = 0;
 
@@ -532,9 +338,6 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
     const int dv = v - goalV;
     int h = dv * dv + du * du;
 
-    if (fx_truedist())
-        h = (du < 0 ? -du : du) + (dv < 0 ? -dv : dv);
-
     n->parent_ = p;
     n->g_      = gnew;
     n->h_      = h;
@@ -557,16 +360,6 @@ int
 Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
                              unsigned char u_to,   unsigned char v_to)
 {
-    if (fx_facingramp()) {
-        if (v_from < v_to)
-            return 3;
-        if (u_from < u_to)
-            return 2;
-        if (v_from > v_to)
-            return 1;
-        return (u_to < u_from) ? 4 : 0;
-    }
-
     if (v_from < v_to)
         return 1;
     if (u_from < u_to)
@@ -585,10 +378,6 @@ int
 Sim_CheckCellStepIsLegal(LevelMap *base, unsigned char u_from, unsigned char v_from,
                          unsigned char u_to, unsigned char v_to)
 {
-
-    if (fx_freestep())
-        return 1;
-
     const Tile *to   = base->tile( u_to,   v_to);
     const Tile *from = base->tile( u_from, v_from);
 
@@ -685,14 +474,6 @@ void FoePath::expand(PathNode *n, int goalU, int goalV)
 {
     struct { int du, dv; } step[4] = { { 0, -1 }, { +1, 0 }, { 0, +1 }, { -1, 0 } };
 
-    if (fx_revexpand()) {
-        for (int i = 0; i < 2; ++i) {
-            const int du = step[i].du, dv = step[i].dv;
-            step[i].du = step[3 - i].du;  step[i].dv = step[3 - i].dv;
-            step[3 - i].du = du;          step[3 - i].dv = dv;
-        }
-    }
-
     for (int i = 0; i < 4; ++i) {
         const int u = n->u_;
         const int v = n->v_;
@@ -740,9 +521,6 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
 
     unsigned short cap = cap_;
 
-    if (fx_shortsearch() && cap > 1)
-        cap = 1;
-
     int iter = 0;
     PathNode *node = 0;
 
@@ -784,9 +562,7 @@ int FoePath::find(int uFoe, int vFoe, int uTarget, int vTarget)
         if (keyFoe != keyTarget) {
             releaseLists();
 
-            const int ok = fx_fwdsearch()
-                ? search(uTarget, vTarget, uFoe, vFoe)
-                : search(uFoe, vFoe, uTarget, vTarget);
+            const int ok = search(uFoe, vFoe, uTarget, vTarget);
             if (ok != 0) {
                 found_ = 1;
                 return 1;

@@ -101,29 +101,16 @@ int HighScoreTable::writeFile(const char *dir, const char *name, char key)
 /* PRESERVED: scores compare unsigned.  Shifting down starts one record past
  * the last.  Only the name is cleared
  * before the new score and level are stored.  The return
- * is 11 * rank + 11 with the low byte replaced by the rank.
- *
- * KAROO_SIM_FX=hsnoplace is a negative control: no score places, so the game
- * never asks for a name. */
-static int s_hs_fx = -1;
-
+ * is 11 * rank + 11 with the low byte replaced by the rank. */
 unsigned int HighScoreTable::insert(unsigned int score, unsigned char levelId)
 {
     unsigned int count = count_;
     unsigned int rank;
 
-    if (s_hs_fx < 0) {
-        char buf[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-        s_hs_fx = (n > 0 && n < sizeof(buf) && strcmp(buf, "hsnoplace") == 0);
-        if (s_hs_fx)
-            g_logger.write("highscores: KAROO_SIM_FX=hsnoplace -- no score places\n");
-    }
-
     for (rank = 0; (int)rank < (int)count; ++rank)
         if (score > records_[rank].score)
             break;
-    if ((int)rank >= (int)count || s_hs_fx)
+    if ((int)rank >= (int)count)
         return (count & 0xffffff00u) | 0xffu;
 
     // Records rank..count each move up one.  Row count + 1 is written, one

@@ -25,19 +25,9 @@
 
 #include <new>
 
-/* KAROO_SIM_FX=spawnswap transposes u and v where the spawn reads them (shared
- * with bomb.cpp's spawn).  KAROO_SIM_FX=nocontact stops the contact latch and
- * hit flag firing.  KAROO_SIM_FX=foeunfreeze ignores the freeze gate, so a
- * frozen foe keeps chasing.  KAROO_SIM_FX=chaseback reverses the
- * delta-to-facing table, so foes step away from their target; matched
- * case-insensitively.  KAROO_SIM_FX=keepid and =lowid live in the shared
- * remove tail (objectremove.cpp).  KAROO_SPAWN_DIAG, KAROO_REMOVE_DIAG and
+/* KAROO_SPAWN_DIAG, KAROO_REMOVE_DIAG and
  * KAROO_FOESTEP_DIAG log periodic counts and first-occurrence events for the
  * spawn, remove and step below. */
-static int s_fx_spawnswap = 0;
-static int s_fx_nocontact = 0;
-static int s_fx_unfreeze  = 0;
-static int s_fx_chaseback = 0;
 static int s_diag_spawn   = 0;
 static int s_diag_remove  = 0;
 static int s_diag_step    = 0;
@@ -52,35 +42,9 @@ static int env_on(const char *name)
 
 static void fx_init(void)
 {
-    char buf[64];
-    uint32_t n;
-
     if (s_init)
         return;
     s_init = 1;
-
-    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf)) {
-        if (strcmp(buf, "spawnswap") == 0) {
-            s_fx_spawnswap = 1;
-            g_logger.write("foe: KAROO_SIM_FX=spawnswap -- the spawn tile is "
-                      "transposed (u and v exchanged at the single point they "
-                      "are read), so every foe comes into existence at the "
-                      "mirrored cell\n");
-        } else if (strcmp(buf, "nocontact") == 0) {
-            s_fx_nocontact = 1;
-            g_logger.write("foe: KAROO_SIM_FX=nocontact -- the foe hit flag is "
-                      "never raised\n");
-        } else if (strcmp(buf, "foeunfreeze") == 0) {
-            s_fx_unfreeze = 1;
-            g_logger.write("foe: KAROO_SIM_FX=foeunfreeze -- the freeze gate is "
-                      "ignored, so frozen foes keep chasing\n");
-        } else if (strcasecmp(buf, "chaseback") == 0) {
-            s_fx_chaseback = 1;
-            g_logger.write("foe: KAROO_SIM_FX=chaseback -- foes step away, not "
-                      "toward\n");
-        }
-    }
 
     s_diag_spawn  = env_on("KAROO_SPAWN_DIAG");
     s_diag_remove = env_on("KAROO_REMOVE_DIAG");
@@ -229,10 +193,6 @@ unsigned char Foe::spawn(const EntityContext &ctx, FoeTable &foes,
     Foe          *p;
 
     fx_init();
-
-    if (s_fx_spawnswap) {
-        unsigned char t = u; u = v; v = t;
-    }
 
     id = Object_ClaimSpareId(foes.ids, &foes.count);
 
@@ -458,10 +418,8 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
                               (int)cellU_, (int)cellV_,
                               (unsigned)playerU, (unsigned)playerV);
                 }
-                if (!s_fx_nocontact) {
-                    lastContact_ = now_;
-                    bombDropRequest_ = 1;
-                }
+                lastContact_ = now_;
+                bombDropRequest_ = 1;
             }
         }
     }
@@ -500,7 +458,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
                       moveDir_, (int)cellU_, (int)cellV_);
         }
     }
-    if (moveDir_ != 0 && !s_fx_unfreeze) {
+    if (moveDir_ != 0) {
         updateMovement();
         return;
     }
@@ -604,15 +562,10 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
     const signed char du = (signed char)(unsigned char)(nu - (unsigned char)cellU_);
     const signed char dv = (signed char)(unsigned char)(nv - (unsigned char)cellV_);
 
-    const unsigned char dirNorth = s_fx_chaseback ? 3 : 1;
-    const unsigned char dirEast  = s_fx_chaseback ? 4 : 2;
-    const unsigned char dirSouth = s_fx_chaseback ? 1 : 3;
-    const unsigned char dirWest  = s_fx_chaseback ? 2 : 4;
-
-    if (dv == -1) pendingMove_ = dirNorth;
-    if (du ==  1) pendingMove_ = dirEast;
-    if (dv ==  1) pendingMove_ = dirSouth;
-    if (du == -1) pendingMove_ = dirWest;
+    if (dv == -1) pendingMove_ = 1;  // north
+    if (du ==  1) pendingMove_ = 2;  // east
+    if (dv ==  1) pendingMove_ = 3;  // south
+    if (du == -1) pendingMove_ = 4;  // west
 
     if ((signed char)field_124 == 1) {
         const unsigned char facing = facing_;

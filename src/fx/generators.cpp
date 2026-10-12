@@ -34,48 +34,6 @@ static inline void set_bits(float *dst, uint32_t bits)
 
 #define SIM_LOG_FIRST 8
 
-/* KAROO_PARTICLE_FX, read once and cached:
- *   gravity   multiply gravity (and magnet force) by 5;
- *   antigrav  invert and amplify by -3, so every falling effect rises;
- *   nolife    skip the life decrement, so nothing expires — also a
- *             ring-contract stress test: emission must stall, not corrupt;
- *   burst     scale initial velocity by 3 on emission;
- *   loadflip  negate gravity magnitude / magnet force as Load reads them;
- *   fastemit  scale every generator's emit rate by 5 as Load reads it. */
-
-enum SimFx { FX_NONE = 0, FX_GRAVITY, FX_NOLIFE, FX_ANTIGRAV, FX_BURST, FX_LOADFLIP,
-             FX_FASTEMIT };
-
-static SimFx sim_fx(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        const char *name = "off";
-        cached = FX_NONE;
-        if (sysdev::getEnv("KAROO_PARTICLE_FX", buf, sizeof(buf))) {
-            if (strcasecmp(buf, "gravity") == 0)       { cached = FX_GRAVITY;  name = "gravity";  }
-            else if (strcasecmp(buf, "nolife") == 0)   { cached = FX_NOLIFE;   name = "nolife";   }
-            else if (strcasecmp(buf, "antigrav") == 0) { cached = FX_ANTIGRAV; name = "antigrav"; }
-            else if (strcasecmp(buf, "burst") == 0)    { cached = FX_BURST;    name = "burst";    }
-            else if (strcasecmp(buf, "loadflip") == 0) { cached = FX_LOADFLIP; name = "loadflip"; }
-            else if (strcasecmp(buf, "fastemit") == 0) { cached = FX_FASTEMIT; name = "fastemit"; }
-        }
-        if (cached != FX_NONE)
-            g_logger.write("sim: FX mode = %s\n", name);
-    }
-    return (SimFx)cached;
-}
-
-static float fx_gravity_scale(SimFx fx)
-{
-    switch (fx) {
-    case FX_GRAVITY:  return 5.0f;
-    case FX_ANTIGRAV: return -3.0f;
-    default:          return 1.0f;
-    }
-}
-
 /* ─── Shared ring/colour helpers ─── */
 
 /* Unlinks an expired node and appends it at the free end.  Re-seeds
@@ -163,11 +121,9 @@ void GravityEnvironment::gravityTick(float dt)
     if (ring->pRingCurrent == ring->pRingHead)
         return;
 
-    SimFx fx = sim_fx();
-    float scale = fx_gravity_scale(fx);
-    float gx = flGravity_[0] * scale;
-    float gy = flGravity_[1] * scale;
-    float gz = flGravity_[2] * scale;
+    float gx = flGravity_[0];
+    float gy = flGravity_[1];
+    float gz = flGravity_[2];
 
     uint32_t step = fade_step(&flFadeAccum_, flFadeRate_,
                            dwFadeThreshold_, dt);
@@ -181,8 +137,7 @@ void GravityEnvironment::gravityTick(float dt)
         ParticleNode *next;
         bool retire;
 
-        if (fx != FX_NOLIFE)
-            node->flLife -= dt;
+        node->flLife -= dt;
 
         if (node->flLife >= 0.0f) {
             node->flVel[0] += gx * dt;
@@ -230,10 +185,6 @@ void MagnetEnvironment::magnetTick(float dt)
     if (ring->pRingCurrent == ring->pRingHead)
         return;
 
-    SimFx fx = sim_fx();
-    // antigrav repels instead of attracting — the magnet equivalent of the
-    // inverted gravity, and just as visible on a shield effect.
-    float fscale = (fx == FX_ANTIGRAV) ? -3.0f : (fx == FX_GRAVITY ? 5.0f : 1.0f);
 
     uint32_t step = fade_step(&flFadeAccum_, flFadeRate_,
                            dwFadeThreshold_, dt);
@@ -247,8 +198,7 @@ void MagnetEnvironment::magnetTick(float dt)
         ParticleNode *next;
         bool retire = false;
 
-        if (fx != FX_NOLIFE)
-            node->flLife -= dt;
+        node->flLife -= dt;
 
         if (node->flLife >= 0.0f) {
             float d[3] = { flCentre_[0] - node->flX,
@@ -264,9 +214,9 @@ void MagnetEnvironment::magnetTick(float dt)
                 // extent test above and been retired, so this can't divide by
                 // zero.
                 float len = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
-                node->flVel[0] += (d[0] / len) * flForce_[0] * fscale * dt;
-                node->flVel[1] += (d[1] / len) * flForce_[1] * fscale * dt;
-                node->flVel[2] += (d[2] / len) * flForce_[2] * fscale * dt;
+                node->flVel[0] += (d[0] / len) * flForce_[0] * dt;
+                node->flVel[1] += (d[1] / len) * flForce_[1] * dt;
+                node->flVel[2] += (d[2] / len) * flForce_[2] * dt;
                 node->flX += node->flVel[0] * dt;
                 node->flY += node->flVel[1] * dt;
                 node->flZ += node->flVel[2] * dt;
@@ -330,9 +280,6 @@ void StdGenerator::stdEmit(float dt,
     if (count <= 0)
         return;
 
-    SimFx fx = sim_fx();
-    float vscale = (fx == FX_BURST) ? 3.0f : 1.0f;
-
     for (int emitted = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
         const float *pos = &flPosTable_[dwPosIdx_ * 3];
@@ -342,9 +289,9 @@ void StdGenerator::stdEmit(float dt,
         node->flX = pos[0] + (pos_off ? pos_off[0] : 0.0f);
         node->flY = pos[1] + (pos_off ? pos_off[1] : 0.0f);
         node->flZ = pos[2] + (pos_off ? pos_off[2] : 0.0f);
-        node->flVel[0] = (vel[0] + (vel_off ? vel_off[0] : 0.0f)) * vscale;
-        node->flVel[1] = (vel[1] + (vel_off ? vel_off[1] : 0.0f)) * vscale;
-        node->flVel[2] = (vel[2] + (vel_off ? vel_off[2] : 0.0f)) * vscale;
+        node->flVel[0] = vel[0] + (vel_off ? vel_off[0] : 0.0f);
+        node->flVel[1] = vel[1] + (vel_off ? vel_off[1] : 0.0f);
+        node->flVel[2] = vel[2] + (vel_off ? vel_off[2] : 0.0f);
         node->dwDiffuse = pEmitProb_[dwProbIdx_];
 
         dwPosIdx_  = wrap_index(dwPosIdx_, 1, 500);
@@ -400,8 +347,6 @@ void CylinderGenerator::cylinderEmit(float dt)
     if (count <= 0)
         return;
 
-    float vscale = (sim_fx() == FX_BURST) ? 3.0f : 1.0f;
-
     for (int emitted = 0; ; ) {
         ParticleNode *node = ring->pRingCurrent;
         const float *pos = &flPosTable_[dwPosIdx_ * 3];
@@ -420,9 +365,9 @@ void CylinderGenerator::cylinderEmit(float dt)
         node->flZ = t[2] + flOrigin_[2];
 
         // Velocity is NOT run through the matrix.
-        node->flVel[0] = vel[0] * vscale;
-        node->flVel[1] = vel[1] * vscale;
-        node->flVel[2] = vel[2] * vscale;
+        node->flVel[0] = vel[0];
+        node->flVel[1] = vel[1];
+        node->flVel[2] = vel[2];
         node->dwDiffuse = pEmitProb_[dwProbIdx_];
 
         dwPosIdx_  = wrap_index(dwPosIdx_, 1, 500);
@@ -627,8 +572,6 @@ int GravityEnvironment::load(std::istream &in)
     if (!read1(&dwClipEnable_[2], 4, in)) return false;
     if (!read1(flClipMax_, 12, in))       return false;
     if (!read1(flClipMin_, 12, in))       return false;
-    if (sim_fx() == FX_LOADFLIP)
-        mag = -mag;
     gravitySetVector(dir, mag);
     gravitySetColour(argb, fade);
     SIM_LOG_ONCE(calls)
@@ -650,9 +593,6 @@ int MagnetEnvironment::load(std::istream &in)
     if (!read1(&flFadeRate_, 4, in))      return false;
     if (!read1(&dwFadeThreshold_, 4, in)) return false;
     flFadeAccum_ = 0.0f;
-    if (sim_fx() == FX_LOADFLIP)
-        for (int i = 0; i < 3; i++)
-            flForce_[i] = -flForce_[i];
     SIM_LOG_ONCE(calls)
         g_logger.write("sim: MagnetLoad this=%p force=%f,%f,%f centre=%f,%f,%f\n", this,
                   flForce_[0], flForce_[1], flForce_[2],
@@ -1038,8 +978,6 @@ int StdGenerator::load(std::istream &in)
     if (!read1(&flEmitRateMin_, 4, in))   return false;
     if (!read1(&flEmitRateMax_, 4, in))   return false;
     if (!read1(&flDtScale_, 4, in))       return false;
-    if (sim_fx() == FX_FASTEMIT)
-        flDtScale_ = (float)((double)flDtScale_ * 5.0);
     if (dwEmitMode_ == 0)
         stdBuildSphere(flSphMin_, flSphMax_);
     if (dwEmitMode_ == 1)
@@ -1327,8 +1265,6 @@ int CylinderGenerator::load(std::istream &in)
     if (!read1(&flEmitRateMin_, 4, in))   return false;
     if (!read1(&flEmitRateMax_, 4, in))   return false;
     if (!read1(&flDtScale_, 4, in))       return false;
-    if (sim_fx() == FX_FASTEMIT)
-        flDtScale_ = (float)((double)flDtScale_ * 5.0);
     setDirection(flDirection_[0], flDirection_[1],
                       flDirection_[2]);
     cylBuildVelocity(flVelMin_, flVelMax_,

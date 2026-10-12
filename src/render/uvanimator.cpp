@@ -6,9 +6,7 @@
  * restores them all, but the sine wave and the scroll walk dwVertexCount
  * vertices, which is frame 0 only.  A multi-frame mesh animates frame 0 alone.
  *
- * Controls: KAROO_UVANIM_FX=scrollback, =sineflip and =envflip each reverse one
- * effect's direction (the scroll, the warp, the environment map's v); all stay
- * on the render path.  KAROO_UVANIM_DIAG=1 logs each entry point's first call
+ * KAROO_UVANIM_DIAG=1 logs each entry point's first call
  * and a running census, since no gate observes texture coordinates. */
 
 #include <strings.h>
@@ -39,25 +37,6 @@ static inline const float *vtx_normal(AnimatedMesh *mesh, unsigned int index)
 static inline unsigned int snapshot_count(AnimatedMesh *mesh)
 {
     return (unsigned int)mesh->frameCount() * mesh->vertexCount();
-}
-
-enum WrapFx { UVANIM_FX_OFF = 0, UVANIM_FX_SCROLLBACK, UVANIM_FX_SINEFLIP,
-              UVANIM_FX_ENVFLIP };
-
-static int uvanim_fx(void)
-{
-    static int cached = -1;
-    if (cached < 0) {
-        char buf[32];
-        cached = UVANIM_FX_OFF;
-        if (sysdev::getEnv("KAROO_UVANIM_FX", buf, sizeof(buf))) {
-            if (strcasecmp(buf, "scrollback") == 0)     cached = UVANIM_FX_SCROLLBACK;
-            else if (strcasecmp(buf, "sineflip") == 0)  cached = UVANIM_FX_SINEFLIP;
-            else if (strcasecmp(buf, "envflip") == 0)   cached = UVANIM_FX_ENVFLIP;
-        }
-        g_logger.write("uvanimator: FX mode = %d\n", cached);
-    }
-    return cached;
 }
 
 static bool wrap_diag(void)
@@ -182,9 +161,6 @@ void UVAnimator::applySineWave(unsigned int ticks, float rate,
     float  s     = (float)sin(angle);
     float  c     = (float)cos(angle);
 
-    if (uvanim_fx() == UVANIM_FX_SINEFLIP)
-        s = -s;
-
     if (pMesh_ != NULL && pMesh_->vertexCount() != 0) {
         if (vertsDirty_)
             restoreVertices();
@@ -204,8 +180,6 @@ void UVAnimator::scrollUVs(unsigned int ticks, int axisU, float speed)
 {
     if (pMesh_ != NULL) {
         float delta = (float)((double)ticks * (double)speed);
-        if (uvanim_fx() == UVANIM_FX_SCROLLBACK)
-            delta = -delta;
 
         UVTransform t = pMesh_->uvTransform();
         (axisU != 0 ? t.offsetU : t.offsetV) += delta;
@@ -246,7 +220,6 @@ void UVAnimator::updateObjectTransform(RenderDevice *dev,
         // goes.
         pMesh_->setUVTransform(UVTransform());
         vertsDirty_ = 1;
-        bool flip = (uvanim_fx() == UVANIM_FX_ENVFLIP);
 
         for (unsigned int i = 0; i < count; ++i) {
             unsigned int index = (unsigned int)frame * count + i;
@@ -259,10 +232,8 @@ void UVAnimator::updateObjectTransform(RenderDevice *dev,
                 float *uv = vtx_uv(pMesh_, index);
                 uv[0] = (m[0 + 8] * nz + m[0 + 4] * ny + m[0] * nx + WRAP_ONE)
                         * WRAP_HALF;
-                float vv = (WRAP_ONE
-                            - (m[1 + 8] * nz + m[1 + 4] * ny + m[1] * nx))
-                           * WRAP_HALF;
-                uv[1] = flip ? -vv : vv;
+                uv[1] = (WRAP_ONE - (m[1 + 8] * nz + m[1 + 4] * ny + m[1] * nx))
+                        * WRAP_HALF;
             }
             count = pMesh_->vertexCount();
         }

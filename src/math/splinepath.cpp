@@ -10,10 +10,8 @@
 #include "splinepath.h"
 #include "logger.h"
 
-/* KAROO_SIM_FX=splinerev evaluates every path backwards (t -> 1 - t);
- * KAROO_SPLINE_DIAG=N logs a census every N evaluations;
+/* KAROO_SPLINE_DIAG=N logs a census every N evaluations;
  * KAROO_SPLINE_SELFCHECK=1 runs the closed-form check below once. */
-static int s_fx_splinerev = 0;
 static int s_diag         = 0;
 static int s_selfcheck    = 0;
 static int s_init         = 0;
@@ -32,14 +30,6 @@ static void fx_init(void)
     if (s_init)
         return;
     s_init = 1;
-
-    n = sysdev::getEnv("KAROO_SIM_FX", buf, sizeof(buf));
-    if (n > 0 && n < sizeof(buf) && strcmp(buf, "splinerev") == 0) {
-        s_fx_splinerev = 1;
-        g_logger.write("splinepath: KAROO_SIM_FX=splinerev -- the path parameter "
-                  "is reversed (t -> 1-t) where it is consumed, so every "
-                  "spline runs backwards\n");
-    }
 
     n = sysdev::getEnv("KAROO_SPLINE_SELFCHECK", buf, sizeof(buf));
     if (n > 0 && n < sizeof(buf) && strcmp(buf, "0") != 0)
@@ -100,8 +90,6 @@ float *SplinePath::evalBezierPath(float *out, float t)
     unsigned int    i;
 
     fx_init();
-    if (s_fx_splinerev)
-        t = 1.0f - t;
     if (s_diag) {
         ++s_evals;
         if (n == 0)

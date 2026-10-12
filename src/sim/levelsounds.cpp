@@ -4,10 +4,7 @@
  * are reloaded, then every foe, falling tile, lift, platform and bridge gets its
  * sounds, and on a first attempt at a level with 3D sound each extra sound
  * object (.leo) starts looping at its position.  Every load passes a stack
- * copy of the name.  Returns 0 in the low byte.
- *
- * KAROO_SIM_FX=worldcode is a negative control: Space and Candy swap sound
- * variants. */
+ * copy of the name.  Returns 0 in the low byte. */
 
 #include <stdint.h>
 #include "sysdev.h"
@@ -25,8 +22,6 @@
 
 namespace audiodev { class Buffer; }
 #include "voicepool.h"
-
-static int s_fx = -1;
 
 static audiodev::Buffer *acq(Game *game, const SoundAssetName *asset)
 {
@@ -73,23 +68,15 @@ Sim_InitLevelBasedSounds(Game *self)
     Player *pl = game->world()->player();
     const char *world = game->world()->map()->mapName();
 
-    if (s_fx < 0) {
-        char e[32];
-        uint32_t n = sysdev::getEnv("KAROO_SIM_FX", e, sizeof(e));
-        s_fx = (n > 0 && n < sizeof(e) && strcmp(e, "worldcode") == 0);
-        if (s_fx)
-            g_logger.write("levelsounds: KAROO_SIM_FX=worldcode -- Space/Candy swapped\n");
-    }
-
     g_logger.logMessage(2, "GAME: trying to init level-based sounds");
     if (self->audio()->soundCreated() != 0) {
         pl->setWorldSoundVariant(0);
         if (strcmp(world, "Egypt") == 0)
             pl->setWorldSoundVariant(0);
         if (strcmp(world, "Space") == 0)
-            pl->setWorldSoundVariant(s_fx ? 1 : 2);
+            pl->setWorldSoundVariant(2);
         if (strcmp(world, "Candy") == 0)
-            pl->setWorldSoundVariant(s_fx ? 2 : 1);
+            pl->setWorldSoundVariant(1);
 
         if (pl->pool9f() != NULL)
             static_cast<VoicePool *>(pl->pool9f())->wipe();
