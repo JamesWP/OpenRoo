@@ -68,12 +68,12 @@ static void hud_text(RenderDevice *d3d, TextRenderer *font, int align, float x, 
 
 /* The in-level HUD: the side panels, the vitality needle, the radar and
  * its foe blips, then the timer and counters. */
-void Hud_Draw(Renderer *renderer, World *world, Session *session, GameState state,
+void Hud_Draw(Renderer *renderer, const World *world, Session *session, GameState state,
               unsigned w, unsigned h, float W, float H, float hudH)
 {
     RenderDevice *dev = renderer->device;
     const ThemeAssetBlock *theme = &renderer->themeBlock;
-    Player *pl = world->player();
+    const Player *pl = world->player();
 
     /* The two corner panels, mirrored halves of the HUD image. */
     if (theme->image(THEME_IMG_HUD) != NULL) {
@@ -163,8 +163,8 @@ void Hud_Draw(Renderer *renderer, World *world, Session *session, GameState stat
 
     /* A blip for every foe within 13 cells, turned into the camera's frame
      * (RotY(-yaw)) and scaled by 4; drawn untextured. */
-    for (const Foe *e : world->foes()) {
-        Vec3 a = { e->posU(), 0.0f, -e->posV() }, d;
+    for (const Foe &e : world->foes()) {
+        Vec3 a = { e.posU(), 0.0f, -e.posV() }, d;
         Math_Vec3Sub(&d, &a, &me);
         if (!(Math_Vec3Length(&d) < 13.0))
             continue;
@@ -186,7 +186,7 @@ void Hud_Draw(Renderer *renderer, World *world, Session *session, GameState stat
 
     /* The timer: minutes, seconds and tenths of what is left (or of the
      * limit, outside play); red under ten seconds. */
-    LevelMap *map = world->map();
+    const LevelMap *map = world->map();
     const unsigned ms = state == GameState::Playing
         ? (unsigned)map->timeLimit() * 1000u - map->timeElapsed()
         : (unsigned)map->timeLimit() * 1000u;
@@ -240,12 +240,12 @@ void Hud_DrawFps(RenderDevice *d3d, TextRenderer *font, float W, float H)
 
 /* The captions and the timed-effect icons down the left edge. */
 void Hud_DrawMessages(RenderDevice *d3d, TextRenderer *font, const ThemeAssetBlock *theme,
-                      World *world, ScriptPlayer *scriptPlayer, GameState state, float W, float H, float pad)
+                      const World *world, ScriptPlayer *scriptPlayer, GameState state, float W, float H, float pad)
 {
     const ThemeTextColorPair &hc = theme->textColor(THEME_COLOR_HUD);
     const float cw = W * 0.025f, ch = H * 0.033333335f;
     ScriptPlayer *sp = scriptPlayer;
-    Player *pl = world->player();
+    const Player *pl = world->player();
 
     if (sp->running() != 0) {
         hud_text(d3d, font, 0, W * 0.5f, W * 0.0015625f * 3.0f, cw, ch, 0.75f,
@@ -288,7 +288,7 @@ void Hud_DrawMessages(RenderDevice *d3d, TextRenderer *font, const ThemeAssetBlo
         }
         if (icon && theme->image(img) != NULL) {
             bindTexture(d3d, 0, image(theme, img));
-            sprintf(buf, "%.1f", span - (*world->clock() - start) * 0.001);
+            sprintf(buf, "%.1f", span - (world->now() - start) * 0.001);
         }
         ScreenVertex q[4] = {
             tl(xText, y - ch, 0x00ffffff, 1.0f, 0.0f),

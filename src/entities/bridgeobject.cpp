@@ -33,7 +33,6 @@ static const float K_MS_TO_TILE = 0.01f;
 
 static int s_diag_deck    = 0;
 static int s_diag_place     = 0;
-static int s_diag_reset     = 0;
 static int s_init           = 0;
 
 static void diag_init(void)
@@ -45,12 +44,6 @@ static void diag_init(void)
 
     s_diag_deck = sysdev::envFlag("KAROO_DECK_DIAG");
     s_diag_place = sysdev::envFlag("KAROO_PLACE_DIAG");
-    s_diag_reset = sysdev::envFlag("KAROO_RESET_DIAG");
-}
-
-BridgeObject *BridgeObject::create()
-{
-    return new (std::nothrow) BridgeObject;
 }
 
 BridgeObject::BridgeObject()
@@ -71,9 +64,8 @@ BridgeObject::~BridgeObject()
  * walk is a while loop, stepping while the marker stays zero; neither scan
  * clears markers, and both are unbounded. */
 static int s_logged_spawn = 0;
-static int s_logged_oom   = 0;
 
-void BridgeObject::spawn(const EntityContext &ctx, BridgeSlots &slots, unsigned int uArg, unsigned int vArg,
+void BridgeObject::spawn(const EntityContext &ctx, EntityList<BridgeObject> &bridges, unsigned int uArg, unsigned int vArg,
                          unsigned int heightArg, unsigned int slotArg,
                          unsigned int axisArg)
 {
@@ -91,17 +83,7 @@ void BridgeObject::spawn(const EntityContext &ctx, BridgeSlots &slots, unsigned 
     slot   = slotArg & 0xff;
     axis   = axisArg & 0xff;
 
-    obj = create();
-    if (obj == 0 && s_diag_place && !s_logged_oom) {
-        s_logged_oom = 1;
-        g_logger.write("bridgeobject: ALLOCATION FAILED in spawn -- the original "
-                  "faults at 0xc, and so does this\n");
-    }
-
-    //     // The slot is the switch slot argument, not the count; the count is only
-    //     // a running total.  PRESERVED: a failed allocation is not checked; the
-    //     // first store faults.
-    slots.slot[slot] = obj;
+    obj = &bridges.add(std::unique_ptr<BridgeObject>(new BridgeObject));
 
     obj->clock_  = ctx.clock;
     obj->tickStep_ = ctx.tickStep;
@@ -189,8 +171,6 @@ void BridgeObject::spawn(const EntityContext &ctx, BridgeSlots &slots, unsigned 
 
     obj->sound_ = 0;
 
-    slots.count = (unsigned char)(slots.count + 1);
-
     if (s_diag_place)
         g_logger.write("bridgeobject:   bridge done -- +0x38=%u +0x45=%u +0x57=%d "
                   "+0x5d=%u +0x5e=%u\n",
@@ -198,40 +178,11 @@ void BridgeObject::spawn(const EntityContext &ctx, BridgeSlots &slots, unsigned 
                   (int)obj->step_, (unsigned)obj->endU_, (unsigned)obj->endV_);
 }
 
-/* The purge indexes with a signed int against the zero-extended count. */
-static int s_logged_purge = 0;
-static unsigned s_live_purges = 0;
-
-void BridgeObject::purgeAll(const EntityContext &ctx, BridgeSlots &slots)
+void BridgeObject::releaseSounds(SoundLibrary *sm)
 {
-    int i;
-
-    diag_init();
-
-    if (s_diag_reset && !s_logged_purge) {
-        s_logged_purge = 1;
-        g_logger.write("bridgeobject: first purge -- count=%u\n",
-                  (unsigned)slots.count);
-    }
-
-    i = 0;
-    if (slots.count != 0) {
-        if (s_diag_reset)
-            g_logger.write("bridgeobject: LIVE purge #%u -- count=%u\n",
-                      ++s_live_purges, (unsigned)slots.count);
-        do {
-            if (ctx.sound->active()) {
-                SoundVoice *h = slots.slot[i]->sound_;
-                if (h != 0)
-                    ctx.sound->releaseVoice(h, true);
-            }
-            BridgeObject *obj = slots.slot[i];
-            if (obj != 0)
-                delete obj;
-            i++;
-        } while (i < (int)(unsigned int)slots.count);
-    }
-    slots.count = 0;
+    if (sm->active() && sound_ != 0)
+        sm->releaseVoice(sound_, true);
+    sound_ = 0;
 }
 
 void BridgeObject::playArmSound()

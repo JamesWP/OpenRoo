@@ -6,28 +6,26 @@
 
 #pragma once
 #include "entitycontext.h"
+#include "entitylist.h"
 #include "tickstep.h"
 #include "drawfwd.h"
 
  
 
 class SoundVoice;
+class SoundLibrary;
 class Tile;
-
-class FallingTile;
-typedef EntitySlots<FallingTile, 200> FallingSlots;
 
 class FallingTile {
 public:
      
 
-    // Spawns a falling tile; the arguments are masked to bytes.  PRESERVED:
-    // returns idx & 0xffffff00, which no caller uses.
-    static unsigned int spawn(const EntityContext &ctx, FallingSlots &slots, unsigned int uArg, unsigned int vArg,
+    // Spawns a falling tile; the arguments are masked to bytes.
+    static void spawn(const EntityContext &ctx, EntityList<FallingTile> &fallings, unsigned int uArg, unsigned int vArg,
                               unsigned int heightArg, unsigned int paramArg);
 
-    // Destroys every falling tile and zeroes the count.
-    static void purgeAll(const EntityContext &ctx, FallingSlots &slots);
+    // Releases its sounds, before World destroys it.
+    void releaseSounds(SoundLibrary *sm);
 
     // One tick.
     void tick();
@@ -45,12 +43,11 @@ public:
     signed char cellV() const                  { return cellV_; }
     signed char heightCell() const             { return heightCell_; }
 
+    ~FallingTile();
+
 private:
 
-    // Allocates and constructs one; NULL if the allocation fails.
-    static FallingTile *create();
     FallingTile();
-    virtual ~FallingTile();
     FallingTile(const FallingTile &) = delete;
     FallingTile &operator=(const FallingTile &) = delete;
 

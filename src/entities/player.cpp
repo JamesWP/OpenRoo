@@ -51,9 +51,14 @@ static inline double load_double(const void *p)
 }
 
 /* Re-derived at every use: movement can change the cell between blocks. */
-Tile *Player::curTile() const
+Tile *Player::curTile()
 {
-    return map_->tile( cellU_, cellV_);
+    return map_->tile(cellU_, cellV_);
+}
+
+const Tile *Player::curTile() const
+{
+    return map_->tile(cellU_, cellV_);
 }
 
 int Player::soundVariant() const

@@ -81,7 +81,7 @@ void Game_DebugPanel(Game *g)
     ImGui::Text("player U%u V%u H%u   exit U%u V%u H%u", (unsigned)(uint8_t)pl->cellU(),
                 (unsigned)(uint8_t)pl->cellV(), (unsigned)(uint8_t)pl->heightCell(),
                 (unsigned)pl->markerCellU(), (unsigned)pl->markerCellV(), (unsigned)pl->markerCellH());
-    ImGui::Text("%u foes, %u bombs%s", (unsigned)g->world()->foeCount(), (unsigned)g->world()->bombCount(),
+    ImGui::Text("%u foes, %u bombs%s", (unsigned)g->world()->foes().size(), (unsigned)g->world()->bombs().size(),
                 pl->held() ? "   [complete]" : "");
 }
 

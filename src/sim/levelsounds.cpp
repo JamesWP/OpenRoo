@@ -49,15 +49,14 @@ static SoundVoice *reslot(Game *game, SoundVoice *cur,
     return cur;
 }
 
-/* Gives every object in one slot table its moving-loop sound.  The body only
- * sets a sound, so the table is not changed while it is walked. */
-template <class T, unsigned N>
-static void attachLoopSound(Game *game, EntitySlots<T, N> &table,
+/* Gives every object in one list its moving-loop sound. */
+template <class T>
+static void attachLoopSound(Game *game, EntityList<T> &list,
                             const SoundAssetName *asset)
 {
-    for (T *obj : table) {
+    for (T &obj : list) {
         if (asset->enabled != 0)
-            obj->setSound(acq(game, asset));
+            obj.setSound(acq(game, asset));
     }
 }
 
@@ -99,17 +98,17 @@ Sim_InitLevelBasedSounds(Game *self)
         pl->setSoundCb(reslot(game, pl->soundCb(), game->audio()->themeSound(ThemeSound::Switch)));
         pl->setSoundA7(reslot(game, pl->soundA7(), game->audio()->themeSound(ThemeSound::SplatJJ)));
 
-        for (unsigned short i = 0; i < game->world()->foeCount(); ++i)
-            Sim_AcquireObjectSoundBuffersForIndex(game, game->world()->foeId(i));
+        for (Foe &foe : game->world()->foes())
+            Sim_AcquireFoeSounds(game, foe);
 
-        for (FallingTile *bt : game->world()->fallings()) {
+        for (FallingTile &bt : game->world()->fallings()) {
             if (game->audio()->themeSound(ThemeSound::DestructStart)->enabled != 0) {
                 audiodev::Buffer *p = acq(game, game->audio()->themeSound(ThemeSound::DestructStart));
-                bt->setFallSound(p);
+                bt.setFallSound(p);
             }
             if (game->audio()->themeSound(ThemeSound::DestructRegen)->enabled != 0) {
                 audiodev::Buffer *p = acq(game, game->audio()->themeSound(ThemeSound::DestructRegen));
-                bt->setRespawnSound(p);
+                bt.setRespawnSound(p);
             }
         }
         attachLoopSound(game, game->world()->lifts(),

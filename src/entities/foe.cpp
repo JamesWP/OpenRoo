@@ -18,13 +18,11 @@
 #include "entitymath.h"
 #include "foepath.h"
 #include "soundvoice.h"
-#include "objectremove.h"
 #include "bomb.h"
 #include "tilequery.h"
 #include "logger.h"
 #include "themedraw.h"
 
-#include <new>
 
 /* KAROO_SPAWN_DIAG, KAROO_REMOVE_DIAG and
  * KAROO_FOESTEP_DIAG log periodic counts and first-occurrence events for the
@@ -50,11 +48,6 @@ Tile *Foe::tile(int u, int v) const
     return map_->tile( u, v);
 }
 
-Foe *Foe::create()
-{
-    return new (std::nothrow) Foe;
-}
-
 Foe::Foe()
 {
     zeroSoundSlots();
@@ -70,7 +63,7 @@ Foe::Foe()
     sliding_         = 0;
     falling_        = 0;
     platformSlot_        = 0xff;
-    field_d7         = 0xff;
+    switchSlot_         = 0xff;
     stepGrace_         = 20.0;
     idleDuration_         = 1000.0;
     moveState_       = 0;
@@ -171,36 +164,28 @@ static int           s_logged_hightype = 0;
 static int           s_logged_kind2    = 0;
 static int           s_logged_kind3    = 0;
 
-unsigned char Foe::spawn(const EntityContext &ctx, FoeTable &foes,
-                         unsigned int uArg, unsigned int vArg,
-                         unsigned int hArg, unsigned int kindArg,
-                         unsigned int typeArg)
+Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
+                unsigned int uArg, unsigned int vArg,
+                unsigned int hArg, unsigned int kindArg,
+                unsigned int typeArg)
 {
     unsigned char u    = (unsigned char)(uArg & 0xff);
     unsigned char v    = (unsigned char)(vArg & 0xff);
     unsigned char h    = (unsigned char)(hArg & 0xff);
     signed char   kind = (signed char)(kindArg & 0xff);
     unsigned char type = (unsigned char)(typeArg & 0xff);
-    unsigned char id;
-    unsigned int  i;
-    Foe         **slot;
-    Foe          *p;
 
     diag_init();
 
-    id = Object_ClaimSpareId(foes.ids, &foes.count);
-
-    p = create();
-
-    i     = (unsigned int)id;
-    slot  = &foes.slot[i];
-    *slot = p;
+    Foe *p = &foes.add(std::unique_ptr<Foe>(new Foe));
+    // Its place in the list, counting from 1.
+    const unsigned int n = (unsigned int)foes.size();
 
     if (!s_logged_spawn) {
         s_logged_spawn = 1;
-        g_logger.write("foe: first foe spawn -- table=%p id=%u obj=%p "
+        g_logger.write("foe: first foe spawn -- n=%u obj=%p "
                   "u=%u v=%u h=%u kind=%d type=%u\n",
-                  (void *)&foes, (unsigned)id, (void *)p, (unsigned)u,
+                  n, (void *)p, (unsigned)u,
                   (unsigned)v, (unsigned)h, (int)kind, (unsigned)type);
     }
     if (s_diag_spawn) {
@@ -223,109 +208,96 @@ unsigned char Foe::spawn(const EntityContext &ctx, FoeTable &foes,
         }
     }
 
-    // PRESERVED: the field stores below go through the pointer the allocator
-    // returned, not the slot; a failed allocation leaves this NULL and crashes
-    // here rather than failing gracefully.
     p->clock_ = ctx.clock;
 
-    (*slot)->tickStep_ = ctx.tickStep;
+    p->tickStep_ = ctx.tickStep;
 
-    // each foe spawned in the same frame starts 1500ms later than the last, so
+    // Each foe starts 1500ms later than the one before it in the list, so
     // their step and idle timers do not all line up.
-    (*slot)->lastActive_ = (double)(int)(i * 0x5dc) + *ctx.clock;
+    p->lastActive_ = (double)(int)(n * 1500) + *ctx.clock;
 
-    (*slot)->kind_ = (unsigned char)kind;
-    if (kind == 2) {
-        (*slot)->stepDuration_ = 500.0;
+    p->kind_ = (unsigned char)kind;
+    if (kind == (unsigned char)FoeKind::Catcher) {
+        p->stepDuration_ = 500.0;
         if (s_diag_spawn && !s_logged_kind2) {
             s_logged_kind2 = 1;
             g_logger.write("foe: first kind-2 foe\n");
         }
-    } else if (kind == 3) {
-        (*slot)->stepDuration_ = 700.0;
+    } else if (kind == (unsigned char)FoeKind::Thrower) {
+        p->stepDuration_ = 700.0;
         if (s_diag_spawn && !s_logged_kind3) {
             s_logged_kind3 = 1;
             g_logger.write("foe: first kind-3 foe\n");
         }
     }
 
-    (*slot)->map_ = ctx.map;
-    (*slot)->type_     = type;
+    p->map_ = ctx.map;
+    p->type_     = type;
 
     if (type > 0x64) {
-        (*slot)->facing_ = (unsigned char)(type - 0x64);  // facing_ carries the type - 0x64
+        p->facing_ = (unsigned char)(type - 0x64);  // facing_ carries the type - 0x64
         type = 0;  // type is zeroed so the pathfinder mode below never sees it.
         if (s_diag_spawn && !s_logged_hightype) {
             s_logged_hightype = 1;
             g_logger.write("foe: first type > 0x64\n");
         }
     } else {
-        (*slot)->facing_ = 1;
+        p->facing_ = 1;
         if (type == 0x0b) {
-            (*slot)->dropContents_ = 1;
+            p->dropContents_ = 1;
             ++*ctx.crystalsInLevel;
         } else if (type == 0x4d) {
-            (*slot)->dropContents_ = 7;
+            p->dropContents_ = 7;
         } else if (type == 0x07) {
-            (*slot)->dropContents_ = 1;
+            p->dropContents_ = 1;
         }
     }
 
-    (*slot)->cellU_      = (signed char)u;
-    (*slot)->cellV_      = (signed char)v;
-    (*slot)->heightCell_ = (signed char)h;
-    (*slot)->homeU_      = u;
-    (*slot)->homeV_      = v;
-    (*slot)->homeH_      = h;
+    p->cellU_      = (signed char)u;
+    p->cellV_      = (signed char)v;
+    p->heightCell_ = (signed char)h;
+    p->homeU_      = u;
+    p->homeV_      = v;
+    p->homeH_      = h;
 
-    (*slot)->posU_ = (float)(int)(unsigned int)u;
-    (*slot)->posY_ = (float)(int)(unsigned int)h;
-    (*slot)->posV_ = (float)(int)(unsigned int)v;
+    p->posU_ = (float)(int)(unsigned int)u;
+    p->posY_ = (float)(int)(unsigned int)h;
+    p->posV_ = (float)(int)(unsigned int)v;
 
-    ctx.map->tile( (int)u, (int)v)->setOccupant((*slot)->kind_);
+    ctx.map->tile( (int)u, (int)v)->setOccupant(p->kind_);
 
-    // PRESERVED: FoePath::create can return NULL on a failed allocation, and
-    // setMode is called on it unconditionally below.
-    (*slot)->pathfinder_ = FoePath::create((*slot)->map_, 0);
+    p->pathfinder_ = FoePath::create(p->map_, 0);
 
-    (*slot)->pathfinder_->setMode(type);
+    p->pathfinder_->setMode(type);
 
-    return id;
+    return *p;
 }
 
 static unsigned long s_removals       = 0;
 static int           s_logged_remove  = 0;
 static int           s_logged_release = 0;
 
-static void release(SoundLibrary *sm, void *obj, SoundVoice *buf, int bPool)
+static void release(SoundLibrary *sm, void *obj, SoundVoice *buf)
 {
     if (buf == 0)
         return;
 
     if (s_diag_remove && !s_logged_release) {
         s_logged_release = 1;
-        g_logger.write("foe: first sound release -- obj=%p buf=%p pool=%d\n",
-                  obj, (void *)buf, bPool);
+        g_logger.write("foe: first sound release -- obj=%p buf=%p\n", obj, (void *)buf);
     }
 
     sm->releaseVoice(buf, true);
 }
 
-void Foe::remove(const EntityContext &ctx, FoeTable &foes, unsigned int idArg)
+void Foe::remove(const EntityContext &ctx, EntityList<Foe> &foes, std::size_t i)
 {
-    unsigned char id   = (unsigned char)(idArg & 0xff);
-    Foe         **slot = &foes.slot[id];
-    SoundLibrary *sm   = ctx.sound;
-
     diag_init();
-
-    if (*slot == 0)
-        return;
 
     if (!s_logged_remove) {
         s_logged_remove = 1;
-        g_logger.write("foe: first foe removal -- table=%p id=%u obj=%p\n",
-                  (void *)&foes, (unsigned)id, (void *)*slot);
+        g_logger.write("foe: first foe removal -- i=%u obj=%p\n",
+                  (unsigned)i, (void *)&foes[i]);
     }
     if (s_diag_remove) {
         ++s_removals;
@@ -333,28 +305,23 @@ void Foe::remove(const EntityContext &ctx, FoeTable &foes, unsigned int idArg)
             g_logger.write("foe: %lu removals\n", s_removals);
     }
 
-    if (ctx.sound->active()) {
-        release(sm, *slot, (*slot)->pool_9f_,  1);
-        release(sm, *slot, (*slot)->sound_b3_, 0);
-        release(sm, *slot, (*slot)->sound_c7_, 0);
-        release(sm, *slot, (*slot)->sound_b7_, 0);
-        release(sm, *slot, (*slot)->sound_bb_, 0);
+    foes[i].releaseSounds(ctx.sound);
+    foes.erase(i);
+}
 
-        if ((*slot)->sound_c3_ != 0) {
-            ((*slot)->sound_c3_)->stop();
-            release(sm, *slot, (*slot)->sound_c3_, 0);
-        }
-
-        release(sm, *slot, (*slot)->sound_ab_, 0);
-        release(sm, *slot, (*slot)->sound_af_, 0);
-        release(sm, *slot, (*slot)->sound_cb_, 0);
-        release(sm, *slot, (*slot)->sound_cf_, 1);
-        release(sm, *slot, (*slot)->sound_a7_, 0);
+void Foe::releaseSounds(SoundLibrary *sm)
+{
+    if (!sm->active())
+        return;
+    if (sound_c3_ != 0)
+        sound_c3_->stop();
+    // In a fixed order; the pools as well as the single voices.
+    SoundVoice **voices[] = { &pool_9f_, &sound_b3_, &sound_c7_, &sound_b7_, &sound_bb_, &sound_c3_,
+                              &sound_ab_, &sound_af_, &sound_cb_, &sound_cf_, &sound_a7_ };
+    for (SoundVoice **v : voices) {
+        release(sm, this, *v);
+        *v = 0;
     }
-
-    Object_DestroyAndCompactId((void **)slot, &foes.count,
-                               foes.ids, id,
-                               1);
 }
 
 static inline int ftol_i(double v)
@@ -394,7 +361,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     tickStepCopy_ = *tickStep_;
     now_        = *clock_;
 
-    if ((signed char)kind_ == 3 && held_ == 0 && bombDropRequest_ == 0) {
+    if (isThrower() && held_ == 0 && bombDropRequest_ == 0) {
         if (iabs_orig((int)playerU - (int)cellU_) < 2 &&
             iabs_orig((int)playerV - (int)cellV_) < 2) {
 
@@ -639,7 +606,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
  * target, then dropBomb, checkPlayerContact and finishDespawn as needed; the
  * Game and Player values it passes are read once, here. */
 
-void Foe::chooseTarget(const EntityContext &ctx, FoeTable &foes, int hold,
+void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, int hold,
                        unsigned char playerU, unsigned char playerV,
                        unsigned char escortU, unsigned char escortV,
                        unsigned char *pu, unsigned char *pv)
@@ -690,12 +657,11 @@ void Foe::chooseTarget(const EntityContext &ctx, FoeTable &foes, int hold,
     if (type_ == 5) {
         int found = 0;
         held_ = 0;
-        for (int j = 0; j < (int)foes.count; ++j) {
-            Foe *other = foes.slot[foes.ids[j]];
-            if (other->kind_ == 2) {
+        for (const Foe &other : foes) {
+            if (other.isCatcher()) {
                 found = 1;
-                tu = (unsigned char)other->cellU_;
-                tv = (unsigned char)other->cellV_;
+                tu = (unsigned char)other.cellU_;
+                tv = (unsigned char)other.cellV_;
                 chaseSpeed_ = 0x96;
             }
         }
@@ -713,7 +679,7 @@ void Foe::chooseTarget(const EntityContext &ctx, FoeTable &foes, int hold,
     *pv = tv;
 }
 
-void Foe::dropBomb(const EntityContext &ctx, BombTable &bombs,
+void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs,
                    const BombSounds &sounds)
 {
     if (bombDropRequest_ == 0 || type_ == 2)
@@ -743,7 +709,7 @@ void Foe::checkPlayerContact(unsigned char *playerMoveState,
                              float playerU, float playerY, float playerV)
 {
     if (*playerMoveState == 0) {
-        if (kind_ != 3 && moveState_ == 0) {
+        if (!isThrower() && moveState_ == 0) {
             double dx = (double)posU_ - (double)playerU;
             double dy = (double)posY_ - (double)playerY;
             double dz = (double)posV_ - (double)playerV;
@@ -779,7 +745,7 @@ static void foe_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
                         IM_COL32(230, 50, 50, 255));
 }
 
-void Foe::debugDraw(unsigned id) const
+void Foe::debugDraw(unsigned n) const
 {
     if (!dbg::active())
         return;
@@ -802,7 +768,7 @@ void Foe::debugDraw(unsigned id) const
     }
     if (m.hovered((uint8_t)cellU(), (uint8_t)cellV())) {
         m.separator();
-        m.tip("foe #%u at U%u V%u H%u", id, (uint8_t)cellU(), (uint8_t)cellV(), (uint8_t)heightCell());
+        m.tip("foe #%u at U%u V%u H%u", n, (uint8_t)cellU(), (uint8_t)cellV(), (uint8_t)heightCell());
         m.tip("kind %u, behaviour %u, facing %u%s", kind(), type(), facing(), moveDir() ? ", moving" : "");
         const char *drops = Tile_ContentsName(dropContents());
         m.tip("home U%u V%u H%u, drops %s", homeU(), homeV(), homeH(), drops ? drops : "nothing");
@@ -816,12 +782,12 @@ void Foe::debugDraw(unsigned id) const
 void Foe::draw(draw::Frame &f, draw::Pass pass)
 {
     // Kind 2 is a catcher, 3 a thrower; any other kind has no look.
-    if (kind_ != 2 && kind_ != 3)
+    if (!isCatcher() && !isThrower())
         return;
     const bool dying = dyingStarted_ != 0;
-    ThemeObjectType look = kind_ == 2 ? THEME_OBJ_FOE_CATCHER : THEME_OBJ_FOE_THROWER;
+    ThemeObjectType look = isCatcher() ? THEME_OBJ_FOE_CATCHER : THEME_OBJ_FOE_THROWER;
     if (dying)
-        look = kind_ == 2 ? THEME_OBJ_FOE_CATCHER_DYING : THEME_OBJ_FOE_THROWER_DYING;
+        look = isCatcher() ? THEME_OBJ_FOE_CATCHER_DYING : THEME_OBJ_FOE_THROWER_DYING;
     draw::Instance in = pose();
     if (dying) {
         in.conditions = draw::COND_DEAD;
