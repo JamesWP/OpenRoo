@@ -173,7 +173,8 @@ unsigned int MovableEntity::updateMovement()
         if (dyingStarted_ == 0) {
             copy8(&dyingSince_, &now_);
             dyingStarted_ = 1;
-            deathFxPending_ = true;
+            if (deathCounter_ != nullptr)
+                deathNumber_ = ++*deathCounter_;
             pendingMove_ = 0;
             moveDir_ = 0;
             return 1;

@@ -1,7 +1,6 @@
 #include "tiledebug.h"
-#include "cheats.h"
 #include "dbg.h"
-#include "game.h"
+#include "world.h"
 #include "levelmap.h"
 #include "tile.h"
 #include "tilenames.h"
@@ -174,7 +173,7 @@ static ImU32 contents_color(uint8_t c)
 static const int SLIDE_DU[5] = { 0,  0, -1,  0, +1 };
 static const int SLIDE_DV[5] = { 0, +1,  0, -1,  0 };
 
-static void draw_slides(const dbg::MapView &m, LevelMap *map)
+static void draw_slides(const dbg::MapView &m, const LevelMap *map)
 {
     ImDrawList *dl = m.dl;
     const unsigned cols = m.cols, rows = m.rows;
@@ -244,15 +243,16 @@ static void contents_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *ctx)
  * on them (the entities add theirs). */
 enum { LEGEND_KINDS = 0, LEGEND_CONTENTS = 1 };
 
-void Tile_DebugDrawMap(Game *game)
+bool Tile_DebugDrawMap(const World *world, unsigned char *clickU, unsigned char *clickV)
 {
+    bool clicked = false;
     if (!dbg::active())
-        return;
-    LevelMap *map = game->world()->map();
+        return false;
+    const LevelMap *map = world->map();
     const unsigned cols = map->extentU(), rows = map->extentV();
     dbg::MapLayer layer(cols, rows);
     if (!layer)
-        return;
+        return false;
     const dbg::MapView &m = *layer;
     ImDrawList *dl = m.dl;
 
@@ -287,7 +287,7 @@ void Tile_DebugDrawMap(Game *game)
     // Teleporters to their partners, once per pair.
     for (unsigned u = 0; u < cols; u++)
         for (unsigned v = 0; v < rows; v++) {
-            Tile *t = map->tile((int)u, (int)v);
+            const Tile *t = map->tile((int)u, (int)v);
             if (t->objectMarker() != TILE_TELEPORTER)
                 continue;
             const unsigned tu = t->teleportU(), tv = t->teleportV();
@@ -325,8 +325,11 @@ void Tile_DebugDrawMap(Game *game)
         if (t->busy())
             m.tip("spent / armed");
         int cu, cv;
-        if (m.clicked(&cu, &cv) && (t->height() != 0 || kind != TILE_EMPTY))
-            Cheat_TeleportPlayer(game, (unsigned char)cu, (unsigned char)cv);
+        if (m.clicked(&cu, &cv) && (t->height() != 0 || kind != TILE_EMPTY)) {
+            *clickU = (unsigned char)cu;
+            *clickV = (unsigned char)cv;
+            clicked = true;
+        }
     }
 
     // Only what this level has.
@@ -345,4 +348,5 @@ void Tile_DebugDrawMap(Game *game)
     for (int c = 1; c < 256; c++)
         if (seenContents[c])
             m.legend(LEGEND_CONTENTS, Tile_ContentsName((uint8_t)c), contents_swatch, (void *)(uintptr_t)c);
+    return clicked;
 }

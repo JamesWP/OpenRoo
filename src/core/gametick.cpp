@@ -26,6 +26,7 @@
 #include "scoretally.h"
 #include "prof.h"
 #include "tiledebug.h"
+#include "cheats.h"
 #include "gamedebug.h"
 #include "keys.h"
 #include "playtick.h"
@@ -61,14 +62,16 @@ static void advance_clock(Game *self, double dt, double now)
         self->world()->tickStep()->value = 0.0;  // +0.0
     } else {
         self->world()->tickStep()->value = dt;
-        (*self->world()->clock()) = (double)((double)dt + (double)(*self->world()->clock()));
+        self->world()->advanceClock(dt);
     }
 }
 
 /* The level objects: the tile debug map, then the lifts, platforms, falling tiles and bridges. */
 static void tick_level_objects(Game *self)
 {
-    Tile_DebugDrawMap(self);
+    unsigned char u, v;
+    if (Tile_DebugDrawMap(self->world(), &u, &v))
+        Cheat_TeleportPlayer(self, u, v);
     self->world()->tickLifts();
     self->world()->tickPlatforms();
     self->world()->tickFallings();
@@ -112,7 +115,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
         Flow_AnimateScoreTallyStages(self);
     }
     if (self->state() == GameState::NameEntry)
-        self->frontEnd()->nameEntry()->poll((unsigned int)(long long)((*self->world()->clock())));
+        self->frontEnd()->nameEntry()->poll((unsigned int)(long long)(self->world()->now()));
 
     tick_level_objects(self);
 

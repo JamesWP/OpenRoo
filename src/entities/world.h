@@ -82,6 +82,9 @@ public:
      * every tick. */
     double         now() const       { return clock_; }
     double        *clock()           { return &clock_; }
+    /* Advances the clock dt ms, or sets it. */
+    void           advanceClock(double dt) { clock_ += dt; }
+    void           setNow(double ms)       { clock_ = ms; }
     /* The tick step, dt; objects copy it to their own each tick. */
     TickStep       *tickStep()       { return &tickStep_; }
     const TickStep *tickStep() const { return &tickStep_; }
@@ -116,7 +119,7 @@ public:
     EntityContext entityContext()
     {
         return { &clock_, &tickStep_, &map_, sound_, &switchCells_,
-                 &switchMax_, levelName_, &crystalsInLevel_ };
+                 &switchMax_, levelName_, &crystalsInLevel_, &deaths_ };
     }
 
     /* The sound library the entities acquire their sounds from, set by Game
@@ -134,8 +137,13 @@ public:
     void tickBombs();
 
     /* Draws every object in the level for one pass of the frame, each as it
-     * draws itself, then the bursts they started. */
-    void draw(draw::Frame &f, draw::Pass pass);
+     * draws itself, then the bursts they started.  deathsDrawn is deaths()
+     * as it was at the last frame drawn: newer deaths fire their effects. */
+    void draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const;
+
+    /* The foes and bombs that have started dying, counted from the start.
+     * Never reset, so a renderer can compare it across levels. */
+    unsigned deaths() const { return deaths_; }
 
 private:
     std::array<TimedSpawner, 256> timedSpawners_{};
@@ -143,6 +151,7 @@ private:
     LevelCensus   census_;
     unsigned char switchMax_{};
     unsigned short crystalsInLevel_{};
+    unsigned      deaths_{};
     ExtraObjects  extraObjects_;
     SwitchCells   switchCells_;
     double        clock_{};

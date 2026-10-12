@@ -21,7 +21,7 @@ Sim_RestoreCheckpointStateBlocks(Game *self)
     if (sp->running() == 0 || sp->loaded() == 0)
         return;
 
-    sp->tick(*g->world()->clock(), g->world()->tickStep()->value, g->camera()->pose()->eye());
+    sp->tick(g->world()->now(), g->world()->tickStep()->value, g->camera()->pose()->eye());
     g->camera()->setMode(sp->cameraMode());
     g->camera()->setDistance(sp->cameraDistance());
     g->camera()->setFocus(0, sp->eye(0));

@@ -51,7 +51,7 @@ Flow_HandleTypedCheatCode(Game *self)
     unsigned char frame[256];
     char path[384];
 
-    self->frontEnd()->cheatEntry()->poll((unsigned int)(long long)*self->world()->clock());
+    self->frontEnd()->cheatEntry()->poll((unsigned int)(long long)self->world()->now());
     if (self->frontEnd()->cheatEntry()->active() != 0)
         return;
 

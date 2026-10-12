@@ -227,10 +227,10 @@ public:
     // blast's kill zone closes; the block draws its exploding look meanwhile.
     void setBlasting(bool b)                   { blasting_ = b; }
     bool blasting() const                      { return blasting_; }
-    // Set with blasting; the next draw fires the block's debris and clears it.
-    void setBlastFxPending(bool b)             { blastFxPending_ = b; }
-    bool blastFxPending() const                { return blastFxPending_; }
-    void setBlastTime(double t)                { blastTime_ = t; }
+    void   setBlastTime(double t)              { blastTime_ = t; }
+    // When the blast spent it: the renderer fires the block's debris once
+    // for each blast time it sees.
+    double blastTime() const                   { return blastTime_; }
 
     // Read by a foe (foe.cpp).
     unsigned char contents() const             { return contents_; }
@@ -319,7 +319,6 @@ private:
     unsigned char field_202{};
     bool          blasting_{};       // a bombable block mid-explosion
     double        blastTime_{};  // when a blast spent this cell
-    bool          blastFxPending_{}; // its debris is yet to fire
     float         itemPhase_{};  // an item's random phase
     int           busy_{};       // a pad, teleporter or falling tile is in use
 };

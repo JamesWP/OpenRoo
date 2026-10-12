@@ -281,7 +281,6 @@ Sim_SetupLevelObjects(Game *self)
                 t->setOccupant(0);
                 t->setField1f6(0);
                 t->setBlasting(false);
-                t->setBlastFxPending(false);
                 t->setBlastHeight(0);
                 t->setField1a1(0);
                 t->setBusy(0);
@@ -440,7 +439,7 @@ Sim_SetupLevelObjects(Game *self)
                     self->world()->freeBomb(self->world()->census()->freeBombs)->param = s->param();
                     // The clock, copied as a double.
                     self->world()->freeBomb(self->world()->census()->freeBombs)->placedAt =
-                        *self->world()->clock();
+                        self->world()->now();
                     g_logger.logMessage(3, "GAME: init level - freebomb %d created",
                                        (unsigned int)self->world()->census()->freeBombs);
                     self->world()->census()->freeBombs++;
@@ -474,7 +473,7 @@ Sim_SetupLevelObjects(Game *self)
                     idx = self->world()->census()->timed;
                     {
                         double when = (double)(int)(idx * 1000u);
-                        when = when + (double)*self->world()->clock();
+                        when = when + (double)self->world()->now();
                         self->world()->timedSpawner(idx)->lastSpawn = (double)when;
                     }
                     self->world()->census()->timed++;
@@ -537,7 +536,7 @@ next_row:
                                   self->world()->census()->timeBonuses  + self->world()->crystalsInLevel());
 
     self->world()->player()->setMoveState(0);
-    self->world()->player()->setLastContact(*self->world()->clock());
+    self->world()->player()->setLastContact(self->world()->now());
 
     self->world()->player()->clearEffects();
 

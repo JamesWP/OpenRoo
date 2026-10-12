@@ -48,7 +48,9 @@ public:
 
     // Draws the bomb for one pass of the frame: the bomb, or once it has
     // gone off the explosion (firing its debris), and its particles.
-    void draw(draw::Frame &f, draw::Pass pass);
+    // deathsDrawn is the level's death count at the last frame drawn: a
+    // newer death fires its effects.
+    void draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const;
 
 private:
     Bomb();

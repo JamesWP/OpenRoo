@@ -57,7 +57,7 @@ void Flow_TickFlythrough(Game *self)
         }
         self->camera()->setDistance(7.0f);
         self->camera()->setMode(0);
-        pl->setField231(*self->world()->clock());
+        pl->setField231(self->world()->now());
     }
 }
 
@@ -131,7 +131,7 @@ void Flow_TickIdleControls(Game *self, ProgableControl *progCtrl)
     Player *pl = self->world()->player();
 
     pl->setIdleStarted(0);
-    pl->setLastActive(*self->world()->clock());
+    pl->setLastActive(self->world()->now());
     gamestate_note_mode(0);
     progCtrl->dispatch(0);
     if (self->audio()->fixedSounds()->lastSeconds != NULL)

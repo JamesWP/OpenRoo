@@ -84,7 +84,7 @@ void World::tickBombs()
     }
 }
 
-void World::draw(draw::Frame &f, draw::Pass pass)
+void World::draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const
 {
     for (const LiftObject &l : lifts_)
         l.draw(f, pass);
@@ -95,10 +95,10 @@ void World::draw(draw::Frame &f, draw::Pass pass)
     for (const FallingTile &t : fallings_)
         t.draw(f, pass);
     player_.draw(f, pass);
-    for (Bomb &b : bombs_)
-        b.draw(f, pass);
-    for (Foe &e : foes_)
-        e.draw(f, pass);
+    for (const Bomb &b : bombs_)
+        b.draw(f, pass, deathsDrawn);
+    for (const Foe &e : foes_)
+        e.draw(f, pass, deathsDrawn);
 
     if (pass == draw::Pass::Particles) {
         if (f.opts.particles > 0)

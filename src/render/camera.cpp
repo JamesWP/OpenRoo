@@ -104,7 +104,7 @@ Camera_BuildLookAt(Mat4 *out, float ex, float ey, float ez,
     return out;
 }
 
-void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *camera,
+void Camera_UpdateViewTransform(RenderDevice *d3d, const World *world, CameraRig *camera,
                            const Config *config, Scene *scene, CameraFocus focus, double dt)
 {
     CameraPose &p = *camera->pose();
@@ -148,7 +148,7 @@ void Camera_UpdateViewTransform(RenderDevice *d3d, World *world, CameraRig *came
     if (camera->mode() == 0) {
         const float ey = p.eye()[1];
         if (ey > 0.0f && ey < K_EYE_CEIL) {
-            LevelMap *map = world->map();
+            const LevelMap *map = world->map();
             unsigned i = (unsigned)((int)world->player()->heightCell() + 1);
             /* ey + 1 is summed in double before the truncation:
              * a float sum could round across an integer and move the bound. */

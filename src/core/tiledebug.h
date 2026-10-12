@@ -7,7 +7,8 @@
 
 #include <stdint.h>
 
-class Game;
+class World;
 
-/* Opens the map for this frame.  Does nothing unless dbg::active(). */
-void Tile_DebugDrawMap(Game *game);
+/* Opens the map for this frame.  Does nothing unless dbg::active().  Returns
+ * true, with the cell, when a tile was clicked: the caller teleports there. */
+bool Tile_DebugDrawMap(const World *world, unsigned char *clickU, unsigned char *clickV);

@@ -45,7 +45,8 @@ static draw::Frame frame_for(Game *g, Renderer *renderer, const FrameTime &t)
 /* The scene, pass by pass. */
 static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
 {
-    World *world = g->world();
+    const World *world = g->world();
+    const unsigned deaths = renderer->deathsDrawn;
     LevelPlacements *level = &renderer->levelPlacements;
     RenderDevice *d3d = renderer->device;
     float *eye = g->camera()->pose()->eye();
@@ -53,13 +54,13 @@ static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
     {
         PROF_SCOPE("opaque");
         level->draw(f, draw::Pass::Opaque, world->map());
-        world->draw(f, draw::Pass::Opaque);
+        world->draw(f, draw::Pass::Opaque, deaths);
     }
     {
         PROF_SCOPE("effects");
         Scene_DrawSceneObjects(renderer, d3d, eye, f.now);
         set_stencil_enable(d3d, false);
-        world->draw(f, draw::Pass::Effects);
+        world->draw(f, draw::Pass::Effects, deaths);
     }
     /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option.
      * Each shadow decrements the stencil the scene set, so overlapping
@@ -74,7 +75,7 @@ static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
         st.func   = CompareFunc::Equal;
         st.pass   = StencilOp::DecrSat;
         d3d->SetStencil(st);
-        world->draw(f, draw::Pass::Shadows);
+        world->draw(f, draw::Pass::Shadows, deaths);
         level->draw(f, draw::Pass::Shadows, world->map());
         set_stencil_enable(d3d, false);
     }
@@ -82,10 +83,11 @@ static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
     {
         PROF_SCOPE("translucent");
         level->draw(f, draw::Pass::Particles, world->map());
-        world->draw(f, draw::Pass::Particles);
+        world->draw(f, draw::Pass::Particles, deaths);
         Scene_DrawParticleSystems(&renderer->scene, renderer->showSplinePaths,
                                   renderer->showSplineControlPolygons, d3d, eye, dt, f.now);
     }
+    renderer->deathsDrawn = world->deaths();
 }
 
 void Seq_DrawFrame(Game *g, Renderer *renderer, const MenuArt *art, ProgableControl *progCtrl,
