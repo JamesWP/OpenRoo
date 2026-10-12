@@ -546,37 +546,37 @@ void Player::draw(draw::Frame &f, draw::Pass pass) const
 
     switch (pass) {
     case draw::Pass::Opaque:
-        draw::objects(f, THEME_OBJ_JOHN, &in);
+        draw::objects(f, THEME_OBJ_PLAYER, &in);
         break;
     case draw::Pass::Effects:
         if (aura)
-            draw::objects(f, THEME_OBJ_PROTECTIONFX, &in);
+            draw::objects(f, THEME_OBJ_PLAYER_PROTECTED, &in);
         if (gliding)
-            draw::objects(f, THEME_OBJ_PARAGLIDEFX, &in);
+            draw::objects(f, THEME_OBJ_PLAYER_GLIDING, &in);
         break;
     case draw::Pass::Shadows:
         if (!dead)
-            draw::shadows(f, THEME_OBJ_JOHN, &in);
+            draw::shadows(f, THEME_OBJ_PLAYER, &in);
         break;
     case draw::Pass::Particles:
         if (f.opts.particles > 0)
-            draw::particles(f, THEME_OBJ_JOHN, &in);
+            draw::particles(f, THEME_OBJ_PLAYER, &in);
         if (f.opts.particles > 1) {
             if (pickedUp() == CONTENTS_CRYSTAL)
-                draw::spawnBurst(f, THEME_OBJ_CRYSTALFX, in.pos);
+                draw::spawnBurst(f, THEME_OBJ_CRYSTAL_PICKUP, in.pos);
             else if (pickedUp() != 0)
-                draw::spawnBurst(f, THEME_OBJ_COLLFX, in.pos);
+                draw::spawnBurst(f, THEME_OBJ_ITEM_PICKUP, in.pos);
             // The speed trail, while sped up and moving along (or straight
             // against) its facing.
             const bool trail = effectAActive() != 0 &&
                 ((unsigned)moveDir() == facing() ||
                  (unsigned)moveDir() == Sim_GetTurnedDirection(facing(), 2));
-            draw::trail(f, THEME_OBJ_SPEEDFX, trail, in.pos, in.rot.y);
+            draw::trail(f, THEME_OBJ_PLAYER_SPEED_TRAIL, trail, in.pos, in.rot.y);
         }
         if (aura)
-            draw::particles(f, THEME_OBJ_PROTECTIONFX, &in);
+            draw::particles(f, THEME_OBJ_PLAYER_PROTECTED, &in);
         if (gliding)
-            draw::particles(f, THEME_OBJ_PARAGLIDEFX, &in);
+            draw::particles(f, THEME_OBJ_PLAYER_GLIDING, &in);
         break;
     }
 }

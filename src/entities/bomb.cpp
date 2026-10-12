@@ -473,7 +473,7 @@ void Bomb::debugDraw(unsigned id) const
 void Bomb::draw(draw::Frame &f, draw::Pass pass)
 {
     const bool exploded = dyingStarted_ != 0;
-    const ThemeObjectType look = exploded ? THEME_OBJ_EXPLOSION : THEME_OBJ_BOMB;
+    const ThemeObjectType look = exploded ? THEME_OBJ_BOMB_EXPLODING : THEME_OBJ_BOMB;
     draw::Instance in;
     in.pos = { posU_, posY_, -posV_ };
 

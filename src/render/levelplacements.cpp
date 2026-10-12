@@ -26,15 +26,15 @@ static PlacementVertex vertex(float x, float y, float z, uint32_t diffuse, float
 static bool item_look(unsigned char contents, ThemeObjectType *out)
 {
     switch (contents) {
-    case CONTENTS_CRYSTAL:     *out = THEME_OBJ_CRYSTAL;    return true;
-    case CONTENTS_PARAGLIDER:  *out = THEME_OBJ_PARAGLIDE;  return true;
-    case CONTENTS_TIME_BONUS:  *out = THEME_OBJ_TIME;       return true;
-    case CONTENTS_EXTRA_LIFE:  *out = THEME_OBJ_LIFE;       return true;
-    case CONTENTS_FREEZE:      *out = THEME_OBJ_FREEZE;     return true;
-    case CONTENTS_GRANT_09:    *out = THEME_OBJ_AMMUNITION; return true;
-    case CONTENTS_SPEED_UP:    *out = THEME_OBJ_SPEED;      return true;
-    case CONTENTS_TRANSFORM:   *out = THEME_OBJ_PROTECTION; return true;
-    case 0xff:                 *out = THEME_OBJ_SURPRISE;   return true;  // CONTENTS_RANDOM
+    case CONTENTS_CRYSTAL:     *out = THEME_OBJ_ITEM_CRYSTAL;    return true;
+    case CONTENTS_PARAGLIDER:  *out = THEME_OBJ_ITEM_PARAGLIDER;  return true;
+    case CONTENTS_TIME_BONUS:  *out = THEME_OBJ_ITEM_TIME_BONUS;       return true;
+    case CONTENTS_EXTRA_LIFE:  *out = THEME_OBJ_ITEM_EXTRA_LIFE;       return true;
+    case CONTENTS_FREEZE:      *out = THEME_OBJ_ITEM_FREEZE;     return true;
+    case CONTENTS_GRANT_09:    *out = THEME_OBJ_ITEM_BOMBS; return true;
+    case CONTENTS_SPEED_UP:    *out = THEME_OBJ_ITEM_SPEED_UP;      return true;
+    case CONTENTS_TRANSFORM:   *out = THEME_OBJ_ITEM_PROTECTION; return true;
+    case 0xff:                 *out = THEME_OBJ_ITEM_RANDOM;   return true;  // CONTENTS_RANDOM
     default:                   return false;
     }
 }
@@ -291,12 +291,12 @@ void LevelPlacements::bombables(draw::Frame &f, LevelMap *map)
         in.conditions = cell_conditions(t);
         in.phase = t->itemPhase();
         if (!t->blasting()) {
-            draw::objects(f, THEME_OBJ_OBSTACLE, &in);
+            draw::objects(f, THEME_OBJ_BOMBABLE, &in);
             continue;
         }
-        draw::fireEffects(f, THEME_OBJ_OBSTACLEFX, t->blastFxPending());
+        draw::fireEffects(f, THEME_OBJ_BOMBABLE_EXPLODING, t->blastFxPending());
         t->setBlastFxPending(false);
-        draw::objects(f, THEME_OBJ_OBSTACLEFX, &in);
+        draw::objects(f, THEME_OBJ_BOMBABLE_EXPLODING, &in);
     }
 }
 
@@ -325,16 +325,16 @@ void LevelPlacements::draw(draw::Frame &f, draw::Pass pass, LevelMap *map)
     case draw::Pass::Opaque:
         {
             PROF_SCOPE("level mesh");
-            draw::fieldBuffer(f, THEME_OBJ_PLATE, floorBuffer(f.dev), (unsigned)floor_.size());
-            draw::fieldBuffer(f, THEME_OBJ_SIDE, wallBuffer(f.dev), (unsigned)walls_.size());
+            draw::fieldBuffer(f, THEME_OBJ_FLOOR, floorBuffer(f.dev), (unsigned)floor_.size());
+            draw::fieldBuffer(f, THEME_OBJ_WALL, wallBuffer(f.dev), (unsigned)walls_.size());
         }
         group(f, GROUP_SWITCH,     THEME_OBJ_SWITCH,        map, false);
         group(f, GROUP_ICE,        THEME_OBJ_ICE,           map, false);
-        group(f, GROUP_STICKY,     THEME_OBJ_GLUE,          map, false);
-        group(f, GROUP_FALLING,    THEME_OBJ_DESTRUCTFIELD, map, false);
-        group(f, GROUP_JUMP_PAD,   THEME_OBJ_JUMPPAD,       map, false);
+        group(f, GROUP_STICKY,     THEME_OBJ_STICKY,          map, false);
+        group(f, GROUP_FALLING,    THEME_OBJ_FALLING, map, false);
+        group(f, GROUP_JUMP_PAD,   THEME_OBJ_JUMP_PAD,       map, false);
         group(f, GROUP_TELEPORTER, THEME_OBJ_TELEPORTER,    map, false);
-        group(f, GROUP_STAIRS,     THEME_OBJ_STAIR,         map, false);
+        group(f, GROUP_STAIRS,     THEME_OBJ_STAIRS,         map, false);
         group(f, GROUP_SLIDE,      THEME_OBJ_SLIDE,         map, false);
         group(f, GROUP_EXIT,       THEME_OBJ_EXIT,          map, false);
         bombables(f, map);
@@ -357,12 +357,12 @@ void LevelPlacements::draw(draw::Frame &f, draw::Pass pass, LevelMap *map)
         if (f.opts.particles == 0)
             break;
         group(f, GROUP_SWITCH,     THEME_OBJ_SWITCH,        map, true);
-        group(f, GROUP_BOMBABLE,   THEME_OBJ_OBSTACLE,      map, true);
-        group(f, GROUP_STAIRS,     THEME_OBJ_STAIR,         map, true);
+        group(f, GROUP_BOMBABLE,   THEME_OBJ_BOMBABLE,      map, true);
+        group(f, GROUP_STAIRS,     THEME_OBJ_STAIRS,         map, true);
         group(f, GROUP_ICE,        THEME_OBJ_ICE,           map, true);
-        group(f, GROUP_STICKY,     THEME_OBJ_GLUE,          map, true);
-        group(f, GROUP_FALLING,    THEME_OBJ_DESTRUCTFIELD, map, true);
-        group(f, GROUP_JUMP_PAD,   THEME_OBJ_JUMPPAD,       map, true);
+        group(f, GROUP_STICKY,     THEME_OBJ_STICKY,          map, true);
+        group(f, GROUP_FALLING,    THEME_OBJ_FALLING, map, true);
+        group(f, GROUP_JUMP_PAD,   THEME_OBJ_JUMP_PAD,       map, true);
         group(f, GROUP_TELEPORTER, THEME_OBJ_TELEPORTER,    map, true);
         group(f, GROUP_EXIT,       THEME_OBJ_EXIT,          map, true);
         group(f, GROUP_SLIDE,      THEME_OBJ_SLIDE,         map, true);

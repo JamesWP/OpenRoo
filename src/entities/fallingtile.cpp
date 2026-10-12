@@ -262,6 +262,6 @@ void FallingTile::draw(draw::Frame &f, draw::Pass pass) const
 {
     if (pass != draw::Pass::Particles || justFell_ == 0 || f.opts.particles == 0)
         return;
-    draw::spawnBurst(f, THEME_OBJ_DESTRUCTFIELDFX,
+    draw::spawnBurst(f, THEME_OBJ_FALLING_DUST,
                      { (float)cellU_, (float)heightCell_, -(float)cellV_ });
 }

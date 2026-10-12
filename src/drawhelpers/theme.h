@@ -230,20 +230,50 @@ private:
 };
 
  
-/* Slot order is the theme file's keyword order. */
+/* The looks: one slot per kind of thing in the level, named for what the
+ * game calls it.  The theme file's keyword for each is beside it.  Looks
+ * named _DYING or _EXPLODING replace the plain one while it dies; the
+ * PLAYER_ looks are overlays on the player while an effect lasts; _PICKUP,
+ * _DUST and _TRAIL looks are bursts and trails (themedraw.h). */
 enum ThemeObjectType {
-    THEME_OBJ_JOHN, THEME_OBJ_CATCHER, THEME_OBJ_CATCHERFX, THEME_OBJ_THROWER,
-    THEME_OBJ_THROWERFX, THEME_OBJ_PLATE, THEME_OBJ_SIDE, THEME_OBJ_PLATFORM,
-    THEME_OBJ_PARAGLIDE, THEME_OBJ_PARAGLIDEFX, THEME_OBJ_ELEVATOR, THEME_OBJ_EXIT,
-    THEME_OBJ_GLUE, THEME_OBJ_DESTRUCTFIELD, THEME_OBJ_DESTRUCTFIELDFX, THEME_OBJ_JUMPPAD,
-    THEME_OBJ_SLIDE, THEME_OBJ_STAIR, THEME_OBJ_TELEPORTER, THEME_OBJ_CRYSTAL,
-    THEME_OBJ_CRYSTALFX, THEME_OBJ_AMMUNITION, THEME_OBJ_BOMB, THEME_OBJ_EXPLOSION,
-    THEME_OBJ_SURPRISE, THEME_OBJ_FREEZE, THEME_OBJ_SPEED, THEME_OBJ_SPEEDFX,
-    THEME_OBJ_COLLFX, THEME_OBJ_LIFE, THEME_OBJ_SWITCH, THEME_OBJ_TIME,
-    THEME_OBJ_ICE, THEME_OBJ_OBSTACLE, THEME_OBJ_OBSTACLEFX, THEME_OBJ_PROTECTION,
-    THEME_OBJ_PROTECTIONFX, THEME_OBJ_BRIDGE,
-    // PRESERVED: the release covers only 37 slots; EXPLOSION's is never
-    // released or cleared between theme loads.
+    THEME_OBJ_PLAYER,               // john
+    THEME_OBJ_FOE_CATCHER,          // catcher
+    THEME_OBJ_FOE_CATCHER_DYING,    // catcherfx
+    THEME_OBJ_FOE_THROWER,          // thrower
+    THEME_OBJ_FOE_THROWER_DYING,    // throwerfx
+    THEME_OBJ_FLOOR,                // plate
+    THEME_OBJ_WALL,                 // side
+    THEME_OBJ_PLATFORM,             // platform
+    THEME_OBJ_ITEM_PARAGLIDER,      // paraglide
+    THEME_OBJ_PLAYER_GLIDING,       // paraglidefx
+    THEME_OBJ_LIFT,                 // elevator
+    THEME_OBJ_EXIT,                 // exit
+    THEME_OBJ_STICKY,               // glue
+    THEME_OBJ_FALLING,              // destructfield
+    THEME_OBJ_FALLING_DUST,         // destructfieldfx
+    THEME_OBJ_JUMP_PAD,             // jumppad
+    THEME_OBJ_SLIDE,                // slide
+    THEME_OBJ_STAIRS,               // stair
+    THEME_OBJ_TELEPORTER,           // teleporter
+    THEME_OBJ_ITEM_CRYSTAL,         // crystal
+    THEME_OBJ_CRYSTAL_PICKUP,       // crystalfx
+    THEME_OBJ_ITEM_BOMBS,           // ammunition
+    THEME_OBJ_BOMB,                 // bomb
+    THEME_OBJ_BOMB_EXPLODING,       // explosion
+    THEME_OBJ_ITEM_RANDOM,          // surprise
+    THEME_OBJ_ITEM_FREEZE,          // freeze
+    THEME_OBJ_ITEM_SPEED_UP,        // speed
+    THEME_OBJ_PLAYER_SPEED_TRAIL,   // speedfx
+    THEME_OBJ_ITEM_PICKUP,          // collfx
+    THEME_OBJ_ITEM_EXTRA_LIFE,      // life
+    THEME_OBJ_SWITCH,               // switch
+    THEME_OBJ_ITEM_TIME_BONUS,      // time
+    THEME_OBJ_ICE,                  // ice
+    THEME_OBJ_BOMBABLE,             // obstacle
+    THEME_OBJ_BOMBABLE_EXPLODING,   // obstaclefx
+    THEME_OBJ_ITEM_PROTECTION,      // protection
+    THEME_OBJ_PLAYER_PROTECTED,     // protectionfx
+    THEME_OBJ_BRIDGE,               // bridge
     THEME_OBJ_COUNT
 };
 

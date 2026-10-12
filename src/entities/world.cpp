@@ -104,11 +104,11 @@ void World::draw(draw::Frame &f, draw::Pass pass)
 
     if (pass == draw::Pass::Particles) {
         if (f.opts.particles > 0)
-            draw::bursts(f, THEME_OBJ_DESTRUCTFIELDFX);
+            draw::bursts(f, THEME_OBJ_FALLING_DUST);
         if (f.opts.particles > 1) {
             const BlendState additive = BlendState::additive();
-            draw::bursts(f, THEME_OBJ_CRYSTALFX, &additive);
-            draw::bursts(f, THEME_OBJ_COLLFX, &additive);
+            draw::bursts(f, THEME_OBJ_CRYSTAL_PICKUP, &additive);
+            draw::bursts(f, THEME_OBJ_ITEM_PICKUP, &additive);
         }
     }
 }

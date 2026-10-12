@@ -320,5 +320,5 @@ void LiftObject::draw(draw::Frame &f, draw::Pass pass) const
         return;
     draw::Instance in;
     in.pos = { posU_, height_, -posV_ };
-    draw::objects(f, THEME_OBJ_ELEVATOR, &in);
+    draw::objects(f, THEME_OBJ_LIFT, &in);
 }

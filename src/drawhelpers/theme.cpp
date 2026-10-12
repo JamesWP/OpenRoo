@@ -224,28 +224,12 @@ ThemeAssetBlock::~ThemeAssetBlock()
 {
 }
 
-/* PRESERVED: EXPLOSION's slot is not in the list, so its particle systems and
- * explode buffers are never released, though the memset still zeroes them. */
-static const ThemeObjectType kReleaseOrder[] = {
-    THEME_OBJ_JOHN, THEME_OBJ_CATCHER, THEME_OBJ_CATCHERFX, THEME_OBJ_THROWER,
-    THEME_OBJ_THROWERFX, THEME_OBJ_BOMB, THEME_OBJ_DESTRUCTFIELD,
-    THEME_OBJ_DESTRUCTFIELDFX, THEME_OBJ_EXIT, THEME_OBJ_ELEVATOR,
-    THEME_OBJ_GLUE, THEME_OBJ_JUMPPAD, THEME_OBJ_PLATE, THEME_OBJ_SIDE,
-    THEME_OBJ_SLIDE, THEME_OBJ_STAIR, THEME_OBJ_TELEPORTER,
-    THEME_OBJ_AMMUNITION, THEME_OBJ_CRYSTAL, THEME_OBJ_CRYSTALFX,
-    THEME_OBJ_FREEZE, THEME_OBJ_SPEED, THEME_OBJ_SPEEDFX, THEME_OBJ_COLLFX,
-    THEME_OBJ_LIFE, THEME_OBJ_PLATFORM, THEME_OBJ_SURPRISE, THEME_OBJ_SWITCH,
-    THEME_OBJ_TIME, THEME_OBJ_ICE, THEME_OBJ_OBSTACLE, THEME_OBJ_OBSTACLEFX,
-    THEME_OBJ_PROTECTION, THEME_OBJ_PROTECTIONFX, THEME_OBJ_PARAGLIDE,
-    THEME_OBJ_PARAGLIDEFX, THEME_OBJ_BRIDGE,
-};
-
 void ThemeAssetBlock::release(TextureManager *textures, ModelManager *models)
 {
     textures->releaseAll();
     models->clearReleaseFree();
-    for (ThemeObjectType t : kReleaseOrder)
-        slots_[t].release();
+    for (ThemeObjectTypeSlot &slot : slots_)
+        slot.release();
     for (int f = 0; f < 6; f++)
         sky_.textures()[f].release();
     memset((void *)this, 0, sizeof(*this));
@@ -277,25 +261,25 @@ static const KeywordValue kFogModes[] = {
 };
 
 static const struct { const char *name; ThemeObjectType type; } kObjectKeywords[] = {
-    { "exit", THEME_OBJ_EXIT }, { "john", THEME_OBJ_JOHN },
-    { "catcher", THEME_OBJ_CATCHER }, { "catcherfx", THEME_OBJ_CATCHERFX },
-    { "thrower", THEME_OBJ_THROWER }, { "throwerfx", THEME_OBJ_THROWERFX },
-    { "paraglide", THEME_OBJ_PARAGLIDE }, { "paraglidefx", THEME_OBJ_PARAGLIDEFX },
-    { "bridge", THEME_OBJ_BRIDGE }, { "collfx", THEME_OBJ_COLLFX },
-    { "protection", THEME_OBJ_PROTECTION }, { "protectionfx", THEME_OBJ_PROTECTIONFX },
-    { "ammunition", THEME_OBJ_AMMUNITION }, { "bomb", THEME_OBJ_BOMB },
-    { "explosion", THEME_OBJ_EXPLOSION }, { "crystal", THEME_OBJ_CRYSTAL },
-    { "crystalfx", THEME_OBJ_CRYSTALFX }, { "speed", THEME_OBJ_SPEED },
-    { "speedfx", THEME_OBJ_SPEEDFX }, { "freeze", THEME_OBJ_FREEZE },
-    { "life", THEME_OBJ_LIFE }, { "time", THEME_OBJ_TIME },
-    { "switch", THEME_OBJ_SWITCH }, { "surprise", THEME_OBJ_SURPRISE },
-    { "elevator", THEME_OBJ_ELEVATOR }, { "platform", THEME_OBJ_PLATFORM },
-    { "plate", THEME_OBJ_PLATE }, { "side", THEME_OBJ_SIDE },
-    { "glue", THEME_OBJ_GLUE }, { "destructfield", THEME_OBJ_DESTRUCTFIELD },
-    { "destructfieldfx", THEME_OBJ_DESTRUCTFIELDFX }, { "jumppad", THEME_OBJ_JUMPPAD },
+    { "exit", THEME_OBJ_EXIT }, { "john", THEME_OBJ_PLAYER },
+    { "catcher", THEME_OBJ_FOE_CATCHER }, { "catcherfx", THEME_OBJ_FOE_CATCHER_DYING },
+    { "thrower", THEME_OBJ_FOE_THROWER }, { "throwerfx", THEME_OBJ_FOE_THROWER_DYING },
+    { "paraglide", THEME_OBJ_ITEM_PARAGLIDER }, { "paraglidefx", THEME_OBJ_PLAYER_GLIDING },
+    { "bridge", THEME_OBJ_BRIDGE }, { "collfx", THEME_OBJ_ITEM_PICKUP },
+    { "protection", THEME_OBJ_ITEM_PROTECTION }, { "protectionfx", THEME_OBJ_PLAYER_PROTECTED },
+    { "ammunition", THEME_OBJ_ITEM_BOMBS }, { "bomb", THEME_OBJ_BOMB },
+    { "explosion", THEME_OBJ_BOMB_EXPLODING }, { "crystal", THEME_OBJ_ITEM_CRYSTAL },
+    { "crystalfx", THEME_OBJ_CRYSTAL_PICKUP }, { "speed", THEME_OBJ_ITEM_SPEED_UP },
+    { "speedfx", THEME_OBJ_PLAYER_SPEED_TRAIL }, { "freeze", THEME_OBJ_ITEM_FREEZE },
+    { "life", THEME_OBJ_ITEM_EXTRA_LIFE }, { "time", THEME_OBJ_ITEM_TIME_BONUS },
+    { "switch", THEME_OBJ_SWITCH }, { "surprise", THEME_OBJ_ITEM_RANDOM },
+    { "elevator", THEME_OBJ_LIFT }, { "platform", THEME_OBJ_PLATFORM },
+    { "plate", THEME_OBJ_FLOOR }, { "side", THEME_OBJ_WALL },
+    { "glue", THEME_OBJ_STICKY }, { "destructfield", THEME_OBJ_FALLING },
+    { "destructfieldfx", THEME_OBJ_FALLING_DUST }, { "jumppad", THEME_OBJ_JUMP_PAD },
     { "teleporter", THEME_OBJ_TELEPORTER }, { "slide", THEME_OBJ_SLIDE },
-    { "ice", THEME_OBJ_ICE }, { "obstacle", THEME_OBJ_OBSTACLE },
-    { "obstaclefx", THEME_OBJ_OBSTACLEFX }, { "stair", THEME_OBJ_STAIR },
+    { "ice", THEME_OBJ_ICE }, { "obstacle", THEME_OBJ_BOMBABLE },
+    { "obstaclefx", THEME_OBJ_BOMBABLE_EXPLODING }, { "stair", THEME_OBJ_STAIRS },
 };
 
 static const struct { const char *name; ThemeImageSlot slot; } kImageKeywords[] = {
