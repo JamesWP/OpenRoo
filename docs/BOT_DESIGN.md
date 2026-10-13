@@ -3,7 +3,7 @@
 A goal-oriented planner that plays Ka'roo levels, and, more importantly, the
 framework that lets us measure it, compare versions of it, and debug it.
 
-Status: agreed design.  Nothing here is built yet.
+Status: agreed design.  P0, the harness, is built: section 8 says how to use it.
 
 ## 1. Aims
 
@@ -252,7 +252,7 @@ reason.
 
 ### 4.2 The corpus and the suites
 
-- **Shipped levels (88):** a static analyser (Python, from the `.jjm` and
+- **Shipped levels (the 75 that JJ.GAM lists):** a static analyser (Python, from the `.jjm` and
   `JJ.GAM`) tags each level: `foes`, `throwers`, `falling-tiles`,
   `bombables`, `needs-bomb`, `switches`, `ice`, `teleporters`, gem count.
   Suites are tag queries ("all no-foe levels"), so a phase of the bot is judged
@@ -331,12 +331,12 @@ traces.  `backtest.py check-determinism` does exactly that over a small suite,
 and it is the first test that runs.
 
 A side effect, and not a goal in itself: **a bot run is a replay test.**
-Every run already writes a `.rec`.  Once the recording header carries the
-start level (as it already carries `KAROO_SEED`), blessing a bot baseline
-writes each completed level's `.rec` and expected end state into the replay
+Every run already writes a `.rec`, and a replay-manifest entry's
+`start_level` starts the replay in the level, as the bot run did.  So a
+completed level's `.rec` and expected end state can go into the replay
 catalogue with no further work.  This gives the engine refactors regression
 coverage across every level the bot can finish, without anyone playing them by
-hand.  No effort beyond the header field is planned for it.
+hand.  No effort beyond `start_level` is planned for it.
 
 ### 4.8 Seeing what it did
 
@@ -360,7 +360,9 @@ Each is small and self-contained; they come first.
    **death cause** to the state-dump events (foe contact, fall, blast,
    timeout, harakiri).
 3. Bot key-source wiring in `app` (`--bot`).
-4. The start level in the recording header, and `replaytest.py` honouring it.
+4. The start level for a replay: a `start_level` field in the replay manifest
+   (not the recording header, which would have meant a format version and
+   converting every recording).
 5. A `.jjm` writer in `tools/jjm.py`.  Its cell-byte notes also look stale
    against `tile.h` (height, kind, param, contents), so check them while we
    are there.
@@ -373,7 +375,7 @@ with a suite the bot is judged on.
 
 | Phase | Builds | Judged on |
 |---|---|---|
-| **P0 Harness** | engine changes 1–4; `backtest.py run/compare/check-determinism`; a placeholder bot (a scripted key list) | the pipeline runs the 88 levels in parallel, deterministically; speed measured |
+| **P0 Harness** | engine changes 1–4; `backtest.py run/compare/check-determinism`; a placeholder bot (a scripted key list) | the pipeline runs every level in parallel, deterministically; speed measured |
 | **P1 Perception + motor** | `BotView` + JSON, the motor, a "walk to cell" bot; motor calibration scenarios | the scenarios: reaches the target cell; turn and step costs fitted |
 | **P2 Navigation + collection** | nav graph, regions, distances, route optimiser | the foe-free, bomb-free shipped levels |
 | **P3 Prediction** | foe/tile/bomb predictors, the prediction log, `calibrate.py`, space-time A* avoidance | prediction hit rates; completion on the foe levels by avoidance alone |
@@ -381,8 +383,8 @@ with a suite the bot is judged on.
 | **P5 Lures** | `LureAway`, `LureToDrop` maneuvers with verification | the lure scenarios, robustness sweeps, guarded-gem levels |
 | **P6 Tooling** | debug overlay, HTML report, `botplan` offline re-plan | — |
 
-Every phase is measured by the same number: the completion rate over all 88
-levels, which should never go down.
+Every phase is measured by the same number: the completion rate over every
+level, which should never go down.
 
 ## 7. Decisions
 
@@ -401,3 +403,33 @@ levels, which should never go down.
 5. **Language:** the planner is C++, in-process, and works on `BotView`.  The
    orchestration and analysis are Python.  `BotView` JSON still allows
    offline experiments against traces.
+
+## 8. Using the harness (P0)
+
+```bash
+python3 tools/bot/backtest.py levels                        # the JJ.GAM levels, by index
+python3 tools/bot/backtest.py run --policy wander            # every level, one seed
+python3 tools/bot/backtest.py run --policy wander --levels 0-9 'Water\Water01' --seeds 1,2,3
+python3 tools/bot/backtest.py compare RUN_A RUN_B            # or one RUN against the baseline
+python3 tools/bot/backtest.py bless RUN                      # RUN becomes tests/bot/baseline.json
+python3 tools/bot/backtest.py check-determinism --policy wander
+```
+
+- **One game:** `KAROO_BOT=<policy> KAROO_START_LEVEL=<index or name>` plays
+  one level with one life (`src/bot/botrun.h`).  The run skips the flythrough
+  with Enter, holds the keys bound to the policy's actions, and ends at the
+  first of `complete`, `death` (with `death_cause`: foe, fall, blast,
+  harakiri), `timeout`, `stuck` (`KAROO_BOT_STUCK_S`, 60) or `cap`
+  (`KAROO_BOT_MAX_S`, 900).  It writes `KAROO_BOT_SUMMARY`.
+- **Policies** are `bot::Policy` (`src/bot/policy.h`).  So far there are only
+  the placeholders, `idle` and `wander`.  The planner will be another.
+- **Results** go to `run/backtest/<date>-<sha>-<label>/`, with a summary,
+  state dump, recording and log per level and seed.  To watch a run, replay
+  its `bot.rec` with `KAROO_START_LEVEL` set to the level, the run's
+  `KAROO_SEED`, and `KAROO_FIXED_DT=0.016667`.
+- **Speed:** headless, all 75 levels take about 5 s on 4 cores.  A level runs
+  at roughly 15,000 frames a second.
+- **Death cause:** the game marks a player that falls off the map with the
+  blast's move state (4).  The blast check matches any height within one of
+  the cell's blast height, and that is 0 when no blast is live.  The bot
+  reports a 4 with no live blast as a fall.
