@@ -49,7 +49,7 @@ layers:
   # order things happen in -- the frame's draw passes, and what each game state
   # does with the keys.  It decides the order and calls; the logic it calls
   # lives below.  Then the drivers and the executable.
-  - [screens, sim]
+  - [screens, sim, bot]
   - [sequencer]
   - [core]
   - [app]
