@@ -1,5 +1,6 @@
 #include "policy.h"
 #include <stdio.h>
+#include "explore.h"
 #include "motor.h"
 
 namespace bot {
@@ -88,6 +89,8 @@ std::unique_ptr<Policy> makePolicy(const std::string &name)
     }
     if (name == "idle")
         return std::make_unique<Idle>();
+    if (name == "explore")
+        return std::make_unique<Explore>();
     if (name == "wander")
         return std::make_unique<Wander>();
     return nullptr;

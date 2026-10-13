@@ -36,6 +36,8 @@ public:
  *   idle    holds nothing;
  *   wander  walks forward and turns right whenever a step does not move it,
  *           a placeholder that exercises the harness (deaths, stuck);
+ *   explore random single moves, logging the nav model's predictions
+ *           against the game (explore.h);
  *   path:u,v;u,v;...
  *           walks the waypoints with the motor (motor.h), then stands.  Each
  *           waypoint is in line with the one before; the cells between are
