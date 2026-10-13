@@ -6,7 +6,8 @@
  * flythrough, then holds the keys bound to the policy's actions.  It ends at
  * the first of:
  *   complete   the level's exit is reached;
- *   death      the player dies (death_cause says how);
+ *   death      the player dies (death_cause says how: foe, drop, bomb,
+ *              void, harakiri; botrun.cpp);
  *   timeout    the level's time limit runs out;
  *   stuck      no gem for KAROO_BOT_STUCK_S seconds of game time (60);
  *   cap        KAROO_BOT_MAX_S seconds of game time in the level (900).

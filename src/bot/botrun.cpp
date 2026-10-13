@@ -19,19 +19,23 @@ namespace bot {
 namespace {
 
 /* Why the player died, from its move state (movableentity.cpp, foe.cpp,
- * playtick.cpp, player.cpp).  The blast check matches any height within one
- * of the cell's blast height, which is 0 while no blast is live, so a player
- * falling off the map is marked 4 at height 1: a 4 with no live blast is a
- * fall. */
+ * playtick.cpp, player.cpp):
+ *   foe       1, a foe touched it;
+ *   drop      2, it landed from too high, or went below the floor;
+ *   timeout   3, the time limit ran out;
+ *   bomb      4 on a cell with a live blast, a bomb's blast caught it;
+ *   void      4 on a cell with no live blast: it fell off the map.  The blast
+ *             check matches any height within one of the cell's blast height,
+ *             which is 0 while no blast is live, so a player falling through
+ *             empty space is caught at height 1 with the bomb's state;
+ *   harakiri  6, the player's own harakiri key. */
 const char *death_cause(const Player &pl)
 {
-    if (pl.moveState() == 4 && pl.curTile()->blastHeight() == 0)
-        return "fall";
     switch (pl.moveState()) {
     case 1:  return "foe";
-    case 2:  return "fall";
+    case 2:  return "drop";
     case 3:  return "timeout";
-    case 4:  return "blast";
+    case 4:  return pl.curTile()->blastHeight() != 0 ? "bomb" : "void";
     case 6:  return "harakiri";
     default: return "unknown";
     }
