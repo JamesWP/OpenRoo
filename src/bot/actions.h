@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include "bombmodel.h"
+#include "distances.h"
 #include "foemodel.h"
 #include "nav.h"
 #include "script.h"
@@ -56,29 +57,10 @@ struct PlanContext {
     Step           goal{-1, -1};  // progress's best target, for advance
 };
 
-/* The gem routes, kept between decisions while the terrain stands: every
- * gem and the quickest times between them and to the exit. */
-class GemSurvey {
-public:
-    void update(const BotView &view);
-    const std::vector<Step> &gems() const { return gems_; }
-    double between(size_t i, size_t j) const { return between_[i][j]; }
-    double toExit(size_t i) const { return between_[i][gems_.size()]; }
-
-private:
-    unsigned long long terrain_ = 0;
-    bool               done_ = false;
-    std::vector<Step>  gems_;
-    std::vector<std::vector<double>> between_;
-};
-
-void proposeProgress(PlanContext &ctx, GemSurvey &survey, std::vector<Option> &out);
+void proposeProgress(PlanContext &ctx, Distances &distances, std::vector<Option> &out);
 void proposeAmbush(PlanContext &ctx, std::vector<Option> &out);
 void proposeBombs(PlanContext &ctx, std::vector<Option> &out);
 void proposeAdvance(PlanContext &ctx, std::vector<Option> &out);
 void proposeRefuge(PlanContext &ctx, std::vector<Option> &out);
-
-/* The terrain hash the routes depend on. */
-unsigned long long terrainHash(const BotView &view);
 
 }  // namespace bot

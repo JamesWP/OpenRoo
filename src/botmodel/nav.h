@@ -53,6 +53,10 @@ private:
     const BotView *view_;
 };
 
+/* A hash of what the nav model reads (the terrain and the step time): its
+ * answers stand while this does. */
+unsigned long long navHash(const BotView &view);
+
 /* A moment of a timed plan: from t ms on, the player is on cell (its cell
  * changes when a step starts, as the game's does). */
 struct Timed {

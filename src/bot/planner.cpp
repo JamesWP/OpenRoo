@@ -28,11 +28,11 @@ void Planner::decide(const BotView &view)
     stuck_   = false;
     gems_    = view.player.gems;
     bombs_   = view.player.bombs;
-    terrain_ = terrainHash(view);
+    terrain_ = navHash(view);
 
     PlanContext ctx(view, foes_);
     std::vector<Option> options;
-    proposeProgress(ctx, survey_, options);
+    proposeProgress(ctx, distances_, options);
     if (!ctx.stuck.empty()) {
         note_  = ctx.stuck;
         stuck_ = true;
@@ -106,7 +106,7 @@ unsigned Planner::act(const BotView &view)
         const bool cornered = idle && !stuck_ && chosen_.script.empty();
         if (!decided_ || changed ||
             (idle && !stuck_ && (!cornered || ticks_ % CHECK_TICKS == 0)) ||
-            (idle && stuck_ && terrainHash(view) != terrain_))
+            (idle && stuck_ && navHash(view) != terrain_))
             decide(view);
     }
     return exec_.act(view);

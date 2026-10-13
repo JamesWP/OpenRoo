@@ -1,6 +1,8 @@
 add_library(botmodel OBJECT
     bombmodel.cpp
     danger.cpp
+    distances.cpp
+    fallingmodel.cpp
     foemodel.cpp
     nav.cpp
     route.cpp)

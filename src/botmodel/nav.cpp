@@ -44,6 +44,20 @@ const char *NavModel::refused(const Cell &a, int h, const Cell &b, int d) const
     return nullptr;
 }
 
+unsigned long long navHash(const BotView &view)
+{
+    unsigned long long h = 1469598103934665603ull;
+    auto mix = [&h](unsigned x) { h = (h ^ x) * 1099511628211ull; };
+    for (const Cell &c : view.cells) {
+        mix(c.height);
+        mix(c.kind);
+        mix(c.busy);
+        mix(c.slideDir);
+    }
+    mix((unsigned)view.player.stepMs);
+    return h;
+}
+
 Outcome NavModel::step(int u, int v, int f, int d) const
 {
     const BotView &w = *view_;
