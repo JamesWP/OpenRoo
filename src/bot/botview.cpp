@@ -25,6 +25,8 @@ void fill_mover(Mover &m, const E &e)
     m.h = e.heightCell();
     m.facing = e.facing();
     m.moving = e.moveDir() != 0;
+    m.animStart = e.animStart();
+    m.animMs = e.animDuration();
 }
 
 void appendf(std::string &out, const char *fmt, ...) __attribute__((format(printf, 2, 3)));

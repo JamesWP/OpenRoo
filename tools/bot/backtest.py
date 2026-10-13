@@ -17,7 +17,7 @@ run/, so parallel runs share nothing they write.
 
 Results go to run/backtest/<date>-<sha>-<label>/: run.json (what was run),
 results.json (every summary), and per level and seed its summary, state dump,
-recording and log, and with --trace its BotView trace (src/bot/botview.h).  RUN arguments are such a directory, or its name.  The
+recording, action log (src/bot/botrun.h) and game log, and with --trace its BotView trace (src/bot/botview.h).  RUN arguments are such a directory, or its name.  The
 baseline is tests/bot/baseline.json: the blessed outcome of each level and
 seed for one policy.
 
@@ -134,6 +134,7 @@ def play(job):
         "KAROO_BOT_SUMMARY": os.path.join(out, "summary.json"),
         "KAROO_STATE_DUMP": os.path.join(out, "state.json"),
         "KAROO_RECORD": os.path.join(out, "bot.rec"),
+        "KAROO_BOT_ACTIONS": os.path.join(out, "actions.jsonl"),
         "KAROO_RECORD_LABEL": name,
         "KAROO_AUTO_EXIT_SECS": str(timeout),
     })

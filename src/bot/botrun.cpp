@@ -70,6 +70,9 @@ public:
         stuckMs_ = env_seconds("KAROO_BOT_STUCK_S", 60) * 1000.0;
         capMs_   = env_seconds("KAROO_BOT_MAX_S", 900) * 1000.0;
         summary_ = sysdev::getEnv("KAROO_BOT_SUMMARY");
+        const std::string actions = sysdev::getEnv("KAROO_BOT_ACTIONS");
+        if (!actions.empty())
+            actions_.open(sysdev::nativePath(actions));
         const std::string trace = sysdev::getEnv("KAROO_BOT_TRACE");
         if (!trace.empty())
             trace_.open(sysdev::nativePath(trace));
@@ -92,7 +95,9 @@ public:
         BotView view = BotView::capture(*game_);
         if (trace_)
             trace_ << view.toJson(frames_, haveLast_ ? &last_ : nullptr) << '\n';
+        logAction(view);
         const unsigned acts = policy_->act(view);
+        held_     = acts;
         last_     = std::move(view);
         haveLast_ = true;
         for (int i = 0; i < 5; i++)
@@ -143,6 +148,50 @@ public:
     }
 
 private:
+    /* The action log: each move the player makes, from rest to rest, with
+     * the keys that started it.  Measured from the views, so it holds for
+     * any policy; tools/bot/calibrate.py reads it. */
+    void logAction(const BotView &view)
+    {
+        if (!actions_.is_open() || !haveLast_)
+            return;
+        const PlayerView &p = view.player, &q = last_.player;
+        // A move ends at rest, or when the next one starts without a rest
+        // between: the destination cell changes while still moving.
+        const bool chained = p.moving && q.moving && (p.u != q.u || p.v != q.v);
+        if (started_ && ((!p.moving && q.moving) || chained)) {
+            started_ = false;
+            writeAction(view, chained ? q : p);
+        }
+        if ((p.moving && !q.moving) || chained) {
+            // held_ is still what the last tick held: the keys that started it.
+            started_   = true;
+            startKeys_ = held_;
+            from_      = q;
+            fromMs_    = p.animStart;
+            moveMs_    = p.animMs;
+            fromKind_  = last_.cell(from_.u, from_.v).kind;
+        }
+    }
+
+    void writeAction(const BotView &view, const PlayerView &to)
+    {
+        static const char *const names[] = {"forward", "back", "left", "right", "bomb"};
+        std::string keys;
+        for (int i = 0; i < 5; i++)
+            if (startKeys_ & (1u << i)) {
+                if (!keys.empty())
+                    keys += '+';
+                keys += names[i];
+            }
+        printTo(actions_, "{\"keys\":\"%s\",\"from\":[%d,%d,%d],\"to\":[%d,%d,%d],"
+                "\"facing\":[%d,%d],\"start_ms\":%.1f,\"ms\":%.1f,\"step_ms\":%.0f,"
+                "\"reversed\":%d,\"kind_from\":%u,\"kind_to\":%u}\n",
+                keys.empty() ? "none" : keys.c_str(), from_.u, from_.v, from_.h,
+                to.u, to.v, to.h, from_.facing, to.facing, fromMs_, moveMs_,
+                from_.stepMs, from_.reversed ? 1 : 0, fromKind_, view.cell(to.u, to.v).kind);
+    }
+
     void write(const char *outcome, const char *cause) const
     {
         const World   *w  = game_->world();
@@ -185,6 +234,12 @@ private:
     std::string summary_;
     std::ofstream trace_;   // KAROO_BOT_TRACE: the view each tick it acts
     BotView     last_;
+    std::ofstream actions_; // KAROO_BOT_ACTIONS: the action log
+    unsigned    held_ = 0, startKeys_ = 0;
+    bool        started_ = false;
+    PlayerView  from_;
+    double      fromMs_ = 0, moveMs_ = 0;
+    unsigned    fromKind_ = 0;
     bool        haveLast_ = false;
     bool        done_    = false;
     bool        playing_ = false;

@@ -30,7 +30,11 @@ public:
 /* The policy KAROO_BOT names, or null if it names none:
  *   idle    holds nothing;
  *   wander  walks forward and turns right whenever a step does not move it,
- *           a placeholder that exercises the harness (deaths, stuck). */
+ *           a placeholder that exercises the harness (deaths, stuck);
+ *   path:u,v;u,v;...
+ *           walks the waypoints with the motor (motor.h), then stands.  Each
+ *           waypoint is in line with the one before; the cells between are
+ *           walked.  The first is normally the player's start. */
 std::unique_ptr<Policy> makePolicy(const std::string &name);
 
 }  // namespace bot

@@ -37,6 +37,8 @@ struct Mover {
     int u = 0, v = 0, h = 0;
     int facing = 0;
     bool moving = false;   // a step or turn is under way
+    double animStart = 0;  // clock ms the current or last move began
+    double animMs = 0;     // how long that move takes
 };
 
 struct PlayerView : Mover {
