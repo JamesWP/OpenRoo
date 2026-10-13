@@ -54,6 +54,13 @@ private:
     const BotView *view_;
 };
 
+/* A moment of a timed plan: from t ms on, the player is on cell (its cell
+ * changes when a step starts, as the game's does). */
+struct Timed {
+    double t;
+    Step   cell;
+};
+
 /* The quickest routes from one rest state to every other: Dijkstra over
  * (cell, facing), each move costing its time. */
 class Paths {
@@ -66,6 +73,10 @@ public:
     /* The cells to walk to (u, v) by the quickest route, starting with the
      * start cell, as the motor follows them; empty if unreachable. */
     std::vector<Step> cellsTo(int u, int v) const;
+
+    /* The same route as a schedule: the start cell at 0, then each cell the
+     * route enters at the time it is entered. */
+    std::vector<Timed> scheduleTo(int u, int v) const;
 
 private:
     int index(int u, int v, int f) const { return ((v * eu_) + u) * 4 + (f - 1); }

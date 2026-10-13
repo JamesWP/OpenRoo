@@ -223,3 +223,36 @@ std::vector<Step> Paths::cellsTo(int u, int v) const
 }
 
 }  // namespace bot
+
+namespace bot {
+
+std::vector<Timed> Paths::scheduleTo(int u, int v) const
+{
+    int best = -1;
+    for (int f = 1; f <= 4; f++) {
+        const int i = index(u, v, f);
+        if (cost_[i] >= 0 && (best < 0 || cost_[i] < cost_[best]))
+            best = i;
+    }
+    if (best < 0)
+        return {};
+    std::vector<int> chain;
+    for (int i = best; i >= 0; i = parent_[i])
+        chain.push_back(i);
+    std::vector<Timed> out{{0, {startU_, startV_}}};
+    for (size_t k = chain.size() - 1; k-- > 0;) {
+        const int from = chain[k + 1], to = chain[k];
+        const int how = how_[to];
+        if (how >= 2)
+            continue;  // a turn enters no cell
+        const int f  = from % 4 + 1;
+        const int fu = (from / 4) % eu_, fv = (from / 4) / eu_;
+        const Outcome o = nav_.step(fu, fv, f, how == 0 ? f : NavModel::opposite(f));
+        const double each = o.cells.empty() ? 0 : o.ms / (double)o.cells.size();
+        for (size_t c = 0; c < o.cells.size(); c++)
+            out.push_back({cost_[from] + each * (double)c, o.cells[c]});
+    }
+    return out;
+}
+
+}  // namespace bot

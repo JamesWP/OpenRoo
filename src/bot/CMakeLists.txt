@@ -2,6 +2,7 @@ add_library(bot OBJECT
     botrun.cpp
     botview.cpp
     collect.cpp
+    danger.cpp
     explore.cpp
     foemodel.cpp
     motor.cpp
