@@ -36,6 +36,17 @@ public:
     float height() const { return height_; }
     float posV() const   { return posV_; }
 
+    // Its cell, its two parking heights and where it is in its cycle: state
+    // 0 parked, 1 rising, 2 falling; atTop whether it last parked at the top;
+    // the clock when the phase began.
+    int    cellU() const      { return cellU_; }
+    int    cellV() const      { return cellV_; }
+    int    baseHeight() const { return baseHeight_; }
+    int    topHeight() const  { return topHeight_; }
+    int    state() const      { return state_; }
+    bool   atTop() const      { return atTop_ != 0; }
+    double phaseStart() const { return phaseStart_; }
+
     // Draws the lift, in the opaque pass.
     void draw(draw::Frame &f, draw::Pass pass) const;
 

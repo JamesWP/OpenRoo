@@ -100,6 +100,29 @@ BotView capture(const Game &game)
         fv.respawns = !ft.noRespawn();
         view.fallings.push_back(fv);
     }
+    for (const LiftObject &l : w->lifts()) {
+        LiftView lv;
+        lv.u = l.cellU();
+        lv.v = l.cellV();
+        lv.base = l.baseHeight();
+        lv.top = l.topHeight();
+        lv.state = l.state();
+        lv.atTop = l.atTop();
+        lv.phaseStart = l.phaseStart();
+        view.lifts.push_back(lv);
+    }
+    for (const PlatformObject &pf : w->platforms()) {
+        PlatformView pv;
+        pv.alongU = pf.kind() == 0x0a;
+        pv.originU = pf.originU();
+        pv.originV = pf.originV();
+        pv.limit = pf.limit();
+        pv.height = pf.originHeight();
+        pv.state = pf.state();
+        pv.atLimit = pf.atLimit();
+        pv.phaseStart = pf.phaseStart();
+        view.platforms.push_back(pv);
+    }
     for (const Bomb &b : w->bombs()) {
         BombView bv;
         fill_mover(bv, b);

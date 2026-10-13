@@ -26,7 +26,7 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
                                     facing, view.now + dropIn);
     if (blast.lost)
         return;
-    const Paths away(s.nav, site.u, site.v, facing);
+    const Paths away(s.nav, site.u, site.v, facing, dropIn);
     std::vector<std::pair<double, Step>> cells;
     for (int v = 0; v < view.extentV; v++)
         for (int u = 0; u < view.extentU; u++) {
