@@ -17,6 +17,8 @@
  * decision it last made, or why it has none.
  *
  * KAROO_BOT_MU=<ms> is the planner's weight on risk, in ms a foe-second (0).
+ * KAROO_BOT_REACH=<file> writes, once, a grid of where the player can come to
+ * rest by the model: # as things stand, + once every block is spent, . never.
  * KAROO_BOT_DECISIONS=<file> logs every decision, one JSON object a line: the
  * player's state, the plan, each kind of option offered and found safe, and
  * the one taken. */
@@ -55,6 +57,8 @@ private:
     unsigned long ticks_ = 0;
     std::string note_;
     std::ofstream log_;
+    std::ofstream reach_;
+    bool      reachDone_ = false;
 };
 
 }  // namespace bot
