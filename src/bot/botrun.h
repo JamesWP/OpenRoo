@@ -17,18 +17,7 @@
  * policy acts on, one JSON object a line: the whole grid on the first line,
  * then the cells that changed.
  *
- * KAROO_BOT_ACTIONS=<file> logs every move the player makes, rest to rest or
- * step to step, with the keys that started it, where it went and how long it
- * took, one JSON object a line (tools/bot/calibrate.py).
- *
- * KAROO_BOT_FOE_LOG=<file> checks the foe model (foemodel.h): every tenth of a
- * second it runs the sim from the views 0.1, 0.5, 1 and 2 s ago, with the
- * player where it really went since, and logs each foe's predicted cell beside
- * its real one (tools/bot/foecheck.py).
- *
- * KAROO_BOT_BOMB_LOG=<file> checks the bomb model (bombmodel.h): each bomb's
- * predicted blast cell, made when it is first seen, beside the cell it is on
- * when its fuse runs out (tools/bot/bombcheck.py). */
+ * The run also checks the bot's models against the game (checks.h). */
 #pragma once
 
 #include "keysource.h"
