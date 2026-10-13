@@ -57,6 +57,7 @@ struct PlayerView : Mover {
     double stepMs = 200;
     int  moveState = 0;     // nonzero once dead
     double freezeUntil = 0; // the foes are held until then (clock ms), if frozen
+    double bombReadyAt = 0; // the next bomb can be dropped from then (clock ms)
 };
 
 struct FoeView : Mover {

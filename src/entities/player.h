@@ -74,6 +74,9 @@ public:
     int   completionNumerator() const          { return field_d8; }
     void  setCompletionNumerator(int n)        { field_d8 = n; }
     void  setLastContact(double d)                 { lastContact_ = d; }
+    // When the player last dropped a bomb, clock ms: another may follow
+    // 2000 ms after (actReleaseBomb).
+    double lastBombDrop() const                    { return lastContact_; }
     // The player's pending bomb-drop request.
     int   bombDropRequest() const              { return bombDropRequest_; }
     void  setBombDropRequest(int n)            { bombDropRequest_ = n; }

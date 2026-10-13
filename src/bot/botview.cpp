@@ -106,6 +106,7 @@ BotView BotView::capture(const Game &game)
     view.player.stepMs     = pl->stepDuration();
     view.player.moveState  = pl->moveState();
     view.player.freezeUntil = pl->freezeActive() ? pl->freezeStart() + 5000.0 : 0;  // K_FREEZE_MS
+    view.player.bombReadyAt = pl->lastBombDrop() + 2000.0;
 
     for (const Foe &f : w->foes()) {
         FoeView fv;
