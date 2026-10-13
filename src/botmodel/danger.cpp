@@ -1,13 +1,11 @@
 #include "danger.h"
-#include <algorithm>
 #include <stdlib.h>
-#include "tile.h"
+#include "fallingmodel.h"
 
 namespace bot {
 
 namespace {
 
-const double FALL_MS = 1500.0;        // fallingtile.cpp: armed to falling
 const double FALL_MARGIN_MS = 100.0;  // off it this long before it goes
 
 int chebyshev(Step a, Step b)
@@ -34,21 +32,15 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
         return at;
     };
 
-    // Falling tiles: one falls 1.5 s after something stands on it (or after
-    // it was armed already), and whoever is on it then goes with it.
+    // Falling tiles: off each one before it falls (fallingmodel.h).
     for (size_t i = 0; i < plan.size(); i++) {
-        const Step c = plan[i].cell;
-        if (!view.inside(c.u, c.v) || view.cell(c.u, c.v).kind != TILE_FALLING)
+        const double falls = fallsAt(view, plan[i].cell, plan[i].t);
+        if (falls < 0)
             continue;
-        const double enter = plan[i].t;
         const double leave = i + 1 < plan.size() ? plan[i + 1].t : plan.back().t + lingerMs;
-        double fallsAt = enter + FALL_MS;
-        for (const FallingView &f : view.fallings)
-            if (f.u == c.u && f.v == c.v && f.armed)
-                fallsAt = std::min(fallsAt, f.armedAt + FALL_MS - start);
-        if (leave + FALL_MARGIN_MS > fallsAt) {
+        if (leave + FALL_MARGIN_MS > falls) {
             d.hit = true;
-            d.t   = fallsAt;
+            d.t   = falls;
             d.why = "falling tile";
             return d;
         }

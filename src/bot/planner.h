@@ -37,7 +37,7 @@ private:
 
     Executor  exec_;
     FoeModel  foes_;
-    GemSurvey survey_;
+    Distances distances_;
     Option    chosen_;
     double    chosenAt_ = 0;
     bool      decided_ = false;

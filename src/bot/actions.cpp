@@ -65,51 +65,12 @@ void offer_walks(PlanContext &ctx, const std::vector<std::pair<Step, double>> &t
 
 }  // namespace
 
-unsigned long long terrainHash(const BotView &view)
-{
-    unsigned long long h = 1469598103934665603ull;
-    auto mix = [&h](unsigned x) { h = (h ^ x) * 1099511628211ull; };
-    for (const Cell &c : view.cells) {
-        mix(c.height);
-        mix(c.kind);
-        mix(c.busy);
-        mix(c.slideDir);
-    }
-    mix((unsigned)view.player.stepMs);
-    return h;
-}
-
 PlanContext::PlanContext(const BotView &v, FoeModel &m)
     : view(v), nav(v), from(nav, v.player.u, v.player.v, v.player.facing), foes(m)
 {
 }
 
-void GemSurvey::update(const BotView &view)
-{
-    const unsigned long long t = terrainHash(view);
-    if (done_ && t == terrain_)
-        return;
-    done_ = true;
-    terrain_ = t;
-    gems_.clear();
-    for (int v = 0; v < view.extentV; v++)
-        for (int u = 0; u < view.extentU; u++)
-            if (view.cell(u, v).contents == CONTENTS_CRYSTAL)
-                gems_.push_back({u, v});
-    const NavModel nav(view);
-    const size_t n = gems_.size();
-    between_.assign(n, std::vector<double>(n + 1, -1));
-    for (size_t i = 0; i < n; i++) {
-        // Leaving a gem, the facing is whichever it was reached with; the
-        // player's now stands in for it, a turn or two off at most.
-        const Paths from(nav, gems_[i].u, gems_[i].v, view.player.facing);
-        for (size_t j = 0; j < n; j++)
-            between_[i][j] = i == j ? 0 : from.cost(gems_[j].u, gems_[j].v);
-        between_[i][n] = from.cost(view.exitU, view.exitV);
-    }
-}
-
-void proposeProgress(PlanContext &ctx, GemSurvey &survey, std::vector<Option> &out)
+void proposeProgress(PlanContext &ctx, Distances &distances, std::vector<Option> &out)
 {
     const BotView &view = ctx.view;
     const Paths &from = ctx.from;
@@ -124,20 +85,23 @@ void proposeProgress(PlanContext &ctx, GemSurvey &survey, std::vector<Option> &o
         offer_walks(ctx, {{ctx.goal, 0}}, PROGRESS, "exit", true, out);
         return;
     }
-    survey.update(view);
-    const std::vector<Step> &gems = survey.gems();
+    distances.update(view);
+    const std::vector<Point> &points = distances.points();
+    const int exit = (int)points.size() - 1;
     std::vector<int> live;
-    for (size_t i = 0; i < gems.size(); i++)
-        if (view.cell(gems[i].u, gems[i].v).contents == CONTENTS_CRYSTAL &&
-            from.cost(gems[i].u, gems[i].v) >= 0)
+    for (size_t i = 0; i < points.size(); i++) {
+        const Step c = points[i].cell;
+        if (points[i].kind == Point::Gem && view.cell(c.u, c.v).contents == CONTENTS_CRYSTAL &&
+            from.cost(c.u, c.v) >= 0)
             live.push_back((int)i);
+    }
     const int n = (int)live.size();
     std::vector<std::vector<double>> dist(n + 2, std::vector<double>(n + 2, -1));
     for (int i = 0; i < n; i++) {
-        dist[0][i + 1] = from.cost(gems[live[i]].u, gems[live[i]].v);
+        dist[0][i + 1] = from.cost(points[live[i]].cell.u, points[live[i]].cell.v);
         for (int j = 0; j < n; j++)
-            dist[i + 1][j + 1] = survey.between(live[i], live[j]);
-        dist[i + 1][n + 1] = survey.toExit(live[i]);
+            dist[i + 1][j + 1] = distances.between(live[i], live[j]);
+        dist[i + 1][n + 1] = distances.between(live[i], exit);
     }
     dist[0][n + 1] = from.cost(view.exitU, view.exitV);
     double cost;
@@ -151,14 +115,14 @@ void proposeProgress(PlanContext &ctx, GemSurvey &survey, std::vector<Option> &o
     // The route's next gem, costed with the route after it; then the others
     // nearest first, costed with the whole route still to do.
     std::vector<std::pair<Step, double>> targets{
-        {gems[live[order[0] - 1]], cost - dist[0][order[0]]}};
+        {points[live[order[0] - 1]].cell, cost - dist[0][order[0]]}};
     std::vector<std::pair<double, int>> rest;
     for (int i = 0; i < n; i++)
         if (i + 1 != order[0])
             rest.push_back({dist[0][i + 1], live[i]});
     std::sort(rest.begin(), rest.end());
     for (size_t i = 0; i < rest.size() && i < OTHER_GEMS; i++)
-        targets.push_back({gems[rest[i].second], cost});
+        targets.push_back({points[rest[i].second].cell, cost});
     ctx.goal = targets.front().first;
     offer_walks(ctx, targets, PROGRESS, "gem", true, out);
 }
