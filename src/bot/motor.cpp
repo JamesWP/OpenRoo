@@ -9,6 +9,9 @@ namespace {
 /* At rest with a key held this many ticks and the player still has not moved:
  * the game refuses the move (a wall, a drop it will not take). */
 const int BLOCKED_TICKS = 30;
+/* Waiting beside no next cell this many ticks (a teleporter takes a second):
+ * the player has left the path. */
+const int WAIT_TICKS = 120;
 
 unsigned reverse(unsigned acts)
 {
@@ -56,21 +59,37 @@ unsigned Motor::act(const BotView &view)
         return 0;
     const PlayerView &p = view.player;
 
-    // The player's cell is where it stands, or where its step is going.
-    while (next_ < path_.size() && path_[next_].u == p.u && path_[next_].v == p.v)
-        next_++;
+    // The player's cell is where it stands, or where its step is going.  A
+    // forced move (ice, a slide, a teleporter) may carry it several cells on.
+    for (size_t i = next_; i < path_.size(); i++)
+        if (path_[i].u == p.u && path_[i].v == p.v) {
+            next_ = i + 1;
+            break;
+        }
     if (next_ >= path_.size()) {
-        if (!p.moving)
+        if (p.atRest())
             status_ = Arrived;
+        return 0;
+    }
+    const Cell &here = view.cell(p.u, p.v);
+    if (here.kind == TILE_STICKY && !here.busy) {
+        stillTicks_ = 0;  // held until the pad lets go
         return 0;
     }
     const int d = direction(p.u, p.v, path_[next_].u, path_[next_].v);
     if (d == 0) {
-        status_ = Blocked;  // off the path: the player is not beside the next cell
+        // Not beside the next cell: a teleporter is about to move the player,
+        // or it has left the path.
+        if (++stillTicks_ > WAIT_TICKS)
+            status_ = Blocked;
         return 0;
     }
 
     unsigned acts = toward(p.facing, d);
+    if (p.falling) {
+        stillTicks_ = 0;  // nothing to press in the air
+        return 0;
+    }
     if (p.moving) {
         // Hold only a step, never a turn, ahead of the step's end.
         stillTicks_ = 0;
