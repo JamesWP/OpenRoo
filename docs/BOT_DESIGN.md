@@ -3,8 +3,6 @@
 A goal-oriented planner that plays Ka'roo levels, and, more importantly, the
 framework that lets us measure it, compare versions of it, and debug it.
 
-Status: agreed design.  P0, the harness, is built: section 8 says how to use it.
-
 ## 1. Aims
 
 - **Success means completing every level.**  Score does not count.  The
@@ -226,7 +224,7 @@ reason.
 - **`src/bot/`, a new group on the `[screens, sim]` line of `layers.yaml`.**
   It needs `entities` (const World), `game` (the game state) and `inputapi`,
   and nothing above it.
-- **`app`:** behind `--bot <config>`, it adds the bot as the exclusive key
+- **`app`:** with `KAROO_BOT=<policy>` set, it adds the bot as the exclusive key
   source.
 - **`tools/bot/`:** the Python orchestration and analysis (section 4).
 
@@ -234,7 +232,7 @@ reason.
 
 ### 4.1 The runner
 
-`botrun` is `OpenRoo --headless --bot cfg.json`, plus engine support:
+A bot run is the game, headless, with `KAROO_BOT=<policy>`, plus engine support:
 
 - **`KAROO_START_LEVEL=<index | Theme\Name | path.jjm>`** starts a fresh game
   straight into the level, skipping the launcher and menus.  It reuses the
@@ -361,13 +359,10 @@ hand.  No effort beyond `start_level` is planned for it.
 Each is small and self-contained; they come first.
 
 1. `KAROO_START_LEVEL`, including loading a bare `.jjm` path.
-2. Run end conditions and an exit status for a headless bot run.  Add the
-   **death cause** to the state-dump events (foe contact, fall, blast,
-   timeout, harakiri).
-3. Bot key-source wiring in `app` (`--bot`).
-4. The start level for a replay: a `start_level` field in the replay manifest
-   (not the recording header, which would have meant a format version and
-   converting every recording).
+2. Run end conditions and a summary for a headless bot run, with the
+   **death cause** (foe, bomb, drop, void, harakiri).
+3. Bot key-source wiring in `app` (`KAROO_BOT`).
+4. The start level for a replay: a `start_level` field in the replay manifest.
 5. A `.jjm` writer in `tools/jjm.py`.  Its cell-byte notes also look stale
    against `tile.h` (height, kind, param, contents), so check them while we
    are there.
@@ -409,33 +404,3 @@ level, which should never go down.
    orchestration and analysis are Python.  `BotView` JSON still allows
    offline experiments against traces.
 
-## 8. Using the harness (P0)
-
-```bash
-python3 tools/bot/backtest.py levels                        # the JJ.GAM levels, by index
-python3 tools/bot/backtest.py run --policy wander            # every level, one seed
-python3 tools/bot/backtest.py run --policy wander --levels 0-9 'Water\Water01' --seeds 1,2,3
-python3 tools/bot/backtest.py compare RUN_A RUN_B            # or one RUN against the baseline
-python3 tools/bot/backtest.py bless RUN                      # RUN becomes tests/bot/baseline.json
-python3 tools/bot/backtest.py check-determinism --policy wander
-```
-
-- **One game:** `KAROO_BOT=<policy> KAROO_START_LEVEL=<index or name>` plays
-  one level with one life (`src/bot/botrun.h`).  The run skips the flythrough
-  with Enter, holds the keys bound to the policy's actions, and ends at the
-  first of `complete`, `death` (with `death_cause`: foe, bomb, drop, void,
-  harakiri; see `botrun.cpp`), `timeout`, `stuck` (`KAROO_BOT_STUCK_S`, 60)
-  or `cap` (`KAROO_BOT_MAX_S`, 900).  It writes `KAROO_BOT_SUMMARY`.
-- **Policies** are `bot::Policy` (`src/bot/policy.h`).  So far there are only
-  the placeholders, `idle` and `wander`.  The planner will be another.
-- **Results** go to `run/backtest/<date>-<sha>-<label>/`, with a summary,
-  state dump, recording and log per level and seed.  To watch a run, replay
-  its `bot.rec` with `KAROO_START_LEVEL` set to the level, the run's
-  `KAROO_SEED`, and `KAROO_FIXED_DT=0.016667`.
-- **Speed:** headless, all 75 levels take about 5 s on 4 cores.  A level runs
-  at roughly 15,000 frames a second.
-- **Death cause:** `death` comes with how: `foe`, `bomb`, `drop` (landed from
-  too high), `void` (fell off the map) or `harakiri`.  The game gives a fall
-  off the map the bomb's move state (4): the blast check matches any height
-  within one of the cell's blast height, which is 0 while no blast is live.
-  The bot tells the two apart by whether the cell has a live blast.
