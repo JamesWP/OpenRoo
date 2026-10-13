@@ -73,6 +73,9 @@ public:
     /* The least time to come to rest on (u, v), any facing; < 0 if never. */
     double cost(int u, int v) const;
 
+    /* The facing the quickest route to (u, v) arrives with; 0 if never. */
+    int facingAt(int u, int v) const;
+
     /* The cells to walk to (u, v) by the quickest route, starting with the
      * start cell, as the motor follows them; empty if unreachable. */
     std::vector<Step> cellsTo(int u, int v) const;

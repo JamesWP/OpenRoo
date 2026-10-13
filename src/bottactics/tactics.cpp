@@ -1,8 +1,8 @@
 #include "tactics.h"
 #include <algorithm>
 #include <stdio.h>
-#include "ambush.h"
 #include "danger.h"
+#include "drops.h"
 #include "walk.h"
 
 namespace bot {
@@ -40,18 +40,19 @@ bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally)
 /* The planned target first, costed with the rest of the plan after it, then
  * the nearest others of the same kind, costed with the whole plan still to
  * do. */
-std::vector<std::pair<Step, double>> targets(const Board &board, const Plan &plan, int planned,
-                                             const std::vector<int> &others)
+std::vector<std::pair<Step, double>> targets(const Situation &s, const Plan &plan, Step planned,
+                                             const std::vector<Step> &others)
 {
-    std::vector<std::pair<Step, double>> out{
-        {board.point(planned).cell, plan.cost - board.time(Board::PLAYER, planned)}};
-    std::vector<std::pair<double, int>> near;
-    for (int i : others)
-        if (i != planned)
-            near.push_back({board.time(Board::PLAYER, i), i});
-    std::sort(near.begin(), near.end());
+    auto timeTo = [&](Step c) { return s.from.cost(c.u, c.v); };
+    std::vector<std::pair<Step, double>> out{{planned, plan.cost - timeTo(planned)}};
+    std::vector<std::pair<double, Step>> near;
+    for (const Step &c : others)
+        if ((c.u != planned.u || c.v != planned.v) && timeTo(c) >= 0)
+            near.push_back({timeTo(c), c});
+    std::sort(near.begin(), near.end(),
+              [](const auto &a, const auto &b) { return a.first < b.first; });
     for (size_t i = 0; i < near.size() && i < OTHERS; i++)
-        out.push_back({board.point(near[i].second).cell, plan.cost});
+        out.push_back({near[i].second, plan.cost});
     return out;
 }
 
@@ -68,15 +69,25 @@ bool realise(Situation &s, const Board &board, const Plan &plan, Option *out, Ta
         return false;
     const PlanStep &first = plan.steps.front();
     std::vector<Option> options;
+    const Step end{first.end.u, first.end.v};
     switch (first.kind) {
     case COLLECT:
-        offerWalks(s, targets(board, plan, first.gems.front(), board.gems()), "gem", true, options);
+        offerWalks(s, targets(s, plan, first.gems.front(), board.gems(0)), "gem", true, options);
         break;
     case BOMBS:
-        offerWalks(s, targets(board, plan, first.point, board.pickups()), "bombs", true, options);
+    {
+        std::vector<Step> live;
+        for (const Pickup &p : board.pickups())
+            if (p.block < 0)
+                live.push_back(p.cell);
+        offerWalks(s, targets(s, plan, end, live), "bombs", true, options);
+    }
         break;
     case EXIT:
-        offerWalks(s, targets(board, plan, first.point, {}), "exit", true, options);
+        offerWalks(s, targets(s, plan, end, {}), "exit", true, options);
+        break;
+    case BLAST:
+        offerBlast(s, first.end, options);
         break;
     case AMBUSH:
         offerAmbushes(s, options);
