@@ -8,7 +8,8 @@
  * jump pad launches it on, a sticky pad holds it) until the player is at rest
  * again, or dead (stepped into the void, dropped too far, walked at a face
  * two or more high, which the game lets it do and drops it down, or stepped
- * onto stairs across them from no higher, which drops it through), or the step
+ * across into the cell of a raised stair, under the block and into the open
+ * space below it), or the step
  * is refused (a wall, a climb of one without stairs).
  *
  * Static terrain only, for now: foes are not seen, and lifts, platforms and

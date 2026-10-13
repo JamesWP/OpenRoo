@@ -68,11 +68,13 @@ Outcome NavModel::step(int u, int v, int f, int d) const
         const Cell &b = w.cell(nu, nv);
         t += sliding ? SLIDE_MS : w.player.stepMs;
         out.cells.push_back({nu, nv});
-        if (stairs(b.kind) && dir != b.kind - 4 && dir != opposite(b.kind - 4) && b.height >= ch) {
-            // Onto stairs across them, not from above: the player drops
-            // through.
+        if (stairs(b.kind) && dir != b.kind - 4 && dir != opposite(b.kind - 4) && b.height > ch) {
+            // A raised stair is a block two cells tall with open space under
+            // it: stepping into its cell across it from below walks under the
+            // block, into that space, and the player falls.  Level with it or
+            // from above, it lands on the stair.
             out.kind = Outcome::Death;
-            out.why  = "stairs";
+            out.why  = "under stairs";
             out.ms   = t;
             return out;
         }
