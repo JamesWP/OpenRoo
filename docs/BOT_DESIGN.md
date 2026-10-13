@@ -9,8 +9,9 @@ Status: agreed design.  P0, the harness, is built: section 8 says how to use it.
 
 - **Success means completing every level.**  Score does not count.  The
   headline metric is the completion rate over the shipped levels.
-- **Standing goal, every level:** collect every gem and reach the exit,
-  **without dying**.  Each level is planned on its own and lives are never
+- **Standing goal, every level:** collect the level's gem quota (the number
+  `World::gemsRequired` says opens the exit, often fewer than the gems on the
+  map) and reach the exit, **without dying**.  Each level is planned on its own and lives are never
   spent, so the bot never has to plan across levels (section 7).
 - **Items are only means to an end:** the bot takes an item when it helps
   complete the level (bombs for a block, freeze or protection to get past a
@@ -119,10 +120,14 @@ ASCII maps.
 - **Distances:** all-pairs travel times between points of interest (gems,
   items, bomb pickups, blocks, switches, falling tiles, exit), cached per
   fact-set.
-- **Route optimiser (the TSP part):** given a start, a set of points and an
-  end, it orders them.  Exact Held-Karp DP up to about 15 points, and
-  nearest-neighbour plus 2-opt/Or-opt beyond that.  GOAP never orders gems
-  itself; it calls this.
+- **Route optimiser (the TSP part):** given a start, a set of gems, a count k
+  and an end, it picks the k gems and the order that make the cheapest route
+  to the end.  The quota is often below the gems on the map, so this is a
+  prize-collecting (k-of-n) tour, not a plain TSP: the choice of which gems
+  to skip matters as much as the order, and the hard-to-reach or guarded ones
+  are the obvious ones to skip.  Exact DP over subsets up to about 15 gems;
+  beyond that, a greedy pick refined with 2-opt/Or-opt and add/drop swaps.
+  GOAP never picks or orders gems itself; it calls this.
 - **Predictors:**
   - Foe: run the real `FoePath` on a copy of the map to predict each foe's
     next steps, given a hypothesised player trajectory.
@@ -138,7 +143,7 @@ ASCII maps.
 
 ### 3.3 Goal selection
 
-Score does not count, so there is one goal: all gems, then the exit, alive.
+Score does not count, so there is one goal: the gem quota, then the exit, alive.
 Goal selection is therefore small, and it chooses between *plans*, not goals:
 
 - GOAP proposes the plans; each plan's cost is `time + μ·risk`.
@@ -157,7 +162,7 @@ failed), not every tick.
 
 ### 3.4 GOAP planner
 
-- **State:** a small fact set, such as `gemsLeft`, `bombs=n`,
+- **State:** a small fact set, such as `gemsNeeded` (quota minus collected), `bombs=n`,
   `blockSpent[b]`, `switchOn[s]`, `foeAlive[f]`, `foeAway[f]`,
   `itemTaken[i]`, `atExit`, and the player's abstract position (a point of
   interest).
@@ -165,21 +170,21 @@ failed), not every tick.
 
   | Action | Preconditions | Effects |
   |---|---|---|
-  | `CollectRegion(R)` | R reachable | all gems in R taken (route optimiser) |
+  | `Collect(R, k)` | R reachable | k gems in R taken, the cheapest k (route optimiser) |
   | `Take(item)` | reachable, not guarded | item effect (`bombs+3`, life, ...) |
   | `Blast(block)` | `bombs≥1`, block adjacent cell reachable | `blockSpent`, regions merge |
   | `Throw(switch)` | reachable | `switchOn`, bridge edges open |
   | `LureAway(foe, from)` | foe alive | `foeAway[foe]` for a window |
   | `LureToDrop(foe, tile)` | tile respawned/unarmed, reachable, foe chases | `foeAlive=false` |
-  | `Exit` | `gemsLeft=0`, exit reachable | `atExit` |
+  | `Exit` | `gemsNeeded=0`, exit reachable | `atExit` |
 
 - **Search:** A* over the facts.  The heuristic is the route optimiser's cost
-  for the remaining mandatory points under the most permissive fact-set, which
-  is a lower bound.  The search budget is counted in **nodes expanded, never
+  for the gems still needed and the exit under the most permissive fact-set,
+  which is a lower bound.  The search budget is counted in **nodes expanded, never
   wall time**, so the bot stays deterministic.
 
 Example: a gem (or bomb pickup) guarded by foe `f2` becomes the plan
-`LureToDrop(f2, t7) → Take(gem) → CollectRegion(A) → Exit`.  `Take` requires
+`LureToDrop(f2, t7) → Take(gem) → Collect(A, k) → Exit`.  `Take` requires
 `¬guarded`, and either `LureAway` or `LureToDrop` satisfies that; the planner
 picks whichever costs less, risk included.
 
@@ -286,7 +291,7 @@ the seed-to-seed spread as noise.  It exits non-zero on any level that went
 from complete to not complete.
 
 The headline number is the **completion rate** per suite.  Under it come the
-failures broken down by cause (death by foe, fall or blast; timeout; stuck;
+failures broken down by cause (death by foe, bomb, drop or void; timeout; stuck;
 no plan found), since that is what says what to work on next.  Time is
 reported but not optimised.  It is kept as a diagnostic: a bot far slower than
 the human recordings (`water01` completes at frame 3921) is usually wandering.
@@ -418,9 +423,9 @@ python3 tools/bot/backtest.py check-determinism --policy wander
 - **One game:** `KAROO_BOT=<policy> KAROO_START_LEVEL=<index or name>` plays
   one level with one life (`src/bot/botrun.h`).  The run skips the flythrough
   with Enter, holds the keys bound to the policy's actions, and ends at the
-  first of `complete`, `death` (with `death_cause`: foe, fall, blast,
-  harakiri), `timeout`, `stuck` (`KAROO_BOT_STUCK_S`, 60) or `cap`
-  (`KAROO_BOT_MAX_S`, 900).  It writes `KAROO_BOT_SUMMARY`.
+  first of `complete`, `death` (with `death_cause`: foe, bomb, drop, void,
+  harakiri; see `botrun.cpp`), `timeout`, `stuck` (`KAROO_BOT_STUCK_S`, 60)
+  or `cap` (`KAROO_BOT_MAX_S`, 900).  It writes `KAROO_BOT_SUMMARY`.
 - **Policies** are `bot::Policy` (`src/bot/policy.h`).  So far there are only
   the placeholders, `idle` and `wander`.  The planner will be another.
 - **Results** go to `run/backtest/<date>-<sha>-<label>/`, with a summary,
@@ -429,7 +434,8 @@ python3 tools/bot/backtest.py check-determinism --policy wander
   `KAROO_SEED`, and `KAROO_FIXED_DT=0.016667`.
 - **Speed:** headless, all 75 levels take about 5 s on 4 cores.  A level runs
   at roughly 15,000 frames a second.
-- **Death cause:** the game marks a player that falls off the map with the
-  blast's move state (4).  The blast check matches any height within one of
-  the cell's blast height, and that is 0 when no blast is live.  The bot
-  reports a 4 with no live blast as a fall.
+- **Death cause:** `death` comes with how: `foe`, `bomb`, `drop` (landed from
+  too high), `void` (fell off the map) or `harakiri`.  The game gives a fall
+  off the map the bomb's move state (4): the blast check matches any height
+  within one of the cell's blast height, which is 0 while no blast is live.
+  The bot tells the two apart by whether the cell has a live blast.
