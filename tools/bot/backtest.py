@@ -8,6 +8,7 @@
     python3 tools/bot/backtest.py bless RUN                         # the run becomes the baseline
     python3 tools/bot/backtest.py check-determinism --policy wander --levels 0-4
     python3 tools/bot/backtest.py levels                            # the JJ.GAM levels
+    python3 tools/bot/backtest.py run --policy collect --watch --levels 'Water\\Water01'  # on screen
 
 A run is one process per (level, seed): the game with KAROO_BOT, started
 straight in the level (KAROO_START_LEVEL), on the fixed clock, headless and
@@ -55,6 +56,10 @@ HEADLESS_ENV = {
     "KAROO_NOVSYNC": "1",
     "KAROO_SLOWFRAME_MS": "0",
 }
+
+# What a --watch run takes from the caller's environment to reach the display.
+WATCH_PASS = ("DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR",
+              "DBUS_SESSION_BUS_ADDRESS")
 
 # An outcome counts as a pass only when it is this.
 PASS = "complete"
@@ -121,11 +126,19 @@ def make_workdir(path, exe):
 def play(job):
     """Plays one (level, seed); returns its summary, with the outcome "crash"
     or "no-summary" if the game left none."""
-    exe, out, level, name, seed, policy, extra_env, timeout, trace = job
+    exe, out, level, name, seed, policy, extra_env, timeout, trace, watch = job
     work = os.path.join(out, "work")
     make_workdir(work, exe)
     env = {"HOME": os.environ.get("HOME", ""), "PATH": os.environ.get("PATH", "")}
-    env.update(HEADLESS_ENV)
+    if watch:
+        # On screen, paced by the display: vsync stays on and each frame is
+        # one fixed step, so at 60 Hz the bot plays at the game's own speed.
+        for name_ in WATCH_PASS:
+            if name_ in os.environ:
+                env[name_] = os.environ[name_]
+        env["KAROO_SKIP_LAUNCHER"] = "1"
+    else:
+        env.update(HEADLESS_ENV)
     env.update({
         "KAROO_BOT": policy,
         "KAROO_START_LEVEL": str(level),
@@ -203,12 +216,13 @@ def run_all(args, out):
         for seed in seeds:
             d = os.path.join(out, "levels", "%02d-%s" % (lvl, seed))
             os.makedirs(d, exist_ok=True)
-            jobs.append((exe, d, lvl, names[lvl], seed, args.policy, extra, args.timeout,
-                         args.trace))
+            jobs.append((exe, d, lvl, names[lvl], seed, args.policy, extra,
+                         args.timeout if not args.watch else max(args.timeout, 1200),
+                         args.trace, args.watch))
 
     results = []
     t0 = time.time()
-    with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as pool:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=1 if args.watch else args.jobs) as pool:
         for s in pool.map(play, jobs):
             results.append(s)
             if not args.quiet:
@@ -383,6 +397,9 @@ def main():
                        help="wall seconds a single level may take")
         p.add_argument("--env", action="append", default=[], metavar="NAME=VALUE",
                        help="more environment for the game, e.g. KAROO_BOT_STUCK_S=30")
+        p.add_argument("--watch", action="store_true",
+                       help="play each level on screen, one at a time, at the game's own speed "
+                            "(vsync on); needs a display")
         p.add_argument("--trace", action="store_true",
                        help="write each level's BotView trace (trace.jsonl)")
         p.add_argument("--build-dir", default=os.path.join(REPO, "build"))
