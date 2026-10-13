@@ -22,7 +22,8 @@ struct Danger {
     bool        hit = false;
     double      t = 0;      // ms from now
     const char *why = "";   // "catcher", "thrower", "bomb", "falling tile"
-    int         killed = 0; // foes the blasts killed meanwhile
+    int         killed = 0; // foes the extra blasts killed meanwhile
+    std::vector<FoeModel::Kill> kills;  // those, where and when (the foe model's clock)
 };
 
 /* plan's times are ms from the view's clock; the player stays on the last

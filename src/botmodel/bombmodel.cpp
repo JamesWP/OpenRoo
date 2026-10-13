@@ -26,16 +26,24 @@ Blast roll(const BotView &view, int u, int v, int h, int facing, double droppedA
 {
     Blast b;
     // One step along its facing, if it may: once moving it is held, and a
-    // held bomb takes no further move.
-    const int nu = u + DIR_DU[facing], nv = v + DIR_DV[facing];
-    if (!rolled && view.inside(nu, nv) && may_roll(view.cell(u, v), h, view.cell(nu, nv))) {
+    // held bomb takes no further move of its own.  Ice carries it on, the
+    // way it went, until it enters a cell that is not ice or may not go on.
+    bool step = !rolled;
+    for (int guard = 0; guard < 200; guard++) {
+        if (!step && view.cell(u, v).kind != TILE_ICE)
+            break;
+        const int nu = u + DIR_DU[facing], nv = v + DIR_DV[facing];
+        if (!view.inside(nu, nv) || !may_roll(view.cell(u, v), h, view.cell(nu, nv)))
+            break;
         u = nu;
         v = nv;
         const Cell &next = view.cell(nu, nv);
-        if (next.kind == TILE_EMPTY || next.height == 0)
+        if (next.kind == TILE_EMPTY || next.height == 0) {
             b.lost = true;
-        else
-            h = next.height;
+            break;
+        }
+        h = next.height;
+        step = false;
     }
     b.cell  = {u, v};
     b.h     = h;

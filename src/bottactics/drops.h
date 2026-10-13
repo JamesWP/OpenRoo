@@ -2,14 +2,16 @@
  *
  *   ambush  from where the player stands: turn to a facing (as it is, a
  *           quarter turn either way, about), drop, walk away to one of the
- *           nearest cells, so that a foe chasing the player walks into the
- *           blast.  The bomb model (bombmodel.h) gives the blast and the foe
+ *           nearest cells and wait there, so that a foe chasing the player
+ *           walks into the blast.  The bomb model (bombmodel.h) gives the blast and the foe
  *           model (foemodel.h), with the foes chasing the player along the
  *           walk, whether a foe dies in it; only the candidates where one
  *           does are offered.
  *   blast   from a given site: walk there, turn to its facing, drop, walk
  *           away and wait for the blast to clear and the blocks it spends to
  *           be gone.
+ * Both wait the blast out: the foes are predicted chasing the player where
+ * the plan puts it, and a new plan would put it elsewhere.
  * In both the player must be safe until the blast is over (danger.h), and
  * the options are checked here, to be offered at all. */
 #pragma once

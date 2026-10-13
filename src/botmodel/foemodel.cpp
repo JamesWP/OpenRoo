@@ -66,9 +66,10 @@ void FoeModel::load(const BotView &view)
     }
     clock_ = view.now;
     blasts_.clear();
-    killed_ = 0;
+    kills_.clear();
     for (const BombView &b : view.bombs)
         blasts_.push_back(predictBomb(view, b));
+    viewBlasts_ = blasts_.size();
     player_ = {view.player.u, view.player.v};
     playerOcc_ = view.player.protection ? 3 : 4;
     foes_.clear();
@@ -616,18 +617,29 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
     // The blasts: a foe in one dies, and its cell is freed.
     for (size_t i = 0; i < foes_.size();) {
         const Foe &f = foes_[i];
-        bool dead = false;
-        for (const Blast &b : blasts_)
-            dead = dead || b.kills(f.u, f.v, f.h, clock_);
+        bool dead = false, byView = false;
+        for (size_t k = 0; k < blasts_.size(); k++)
+            if (blasts_[k].kills(f.u, f.v, f.h, clock_)) {
+                dead = true;
+                byView = byView || k < viewBlasts_;
+            }
         if (!dead) {
             ++i;
             continue;
         }
         if (occ(f.u, f.v) == f.kind)
             setOcc(f.u, f.v, 0);
+        kills_.push_back({clock_, f.u, f.v, !byView});
         foes_.erase(foes_.begin() + (long)i);
-        killed_++;
     }
+}
+
+int FoeModel::killed() const
+{
+    int n = 0;
+    for (const Kill &k : kills_)
+        n += k.byAdded;
+    return n;
 }
 
 void FoeModel::run(double untilMs, const std::function<Step(double)> &playerAt)

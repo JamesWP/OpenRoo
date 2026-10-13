@@ -100,6 +100,9 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
             break;  // no tick step: nothing moves
     }
     d.killed = sim.killed();
+    for (const FoeModel::Kill &k : sim.kills())
+        if (k.byAdded)
+            d.kills.push_back(k);
     return d;
 }
 
