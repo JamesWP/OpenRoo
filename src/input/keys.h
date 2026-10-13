@@ -21,14 +21,17 @@ void update();
 /* Whether the key is held. */
 bool down(int key);
 
-/* Whether the key went down since the last tick.  A key held through a screen
- * change is not pressed again; a key held when the game starts is not pressed
- * at all. */
+/* Whether the key has been pressed and the press not yet used.  A press is
+ * used by the tick that first asks about it (every reader in that tick sees
+ * it), by swallow, or by letting go.  So a press nothing listens for, such as
+ * a key tapped while a menu is locked, is still there when something does,
+ * as long as the key is held: the original polled held keys and behaved the
+ * same.  A key held when the game starts is not pressed at all. */
 bool pressed(int key);
 
-/* Treats this tick's press of the key as used, for the rest of the tick:
- * the screen that took it has handed over to another that reads the same key
- * (Enter starts the level, which Enter would skip the intro of). */
+/* Uses up the key's press now: the screen that took it has handed over to
+ * another that reads the same key (Enter starts the level, which Enter would
+ * skip the intro of). */
 void swallow(int key);
 
 /* The lowest key held, or 0 if none: the key a rebind captures. */

@@ -111,12 +111,13 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
 
     int entry = 0;
     if (self->frontEnd()->rebindActive() == 0 && self->frontEnd()->textEntryActive() == 0) {
+        const unsigned char cursorWas = self->frontEnd()->menu()->cursor();
         self->frontEnd()->menu()->navigate((int)(long long)self->lastTickTime());
         if (self->frontEnd()->menu()->changed() != 0 && self->audio()->fixedSounds()->switchClick != NULL)
             (self->audio()->fixedSounds()->switchClick)->play(false);
         const unsigned char node = self->frontEnd()->menu()->nodeRef();
-        if ((input::pressed(input::KEY_UP) || input::pressed(input::KEY_DOWN)) &&
-            node != 5 && node != 3 && self->frontEnd()->menu()->childCount(node) > 1 &&
+        if (self->frontEnd()->menu()->changed() == 0 && self->frontEnd()->menu()->cursor() != cursorWas &&
+            node != 5 && node != 3 &&
             self->audio()->fixedSounds()->menuUpDown != NULL)
             (self->audio()->fixedSounds()->menuUpDown)->cycle(0);
         self->frontEnd()->menu()->setLastNodeSeen((unsigned short)self->frontEnd()->menu()->nodeRef());
