@@ -20,10 +20,6 @@
 
 namespace bot {
 
-struct Step {
-    int u, v;
-};
-
 class Motor {
 public:
     enum Status { Idle, Walking, Arrived, Blocked };
@@ -35,7 +31,7 @@ public:
      * under way. */
     void halt() { status_ = Idle; }
 
-    /* The actions to hold this tick (policy.h's Action bits). */
+    /* The presses to hold this tick (policy.h). */
     unsigned act(const BotView &view);
 
     Status status() const { return status_; }

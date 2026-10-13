@@ -10,11 +10,11 @@
 #include "logger.h"
 #include "player.h"
 #include <deque>
-#include "botview.h"
+#include "capture.h"
 #include "bombmodel.h"
 #include "foemodel.h"
 #include <map>
-#include "policy.h"
+#include "policies.h"
 #include "progctrl.h"
 #include "sysdev.h"
 
@@ -78,7 +78,7 @@ public:
         }
         if (game_->state() != GameState::Playing || game_->world()->player()->moveState() != 0)
             return;
-        BotView view = BotView::capture(*game_);
+        BotView view = capture(*game_);
         if (trace_)
             trace_ << view.toJson(frames_, haveLast_ ? &last_ : nullptr) << '\n';
         logAction(view);
@@ -104,7 +104,7 @@ public:
         // tally at once.
         if (playing_ && game_->state() == GameState::LevelComplete) {
             done_ = true;
-            policy_->end(BotView::capture(*game_));
+            policy_->end(capture(*game_));
             trace_.close();
             write("complete", "");
             return true;
@@ -130,7 +130,7 @@ public:
             outcome = "timeout";
         } else if (pl->moveState() != 0) {
             outcome = "death";
-            cause   = BotView::capture(*game_).deathCause();
+            cause   = capture(*game_).deathCause();
         } else if (w->now() - lastGemMs_ > stuckMs_) {
             outcome = "stuck";
         } else if (w->now() - startMs_ > capMs_) {
@@ -139,7 +139,7 @@ public:
         if (!outcome)
             return false;
         done_ = true;
-        policy_->end(BotView::capture(*game_));
+        policy_->end(capture(*game_));
         trace_.close();
         write(outcome, cause);
         return true;

@@ -36,7 +36,6 @@
 #include <vector>
 #include "bombmodel.h"
 #include "botview.h"
-#include "motor.h"
 
 namespace bot {
 

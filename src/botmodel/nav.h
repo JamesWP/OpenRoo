@@ -19,7 +19,6 @@
 
 #include <vector>
 #include "botview.h"
-#include "motor.h"
 
 namespace bot {
 

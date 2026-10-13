@@ -16,11 +16,11 @@ const int WAIT_TICKS = 120;
 unsigned reverse(unsigned acts)
 {
     unsigned out = 0;
-    if (acts & ACT_FORWARD) out |= ACT_BACK;
-    if (acts & ACT_BACK)    out |= ACT_FORWARD;
-    if (acts & ACT_LEFT)    out |= ACT_RIGHT;
-    if (acts & ACT_RIGHT)   out |= ACT_LEFT;
-    return out | (acts & ACT_BOMB);
+    if (acts & PRESS_FORWARD) out |= PRESS_BACK;
+    if (acts & PRESS_BACK)    out |= PRESS_FORWARD;
+    if (acts & PRESS_LEFT)    out |= PRESS_RIGHT;
+    if (acts & PRESS_RIGHT)   out |= PRESS_LEFT;
+    return out | (acts & PRESS_BOMB);
 }
 
 }  // namespace
@@ -46,10 +46,10 @@ int Motor::direction(int au, int av, int bu, int bv)
 unsigned Motor::toward(int f, int d)
 {
     switch ((d - f + 4) % 4) {
-    case 0:  return ACT_FORWARD;
-    case 1:  return ACT_RIGHT;
-    case 2:  return ACT_BACK;
-    default: return ACT_LEFT;
+    case 0:  return PRESS_FORWARD;
+    case 1:  return PRESS_RIGHT;
+    case 2:  return PRESS_BACK;
+    default: return PRESS_LEFT;
     }
 }
 
@@ -93,7 +93,7 @@ unsigned Motor::act(const BotView &view)
     if (p.moving) {
         // Hold only a step, never a turn, ahead of the step's end.
         stillTicks_ = 0;
-        acts &= ACT_FORWARD | ACT_BACK;
+        acts &= PRESS_FORWARD | PRESS_BACK;
     } else if (lastAct_ != 0) {
         if (++stillTicks_ > BLOCKED_TICKS) {
             status_ = Blocked;
