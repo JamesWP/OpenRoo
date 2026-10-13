@@ -35,7 +35,7 @@ being fun to watch.
 | Headless | `KAROO_HEADLESS`, `replaytest.py --headless` | No GL context, no draws, no display. |
 | State dump + events | `src/sim/gamestate.cpp`, `KAROO_STATE_DUMP` | An end-of-run JSON with load/complete/death events.  The backtest summary extends this rather than inventing a new one. |
 | Recorder | `KAROO_RECORD`, `src/testing/record.cpp` | Every bot run can also write a `.rec`, so any run replays in the real renderer to be watched. |
-| Foe pathfinder | `FoePath` (`src/entities/foepath.h`) | Foes chase with a deterministic A*-shaped search.  The bot's model can run the same code to predict them. |
+| Foe pathfinder | `FoePath` (`src/entities/foepath.h`) | Foes chase with a deterministic A*-shaped search, run again every step.  Its route is not stable: re-searching from the next cell of a planned route can give a different route, even to a target that has not moved.  So the predictor reproduces the foe's step-by-step re-search (section 3.2), not one search. |
 
 Facts the design leans on:
 
@@ -127,8 +127,11 @@ ASCII maps.
   beyond that, a greedy pick refined with 2-opt/Or-opt and add/drop swaps.
   GOAP never picks or orders gems itself; it calls this.
 - **Predictors:**
-  - Foe: run the real `FoePath` on a copy of the map to predict each foe's
-    next steps, given a hypothesised player trajectory.
+  - Foe: the path the foe will actually walk, given a hypothesised player
+    trajectory.  A single search does not give it, because the foe searches
+    again after every step and the result is not stable.  So the predictor
+    steps the foe's own chase forward one step at a time, searching from each
+    new cell as the foe does, on a copy of the map.
   - Falling tile: exact from the timers above.
   - Bomb: exact from its fuse and its roll.
 
