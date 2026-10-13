@@ -131,9 +131,7 @@ BotView BotView::capture(const Game &game)
     }
     for (const Bomb &b : w->bombs()) {
         BombView bv;
-        bv.u = b.cellU();
-        bv.v = b.cellV();
-        bv.h = b.heightCell();
+        fill_mover(bv, b);
         bv.droppedAt = b.droppedAt();
         view.bombs.push_back(bv);
     }
@@ -226,8 +224,8 @@ std::string BotView::toJson(unsigned frame, const BotView *prev) const
     out += "],\"bombs\":[";
     for (size_t i = 0; i < bombs.size(); i++) {
         const BombView &b = bombs[i];
-        appendf(out, "%s{\"cell\":[%d,%d,%d],\"dropped_at\":%.1f}", i ? "," : "",
-                b.u, b.v, b.h, b.droppedAt);
+        appendf(out, "%s{\"cell\":[%d,%d,%d],\"facing\":%d,\"moving\":%d,\"dropped_at\":%.1f}",
+                i ? "," : "", b.u, b.v, b.h, b.facing, b.moving, b.droppedAt);
     }
     out += "]}";
     return out;

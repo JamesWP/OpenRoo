@@ -11,7 +11,9 @@
 #include "player.h"
 #include <deque>
 #include "botview.h"
+#include "bombmodel.h"
 #include "foemodel.h"
+#include <map>
 #include "policy.h"
 #include "progctrl.h"
 #include "sysdev.h"
@@ -51,6 +53,9 @@ public:
         const std::string actions = sysdev::getEnv("KAROO_BOT_ACTIONS");
         if (!actions.empty())
             actions_.open(sysdev::nativePath(actions));
+        const std::string bombLog = sysdev::getEnv("KAROO_BOT_BOMB_LOG");
+        if (!bombLog.empty())
+            bombLog_.open(sysdev::nativePath(bombLog));
         const std::string foeLog = sysdev::getEnv("KAROO_BOT_FOE_LOG");
         if (!foeLog.empty())
             foeLog_.open(sysdev::nativePath(foeLog));
@@ -78,6 +83,7 @@ public:
             trace_ << view.toJson(frames_, haveLast_ ? &last_ : nullptr) << '\n';
         logAction(view);
         checkFoes(view);
+        checkBombs(view);
         const unsigned acts = policy_->act(view);
         held_     = acts;
         last_     = std::move(view);
@@ -212,6 +218,28 @@ private:
             past_.pop_front();
     }
 
+    /* The bomb check: each bomb's blast as the model predicts it when the
+     * bomb is first seen, against where it is when its fuse runs out. */
+    void checkBombs(const BotView &view)
+    {
+        if (!bombLog_.is_open())
+            return;
+        for (const BombView &b : view.bombs) {
+            auto it = bombs_.find(b.droppedAt);
+            if (it == bombs_.end()) {
+                bombs_[b.droppedAt] = {predictBomb(view, b), false, view.now - b.droppedAt};
+                continue;
+            }
+            auto &[pred, done, seenAfter] = it->second;
+            if (done || view.now < b.droppedAt + 2000.0)
+                continue;
+            done = true;
+            printTo(bombLog_, "{\"dropped_at\":%.1f,\"seen_after_ms\":%.1f,\"pred\":[%d,%d,%d],"
+                    "\"pred_lost\":%d,\"actual\":[%d,%d,%d]}\n", b.droppedAt, seenAfter,
+                    pred.cell.u, pred.cell.v, pred.h, pred.lost ? 1 : 0, b.u, b.v, b.h);
+        }
+    }
+
     void writeAction(const BotView &view, const PlayerView &to)
     {
         static const char *const names[] = {"forward", "back", "left", "right", "bomb"};
@@ -280,6 +308,8 @@ private:
     std::ofstream trace_;   // KAROO_BOT_TRACE: the view each tick it acts
     BotView     last_;
     std::ofstream actions_; // KAROO_BOT_ACTIONS: the action log
+    std::ofstream bombLog_; // KAROO_BOT_BOMB_LOG: the bomb model against the game
+    std::map<double, std::tuple<Blast, bool, double>> bombs_;  // by drop time
     std::ofstream foeLog_;  // KAROO_BOT_FOE_LOG: the foe model against the game
     FoeModel        sim_;
     std::deque<std::pair<double, Step>>         track_;  // the player's cell by clock

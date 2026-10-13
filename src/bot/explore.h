@@ -4,7 +4,8 @@
  * At rest it picks a move (forward, back, a turn) at random, seeded by
  * KAROO_SEED so a run repeats, presses it for one tick and waits for the
  * player to come to rest again.  It avoids a move the model says kills, nine
- * times in ten, so deaths are tested too.  With KAROO_BOT_MODEL_LOG set it
+ * times in ten, so deaths are tested too.  With bombs it drops one now and
+ * then, for the bomb check (botrun.h).  With KAROO_BOT_MODEL_LOG set it
  * logs each move: where from, the model's prediction (nav.h) and what the
  * game did, one JSON object a line (tools/bot/modelcheck.py). */
 #pragma once

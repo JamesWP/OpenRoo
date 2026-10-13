@@ -5,9 +5,6 @@ namespace bot {
 
 namespace {
 
-const double BOMB_FUSE_MS = 2000.0;  // bomb.cpp: a 2 s fuse,
-const double BOMB_LIVE_MS = 400.0;   // then a 0.4 s kill zone
-
 int chebyshev(Step a, Step b)
 {
     const int du = abs(a.u - b.u), dv = abs(a.v - b.v);
@@ -17,7 +14,7 @@ int chebyshev(Step a, Step b)
 }  // namespace
 
 Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
-                 double lingerMs)
+                 double lingerMs, const std::vector<Blast> &extra)
 {
     Danger d;
     if (plan.empty())
@@ -32,20 +29,29 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
         return at;
     };
 
-    for (const BombView &b : view.bombs) {
-        const double blowsUntil = b.droppedAt + BOMB_FUSE_MS + BOMB_LIVE_MS;
-        for (const Timed &m : plan)
-            if (start + m.t < blowsUntil && chebyshev(m.cell, {b.u, b.v}) <= 2) {
+    std::vector<Blast> blasts = extra;
+    for (const BombView &b : view.bombs)
+        blasts.push_back(predictBomb(view, b));
+    for (const Blast &b : blasts) {
+        if (b.lost)
+            continue;
+        // The player's cell through the blast's live time.
+        for (double t = b.from; t < b.until; t += view.tickMs > 0 ? view.tickMs : 400) {
+            const Step at = playerAt(t);
+            if (view.inside(at.u, at.v) && b.kills(at.u, at.v, view.cell(at.u, at.v).height, t)) {
                 d.hit = true;
-                d.t   = m.t;
+                d.t   = t - start;
                 d.why = "bomb";
                 return d;
             }
+        }
     }
     if (view.foes.empty())
         return d;
 
     sim.load(view);
+    for (const Blast &b : extra)
+        sim.addBlast(b);
     std::vector<Step> before;
     for (size_t i = 0; i < sim.foeCount(); i++)
         before.push_back(sim.foeCell(i));
@@ -76,6 +82,7 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
         if (sim.now() == prev)
             break;  // no tick step: nothing moves
     }
+    d.killed = sim.killed();
     return d;
 }
 
