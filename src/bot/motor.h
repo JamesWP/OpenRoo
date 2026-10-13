@@ -8,7 +8,11 @@
  * would queue.  Under the reversed-controls effect it presses the opposite
  * keys.
  *
- * Cells are (u, v); consecutive cells must be neighbours. */
+ * Cells are (u, v), each a neighbour of the one before, except where a forced
+ * move carries the player on (ice, a slide, a teleporter): the motor holds
+ * nothing while it is carried, and picks the path up from wherever on it the
+ * player comes to rest.  It holds nothing on a sticky pad until the pad lets
+ * go. */
 #pragma once
 
 #include <vector>
