@@ -47,6 +47,9 @@ Executive::Executive()
     const std::string mu = sysdev::getEnv("KAROO_BOT_MU");
     if (!mu.empty())
         mu_ = atof(mu.c_str());
+    const std::string reach = sysdev::getEnv("KAROO_BOT_REACH");
+    if (!reach.empty())
+        reach_.open(sysdev::nativePath(reach));
     const std::string path = sysdev::getEnv("KAROO_BOT_DECISIONS");
     if (!path.empty())
         log_.open(sysdev::nativePath(path));
@@ -100,6 +103,19 @@ void Executive::decide(const BotView &view)
         }
     }
     exec_.start(chosen_.script);
+    if (reach_.is_open() && !reachDone_) {
+        // Where the player can come to rest, as the model sees it, once.
+        reachDone_ = true;
+        const Paths &from = board.worlds().base().from(s.view.player.u, s.view.player.v,
+                                                       s.view.player.facing);
+        const Paths &everything = board.worlds().get(board.everything()).from(
+            s.view.player.u, s.view.player.v, s.view.player.facing);
+        for (int v = 0; v < view.extentV; v++) {
+            for (int u = 0; u < view.extentU; u++)
+                printTo(reach_, "%c", from.cost(u, v) >= 0 ? '#' : everything.cost(u, v) >= 0 ? '+' : '.');
+            printTo(reach_, "\n");
+        }
+    }
 
     if (log_.is_open()) {
         const PlayerView &p = view.player;
