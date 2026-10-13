@@ -1,5 +1,6 @@
 add_library(bot OBJECT
     botrun.cpp
+    botview.cpp
     policy.cpp)
 target_include_directories(bot PUBLIC .)
 target_link_libraries(bot

@@ -1,6 +1,4 @@
 #include "policy.h"
-#include "game.h"
-#include "player.h"
 
 namespace bot {
 
@@ -8,24 +6,22 @@ namespace {
 
 class Idle : public Policy {
 public:
-    unsigned act(const Game &) override { return 0; }
+    unsigned act(const BotView &) override { return 0; }
 };
 
 /* Forward until a second passes on one cell, then a quarter turn right. */
 class Wander : public Policy {
 public:
-    unsigned act(const Game &game) override
+    unsigned act(const BotView &view) override
     {
-        const World  *w  = game.world();
-        const Player *pl = w->player();
-        const int u = pl->cellU(), v = pl->cellV();
+        const int u = view.player.u, v = view.player.v;
         if (u != lastU_ || v != lastV_) {
             lastU_ = u;
             lastV_ = v;
-            since_ = w->now();
+            since_ = view.now;
         }
-        if (w->now() - since_ > 1000.0) {
-            since_ = w->now();
+        if (view.now - since_ > 1000.0) {
+            since_ = view.now;
             return ACT_RIGHT;
         }
         return ACT_FORWARD;

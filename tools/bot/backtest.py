@@ -17,7 +17,7 @@ run/, so parallel runs share nothing they write.
 
 Results go to run/backtest/<date>-<sha>-<label>/: run.json (what was run),
 results.json (every summary), and per level and seed its summary, state dump,
-recording and log.  RUN arguments are such a directory, or its name.  The
+recording and log, and with --trace its BotView trace (src/bot/botview.h).  RUN arguments are such a directory, or its name.  The
 baseline is tests/bot/baseline.json: the blessed outcome of each level and
 seed for one policy.
 
@@ -121,7 +121,7 @@ def make_workdir(path, exe):
 def play(job):
     """Plays one (level, seed); returns its summary, with the outcome "crash"
     or "no-summary" if the game left none."""
-    exe, out, level, name, seed, policy, extra_env, timeout = job
+    exe, out, level, name, seed, policy, extra_env, timeout, trace = job
     work = os.path.join(out, "work")
     make_workdir(work, exe)
     env = {"HOME": os.environ.get("HOME", ""), "PATH": os.environ.get("PATH", "")}
@@ -137,6 +137,8 @@ def play(job):
         "KAROO_RECORD_LABEL": name,
         "KAROO_AUTO_EXIT_SECS": str(timeout),
     })
+    if trace:
+        env["KAROO_BOT_TRACE"] = os.path.join(out, "trace.jsonl")
     env.update(extra_env)
     t0 = time.time()
     try:
@@ -199,7 +201,8 @@ def run_all(args, out):
         for seed in seeds:
             d = os.path.join(out, "levels", "%02d-%s" % (lvl, seed))
             os.makedirs(d, exist_ok=True)
-            jobs.append((exe, d, lvl, names[lvl], seed, args.policy, extra, args.timeout))
+            jobs.append((exe, d, lvl, names[lvl], seed, args.policy, extra, args.timeout,
+                         args.trace))
 
     results = []
     t0 = time.time()
@@ -375,6 +378,8 @@ def main():
                        help="wall seconds a single level may take")
         p.add_argument("--env", action="append", default=[], metavar="NAME=VALUE",
                        help="more environment for the game, e.g. KAROO_BOT_STUCK_S=30")
+        p.add_argument("--trace", action="store_true",
+                       help="write each level's BotView trace (trace.jsonl)")
         p.add_argument("--build-dir", default=os.path.join(REPO, "build"))
         p.add_argument("--quiet", action="store_true")
 

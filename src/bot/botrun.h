@@ -11,7 +11,11 @@
  *   timeout    the level's time limit runs out;
  *   stuck      no gem for KAROO_BOT_STUCK_S seconds of game time (60);
  *   cap        KAROO_BOT_MAX_S seconds of game time in the level (900).
- * and then writes KAROO_BOT_SUMMARY, a JSON object, and asks the app to end. */
+ * and then writes KAROO_BOT_SUMMARY, a JSON object, and asks the app to end.
+ *
+ * KAROO_BOT_TRACE=<file> writes the BotView (botview.h) of every tick the
+ * policy acts on, one JSON object a line: the whole grid on the first line,
+ * then the cells that changed. */
 #pragma once
 
 #include "keysource.h"

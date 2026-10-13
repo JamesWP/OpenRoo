@@ -9,6 +9,7 @@
 #include "keycodes.h"
 #include "logger.h"
 #include "player.h"
+#include "botview.h"
 #include "policy.h"
 #include "progctrl.h"
 #include "sysdev.h"
@@ -69,6 +70,9 @@ public:
         stuckMs_ = env_seconds("KAROO_BOT_STUCK_S", 60) * 1000.0;
         capMs_   = env_seconds("KAROO_BOT_MAX_S", 900) * 1000.0;
         summary_ = sysdev::getEnv("KAROO_BOT_SUMMARY");
+        const std::string trace = sysdev::getEnv("KAROO_BOT_TRACE");
+        if (!trace.empty())
+            trace_.open(sysdev::nativePath(trace));
     }
 
     bool exclusive() const override { return true; }
@@ -85,7 +89,12 @@ public:
         }
         if (game_->state() != GameState::Playing || game_->world()->player()->moveState() != 0)
             return;
-        const unsigned acts = policy_->act(*game_);
+        BotView view = BotView::capture(*game_);
+        if (trace_)
+            trace_ << view.toJson(frames_, haveLast_ ? &last_ : nullptr) << '\n';
+        const unsigned acts = policy_->act(view);
+        last_     = std::move(view);
+        haveLast_ = true;
         for (int i = 0; i < 5; i++)
             if ((acts & (1u << i)) && keyFor_[i] != input::KEY_NONE)
                 keys[keyFor_[i]] = 0x80;
@@ -128,6 +137,7 @@ public:
         if (!outcome)
             return false;
         done_ = true;
+        trace_.close();
         write(outcome, cause);
         return true;
     }
@@ -173,6 +183,9 @@ private:
     int         keyFor_[5];
     double      stuckMs_, capMs_;
     std::string summary_;
+    std::ofstream trace_;   // KAROO_BOT_TRACE: the view each tick it acts
+    BotView     last_;
+    bool        haveLast_ = false;
     bool        done_    = false;
     bool        playing_ = false;
     unsigned    enterTick_ = 0;

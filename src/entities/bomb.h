@@ -52,6 +52,9 @@ public:
     // newer death fires its effects.
     void draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const;
 
+    // When it was dropped, in clock ms; it blows 2 s later.  Read by the bot.
+    double droppedAt() const { return droppedAt_; }
+
 private:
     Bomb();
 
