@@ -20,3 +20,7 @@ void LevelSelect_Turn(FrontEnd *frontEnd, Session *session, int dir);
 /* At LS_START: pops back to the theme page and returns the JJ.GAM index of the
  * row Enter was pressed on. */
 int LevelSelect_Chosen(FrontEnd *frontEnd, Session *session);
+
+/* The JJ.GAM index a level is named by: its index ("12") or its name as
+ * JJ.GAM lists it ("Water\\Water01", case-insensitive).  -1 if none is. */
+int LevelSelect_Find(Session *session, const char *spec);
