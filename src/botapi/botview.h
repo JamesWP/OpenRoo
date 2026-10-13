@@ -81,6 +81,29 @@ struct FallingView {
     bool   respawns = true;
 };
 
+/* A lift's cycle (liftobject.cpp): it rises from its base to its top, parks
+ * there 1.5 s, falls to its base and parks there 1.5 s, at 200 ms a height. */
+struct LiftView {
+    int    u = 0, v = 0;
+    int    base = 0, top = 0;
+    int    state = 0;          // 0 parked, 1 rising, 2 falling
+    bool   atTop = false;      // it last parked at the top
+    double phaseStart = 0;     // clock ms the phase began
+};
+
+/* A platform's cycle (platformobject.cpp): it runs along its track from its
+ * origin to its limit at 200 ms a cell, parks 1.5 s, runs back and parks 1.5 s.
+ * It carries what stands on it, at its height. */
+struct PlatformView {
+    bool   alongU = true;      // the track runs along u (else v)
+    int    originU = 0, originV = 0;
+    int    limit = 0;          // the last cell of the track along its axis
+    int    height = 0;
+    int    state = 0;          // 0 parked, 1 advancing, 2 retreating
+    bool   atLimit = false;    // it last parked at the limit
+    double phaseStart = 0;     // clock ms the phase began
+};
+
 struct BombView : Mover {
     double droppedAt = 0;   // clock ms; it blows 2 s later
 };
@@ -106,6 +129,8 @@ public:
 
     std::vector<FallingView> fallings;
     std::vector<BombView>    bombs;
+    std::vector<LiftView>    lifts;
+    std::vector<PlatformView> platforms;
 
     /* Why the player died (it has: player.moveState != 0): foe, drop,
      * timeout, bomb, void, harakiri.  See botview.cpp. */

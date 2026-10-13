@@ -33,6 +33,17 @@ public:
     float posY() const          { return posY_; }
     float posV() const          { return posV_; }
     signed char kind() const    { return kind_; }
+    // Its track and where it is in its cycle: it runs from its origin cell to
+    // the limit cell along u (kind 0x0a) or v; state 0 parked, 1 advancing, 2
+    // retreating; atLimit whether it last parked at the limit; the clock
+    // when the phase began.
+    int    originU() const    { return originU_; }
+    int    originV() const    { return originV_; }
+    int    limit() const      { return limit_; }
+    int    originHeight() const { return originHeight_; }
+    int    state() const      { return state_; }
+    bool   atLimit() const    { return atLimit_ != 0; }
+    double phaseStart() const { return phaseStart_; }
 
     // Draws the platform, in the opaque pass.
     void draw(draw::Frame &f, draw::Pass pass) const;

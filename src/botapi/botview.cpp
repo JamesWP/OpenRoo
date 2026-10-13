@@ -124,6 +124,20 @@ std::string BotView::toJson(unsigned frame, const BotView *prev) const
         appendf(out, "%s{\"cell\":[%d,%d,%d],\"facing\":%d,\"moving\":%d,\"dropped_at\":%.1f}",
                 i ? "," : "", b.u, b.v, b.h, b.facing, b.moving, b.droppedAt);
     }
+    out += "],\"lifts\":[";
+    for (size_t i = 0; i < lifts.size(); i++) {
+        const LiftView &l = lifts[i];
+        appendf(out, "%s{\"cell\":[%d,%d],\"base\":%d,\"top\":%d,\"state\":%d,\"at_top\":%d,"
+                "\"phase_start\":%.1f}", i ? "," : "", l.u, l.v, l.base, l.top, l.state,
+                l.atTop, l.phaseStart);
+    }
+    out += "],\"platforms\":[";
+    for (size_t i = 0; i < platforms.size(); i++) {
+        const PlatformView &p = platforms[i];
+        appendf(out, "%s{\"origin\":[%d,%d],\"along_u\":%d,\"limit\":%d,\"height\":%d,\"state\":%d,"
+                "\"at_limit\":%d,\"phase_start\":%.1f}", i ? "," : "", p.originU, p.originV,
+                p.alongU, p.limit, p.height, p.state, p.atLimit, p.phaseStart);
+    }
     out += "]}";
     return out;
 }
