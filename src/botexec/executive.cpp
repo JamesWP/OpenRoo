@@ -111,6 +111,20 @@ void Executive::decide(const BotView &view)
                                                    "approach", "evade"};
         for (int i = 0; i < TALLIES; i++)
             printTo(log_, ",\"%s\":[%d,%d]", names[i], tally[i].offered, tally[i].safe);
+        // The gems no way leads to, as things stand and with every block
+        // spent.
+        std::string cut;
+        for (const Step &g : board.gems(board.everything()))
+            if (board.time(board.everything(), board.start(), g) < 0)
+                cut += (cut.empty() ? "" : ",") + std::string("[") + std::to_string(g.u) + "," +
+                       std::to_string(g.v) + "]";
+        std::string cutPickups;
+        for (const Pickup &p : board.pickups())
+            if (board.time(0, board.start(), p.cell) < 0)
+                cutPickups += (cutPickups.empty() ? "" : ",") + std::string("[") +
+                              std::to_string(p.cell.u) + "," + std::to_string(p.cell.v) + "]";
+        printTo(log_, ",\"cut_off\":[%s],\"cut_off_pickups\":[%s],\"exit_cut\":%d", cut.c_str(),
+                cutPickups.c_str(), board.time(board.everything(), board.start(), board.exit()) < 0);
         printTo(log_, ",\"chose\":\"%s\"}\n", quoted(note_).c_str());
     }
 }
