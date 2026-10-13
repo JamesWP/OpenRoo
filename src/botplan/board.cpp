@@ -106,20 +106,15 @@ Spent Board::inTheWay(Spent s, Place from, bool pickups) const
     return way_[key] = mask;
 }
 
-const GemRoute &Board::gemRoute(Spent s, Place from) const
+GemRoute Board::routeFrom(Spent s, Place from, const Step *taken, int need) const
 {
-    from.facing = facingOf(from);
-    const auto key = std::make_pair(s, from);
-    auto it = routes_.find(key);
-    if (it != routes_.end())
-        return it->second;
     GemRoute r;
     const Terrain &w = worlds_->get(s);
     const Paths &start = w.from(from.u, from.v, from.facing);
     // Only the gems that can be reached at all are in the route.
     std::vector<Step> all;
     for (const Step &g : gems(s))
-        if (start.cost(g.u, g.v) >= 0)
+        if (start.cost(g.u, g.v) >= 0 && !(taken && g.u == taken->u && g.v == taken->v))
             all.push_back(g);
     const int n = (int)all.size();
     // The route optimiser's matrix: 0 the start, 1..n the gems, n + 1 the exit.
@@ -133,7 +128,7 @@ const GemRoute &Board::gemRoute(Spent s, Place from) const
         dist[i][n + 1] = row.cost(ex.u, ex.v);
     }
     double cost;
-    const std::vector<int> order = planRoute(dist, gemsNeeded_, &cost);
+    const std::vector<int> order = planRoute(dist, need, &cost);
     if (!order.empty()) {
         r.found = true;
         for (int i : order)
@@ -141,7 +136,41 @@ const GemRoute &Board::gemRoute(Spent s, Place from) const
         r.toExit = dist[order.back()][n + 1];
         r.toLast = cost - r.toExit;
     }
-    return routes_[key] = r;
+    return r;
+}
+
+const GemRoute &Board::gemRoute(Spent s, Place from) const
+{
+    from.facing = facingOf(from);
+    const auto key = std::make_pair(s, from);
+    auto it = routes_.find(key);
+    if (it != routes_.end())
+        return it->second;
+    return routes_[key] = routeFrom(s, from, nullptr, gemsNeeded_);
+}
+
+bool Board::canFinishFrom(Step cell) const
+{
+    const Place at{cell.u, cell.v, worlds_->pointFacing()};
+    if (gemsNeeded_ <= 0)
+        return time(0, at, exit()) >= 0;
+    return gemRoute(0, at).found;
+}
+
+bool Board::canFinishAfter(Step gem) const
+{
+    const auto key = std::make_pair(gem.u, gem.v);
+    auto it = after_.find(key);
+    if (it != after_.end())
+        return it->second;
+    const int need = gemsNeeded_ - 1;
+    GemRoute r;
+    const Place at{gem.u, gem.v, worlds_->pointFacing()};
+    if (need <= 0)
+        r.found = worlds_->get(0).from(at.u, at.v, at.facing).cost(exit().u, exit().v) >= 0;
+    else
+        r = routeFrom(0, at, &gem, need);
+    return after_[key] = r.found;
 }
 
 const std::vector<Site> &Board::sites(Spent s) const

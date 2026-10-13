@@ -49,8 +49,9 @@ public:
      * its outcome; Blocked if none (a lift never parks, or not within the
      * model's horizon).  *startMs is when it starts. */
     Outcome stepWhenOpen(int u, int v, int f, int d, double atMs, double *startMs) const;
-    /* Whether any lift or platform runs on the level. */
-    bool hasLifts() const { return !spells_.empty(); }
+    /* Whether anything on the level changes with the clock that the routes
+     * must wait for or time: a lift, a platform, a fallen tile coming back. */
+    bool timed() const { return !spells_.empty() || !back_.empty(); }
     /* Riding a platform: the player who stands on the end cell (u, v) at atMs
      * is carried to the other end and can step off from the next park there.
      * False if no platform ends on the cell; *pu, *pv the other end's cell
@@ -59,6 +60,14 @@ public:
     /* Whether the cell is one a lift or a platform carries: open only while
      * it is parked there. */
     static bool moving(const Cell &c);
+    /* The time, after the step, to land a drop of that many heights (measured,
+     * tools/bot/calibrate.py: 283 ms for one or two, 433 for three); 0 for no
+     * fall.  A move's time (step, step) leaves it out: the routes of a whole
+     * level are estimates and the drops do not change which is quickest by much;
+     * the timing of a script (a bomb's) adds it, fallsAlong. */
+    static double fallMs(int drop);
+    /* The time the drops along a walk of these cells take to land. */
+    double fallsAlong(const std::vector<Step> &cells) const;
     Outcome turn(int u, int v, int f, int delta) const;
 
     static int opposite(int d) { return d > 2 ? d - 2 : d + 2; }
@@ -79,6 +88,11 @@ private:
 
     const BotView *view_;
     std::map<int, std::vector<Park>> spells_;   // by cell index, for each lift and platform end
+    struct Fallen {
+        double back;   // when it is back, ms from the view's clock
+        int    height;
+    };
+    std::map<int, Fallen> back_;                // a fallen tile's cell index
     std::map<int, int> partner_;                // a platform's end cell index to its other end's
 };
 

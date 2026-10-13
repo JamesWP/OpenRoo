@@ -11,4 +11,13 @@ namespace bot {
  * clock; < 0 if c holds no falling tile. */
 double fallsAt(const BotView &view, Step c, double enterMs);
 
+/* Whether the falling tile on c is gone at atMs from the view's clock: it has
+ * fallen and is not back yet (it comes back 5 s after it was armed, if it
+ * comes back). */
+bool goneAt(const BotView &view, Step c, double atMs);
+
+/* When the fallen tile on c is back, ms from the view's clock; < 0 if it is
+ * not fallen, a huge number if it never returns. */
+double backAt(const BotView &view, Step c);
+
 }  // namespace bot

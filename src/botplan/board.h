@@ -83,6 +83,13 @@ public:
     double turnMs(Place from, int facing) const;
 
     const GemRoute &gemRoute(Spent s, Place from) const;
+    /* Whether, standing on that gem as things are, the rest of the quota and
+     * the exit can still be had: a gem that drops the player where it cannot
+     * is a trap. */
+    bool canFinishAfter(Step gem) const;
+    /* Whether, standing on that cell as things are, the quota and the exit can
+     * be had. */
+    bool canFinishFrom(Step cell) const;
 
     /* The blocks, unspent in the world s, that stand in the way: on the
      * quickest way from a place through the quota's gems to the exit once
@@ -100,6 +107,7 @@ public:
     std::string noRoute() const;
 
 private:
+    GemRoute routeFrom(Spent s, Place from, const Step *taken, int need) const;
     int facingOf(const Place &p) const { return p.facing ? p.facing : worlds_->pointFacing(); }
 
     const BotView &live_;
@@ -108,6 +116,7 @@ private:
     std::vector<Pickup> pickups_;
     mutable std::map<Spent, std::vector<Step>> gems_;
     mutable std::map<std::pair<Spent, Place>, GemRoute> routes_;
+    mutable std::map<std::pair<int, int>, bool> after_;
     mutable std::map<Spent, std::vector<Site>> sites_;
     mutable std::map<std::tuple<Spent, Place, bool>, Spent> way_;
 };

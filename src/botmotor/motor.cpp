@@ -43,6 +43,19 @@ int Motor::direction(int au, int av, int bu, int bv)
     return 0;
 }
 
+int Motor::facingAfter(int f, const std::vector<Step> &path)
+{
+    for (size_t i = 1; i < path.size(); i++) {
+        const int d = direction(path[i - 1].u, path[i - 1].v, path[i].u, path[i].v);
+        if (d == 0)
+            continue;   // a forced move: the facing it leaves is not known here
+        const int rel = (d - f + 4) % 4;
+        if (rel == 1 || rel == 3)
+            f = d;
+    }
+    return f;
+}
+
 unsigned Motor::toward(int f, int d)
 {
     switch ((d - f + 4) % 4) {

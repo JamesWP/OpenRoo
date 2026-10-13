@@ -95,7 +95,7 @@ BotView capture(const Game &game)
         fv.v = ft.cellV();
         fv.h = ft.heightCell();
         fv.armed    = ft.armed();
-        fv.armedAt  = ft.armed() ? ft.armedAt() : 0;  // unset until it first arms
+        fv.armedAt  = ft.armed() || ft.respawnPending() ? ft.armedAt() : 0;  // unset until it first arms; a fallen tile is back 5 s after it
         fv.fallen   = ft.respawnPending() || map->tile(fv.u, fv.v)->busy() != 0;
         fv.respawns = !ft.noRespawn();
         view.fallings.push_back(fv);

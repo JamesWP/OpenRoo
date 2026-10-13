@@ -18,7 +18,7 @@ bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, do
         return false;
     // The lifts keep their own time: a wait before setting off would move
     // the whole route against them.
-    if (wait > 0 && s.nav.hasLifts())
+    if (wait > 0 && s.nav.timed())
         return false;
     o.schedule.clear();
     o.schedule.push_back({0, plan.front().cell});

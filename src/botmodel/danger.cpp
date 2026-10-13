@@ -32,7 +32,15 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
         return at;
     };
 
-    // Falling tiles: off each one before it falls (fallingmodel.h).
+    // Falling tiles: not onto one that is gone, and off each one before it
+    // falls (fallingmodel.h).
+    for (size_t i = 1; i < plan.size(); i++)
+        if (goneAt(view, plan[i].cell, plan[i].t)) {
+            d.hit = true;
+            d.t   = plan[i].t;
+            d.why = "fallen tile";
+            return d;
+        }
     for (size_t i = 0; i < plan.size(); i++) {
         const double falls = fallsAt(view, plan[i].cell, plan[i].t);
         if (falls < 0)

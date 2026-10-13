@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <functional>
 #include <queue>
+#include "fallingmodel.h"
 #include "tile.h"
 
 namespace bot {
@@ -12,6 +13,8 @@ const double SLIDE_MS    = 150.0;   // a step along a slide (movableentity.cpp)
 const double TELEPORT_MS = 500.0;   // each of the teleporter's two waits
 const double STICKY_MS   = 3000.0;  // a sticky pad's hold
 const double JUMP_MS     = 500.0;   // a jump pad's arc; not measured yet
+const double FALL_MS     = 283.0;   // landing a drop of one or two, after the step
+const double FALL_3_MS   = 433.0;   // and of three
 const int    MAX_CHAIN   = 400;     // forced steps before a chain is taken to loop
 const double LIFT_HORIZON_MS = 120000.0;  // how far ahead the lifts are followed
 const double LIFT_MARGIN_MS  = 100.0;     // a lift stays parked this long past a step on or off it
@@ -32,6 +35,9 @@ NavModel::NavModel(const BotView &view) : view_(&view)
 {
     for (const LiftView &l : view.lifts)
         spells_[l.v * view.extentU + l.u] = parkSpells(view, l, LIFT_HORIZON_MS);
+    for (const FallingView &f : view.fallings)
+        if (f.fallen && f.respawns)
+            back_[f.v * view.extentU + f.u] = Fallen{backAt(view, {f.u, f.v}), f.h};
     for (const PlatformView &p : view.platforms) {
         std::vector<Park> atOrigin, atLimit;
         platformSpells(view, p, LIFT_HORIZON_MS, &atOrigin, &atLimit);
@@ -42,6 +48,24 @@ NavModel::NavModel(const BotView &view) : view_(&view)
         partner_[a] = b;
         partner_[b] = a;
     }
+}
+
+double NavModel::fallMs(int drop)
+{
+    return drop >= 3 ? FALL_3_MS : drop >= 1 ? FALL_MS : 0.0;
+}
+
+double NavModel::fallsAlong(const std::vector<Step> &cells) const
+{
+    double ms = 0;
+    for (size_t i = 1; i < cells.size(); i++) {
+        const Cell &a = view_->cell(cells[i - 1].u, cells[i - 1].v);
+        const Cell &b = view_->cell(cells[i].u, cells[i].v);
+        if (b.height < a.height && !stairs(b.kind) &&
+            (a.height - b.height >= 2 || !stairs(a.kind)))
+            ms += a.height - b.height >= 3 ? FALL_3_MS : FALL_MS;
+    }
+    return ms;
 }
 
 bool NavModel::moving(const Cell &c)
@@ -110,10 +134,18 @@ unsigned long long navHash(const BotView &view)
 {
     unsigned long long h = 1469598103934665603ull;
     auto mix = [&h](unsigned x) { h = (h ^ x) * 1099511628211ull; };
+    std::vector<char> falls(view.cells.size(), 0);
+    for (const FallingView &f : view.fallings)
+        falls[(size_t)f.v * view.extentU + f.u] = 1;
+    size_t at = 0;
     for (const Cell &c : view.cells) {
-        // A lift's height is the clock's (liftmodel.h): what stands is its two.
+        // A falling tile stands or has fallen: for the model it comes back.
+        if (falls[at++]) {
+            mix(0xfa11);
+            continue;
+        }
         // The cells that carry the lifts and platforms: what stands is that
-        // they do.
+        // they do (liftmodel.h gives their heights by the clock).
         const bool moves = NavModel::moving(c);
         mix(moves ? 0 : c.height);
         mix(moves ? 0xffff : c.kind);
@@ -147,12 +179,16 @@ Outcome NavModel::stepWhenOpen(int u, int v, int f, int d, double atMs, double *
 {
     *startMs = atMs;
     Outcome first = stepAt(u, v, f, d, atMs);
-    if (first.kind == Outcome::Rest || spells_.empty())
+    if (first.kind == Outcome::Rest || (spells_.empty() && back_.empty()))
         return first;
     std::vector<double> starts;
     parkStarts(u, v, atMs, &starts);
-    if (d >= DIR_MIN && d <= DIR_MAX)
+    if (d >= DIR_MIN && d <= DIR_MAX) {
         parkStarts(u + DIR_DU[d], v + DIR_DV[d], atMs, &starts);
+        const auto fallen = back_.find((v + DIR_DV[d]) * view_->extentU + u + DIR_DU[d]);
+        if (fallen != back_.end() && fallen->second.back > atMs)
+            starts.push_back(fallen->second.back);
+    }
     std::sort(starts.begin(), starts.end());
     for (const double t : starts) {
         Outcome o = stepAt(u, v, f, d, t);
@@ -190,6 +226,17 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs) 
         const int nu = cu + DIR_DU[dir], nv = cv + DIR_DV[dir];
         Cell target;
         const Cell *bp = w.inside(nu, nv) ? &w.cell(nu, nv) : nullptr;
+        if (bp && timed && bp->kind == TILE_EMPTY) {
+            // A fallen tile is a floor again when it is back.
+            const auto fallen = back_.find(nv * w.extentU + nu);
+            if (fallen != back_.end() && atMs + t >= fallen->second.back) {
+                target = *bp;
+                target.kind   = TILE_FALLING;
+                target.height = (unsigned char)fallen->second.height;
+                target.busy   = false;
+                bp = &target;
+            }
+        }
         if (bp && timed && n == 0 && moving(*bp)) {
             const int h = liftHeight(nu, nv, atMs, through);
             // Stepping down onto it starts a fall, and it rides away under
@@ -308,7 +355,7 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs)
     departs_[s] = startMs;
     open.push({startMs, s});
     std::vector<char> done(n, 0);
-    const bool timed = nav.hasLifts();
+    const bool timed = nav.timed();
     while (!open.empty()) {
         const auto [c, i] = open.top();
         open.pop();
