@@ -43,7 +43,7 @@ add_compile_options(-Wall -Wextra -Werror)
 # depends on with target_link_libraries in its own CMakeLists.txt; their include
 # paths follow from those links.  tools/check_layers.py (the check-layers
 # target) checks the declarations against the includes and src/layers.yaml.
-set(GROUPS app audio base camera script session fx game gfx math screens audiodev core dbg debugui entities sequencer drawhelpers gl input inputapi inputdev level render renderapi sim soundapi testing ui videodev windev sysdev log prof)
+set(GROUPS app audio base camera script session fx game gfx math screens audiodev core dbg debugui entities sequencer drawhelpers gl input inputapi inputdev level render renderapi sim bot soundapi testing ui videodev windev sysdev log prof)
 foreach(group ${GROUPS})
     add_subdirectory(src/${group})
 endforeach()
@@ -56,7 +56,7 @@ endif()
 set_target_properties(OpenRoo PROPERTIES OUTPUT_NAME OpenRoo)
 target_include_directories(OpenRoo PRIVATE src/app)
 target_link_libraries(OpenRoo PRIVATE
-    app audio audiodev base camera script session fx sequencer drawhelpers game gfx math screens core dbg debugui entities gl input inputapi inputdev level render sim soundapi testing ui videodev windev sysdev log prof imgui)
+    app audio audiodev base camera script session fx sequencer drawhelpers game gfx math screens core dbg debugui entities gl input inputapi inputdev level render sim bot soundapi testing ui videodev windev sysdev log prof imgui)
 if(WIN32)
     target_link_libraries(OpenRoo PRIVATE -static-libgcc -static-libstdc++ -static)
     # The SDL and FFmpeg DLLs next to the executable (launch.sh copies them into run/).

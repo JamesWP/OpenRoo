@@ -47,6 +47,7 @@ public:
     void           setTotalPlayTime(double ms)       { totalPlayTime_ = ms; }
 
     char          *levelNameTableEntry(unsigned char i) { return levelNameTable_[i]; }
+    const char    *levelNameTableEntry(unsigned char i) const { return levelNameTable_[i]; }
 
     /* The NEXT level's bonus flag, which OpenLevelFile peeks by
      * loading that level's map first.  SetupLevelObjects reads it to give

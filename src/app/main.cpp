@@ -48,6 +48,7 @@
 #include "menuscreens.h"
 #include "keypress.h"
 #include "levelselect.h"
+#include "botrun.h"
 
 
 /* The render state (renderer.h).  app owns it and passes it down; nothing
@@ -186,6 +187,10 @@ static void frame_boundary(void)
         gamestate_dump("replay-finished");
         launcher_end_run("replay finished");
     }
+    if (bot::frame()) {
+        gamestate_dump("bot-finished");
+        launcher_end_run("bot run finished");
+    }
 }
 
 /* Where the game's files are.  Data paths are relative to the current
@@ -276,6 +281,10 @@ int Main_WinMain(const char *lpCmdLine)
     input::addSource(replay_source());
     input::addObserver(record_observer());
     Input_Setup(game, &s_progCtrl);
+    // KAROO_BOT: a bot plays in place of the keyboard (botrun.h).
+    if (bot::init(game, &s_progCtrl) < 0)
+        windev::quit(1);
+    input::addSource(bot::source());
 
     // 3D sound, 22050 Hz, 16-bit stereo; rolloff 0.3 if it came up.
     SoundManager *snd = game->audio()->soundManager();
