@@ -1,5 +1,5 @@
 add_library(bottactics OBJECT
-    ambush.cpp
+    drops.cpp
     tactics.cpp
     walk.cpp)
 target_include_directories(bottactics PUBLIC .)

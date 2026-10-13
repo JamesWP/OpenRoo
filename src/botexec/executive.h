@@ -24,7 +24,7 @@
 
 #include <fstream>
 #include <string>
-#include "distances.h"
+#include "worlds.h"
 #include "foemodel.h"
 #include "option.h"
 #include "policy.h"
@@ -44,7 +44,7 @@ private:
 
     Executor  exec_;
     FoeModel  foes_;
-    Distances distances_;
+    Worlds    worlds_;
     double    mu_ = 0;
     Option    chosen_;
     double    chosenAt_ = 0;

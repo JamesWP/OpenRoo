@@ -1,4 +1,5 @@
 #include "goap.h"
+#include <algorithm>
 #include <map>
 #include <queue>
 #include <tuple>
@@ -9,21 +10,31 @@ namespace {
 
 /* What an ambush takes: turning, the drop, the walk away and the fuse. */
 const double AMBUSH_MS = 2500;
+/* What a blast takes after the walk and the turn to the site: the fuse, and
+ * the blast's clearing. */
+const double BLAST_MS = 2600;
+/* A blast that spends all of another's blocks and more is taken in its stead
+ * if it costs no more than this much longer. */
+const double COVER_MS = 1000;
+/* The blasts offered from a place: the cheapest few sets of blocks. */
+const size_t BLASTS = 24;
 /* The bombs a pickup gives (player.cpp). */
 const int PICKUP_BOMBS = 3;
 
 struct Facts {
-    int      at = Board::PLAYER;
+    Place    at;
+    Spent    spent = 0;
     int      gemsNeeded = 0;
     int      bombs = 0;
     int      foes = 0;
-    unsigned pickups = 0;   // a bit per board pickup taken (the first 32)
+    unsigned pickups = 0;    // a bit per board pickup taken (the first 32)
     bool     unused = false; // bombs taken that the plan has not used yet
     bool     atExit = false;
 
     auto key() const
     {
-        return std::make_tuple(at, gemsNeeded, bombs, foes, pickups, unused, atExit);
+        return std::make_tuple(at.u, at.v, at.facing, spent, gemsNeeded, bombs, foes, pickups,
+                               unused, atExit);
     }
     bool operator<(const Facts &o) const { return key() < o.key(); }
 };
@@ -42,6 +53,7 @@ public:
     Plan run()
     {
         Facts start;
+        start.at         = board_.start();
         start.gemsNeeded = board_.gemsNeeded();
         start.bombs      = board_.bombs();
         start.foes       = board_.foes();
@@ -67,16 +79,17 @@ public:
     }
 
 private:
-    /* The least the rest can cost: the quota's route and the exit. */
+    /* The least the rest can cost: the quota's route and the exit, with
+     * every block spent. */
     double heuristic(const Facts &f) const
     {
         if (f.atExit)
             return 0;
         if (f.gemsNeeded > 0) {
-            const GemRoute &r = board_.gemRoute(f.at);
+            const GemRoute &r = board_.gemRoute(board_.everything(), f.at);
             return r.found ? r.toLast + r.toExit : -1;
         }
-        return board_.time(f.at, board_.exit());
+        return board_.time(board_.everything(), f.at, board_.exit());
     }
 
     void push(const Facts &f, double g, int parent, const PlanStep &step)
@@ -107,55 +120,112 @@ private:
     {
         const Facts f = nodes_[at].facts;
         if (f.gemsNeeded > 0) {
-            const GemRoute &r = board_.gemRoute(f.at);
+            const GemRoute &r = board_.gemRoute(f.spent, f.at);
             if (r.found) {
                 Facts n = f;
                 n.gemsNeeded = 0;
-                n.at = r.gems.back();
+                n.at = {r.gems.back().u, r.gems.back().v, 0};
                 PlanStep s;
-                s.point = n.at;
+                s.goes  = true;
+                s.end   = n.at;
                 s.gems  = r.gems;
                 s.ms    = r.toLast;
                 add(at, COLLECT, n, s);
             }
         } else if (!f.unused) {
-            const double t = board_.time(f.at, board_.exit());
+            const double t = board_.time(f.spent, f.at, board_.exit());
             if (t >= 0) {
                 Facts n = f;
                 n.atExit = true;
-                n.at = board_.exit();
+                n.at = {board_.exit().u, board_.exit().v, 0};
                 PlanStep s;
-                s.point = n.at;
-                s.ms    = t;
+                s.goes = true;
+                s.end  = n.at;
+                s.ms   = t;
                 add(at, EXIT, n, s);
             }
         }
-        if (f.bombs == 0 && f.foes > 0) {
-            const std::vector<int> &pickups = board_.pickups();
+        const bool blocksLeft = f.spent != board_.everything();
+        if (f.bombs == 0 && (f.foes > 0 || blocksLeft)) {
+            const std::vector<Pickup> &pickups = board_.pickups();
             for (size_t i = 0; i < pickups.size() && i < 32; i++) {
-                const double t = board_.time(f.at, pickups[i]);
-                if ((f.pickups & (1u << i)) || t < 0)
+                if ((f.pickups & (1u << i)) || !Board::available(pickups[i], f.spent))
+                    continue;
+                const double t = board_.time(f.spent, f.at, pickups[i].cell);
+                if (t < 0)
                     continue;
                 Facts n = f;
                 n.pickups |= 1u << i;
                 n.bombs += PICKUP_BOMBS;
                 n.unused = true;
-                n.at = pickups[i];
+                n.at = {pickups[i].cell.u, pickups[i].cell.v, 0};
                 PlanStep s;
-                s.point = n.at;
-                s.ms    = t;
+                s.goes = true;
+                s.end  = n.at;
+                s.ms   = t;
                 add(at, BOMBS, n, s);
             }
         }
+        if (f.bombs > 0 && blocksLeft)
+            expandBlasts(at, f);
         if (f.bombs > 0 && f.foes > 0) {
             Facts n = f;
             n.bombs--;
             n.foes--;
             n.unused = false;
             PlanStep s;
-            s.point = f.at;
-            s.ms    = AMBUSH_MS;
+            s.ms = AMBUSH_MS;
             add(at, AMBUSH, n, s);
+        }
+    }
+
+    /* The cheapest site for each set of blocks it would spend, the cheapest
+     * few sets. */
+    void expandBlasts(int at, const Facts &f)
+    {
+        std::map<Spent, std::pair<double, Site>> best;
+        // Only a blast that spends a block in the way is worth a bomb (and,
+        // short of bombs, one in the way to a pickup).
+        const Spent wanted = board_.inTheWay(f.spent, f.at, f.bombs <= 1);
+        for (const Site &site : board_.sites(f.spent)) {
+            if (!(site.hits & wanted))
+                continue;
+            const double t = board_.time(f.spent, f.at, {site.cell.u, site.cell.v});
+            if (t < 0)
+                continue;
+            const double cost = t + board_.turnMs(f.at, site.cell.facing) + BLAST_MS;
+            auto it = best.find(site.hits);
+            if (it == best.end() || cost < it->second.first)
+                best[site.hits] = {cost, site};
+        }
+        // Leave out a set that another covers, and more, for little more.
+        std::vector<std::pair<double, Site>> sorted;
+        for (const auto &[hits, c] : best) {
+            bool covered = false;
+            for (const auto &[other, o] : best)
+                covered = covered || (other != hits && (other & hits) == hits &&
+                                      o.first <= c.first + COVER_MS);
+            if (!covered)
+                sorted.push_back(c);
+        }
+        std::stable_sort(sorted.begin(), sorted.end(), [](const auto &a, const auto &b) {
+            return a.first < b.first;
+        });
+        for (size_t i = 0; i < sorted.size() && i < BLASTS; i++) {
+            const auto &[cost, site] = sorted[i];
+            Facts n = f;
+            n.spent |= site.hits;
+            if (!board_.worlds().has(n.spent) && board_.worlds().size() > options_.maxWorlds)
+                continue;
+            n.bombs--;
+            n.unused = false;
+            n.at = site.cell;
+            PlanStep s;
+            s.goes = true;
+            s.end  = n.at;
+            s.hits = site.hits;
+            s.ms   = cost;
+            add(at, BLAST, n, s);
         }
     }
 
@@ -184,6 +254,7 @@ const char *actionName(ActionKind kind)
     switch (kind) {
     case COLLECT: return "collect";
     case BOMBS:   return "bombs";
+    case BLAST:   return "blast";
     case AMBUSH:  return "ambush";
     case EXIT:    return "exit";
     default:      return "?";

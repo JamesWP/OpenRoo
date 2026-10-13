@@ -2,14 +2,18 @@
  * of actions from the facts as they stand to the goal, the player at the exit
  * with the gem quota collected.
  *
- * The facts: where the player is (a board point, board.h), the gems still
- * needed, the bombs held, the foes alive and the bomb pickups taken.  The
- * actions, macro-actions costed by the model:
+ * The facts: where the player is (a place, board.h), which bombable blocks
+ * are spent, the gems still needed, the bombs held, the foes alive and the
+ * bomb pickups taken.  The actions, macro-actions costed by the model:
  *
  *   action     preconditions                 effects
  *   Collect    gems needed, a route to them  the quota taken, at its last gem
- *   Bombs(p)   none held, a foe to use them  3 bombs, at pickup p
- *              on, p not taken
+ *              in the world the facts make
+ *   Bombs(p)   none held, a foe or a block   3 bombs, at pickup p
+ *              to use them on, p not taken
+ *   Blast(s)   a bomb, a site s that spends  blocks spent (the world changes:
+ *              a block                       what is reachable, what gems
+ *                                            they hide), a bomb less, at s
  *   Ambush     a bomb, a foe                 a foe less, a bomb less
  *   Exit       no gems needed, no bombs      at the exit
  *              taken and left unused
@@ -20,8 +24,9 @@
  * one (tactics.h).
  *
  * The search is A* over the facts, the heuristic the quota's route from where
- * the player is and the exit, a lower bound since the other actions only add.
- * Its budget is in nodes expanded, never time, so it is deterministic.
+ * the player is and the exit in the world with every block spent, a lower
+ * bound since the other actions only add.  Its budget is in nodes expanded and
+ * worlds built, never time, so it is deterministic.
  *
  * A step's cost is time + mu * risk (section 3.3).  Its risk is the time it
  * spends among live foes, in foe-seconds; mu is in ms a foe-second.  At mu 0
@@ -39,16 +44,18 @@
 
 namespace bot {
 
-enum ActionKind { COLLECT, BOMBS, AMBUSH, EXIT, ACTION_KINDS };
+enum ActionKind { COLLECT, BOMBS, BLAST, AMBUSH, EXIT, ACTION_KINDS };
 
 const char *actionName(ActionKind kind);
 
 struct PlanStep {
     ActionKind kind = EXIT;
-    int        point = Board::PLAYER;  // where it ends: a board point, PLAYER for none
-    std::vector<int> gems;             // Collect: the gems, in order
-    double     ms = 0;                 // its time
-    double     risk = 0;               // foe-seconds
+    bool       goes = false;       // it ends somewhere: end
+    Place      end;                // where it ends (a pickup, the exit, a site)
+    std::vector<Step> gems;        // Collect: the gems, in order
+    Spent      hits = 0;           // Blast: the blocks it spends
+    double     ms = 0;             // its time
+    double     risk = 0;           // foe-seconds
 };
 
 struct Plan {
@@ -65,6 +72,7 @@ struct PlanOptions {
     double   mu = 0;                         // ms a foe-second
     unsigned notFirst = 0;                   // a bit per ActionKind
     int      maxNodes = 4000;
+    size_t   maxWorlds = 64;                 // what-if terrains built, besides the base
 };
 
 Plan planGoal(const Board &board, const PlanOptions &options);

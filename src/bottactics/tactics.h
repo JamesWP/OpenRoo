@@ -12,7 +12,9 @@
  *   bombs    walk to the planned pickup, or another (likewise);
  *   exit     walk to the exit;
  *   ambush   turn, drop a bomb and walk away, taken only where the foe
- *            model says the blast kills a foe (ambush.h).
+ *            model says the blast kills a foe (drops.h);
+ *   blast    walk to the site, turn, drop a bomb, walk clear and wait the
+ *            blast out (drops.h).
  * A walk is also offered after a wait, so a foe can go by first.
  *
  * And two ways to keep the player safe while no step of any plan can be

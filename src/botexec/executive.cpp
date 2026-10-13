@@ -22,11 +22,12 @@ enum { APPROACH = ACTION_KINDS, EVADE, TALLIES };
  * that goes anywhere ends. */
 Step goal_of(const Board &board, const Plan &plan)
 {
+    (void)board;
     for (const PlanStep &s : plan.steps) {
         if (s.kind == COLLECT)
-            return board.point(s.gems.front()).cell;
-        if (s.point != Board::PLAYER)
-            return board.point(s.point).cell;
+            return s.gems.front();
+        if (s.goes)
+            return {s.end.u, s.end.v};
     }
     return {-1, -1};
 }
@@ -60,8 +61,8 @@ void Executive::decide(const BotView &view)
     terrain_ = navHash(view);
 
     Situation s(view, foes_);
-    distances_.update(view);
-    const Board board(view, distances_, s.from);
+    worlds_.update(view);
+    const Board board(view, worlds_);
     PlanOptions options;
     options.mu = mu_;
     const Plan first = planGoal(board, options);
@@ -106,7 +107,7 @@ void Executive::decide(const BotView &view)
                 "\"bombs\":%d,\"foes\":%d,\"plan\":\"%s\",\"nodes\":%d,\"taken_from\":\"%s\"",
                 view.now, p.u, p.v, p.h, p.facing, p.gems, p.bombs, (int)view.foes.size(),
                 first.describe().c_str(), first.nodes, planned.c_str());
-        static const char *const names[TALLIES] = {"collect", "fetch", "ambush", "exit",
+        static const char *const names[TALLIES] = {"collect", "fetch", "blast", "ambush", "exit",
                                                    "approach", "evade"};
         for (int i = 0; i < TALLIES; i++)
             printTo(log_, ",\"%s\":[%d,%d]", names[i], tally[i].offered, tally[i].safe);
@@ -134,7 +135,10 @@ unsigned Executive::act(const BotView &view)
         exec_.halt();
     if (view.player.atRest()) {
         const bool idle = exec_.status() != Executor::Running;
-        const bool changed = view.player.gems != gems_ || view.player.bombs != bombs_;
+        // A gem or a pickup is news; a bomb the script dropped is not.
+        const bool changed = view.player.gems != gems_ || view.player.bombs > bombs_;
+        if (view.player.bombs < bombs_)
+            bombs_ = view.player.bombs;
         const bool cornered = idle && !stuck_ && chosen_.script.empty();
         if (!decided_ || changed ||
             (idle && !stuck_ && (!cornered || ticks_ % CHECK_TICKS == 0)) ||

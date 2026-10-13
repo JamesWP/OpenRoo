@@ -209,6 +209,15 @@ double Paths::cost(int u, int v) const
     return best;
 }
 
+int Paths::facingAt(int u, int v) const
+{
+    int best = 0;
+    for (int f = 1; f <= 4; f++)
+        if (cost_[index(u, v, f)] >= 0 && (!best || cost_[index(u, v, f)] < cost_[index(u, v, best)]))
+            best = f;
+    return best;
+}
+
 std::vector<Step> Paths::cellsTo(int u, int v) const
 {
     int best = -1;

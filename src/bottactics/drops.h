@@ -1,0 +1,26 @@
+/* The bomb maneuvers: drop a bomb, then walk clear of its blast.
+ *
+ *   ambush  from where the player stands: turn to a facing (as it is, a
+ *           quarter turn either way, about), drop, walk away to one of the
+ *           nearest cells, so that a foe chasing the player walks into the
+ *           blast.  The bomb model (bombmodel.h) gives the blast and the foe
+ *           model (foemodel.h), with the foes chasing the player along the
+ *           walk, whether a foe dies in it; only the candidates where one
+ *           does are offered.
+ *   blast   from a given site: walk there, turn to its facing, drop, walk
+ *           away and wait for the blast to clear and the blocks it spends to
+ *           be gone.
+ * In both the player must be safe until the blast is over (danger.h), and
+ * the options are checked here, to be offered at all. */
+#pragma once
+
+#include <vector>
+#include "option.h"
+#include "tactics.h"
+
+namespace bot {
+
+void offerAmbushes(Situation &s, std::vector<Option> &out);
+void offerBlast(Situation &s, Place site, std::vector<Option> &out);
+
+}  // namespace bot
