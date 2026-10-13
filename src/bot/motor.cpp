@@ -25,10 +25,9 @@ unsigned reverse(unsigned acts)
 
 }  // namespace
 
-void Motor::follow(std::vector<Step> path, double startMs)
+void Motor::follow(std::vector<Step> path)
 {
     path_       = std::move(path);
-    startMs_    = startMs;
     next_       = 0;
     status_     = path_.empty() ? Arrived : Walking;
     lastAct_    = 0;
@@ -59,8 +58,6 @@ unsigned Motor::act(const BotView &view)
     if (status_ != Walking)
         return 0;
     const PlayerView &p = view.player;
-    if (view.now < startMs_ && p.atRest())
-        return 0;  // waiting to set off
 
     // The player's cell is where it stands, or where its step is going.  A
     // forced move (ice, a slide, a teleporter) may carry it several cells on.
