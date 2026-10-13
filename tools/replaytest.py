@@ -33,6 +33,9 @@ assumes (REPLAY_PLAN.md Stages A/A2):
     the recording replays the *keypresses* that pick a save slot, not the load
     itself.  A different slot layout lands the menu somewhere else and the run
     diverges immediately.  That is why each recording carries its save files.
+  - A recording made with KAROO_START_LEVEL (a bot run) starts in that level,
+    not at the menus; its manifest entry's "start_level" says which, and the
+    harness passes it on.
   - The replay ends on the recording's own length, never on wall-clock time.
     The DLL does that itself now (clock.cpp); --auto-exit is only a safety net
     for a run that wedges.
@@ -267,6 +270,12 @@ def launch(entry, cfg, rec_path, dump_path,
     env["KAROO_STATE_DUMP"] = dump_path
     env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
     env["KAROO_SEED"] = str(cfg.get("seed", ""))
+    # A recording that starts in a level rather than at the menus (a bot run)
+    # names it; the game goes straight there (KAROO_START_LEVEL).
+    if entry.get("start_level"):
+        env["KAROO_START_LEVEL"] = entry["start_level"]
+    else:
+        env.pop("KAROO_START_LEVEL", None)
     # The replay ends itself; this only has to outlast it.
     auto_exit = max(int(cfg.get("timeout", 120)), int(game_seconds * 2) + 60)
     # --headless creates the render device with no OpenGL behind it
