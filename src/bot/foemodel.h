@@ -22,6 +22,8 @@
  * terrain changes.  That is what makes a foe's walked path cheap to work out
  * again for each plan the bot weighs.
  *
+ * A foe caught by a blast dies (a bomb in the view, or one the caller adds).
+ *
  * What it leaves out: the lifts, platforms, bridges and falling tiles do not
  * move, foe bombs are not dropped, the idle animation's longer moves, and the
  * target of a switch runner (the view does not carry the switch cells), which
@@ -32,6 +34,7 @@
 #include <functional>
 #include <unordered_map>
 #include <vector>
+#include "bombmodel.h"
 #include "botview.h"
 #include "motor.h"
 
@@ -39,8 +42,13 @@ namespace bot {
 
 class FoeModel {
 public:
-    /* Starts from the view: the foes as they stand, at the view's clock. */
+    /* Starts from the view: the foes as they stand, at the view's clock, and
+     * the blasts of the bombs in it (bombmodel.h). */
     void load(const BotView &view);
+    /* A blast more, of a bomb the caller means to drop: a foe in it dies. */
+    void addBlast(const Blast &b) { blasts_.push_back(b); }
+    /* Foes killed by blasts since load(). */
+    int  killed() const { return killed_; }
 
     /* Ticks the foes until the clock reaches untilMs, the player standing on
      * playerAt(t) at each tick's clock t. */
@@ -93,6 +101,8 @@ private:
 
     const BotView    *view_ = nullptr;
     std::vector<Foe>  foes_;
+    std::vector<Blast> blasts_;
+    int    killed_ = 0;
     std::vector<unsigned char> occ_;   // the cells' occupants, as the sim moves them
     std::vector<unsigned char> gem_;   // a gem still on the cell (type 3 foes eat them)
     std::vector<unsigned char> spent_; // a sticky pad used up

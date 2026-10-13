@@ -5,8 +5,9 @@
  * along the plan and then while it stands at the plan's end for a margin.
  * At each tick: a catcher on the player's cell, or swapping cells with it,
  * is a catch; standing beside a thrower (within one cell, diagonals too) is
- * what makes it drop a bomb, and counts as a hit; so does being within two
- * cells of a live bomb before it has blown. */
+ * what makes it drop a bomb, and counts as a hit; so does standing in a
+ * bomb's blast (bombmodel.h), of a bomb in the view or one the caller means
+ * to drop. */
 #pragma once
 
 #include <vector>
@@ -20,11 +21,13 @@ struct Danger {
     bool        hit = false;
     double      t = 0;      // ms from now
     const char *why = "";   // "catcher", "thrower", "bomb"
+    int         killed = 0; // foes the blasts killed meanwhile
 };
 
 /* plan's times are ms from the view's clock; the player stays on the last
- * cell for lingerMs after the last entry. */
+ * cell for lingerMs after the last entry.  extra: blasts of bombs the player
+ * means to drop. */
 Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
-                 double lingerMs);
+                 double lingerMs, const std::vector<Blast> &extra = {});
 
 }  // namespace bot

@@ -92,6 +92,9 @@ unsigned Explore::act(const BotView &view)
     const NavModel nav(view);
     static const unsigned acts[4] = {ACT_FORWARD, ACT_BACK, ACT_RIGHT, ACT_LEFT};
     static const char *const names[4] = {"forward", "back", "right", "left"};
+    // Now and then, with bombs to drop, a bomb (for the bomb check); the
+    // move goes on as usual.
+    const unsigned bomb = (p.bombs > 0 && random() % 8 == 0) ? (unsigned)ACT_BOMB : 0u;
     unsigned pick = 0;
     Outcome o;
     for (int attempt = 0; attempt < 8; attempt++) {
@@ -112,9 +115,9 @@ unsigned Explore::act(const BotView &view)
     startMs_   = view.now;
     const unsigned a = acts[pick];
     if (!p.reversed)
-        return a;
-    return a == ACT_FORWARD ? ACT_BACK : a == ACT_BACK ? ACT_FORWARD :
-           a == ACT_RIGHT ? ACT_LEFT : ACT_RIGHT;
+        return a | bomb;
+    return (a == ACT_FORWARD ? ACT_BACK : a == ACT_BACK ? ACT_FORWARD :
+            a == ACT_RIGHT ? ACT_LEFT : ACT_RIGHT) | bomb;
 }
 
 }  // namespace bot

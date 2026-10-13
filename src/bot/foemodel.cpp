@@ -65,6 +65,10 @@ void FoeModel::load(const BotView &view)
         spent_[i] = view.cells[i].busy;
     }
     clock_ = view.now;
+    blasts_.clear();
+    killed_ = 0;
+    for (const BombView &b : view.bombs)
+        blasts_.push_back(predictBomb(view, b));
     player_ = {view.player.u, view.player.v};
     playerOcc_ = view.player.protection ? 3 : 4;
     foes_.clear();
@@ -609,6 +613,21 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
     }
     for (size_t i = 0; i < foes_.size(); i++)
         tickFoe(i);
+    // The blasts: a foe in one dies, and its cell is freed.
+    for (size_t i = 0; i < foes_.size();) {
+        const Foe &f = foes_[i];
+        bool dead = false;
+        for (const Blast &b : blasts_)
+            dead = dead || b.kills(f.u, f.v, f.h, clock_);
+        if (!dead) {
+            ++i;
+            continue;
+        }
+        if (occ(f.u, f.v) == f.kind)
+            setOcc(f.u, f.v, 0);
+        foes_.erase(foes_.begin() + (long)i);
+        killed_++;
+    }
 }
 
 void FoeModel::run(double untilMs, const std::function<Step(double)> &playerAt)

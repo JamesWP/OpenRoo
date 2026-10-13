@@ -75,9 +75,8 @@ struct FallingView {
     bool   respawns = true;
 };
 
-struct BombView {
-    int    u = 0, v = 0, h = 0;
-    double droppedAt = 0;   // clock ms
+struct BombView : Mover {
+    double droppedAt = 0;   // clock ms; it blows 2 s later
 };
 
 class BotView {

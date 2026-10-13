@@ -1,4 +1,5 @@
 add_library(bot OBJECT
+    bombmodel.cpp
     botrun.cpp
     botview.cpp
     collect.cpp
