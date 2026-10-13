@@ -15,7 +15,11 @@
  *
  * KAROO_BOT_TRACE=<file> writes the BotView (botview.h) of every tick the
  * policy acts on, one JSON object a line: the whole grid on the first line,
- * then the cells that changed. */
+ * then the cells that changed.
+ *
+ * KAROO_BOT_ACTIONS=<file> logs every move the player makes, rest to rest or
+ * step to step, with the keys that started it, where it went and how long it
+ * took, one JSON object a line (tools/bot/calibrate.py). */
 #pragma once
 
 #include "keysource.h"
