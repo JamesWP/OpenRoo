@@ -209,8 +209,8 @@ The tactical layer turns one GOAP action into a timed cell path.
 
 The motor turns a cell path into held keys under tank controls: it turns to
 face, holds forward, releases at the cell boundary, and knows that ice and
-slides keep moving without input.  It is the only part that knows about keys,
-and it is a `KeySource`.
+slides keep moving without input.  It is the only part that presses the
+controls; the run turns the presses into keys, as a `KeySource`.
 
 ### 3.7 Executive
 
@@ -224,9 +224,22 @@ reason.
 
 ### 3.8 Placement in the code
 
-- **`src/bot/`, a new group on the `[screens, sim]` line of `layers.yaml`.**
-  It needs `entities` (const World), `game` (the game state) and `inputapi`,
-  and nothing above it.
+- **One `src/` group per layer**, so `layers.yaml` and the layering check
+  hold the bot to this design:
+
+  | Group | Layer |
+  |---|---|
+  | `botapi` | the bot's vocabulary: `BotView`, the presses, the policy interface |
+  | `botmodel` | the model (3.2): nav, distances, route optimiser, predictors, danger check |
+  | `botmotor` | the motor (3.6) and the script executor |
+  | `botplan` | goal selection and GOAP (3.3, 3.4) |
+  | `bottactics` | the tactical layer (3.5) |
+  | `botexec` | the executive (3.7) |
+  | `bot` | the run: perception's capture from the game (3.1), the policies, the logs |
+
+  Only `bot` reads the game.  It sits on the `[screens, sim]` line and needs
+  `entities` (const World), `game` (the game state) and `inputapi`.  The
+  layers sit below it, and none of them links the game.
 - **`app`:** with `KAROO_BOT=<policy>` set, it adds the bot as the exclusive key
   source.
 - **`tools/bot/`:** the Python orchestration and analysis (section 4).
