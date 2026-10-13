@@ -46,6 +46,8 @@
 #include "scene.h"
 #include "textrenderer.h"
 #include "menuscreens.h"
+#include "keypress.h"
+#include "levelselect.h"
 
 
 /* The render state (renderer.h).  app owns it and passes it down; nothing
@@ -284,6 +286,21 @@ int Main_WinMain(const char *lpCmdLine)
     if (!Render_ConfigureRenderState(&s_renderer, game->world(), game->camera()->pose(), kGameDir))
         windev::quit(1);
     Menu_BuildMenuGeometry(&s_menuArt, s_renderer.device, kGameDir);
+
+    // KAROO_START_LEVEL: straight into a fresh game at that level, past the
+    // menus, as the bot harness runs one level at a time.
+    const std::string startLevel = sysdev::getEnv("KAROO_START_LEVEL");
+    if (!startLevel.empty()) {
+        const int level = LevelSelect_Find(game->session(), startLevel.c_str());
+        if (level < 0) {
+            g_logger.logMessage(4, "MAIN: KAROO_START_LEVEL=%s names no level", startLevel.c_str());
+            windev::quit(1);
+        } else {
+            g_logger.logMessage(1, "MAIN: starting at level %d (%s)", level,
+                                game->session()->levelNameTableEntry((unsigned char)level));
+            Flow_StartFreshGame(game, level);
+        }
+    }
     clock_start();
 
     // The intro is only shown to a person at a display: a headless or replayed

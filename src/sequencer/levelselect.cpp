@@ -6,6 +6,8 @@
 #include "levelthemes.h"
 #include "menutree.h"
 #include "logger.h"
+#include <stdlib.h>
+#include <strings.h>
 
 /* Builds the table from the session's levels, then the theme pages' children. */
 static void build_nodes(FrontEnd *frontEnd, Session *session)
@@ -64,4 +66,17 @@ int LevelSelect_Chosen(FrontEnd *frontEnd, Session *session)
     g_logger.write("levelselect: start level %d (%s)\n",
               level, session->levelNameTableEntry((unsigned char)level));
     return level;
+}
+
+int LevelSelect_Find(Session *session, const char *spec)
+{
+    const int count = session->levelCount();
+    char *end;
+    const long n = strtol(spec, &end, 10);
+    if (end != spec && *end == 0)
+        return n >= 0 && n < count ? (int)n : -1;
+    for (int i = 0; i < count; i++)
+        if (strcasecmp(session->levelNameTableEntry((unsigned char)i), spec) == 0)
+            return i;
+    return -1;
 }

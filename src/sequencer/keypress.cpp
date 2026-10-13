@@ -48,6 +48,15 @@ static void loaded_tail(Game *game)
     game->frontEnd()->menu()->rewind();
 }
 
+void Flow_StartFreshGame(Game *self, int level)
+{
+    Sim_ClearGameState(self);
+    self->session()->setLevelIndex((unsigned char)level);
+    Sim_OpenLevelFile(self, self->session()->levelIndex());
+    Sim_SetupLevelObjects(self);
+    loaded_tail(self);
+}
+
 /* Right is +1, Left -1, on the press. */
 static int arrow_step()
 {
@@ -255,12 +264,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
 
     // The level select's start node: as New Game, at the chosen level.
     if (self->frontEnd()->menu()->nodeRef() == LS_START) {
-        int level = LevelSelect_Chosen(self->frontEnd(), self->session());
-        Sim_ClearGameState(self);
-        self->session()->setLevelIndex((unsigned char)level);
-        Sim_OpenLevelFile(self, self->session()->levelIndex());
-        Sim_SetupLevelObjects(self);
-        loaded_tail(self);
+        Flow_StartFreshGame(self, LevelSelect_Chosen(self->frontEnd(), self->session()));
         input::swallow(input::KEY_RETURN);
     }
 
