@@ -36,10 +36,12 @@ namespace bot {
  * quickest routes from the player as it stands, and the foe model the
  * options are checked with. */
 struct Situation {
+    /* The player may be mid-move: its routes start when the move ends. */
     Situation(const BotView &v, FoeModel &m);
 
     const BotView &view;
     NavModel       nav;
+    double         busyMs;   // until the move under way ends
     Paths          from;
     FoeModel      &foes;
 };
@@ -54,10 +56,11 @@ struct Tally {
 /* The plan's first step, as the cheapest safe option: false if none. */
 bool realise(Situation &s, const Board &board, const Plan &plan, Option *out, Tally *tally);
 
-/* Part of the way to goal, as far along as is safe: false if no cell is. */
-bool approach(Situation &s, Step goal, Option *out, Tally *tally);
+/* Part of the way to goal, as far along as is safe, and not to a cell the
+ * quota and the exit cannot be had from: false if no cell is. */
+bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *tally);
 
-/* A nearby cell to stand on, safe: false if none. */
-bool evade(Situation &s, Option *out, Tally *tally);
+/* A nearby cell to stand on, safe and not a trap: false if none. */
+bool evade(Situation &s, const Board &board, Option *out, Tally *tally);
 
 }  // namespace bot

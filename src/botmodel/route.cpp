@@ -98,6 +98,52 @@ double best_insert(const std::vector<std::vector<double>> &dist, const std::vect
     return best;
 }
 
+/* A tour of k points, when one exists, for when the insertions find none
+ * (distances that are not symmetric: a drop cannot be climbed back).  Each
+ * next point is the nearest one from which the end, and as many more points
+ * as are still to visit, can be reached; with every point to visit, all of
+ * them must be. */
+std::vector<int> feasible_tour(const std::vector<std::vector<double>> &dist, int n, int k)
+{
+    const int m = n + 2;
+    std::vector<std::vector<char>> reach(m, std::vector<char>(m, 0));
+    for (int i = 0; i < m; i++)
+        for (int j = 0; j < m; j++)
+            reach[i][j] = i == j || dist[i][j] >= 0;
+    for (int w = 0; w < m; w++)
+        for (int i = 0; i < m; i++)
+            for (int j = 0; j < m; j++)
+                reach[i][j] = reach[i][j] || (reach[i][w] && reach[w][j]);
+    std::vector<int> tour;
+    std::vector<char> done(m, 0);
+    int at = 0;
+    for (int added = 0; added < k; added++) {
+        int best = -1;
+        for (int c = 1; c <= n; c++) {
+            if (done[c] || dist[at][c] < 0 || !reach[c][n + 1])
+                continue;
+            int ahead = 0;   // the points still to visit that c can reach, itself too
+            bool all = true;
+            for (int u = 1; u <= n; u++) {
+                if (done[u])
+                    continue;
+                ahead += reach[c][u];
+                all = all && reach[c][u];
+            }
+            if (k == n ? !all : ahead < k - added)
+                continue;
+            if (best < 0 || dist[at][c] < dist[at][best])
+                best = c;
+        }
+        if (best < 0)
+            return {};
+        done[best] = 1;
+        tour.push_back(best);
+        at = best;
+    }
+    return tour;
+}
+
 std::vector<int> heuristic(const std::vector<std::vector<double>> &dist, int n, int k, double *cost)
 {
     const int end = n + 1;
@@ -119,11 +165,21 @@ std::vector<int> heuristic(const std::vector<std::vector<double>> &dist, int n, 
             }
         }
         if (bestP < 0 || best == INF) {
-            *cost = -1;
-            return {};
+            tour.clear();
+            break;
         }
         tour.insert(tour.begin() + (long)bestAt, bestP);
         chosen[bestP] = 1;
+    }
+    if ((int)tour.size() < k || tour_cost(dist, tour, end) == INF) {
+        tour = feasible_tour(dist, n, k);
+        if (tour.empty()) {
+            *cost = -1;
+            return {};
+        }
+        std::fill(chosen.begin(), chosen.end(), 0);
+        for (int p : tour)
+            chosen[p] = 1;
     }
 
     double c = tour_cost(dist, tour, end);

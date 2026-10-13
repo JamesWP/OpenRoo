@@ -8,8 +8,10 @@ Reads each level's decisions.jsonl (an ambush decision logs predicted_kills:
 [ms, u, v] for each foe its bomb is to kill, ms on the game's clock) and the
 trace (the foes' cells each tick, and when one starts dying), and prints each
 ambush with the kills predicted beside those that happened in the blast's
-window: the bomb's drop to 2.6 s after.  A predicted kill is right when a foe
-dies within one cell and 200 ms of it.
+window: the bomb's drop to 2.6 s after.  A decision is carried out if a bomb
+was dropped to go off within 400 ms of its predicted kill (the bot often takes
+another decision first, and that is no miss); a predicted kill of a decision
+carried out is right when a foe dies within one cell and 200 ms of it.
 """
 import argparse
 import glob
@@ -52,12 +54,18 @@ def main():
         if args.level is not None and int(os.path.basename(d).split("-")[0]) != args.level:
             continue
         dead = deaths(trace)
+        bombs = []
+        if os.path.exists(os.path.join(d, "bombs.jsonl")):
+            with open(os.path.join(d, "bombs.jsonl")) as bf:
+                bombs = [json.loads(x)["dropped_at"] + 2000 for x in bf]
         for line in open(log):
             j = json.loads(line)
             if not j.get("predicted_kills"):
                 continue
             window = [x for x in dead if j["now"] <= x[0] <= j["now"] + 6000]
             for pms, pu, pv in j["predicted_kills"]:
+                if not any(abs(b - pms) <= 400 for b in bombs):
+                    continue   # another decision came first
                 hit = [x for x in window if abs(x[1] - pu) <= 1 and abs(x[2] - pv) <= 1
                        and abs(x[0] - pms) <= 200]
                 right += bool(hit)

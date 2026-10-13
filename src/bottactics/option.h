@@ -21,6 +21,7 @@ struct Option {
     double             lingerMs = 1000;  // how long the end must stay safe
     bool               checked = false;  // found safe already (an ambush is, to be one)
     int                kills = 0;
+    int                offCentre = 0;     // cells its kills are off its blast's centre, summed
     std::vector<FoeModel::Kill> killed;  // where and when it expects them (the clock's ms)
 };
 

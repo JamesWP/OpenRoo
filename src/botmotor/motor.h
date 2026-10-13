@@ -36,6 +36,11 @@ public:
 
     Status status() const { return status_; }
 
+    /* The facing the player has after walking path from rest facing f: a
+     * step along the facing or straight back keeps it, any other turns to
+     * face first. */
+    static int facingAfter(int f, const std::vector<Step> &path);
+
     /* The direction (1..4) from a to its neighbour b, or 0 if b is not one. */
     static int direction(int au, int av, int bu, int bv);
 

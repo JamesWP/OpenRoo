@@ -41,13 +41,15 @@ bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally)
  * the nearest others of the same kind, costed with the whole plan still to
  * do. */
 std::vector<std::pair<Step, double>> targets(const Situation &s, const Plan &plan, Step planned,
-                                             const std::vector<Step> &others)
+                                             const std::vector<Step> &others,
+                                             const Board *traps = nullptr)
 {
     auto timeTo = [&](Step c) { return s.from.cost(c.u, c.v); };
     std::vector<std::pair<Step, double>> out{{planned, plan.cost - timeTo(planned)}};
     std::vector<std::pair<double, Step>> near;
     for (const Step &c : others)
-        if ((c.u != planned.u || c.v != planned.v) && timeTo(c) >= 0)
+        if ((c.u != planned.u || c.v != planned.v) && timeTo(c) >= 0 &&
+            (!traps || traps->canFinishAfter(c)))
             near.push_back({timeTo(c), c});
     std::sort(near.begin(), near.end(),
               [](const auto &a, const auto &b) { return a.first < b.first; });
@@ -58,8 +60,28 @@ std::vector<std::pair<Step, double>> targets(const Situation &s, const Plan &pla
 
 }  // namespace
 
+namespace {
+
+/* How long the player is busy yet: the move under way, and the fall into
+ * the cell it is stepping to, if that is lower than the player is. */
+double busy(const BotView &v)
+{
+    const PlayerView &p = v.player;
+    if (!p.moving)
+        return 0;
+    double ms = std::max(0.0, p.animStart + p.animMs - v.now);
+    // Stairs (kinds 5 to 8) are no drop.
+    const Cell &to = v.cell(p.u, p.v);
+    if (!(to.kind >= 5 && to.kind <= 8))
+        ms += NavModel::fallMs(p.h - to.height);
+    return ms;
+}
+
+}  // namespace
+
 Situation::Situation(const BotView &v, FoeModel &m)
-    : view(v), nav(v), from(nav, v.player.u, v.player.v, v.player.facing), foes(m)
+    : view(v), nav(v), busyMs(busy(v)),
+      from(nav, v.player.u, v.player.v, v.player.facing, busyMs), foes(m)
 {
 }
 
@@ -72,7 +94,7 @@ bool realise(Situation &s, const Board &board, const Plan &plan, Option *out, Ta
     const Step end{first.end.u, first.end.v};
     switch (first.kind) {
     case COLLECT:
-        offerWalks(s, targets(s, plan, first.gems.front(), board.gems(0)), "gem", true, options);
+        offerWalks(s, targets(s, plan, first.gems.front(), board.gems(0), &board), "gem", true, options);
         break;
     case BOMBS:
     {
@@ -98,14 +120,14 @@ bool realise(Situation &s, const Board &board, const Plan &plan, Option *out, Ta
     return pick(s, options, out, tally);
 }
 
-bool approach(Situation &s, Step goal, Option *out, Tally *tally)
+bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *tally)
 {
     std::vector<Option> options;
     const double whole = s.from.cost(goal.u, goal.v);
     for (const Step &c : s.from.cellsTo(goal.u, goal.v)) {
         const double soFar = s.from.cost(c.u, c.v);
-        if (soFar <= 0 || (c.u == goal.u && c.v == goal.v))
-            continue;  // the start, a cell passed only by a forced move, or the goal itself
+        if (soFar <= 0 || (c.u == goal.u && c.v == goal.v) || !board.canFinishFrom(c))
+            continue;  // the start, a cell passed only by a forced move, the goal itself, a trap
         Option o;
         if (!walkTo(s, s.from, c, 0, 0, o))
             continue;
@@ -118,7 +140,7 @@ bool approach(Situation &s, Step goal, Option *out, Tally *tally)
     return pick(s, options, out, tally);
 }
 
-bool evade(Situation &s, Option *out, Tally *tally)
+bool evade(Situation &s, const Board &board, Option *out, Tally *tally)
 {
     const BotView &view = s.view;
     std::vector<std::pair<double, Step>> cells;
@@ -131,8 +153,9 @@ bool evade(Situation &s, Option *out, Tally *tally)
     std::sort(cells.begin(), cells.end(),
               [](const auto &a, const auto &b) { return a.first < b.first; });
     std::vector<std::pair<Step, double>> to;
-    for (size_t i = 0; i < cells.size() && i < EVADES; i++)
-        to.push_back({cells[i].second, 0});
+    for (size_t i = 0; i < cells.size() && to.size() < EVADES; i++)
+        if (board.canFinishFrom(cells[i].second))
+            to.push_back({cells[i].second, 0});
     std::vector<Option> options;
     offerWalks(s, to, "evade to", false, options);
     return pick(s, options, out, tally);

@@ -5,6 +5,7 @@
 #include "danger.h"
 #include "goap.h"
 #include "sysdev.h"
+#include "drops.h"
 #include "tactics.h"
 
 namespace bot {
@@ -14,6 +15,11 @@ namespace {
 /* Ticks between checks of the running script, and between looks for a way
  * out when nothing was safe. */
 const unsigned long CHECK_TICKS = 15;
+/* Ticks between looks for an ambush while something else is under way. */
+const unsigned long HUNT_TICKS = 30;
+/* A foe is a threat if the script, then standing at its end this long, meets
+ * it. */
+const double HUNT_LINGER_MS = 6000;
 
 /* The tallies the log keeps: one per action kind, then these. */
 enum { APPROACH = ACTION_KINDS, EVADE, TALLIES };
@@ -91,9 +97,9 @@ void Executive::decide(const BotView &view)
         // Nothing safe: keep safe, as near the way as may be.
         const Step goal = goal_of(board, first);
         if (!have && goal.u >= 0)
-            have = approach(s, goal, &chosen_, &tally[APPROACH]);
+            have = approach(s, board, goal, &chosen_, &tally[APPROACH]);
         if (!have)
-            have = evade(s, &chosen_, &tally[EVADE]);
+            have = evade(s, board, &chosen_, &tally[EVADE]);
         if (have) {
             chosenAt_ = view.now;
             note_     = chosen_.what;
@@ -151,7 +157,7 @@ void Executive::decide(const BotView &view)
     }
 }
 
-bool Executive::stillSafe(const BotView &view)
+bool Executive::stillSafe(const BotView &view, double lingerMs)
 {
     if (exec_.status() != Executor::Running || chosen_.schedule.empty())
         return true;
@@ -161,13 +167,47 @@ bool Executive::stillSafe(const BotView &view)
     for (const Timed &m : chosen_.schedule)
         if (m.t > gone)
             rest.push_back({m.t - gone, m.cell});
-    return !checkPlan(foes_, view, rest, chosen_.lingerMs, chosen_.blasts).hit;
+    return !checkPlan(foes_, view, rest, lingerMs, chosen_.blasts).hit;
+}
+
+bool Executive::hunt(const BotView &view)
+{
+    Situation s(view, foes_);
+    std::vector<Option> options;
+    offerAmbushes(s, options);
+    const Option *best = nullptr;
+    for (const Option &o : options)
+        if (o.checked && o.kills > 0 && o.offCentre == 0 && (!best || o.cost < best->cost))
+            best = &o;
+    if (!best)
+        return false;
+    chosen_   = *best;
+    chosenAt_ = view.now;
+    note_     = chosen_.what + " (hunted)";
+    exec_.start(chosen_.script);
+    if (log_.is_open()) {
+        std::string predicted;
+        for (const FoeModel::Kill &k : chosen_.killed)
+            predicted += (predicted.empty() ? "" : ",") + std::string("[") +
+                         std::to_string((long)k.ms) + "," + std::to_string(k.u) + "," +
+                         std::to_string(k.v) + "]";
+        printTo(log_, "{\"now\":%.1f,\"cell\":[%d,%d,%d],\"hunt\":1,\"predicted_kills\":[%s],"
+                "\"chose\":\"%s\"}\n", view.now, view.player.u, view.player.v, view.player.h,
+                predicted.c_str(), quoted(note_).c_str());
+    }
+    return true;
 }
 
 unsigned Executive::act(const BotView &view)
 {
     ++ticks_;
-    if (ticks_ % CHECK_TICKS == 0 && !view.foes.empty() && !stillSafe(view))
+    // Hunting is for a foe near enough to matter, and not while the bomb of
+    // an ambush is still to go off.
+    if (ticks_ % HUNT_TICKS == 0 && decided_ && !stuck_ && view.player.bombs > 0 &&
+        !view.foes.empty() && view.bombs.empty() && chosen_.blasts.empty() &&
+        !view.player.falling && !stillSafe(view, HUNT_LINGER_MS) && hunt(view))
+        return exec_.act(view);
+    if (ticks_ % CHECK_TICKS == 0 && !view.foes.empty() && !stillSafe(view, chosen_.lingerMs))
         exec_.halt();
     if (view.player.atRest()) {
         const bool idle = exec_.status() != Executor::Running;

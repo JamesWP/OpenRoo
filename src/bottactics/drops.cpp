@@ -1,6 +1,7 @@
 #include "drops.h"
 #include <algorithm>
 #include <stdio.h>
+#include <stdlib.h>
 #include "danger.h"
 #include "walk.h"
 
@@ -12,6 +13,14 @@ namespace {
  * RETREATS of them. */
 const double RETREAT_MS = 2500;
 const size_t RETREATS = 16;
+/* An ambush: the drop sites within this many ms of the player (the nearest
+ * SITES of them, and where it stands), the waits before the drop, the few
+ * cells to retreat to; a kill off the blast's centre costs this much a cell. */
+const double SITE_MS = 1500;
+const size_t SITES = 6;
+const double DELAYS[] = {0, 250, 500, 750, 1000, 1250, 1500, 2000};
+const size_t AMBUSH_RETREATS = 2;
+const double OFF_CENTRE_MS = 1200;
 /* A wait after a drop ends this long after the blast's zone clears: the
  * foe model's chase assumed the player stays put until then. */
 const double CLEAR_MARGIN_MS = 200;
@@ -20,7 +29,7 @@ const double CLEAR_MARGIN_MS = 200;
  * now: the option so far (its script and schedule up to the drop) with a
  * retreat added and checked.  wait: stay until the blast has cleared. */
 void retreats(Situation &s, const Option &before, Step site, int facing, double dropIn,
-              bool wait, int needKills, std::vector<Option> &out)
+              bool wait, int needKills, size_t most, std::vector<Option> &out)
 {
     const BotView &view = s.view;
     const Blast blast = predictBomb(view, site.u, site.v, view.cell(site.u, site.v).height,
@@ -37,7 +46,7 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
         }
     std::sort(cells.begin(), cells.end(),
               [](const auto &a, const auto &b) { return a.first < b.first; });
-    for (size_t i = 0; i < cells.size() && i < RETREATS; i++) {
+    for (size_t i = 0; i < cells.size() && i < most; i++) {
         const Step at = cells[i].second;
         Option o = before;
         o.script.push_back({ScriptStep::Drop, 0, {}, 0});
@@ -58,6 +67,13 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
         o.checked = true;
         o.kills = d.killed;
         o.killed = d.kills;
+        // A foe the blast takes at its edge was on its way past: the bomb
+        // is better placed where the foe is at the centre when it goes.
+        for (const FoeModel::Kill &k : d.kills) {
+            const int off = std::max(abs(k.u - blast.cell.u), abs(k.v - blast.cell.v));
+            o.offCentre += off;
+            o.cost += OFF_CENTRE_MS * off;
+        }
         o.what = before.what;
         char buf[96];
         snprintf(buf, sizeof(buf), ", away to (%d,%d)", at.u, at.v);
@@ -74,27 +90,60 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
     const PlayerView &p = view.player;
     if (p.bombs <= 0 || view.foes.empty())
         return;
-    // Turn to each facing (none, right, left, about), drop, walk away.
-    static const int TURNS[4][2] = {{0, 0}, {1, 0}, {-1, 0}, {1, 1}};
-    for (const auto &turn : TURNS) {
-        const int nturns = (turn[0] != 0) + (turn[1] != 0);
-        int facing = p.facing;
-        for (int i = 0; i < nturns; i++)
-            facing = NavModel::turned(facing, turn[i]);
-        const double dropIn = std::max(nturns * p.stepMs, p.bombReadyAt - view.now) + view.tickMs;
-        Option before;
-        char buf[64];
-        snprintf(buf, sizeof(buf), "ambush: bomb facing %d", facing);
-        before.what = buf;
-        if (nturns > 0)
-            before.script.push_back({ScriptStep::Turn, facing, {}, 0});
-        before.schedule.push_back({0, {p.u, p.v}});
-        const size_t first = out.size();
-        retreats(s, before, {p.u, p.v}, facing, dropIn, true, 1, out);
-        for (size_t i = first; i < out.size(); i++) {
-            char more[48];
-            snprintf(more, sizeof(more), ", %d foe%s", out[i].kills, out[i].kills == 1 ? "" : "s");
-            out[i].what += more;
+    // Where to drop it: here, or a cell or two off, so that the foe on its
+    // way arrives at the centre as it goes.
+    std::vector<std::pair<double, Step>> sites{{0, {p.u, p.v}}};
+    std::vector<std::pair<double, Step>> near;
+    for (int v = 0; v < view.extentV; v++)
+        for (int u = 0; u < view.extentU; u++) {
+            const double c = s.from.cost(u, v);
+            if (c > 0 && c <= SITE_MS)
+                near.push_back({c, {u, v}});
+        }
+    std::sort(near.begin(), near.end(),
+              [](const auto &a, const auto &b) { return a.first < b.first; });
+    for (size_t i = 0; i < near.size() && i < SITES; i++)
+        sites.push_back(near[i]);
+    for (const auto &[walkMs, site] : sites) {
+        Option going;
+        int arrives = p.facing;
+        if (walkMs > 0) {
+            // The drops on the way are landed after the steps.
+            const double falls = s.nav.fallsAlong(s.from.cellsTo(site.u, site.v));
+            if (!walkTo(s, s.from, site, 0, s.busyMs + falls, going))
+                continue;
+            arrives = Motor::facingAfter(p.facing, s.from.cellsTo(site.u, site.v));
+        } else {
+            going.schedule.push_back({0, site});
+            going.cost = s.busyMs;
+        }
+        for (int facing = 1; facing <= 4; facing++) {   // the four directions
+            const int turns = (facing - arrives + 4) % 4;
+            const double turnMs = (turns == 3 ? 1 : turns) * p.stepMs;
+            for (const double delay : DELAYS) {
+                const double there = going.cost;   // when it is there, the move under way included
+                const double ready = std::max(there + turnMs + delay, p.bombReadyAt - view.now);
+                const double dropIn = ready + view.tickMs;
+                Option before = going;
+                char buf[96];
+                snprintf(buf, sizeof(buf), "ambush: bomb at (%d,%d) facing %d after %.0f ms", site.u,
+                         site.v, facing, delay);
+                before.what = buf;
+                // Always: the arrival facing is a prediction, and a turn to the
+                // facing it already has is no turn.
+                before.script.push_back({ScriptStep::Turn, facing, {}, 0});
+                if (ready > there + turnMs + 1)
+                    before.script.push_back({ScriptStep::Wait, 0, {}, view.now + ready});
+                before.schedule.push_back({dropIn, site});
+                const size_t first = out.size();
+                retreats(s, before, site, facing, dropIn, true, 1, AMBUSH_RETREATS, out);
+                for (size_t i = first; i < out.size(); i++) {
+                    char more[48];
+                    snprintf(more, sizeof(more), ", %d foe%s", out[i].kills,
+                             out[i].kills == 1 ? "" : "s");
+                    out[i].what += more;
+                }
+            }
         }
     }
 }
@@ -110,14 +159,13 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
     // There first, then the turn.
     if (!walkTo(s, s.from, {site.u, site.v}, 0, 0, before))
         return;
-    const int arrives = s.from.facingAt(site.u, site.v);
+    const int arrives = Motor::facingAfter(p.facing, s.from.cellsTo(site.u, site.v));
     const int turns = (site.facing - arrives + 4) % 4;
     const double turnMs = (turns == 3 ? 1 : turns) * p.stepMs;
-    if (turns > 0)
-        before.script.push_back({ScriptStep::Turn, site.facing, {}, 0});
+    before.script.push_back({ScriptStep::Turn, site.facing, {}, 0});
     const double dropIn = std::max(before.cost + turnMs, p.bombReadyAt - view.now) + view.tickMs;
     before.schedule.push_back({dropIn, {site.u, site.v}});
-    retreats(s, before, {site.u, site.v}, site.facing, dropIn, true, 0, out);
+    retreats(s, before, {site.u, site.v}, site.facing, dropIn, true, 0, RETREATS, out);
 }
 
 }  // namespace bot
