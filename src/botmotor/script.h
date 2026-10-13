@@ -40,7 +40,7 @@ public:
     /* The path of the Walk under way, and how far along it the motor is. */
     const Script &script() const { return script_; }
 
-    /* The actions to hold this tick (policy.h). */
+    /* The presses to hold this tick (policy.h). */
     unsigned act(const BotView &view);
 
 private:

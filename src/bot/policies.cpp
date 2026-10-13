@@ -1,4 +1,4 @@
-#include "policy.h"
+#include "policies.h"
 #include <stdio.h>
 #include "planner.h"
 #include "explore.h"
@@ -26,9 +26,9 @@ public:
         }
         if (view.now - since_ > 1000.0) {
             since_ = view.now;
-            return ACT_RIGHT;
+            return PRESS_RIGHT;
         }
-        return ACT_FORWARD;
+        return PRESS_FORWARD;
     }
 
 private:

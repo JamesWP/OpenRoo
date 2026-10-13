@@ -62,8 +62,8 @@ unsigned Executor::act(const BotView &view)
                 status_ = Failed;
                 return 0;
             }
-            const unsigned a = (s.facing - p.facing + 4) % 4 == 3 ? ACT_LEFT : ACT_RIGHT;
-            return p.reversed ? (a == ACT_LEFT ? ACT_RIGHT : ACT_LEFT) : a;
+            const unsigned a = (s.facing - p.facing + 4) % 4 == 3 ? PRESS_LEFT : PRESS_RIGHT;
+            return p.reversed ? (a == PRESS_LEFT ? PRESS_RIGHT : PRESS_LEFT) : a;
         }
         case ScriptStep::Drop:
             if (!stepStarted_) {
@@ -78,7 +78,7 @@ unsigned Executor::act(const BotView &view)
                 status_ = Failed;
                 return 0;
             }
-            return p.atRest() && view.now >= p.bombReadyAt ? (unsigned)ACT_BOMB : 0u;
+            return p.atRest() && view.now >= p.bombReadyAt ? (unsigned)PRESS_BOMB : 0u;
         case ScriptStep::Walk:
             if (!stepStarted_) {
                 stepStarted_ = true;

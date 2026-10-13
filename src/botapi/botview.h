@@ -1,7 +1,9 @@
 /* BotView: what the bot knows, a copyable snapshot of the level in play taken
- * once a tick from a const Game.  Everything the bot decides is decided from
- * a BotView, never from the game itself, so the planner can be tested on
- * views made by hand and re-run on views read back from a trace.
+ * once a tick from a const Game (capture.h).  Everything the bot decides is
+ * decided from a BotView, never from the game itself, so the planner can be
+ * tested on views made by hand and re-run on views read back from a trace.
+ * This group (botapi) knows nothing of the game: the run (src/bot) builds the
+ * views and presses the keys.
  *
  * The bot has perfect knowledge (docs/BOT_DESIGN.md): it sees a bombable
  * block's hidden contents too.
@@ -14,9 +16,12 @@
 #include <string>
 #include <vector>
 
-class Game;
-
 namespace bot {
+
+/* A cell's place on the grid. */
+struct Step {
+    int u, v;
+};
 
 struct Cell {
     unsigned char height   = 0;  // 0: no tile
@@ -82,9 +87,6 @@ struct BombView : Mover {
 
 class BotView {
 public:
-    /* The view of the game as it is now. */
-    static BotView capture(const Game &game);
-
     int  extentU = 0, extentV = 0;
     std::vector<Cell> cells;  // extentU * extentV, u fastest
 
