@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "bombmodel.h"
+#include "foemodel.h"
 #include "nav.h"
 #include "script.h"
 
@@ -20,6 +21,7 @@ struct Option {
     double             lingerMs = 1000;  // how long the end must stay safe
     bool               checked = false;  // found safe already (an ambush is, to be one)
     int                kills = 0;
+    std::vector<FoeModel::Kill> killed;  // where and when it expects them (the clock's ms)
 };
 
 }  // namespace bot

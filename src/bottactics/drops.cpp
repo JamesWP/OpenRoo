@@ -12,7 +12,8 @@ namespace {
  * RETREATS of them. */
 const double RETREAT_MS = 2500;
 const size_t RETREATS = 16;
-/* A blast's wait ends this long after its zone clears. */
+/* A wait after a drop ends this long after the blast's zone clears: the
+ * foe model's chase assumed the player stays put until then. */
 const double CLEAR_MARGIN_MS = 200;
 
 /* The ways to walk clear after a drop at site facing facing, dropIn ms from
@@ -56,6 +57,7 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
             continue;
         o.checked = true;
         o.kills = d.killed;
+        o.killed = d.kills;
         o.what = before.what;
         char buf[96];
         snprintf(buf, sizeof(buf), ", away to (%d,%d)", at.u, at.v);
@@ -88,7 +90,7 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
             before.script.push_back({ScriptStep::Turn, facing, {}, 0});
         before.schedule.push_back({0, {p.u, p.v}});
         const size_t first = out.size();
-        retreats(s, before, {p.u, p.v}, facing, dropIn, false, 1, out);
+        retreats(s, before, {p.u, p.v}, facing, dropIn, true, 1, out);
         for (size_t i = first; i < out.size(); i++) {
             char more[48];
             snprintf(more, sizeof(more), ", %d foe%s", out[i].kills, out[i].kills == 1 ? "" : "s");

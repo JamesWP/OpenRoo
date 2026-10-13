@@ -141,6 +141,12 @@ void Executive::decide(const BotView &view)
                               std::to_string(p.cell.u) + "," + std::to_string(p.cell.v) + "]";
         printTo(log_, ",\"cut_off\":[%s],\"cut_off_pickups\":[%s],\"exit_cut\":%d", cut.c_str(),
                 cutPickups.c_str(), board.time(board.everything(), board.start(), board.exit()) < 0);
+        std::string predicted;
+        for (const FoeModel::Kill &k : chosen_.killed)
+            predicted += (predicted.empty() ? "" : ",") + std::string("[") +
+                         std::to_string((long)k.ms) + "," + std::to_string(k.u) + "," +
+                         std::to_string(k.v) + "]";
+        printTo(log_, ",\"predicted_kills\":[%s]", predicted.c_str());
         printTo(log_, ",\"chose\":\"%s\"}\n", quoted(note_).c_str());
     }
 }

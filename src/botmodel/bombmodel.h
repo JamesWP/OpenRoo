@@ -4,7 +4,8 @@
  * dropped a bomb takes one step along its facing (200 ms), so it lies in front
  * of whoever dropped it, unless a wall, an unspent bombable block or a climb
  * of one without stairs stops it; down a drop it falls.  Occupants do not
- * stop it.  Once it has moved it is held and moves no more.  At 2 s, for 0.4 s
+ * stop it.  Once it has moved it is held and moves no more, except that ice
+ * carries it on the way it went.  At 2 s, for 0.4 s
  * it blasts the 3x3 block around its cell: anything there within one height
  * of the bomb dies, foe or player, and a bombable block at its exact height is
  * spent.  botrun.h's bomb log measures how often the model is right

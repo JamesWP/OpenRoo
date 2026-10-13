@@ -46,8 +46,18 @@ public:
     void load(const BotView &view);
     /* A blast more, of a bomb the caller means to drop: a foe in it dies. */
     void addBlast(const Blast &b) { blasts_.push_back(b); }
-    /* Foes killed by blasts since load(). */
-    int  killed() const { return killed_; }
+    /* A foe a blast killed: when (the model's clock), where it stood, and
+     * whether only a blast the caller added did it (not a bomb in the view,
+     * which would have anyway). */
+    struct Kill {
+        double ms;
+        int    u, v;
+        bool   byAdded;
+    };
+    /* The foes killed by blasts since load(). */
+    const std::vector<Kill> &kills() const { return kills_; }
+    /* How many of them only the caller's blasts killed. */
+    int  killed() const;
 
     /* Ticks the foes until the clock reaches untilMs, the player standing on
      * playerAt(t) at each tick's clock t. */
@@ -101,7 +111,8 @@ private:
     const BotView    *view_ = nullptr;
     std::vector<Foe>  foes_;
     std::vector<Blast> blasts_;
-    int    killed_ = 0;
+    size_t viewBlasts_ = 0;   // the blasts that came from the view
+    std::vector<Kill> kills_;
     std::vector<unsigned char> occ_;   // the cells' occupants, as the sim moves them
     std::vector<unsigned char> gem_;   // a gem still on the cell (type 3 foes eat them)
     std::vector<unsigned char> spent_; // a sticky pad used up
