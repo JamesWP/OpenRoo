@@ -7,7 +7,8 @@
  * is a catch; standing beside a thrower (within one cell, diagonals too) is
  * what makes it drop a bomb, and counts as a hit; so does standing in a
  * bomb's blast (bombmodel.h), of a bomb in the view or one the caller means
- * to drop. */
+ * to drop; and so does still standing on a falling tile when it falls, 1.5 s
+ * after it was stepped on (or armed already). */
 #pragma once
 
 #include <vector>
@@ -20,7 +21,7 @@ namespace bot {
 struct Danger {
     bool        hit = false;
     double      t = 0;      // ms from now
-    const char *why = "";   // "catcher", "thrower", "bomb"
+    const char *why = "";   // "catcher", "thrower", "bomb", "falling tile"
     int         killed = 0; // foes the blasts killed meanwhile
 };
 
