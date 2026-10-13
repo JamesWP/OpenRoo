@@ -1,5 +1,6 @@
 #include "foemodel.h"
 #include <math.h>
+#include "foetype.h"
 #include "tile.h"
 
 namespace bot {
@@ -75,7 +76,7 @@ void FoeModel::load(const BotView &view)
         f.facing = fv.facing;
         f.kind = fv.kind;
         f.type = fv.type;
-        f.mode = fv.type > 0x64 ? 0 : fv.type;
+        f.mode = fv.type > FOE_FACING_BASE ? FOE_CHASER : fv.type;
         f.homeU = fv.homeU;
         f.homeV = fv.homeV;
         f.stepMs = fv.kind == THROWER ? THROWER_STEP_MS : CATCHER_STEP_MS;
@@ -106,9 +107,9 @@ bool FoeModel::passable(int u, int v, int mode) const
         return false;
     if (c.kind == TILE_BOMBABLE && !c.busy)
         return false;
-    if (mode == 7 && (occ(u, v) == 4 || occ(u, v) == 3))
+    if (mode == FOE_GEM_RUNNER && (occ(u, v) == 4 || occ(u, v) == 3))
         return false;
-    if (mode == 2 && c.kind == TILE_SWITCH && !c.busy && occ(u, v) != 4)
+    if (mode == FOE_SWITCH_RUNNER && c.kind == TILE_SWITCH && !c.busy && occ(u, v) != 4)
         return false;
     return true;
 }
@@ -367,15 +368,15 @@ void FoeModel::target(Foe &f, int *tu, int *tv, int *speed)
     *tv = player_.v;
     *speed = 0x32;
     switch (f.type) {
-    case 1:  // an escort: to the exit
+    case FOE_EXIT_GUARD:
         *tu = view_->exitU;
         *tv = view_->exitV;
         *speed = 400;
         break;
-    case 2:  // heads for a switch; not modelled: the player, as when none is near
+    case FOE_SWITCH_RUNNER:  // its switch is not modelled: the player, as when none is near
         *speed = 100;
         break;
-    case 3: {  // a gem within reach if a way to it is found, else the player
+    case FOE_GEM_THIEF: {  // a gem within reach if a way to it is found, else the player
         int gu, gv, nu, nv;
         *speed = 100;
         if (f.moveDir == 0 && nearestGem(f.u, f.v, 5, &gu, &gv) &&
@@ -386,7 +387,7 @@ void FoeModel::target(Foe &f, int *tu, int *tv, int *speed)
         }
         break;
     }
-    case 5:  // follows the last catcher in the list
+    case FOE_FOLLOWER:
         for (const Foe &o : foes_)
             if (o.kind == CATCHER) {
                 *tu = o.u;
@@ -394,7 +395,7 @@ void FoeModel::target(Foe &f, int *tu, int *tv, int *speed)
                 *speed = 0x96;
             }
         break;
-    case 7: {  // the free cell farthest from the player; held if there is none
+    case FOE_GEM_RUNNER: {  // held if there is no free cell
         int fu, fv;
         if (farthestFree(player_.u, player_.v, &fu, &fv)) {
             *tu = fu;
@@ -511,7 +512,7 @@ void FoeModel::tickFoe(size_t i)
         return;
     }
     // A gem-taker at rest on a gem takes it.
-    if (f.type == 3 && view_->inside(f.u, f.v) && f.h == cell(f.u, f.v).height)
+    if (f.type == FOE_GEM_THIEF && view_->inside(f.u, f.v) && f.h == cell(f.u, f.v).height)
         gem_[(size_t)f.v * view_->extentU + f.u] = 0;
     int move = chaseMove(f, tu, tv, speed);
     if (f.held)

@@ -17,8 +17,8 @@
  *
  * What it leaves out: the lifts, platforms, bridges and falling tiles do not
  * move, foe bombs are not dropped, the idle animation's longer moves, and the
- * target of foe type 2 (a switch: the view does not carry the switch cells),
- * which is taken to be the player.  botrun.h's foe log measures how often it is right against the game
+ * target of a switch runner (the view does not carry the switch cells), which
+ * is taken to be the player (foetype.h).  botrun.h's foe log measures how often it is right against the game
  * (tools/bot/foecheck.py). */
 #pragma once
 
@@ -48,7 +48,7 @@ public:
 private:
     struct Foe {
         int    u, v, h, facing;
-        int    kind, type, mode;   // mode: the search's, the type (0 above 100)
+        int    kind, type, mode;   // the search's mode: the type, a chaser's for a facing type
         int    homeU, homeV;
         int    moveDir = 0;        // 1..4 a step, 11..14 a turn, 0 at rest
         int    fromU = 0, fromV = 0;

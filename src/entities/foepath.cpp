@@ -13,6 +13,7 @@
 #include <new>
 #include "logger.h"
 #include "foepath.h"
+#include "foetype.h"
 #include "dbg.h"
 #include <algorithm>
 #include "tile.h"
@@ -60,13 +61,13 @@ int FoePath::passable(int u, int v)
 
     const unsigned char mode = mode_;
 
-    if (mode == 7) {
+    if (mode == FOE_GEM_RUNNER) {
         const unsigned char occupant = t->occupant();
         if (occupant == 4 || occupant == 3)
             return 0;
     }
 
-    if (mode == 2 && kind == TILE_SWITCH &&
+    if (mode == FOE_SWITCH_RUNNER && kind == TILE_SWITCH &&
         t->busy() == 0 && t->occupant() != 4)
         return 0;
 
