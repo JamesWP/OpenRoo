@@ -12,7 +12,8 @@ bool Cell::operator==(const Cell &o) const
     return height == o.height && kind == o.kind && contents == o.contents &&
            hidden == o.hidden && param == o.param && occupant == o.occupant &&
            slideDir == o.slideDir && teleU == o.teleU && teleV == o.teleV &&
-           blastHeight == o.blastHeight && jumpTop == o.jumpTop && busy == o.busy;
+           blastHeight == o.blastHeight && jumpTop == o.jumpTop && busy == o.busy &&
+           track == o.track && liftBottom == o.liftBottom && liftTop == o.liftTop;
 }
 
 namespace {
@@ -26,6 +27,8 @@ void fill_mover(Mover &m, const E &e)
     m.facing = e.facing();
     m.moving = e.moveDir() != 0;
     m.falling = e.falling() != 0 || e.gliding() != 0;
+    m.turning = e.moveDir() > 10;
+    m.moveDir = e.moveDir();
     m.animStart = e.animStart();
     m.animMs = e.animDuration();
 }
@@ -75,11 +78,15 @@ BotView BotView::capture(const Game &game)
             c.teleV       = t->teleportV();
             c.blastHeight = t->blastHeight();
             c.jumpTop     = t->field1f1();
+            c.track       = t->platformTrack() != 0;
+            c.liftBottom  = (unsigned char)t->liftBottom();
+            c.liftTop     = (unsigned char)t->liftTop();
             c.busy        = t->busy() != 0;
         }
 
     view.level         = s->levelNameTableEntry(s->levelIndex());
     view.now           = w->now();
+    view.tickMs        = w->tickStep()->value;
     view.timeLimitS    = w->timeLimit();
     view.timeElapsedMs = w->timeElapsed();
     view.gemsRequired  = w->gemsRequired();
@@ -98,6 +105,7 @@ BotView BotView::capture(const Game &game)
     view.player.protection = pl->protectionActive() != 0;
     view.player.stepMs     = pl->stepDuration();
     view.player.moveState  = pl->moveState();
+    view.player.freezeUntil = pl->freezeActive() ? pl->freezeStart() + 5000.0 : 0;  // K_FREEZE_MS
 
     for (const Foe &f : w->foes()) {
         FoeView fv;
@@ -106,6 +114,8 @@ BotView BotView::capture(const Game &game)
         fv.type  = f.type();
         fv.held  = f.held() != 0;
         fv.dying = f.dyingStarted() != 0;
+        fv.homeU = f.homeU();
+        fv.homeV = f.homeV();
         view.foes.push_back(fv);
     }
     for (const FallingTile &ft : w->fallings()) {

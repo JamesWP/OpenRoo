@@ -1,0 +1,572 @@
+#include "foemodel.h"
+#include <math.h>
+#include "tile.h"
+
+namespace bot {
+
+namespace {
+
+const double CATCHER_STEP_MS = 500.0;  // foe.cpp's spawn
+const double THROWER_STEP_MS = 700.0;
+const double STEP_GRACE_MS   = 20.0;   // a step this soon after the last starts where it ended
+const int    CATCHER = 2, THROWER = 3;
+const double SLIDE_MS        = 150.0;  // movableentity.cpp
+const double STICKY_MS       = 3000.0;
+
+int opposite(int d) { return d > 2 ? d - 2 : d + 2; }
+int right(int d)    { return d % 4 + 1; }
+int left(int d)     { return (d + 2) % 4 + 1; }
+bool stairs(int k)  { return k > 4 && k < 9; }
+
+/* The stairs-orientation code of a step (foepath.cpp's
+ * Sim_GetCellStepDirectionCode): its own enumeration, not a facing. */
+int step_code(int uf, int vf, int ut, int vt)
+{
+    if (vf < vt) return 1;
+    if (uf < ut) return 4;
+    if (vf > vt) return 3;
+    return ut < uf ? 2 : 0;
+}
+
+/* d is the facing or its reverse: a real step rather than a turn. */
+bool forward_or_back(int d, int facing) { return d == facing || d == opposite(facing); }
+
+}  // namespace
+
+const Cell &FoeModel::cell(int u, int v) const
+{
+    return view_->inside(u, v) ? view_->cell(u, v) : wall_;
+}
+
+int FoeModel::occ(int u, int v) const
+{
+    return view_->inside(u, v) ? occ_[(size_t)v * view_->extentU + u] : 0;
+}
+
+void FoeModel::setOcc(int u, int v, int o)
+{
+    if (view_->inside(u, v))
+        occ_[(size_t)v * view_->extentU + u] = (unsigned char)o;
+}
+
+void FoeModel::load(const BotView &view)
+{
+    view_ = &view;
+    wall_ = Cell();
+    wall_.kind   = TILE_IMPASSABLE;
+    wall_.height = 0xff;
+    occ_.resize(view.cells.size());
+    gem_.resize(view.cells.size());
+    spent_.assign(view.cells.size(), 0);
+    for (size_t i = 0; i < view.cells.size(); i++) {
+        occ_[i] = view.cells[i].occupant;
+        gem_[i] = view.cells[i].contents == CONTENTS_CRYSTAL;
+        spent_[i] = view.cells[i].busy;
+    }
+    clock_ = view.now;
+    player_ = {view.player.u, view.player.v};
+    playerOcc_ = view.player.protection ? 3 : 4;
+    foes_.clear();
+    for (const FoeView &fv : view.foes) {
+        Foe f;
+        f.u = fv.u;
+        f.v = fv.v;
+        f.h = fv.h;
+        f.facing = fv.facing;
+        f.kind = fv.kind;
+        f.type = fv.type;
+        f.mode = fv.type > 0x64 ? 0 : fv.type;
+        f.homeU = fv.homeU;
+        f.homeV = fv.homeV;
+        f.stepMs = fv.kind == THROWER ? THROWER_STEP_MS : CATCHER_STEP_MS;
+        if (fv.moving) {
+            f.moveDir   = fv.moveDir;
+            f.animStart = fv.animStart;
+            f.animMs    = fv.animMs;
+            if (fv.moveDir >= 1 && fv.moveDir <= 4) {
+                f.fromU = fv.u - DIR_DU[fv.moveDir];
+                f.fromV = fv.v - DIR_DV[fv.moveDir];
+            }
+        } else {
+            f.stepEnd = fv.animStart + fv.animMs;
+        }
+        foes_.push_back(f);
+    }
+    const size_t keys = (size_t)view.extentU * view.extentV;
+    openAt_.assign(keys, -1);
+    closedAt_.assign(keys, -1);
+}
+
+bool FoeModel::passable(int u, int v, int mode) const
+{
+    const Cell &c = cell(u, v);
+    if (c.kind == TILE_EMPTY && !c.track)
+        return false;
+    if (c.kind == TILE_IMPASSABLE)
+        return false;
+    if (c.kind == TILE_BOMBABLE && !c.busy)
+        return false;
+    if (mode == 7 && (occ(u, v) == 4 || occ(u, v) == 3))
+        return false;
+    if (mode == 2 && c.kind == TILE_SWITCH && !c.busy && occ(u, v) != 4)
+        return false;
+    return true;
+}
+
+/* foepath.cpp's Sim_CheckCellStepIsLegal: a sequence of assignments to one
+ * verdict, in its order. */
+bool FoeModel::stepLegal(int uf, int vf, int ut, int vt) const
+{
+    const Cell &to = cell(ut, vt), &from = cell(uf, vf);
+    bool flag = false;
+    const int code = step_code(uf, vf, ut, vt);
+    const bool alongTo = stairs(to.kind) && (to.kind - 4 == code || opposite(to.kind - 4) == code);
+    if (alongTo)
+        flag = true;
+    if (from.kind != TILE_SLIDE && from.height == to.height)
+        flag = true;
+    else if (to.kind == TILE_LIFT && (to.liftBottom == from.height || to.liftTop == from.height))
+        flag = true;
+    else if (from.kind == TILE_LIFT && (from.liftBottom == to.height || from.liftTop == to.height))
+        flag = true;
+    if (stairs(to.kind)) {
+        if (alongTo) {
+            const bool ok = !(stairs(from.kind) && code != from.kind);
+            if (ok && (int)to.height == (int)from.height - 1)
+                flag = true;
+        }
+    } else {
+        const int d = (int)to.height - (int)from.height;
+        if (from.kind != TILE_SLIDE && d < 3 && d > 0)
+            flag = !from.track;
+    }
+    if (from.kind == TILE_SLIDE && from.height == to.height) {
+        const int dir = from.slideDir;
+        flag = (vf < vt && dir == 1) || (uf < ut && dir == 4) ||
+               (vf > vt && dir == 3) || (uf > ut && dir == 2);
+    }
+    if (to.kind == TILE_SLIDE)
+        flag = true;
+    if (from.kind == TILE_JUMP_PAD) {
+        const int lvl = from.jumpTop;
+        flag = (uf > ut && lvl == cell(uf + 1, vf).height) ||
+               (uf < ut && lvl == cell(uf - 1, vf).height) ||
+               (vf > vt && lvl == cell(uf, vf + 1).height) ||
+               (vf < vt && lvl == cell(uf, vf - 1).height);
+    }
+    if (to.kind == TILE_JUMP_PAD)
+        flag = true;
+    if (from.kind == TILE_STICKY && occ(uf, vf) == 0)
+        return occ(ut + (uf - ut) * 2, vt + (vf - vt) * 2) == 4;
+    return flag;
+}
+
+bool FoeModel::firstStep(const Foe &f, int tu, int tv, int cap, int *nu, int *nv)
+{
+    const int stride = view_->extentU;
+    auto key = [stride](int u, int v) { return stride * v + u; };
+    if (!passable(tu, tv, f.mode) || !passable(f.u, f.v, f.mode) || key(f.u, f.v) == key(tu, tv))
+        return false;
+
+    for (int k : keys_) {
+        openAt_[(size_t)k]   = -1;
+        closedAt_[(size_t)k] = -1;
+    }
+    keys_.clear();
+    nodes_.clear();
+    auto mark = [&](std::vector<int> &at, int k, int n) {
+        if (k < 0 || (size_t)k >= at.size())
+            return;
+        at[(size_t)k] = n;
+        keys_.push_back(k);
+    };
+    auto find = [&](std::vector<int> &at, int k) {
+        return (k < 0 || (size_t)k >= at.size()) ? -1 : at[(size_t)k];
+    };
+    auto make = [&](int u, int v, int g, int h, int parent) {
+        Node n;
+        n.u = u;
+        n.v = v;
+        n.g = g;
+        n.h = h;
+        n.f = g + h;
+        n.key = key(u, v);
+        n.parent = parent;
+        n.next = -1;
+        for (int &c : n.children)
+            c = -1;
+        nodes_.push_back(n);
+        return (int)nodes_.size() - 1;
+    };
+    auto recordChild = [&](int p, int c) {
+        // The game's ninth child overwrites the node's list link; a node is
+        // relaxed into from at most its four neighbours, so it never has one.
+        for (int &slot : nodes_[(size_t)p].children)
+            if (slot < 0) {
+                slot = c;
+                return;
+            }
+    };
+    int open = -1;  // the open list's first node, ascending f
+    auto insertOpen = [&](int n) {
+        mark(openAt_, nodes_[(size_t)n].key, n);
+        const int fn = nodes_[(size_t)n].f;
+        int prev = -1, cur = open;
+        while (cur >= 0 && nodes_[(size_t)cur].f < fn) {  // a tie goes before
+            prev = cur;
+            cur = nodes_[(size_t)cur].next;
+        }
+        nodes_[(size_t)n].next = cur;
+        if (prev < 0)
+            open = n;
+        else
+            nodes_[(size_t)prev].next = n;
+    };
+    std::vector<int> pending;
+    auto propagate = [&](int p) {
+        auto relaxChildren = [&](int q) {
+            for (int c : nodes_[(size_t)q].children) {
+                if (c < 0)
+                    break;
+                const int gnew = nodes_[(size_t)q].g + 1;
+                Node &n = nodes_[(size_t)c];
+                if (gnew < n.g) {
+                    n.g = gnew;
+                    n.f = n.h + gnew;
+                    n.parent = q;
+                    pending.push_back(c);
+                }
+            }
+        };
+        relaxChildren(p);
+        while (!pending.empty()) {
+            const int q = pending.back();
+            pending.pop_back();
+            relaxChildren(q);
+        }
+    };
+    const int goalU = f.u, goalV = f.v, goalKey = key(f.u, f.v);
+    auto relax = [&](int p, int u, int v) {
+        const int gnew = nodes_[(size_t)p].g + 1;
+        const int k = key(u, v);
+        int n = find(openAt_, k);
+        if (n >= 0) {
+            recordChild(p, n);
+            Node &m = nodes_[(size_t)n];
+            if (gnew < m.g) {
+                m.g = gnew;
+                m.f = m.h + gnew;
+                m.parent = p;
+            }
+            return;
+        }
+        n = find(closedAt_, k);
+        if (n >= 0) {
+            recordChild(p, n);
+            Node &m = nodes_[(size_t)n];
+            if (gnew < m.g) {
+                m.parent = p;
+                m.f = m.h + gnew;
+                m.g = gnew;
+                propagate(n);
+            }
+            return;
+        }
+        const int du = u - goalU, dv = v - goalV;
+        n = make(u, v, gnew, du * du + dv * dv, p);
+        insertOpen(n);
+        recordChild(p, n);
+    };
+
+    const int du = tu - f.u, dv = tv - f.v;
+    insertOpen(make(tu, tv, 0, du * du + dv * dv, -1));
+    static const int SU[4] = {0, 1, 0, -1}, SV[4] = {-1, 0, 1, 0};
+    int iter = 0, node = -1;
+    if (cap > 0) {
+        for (;;) {
+            node = open;
+            if (node < 0)
+                return false;
+            open = nodes_[(size_t)node].next;
+            mark(openAt_, nodes_[(size_t)node].key, -1);
+            mark(closedAt_, nodes_[(size_t)node].key, node);
+            if (nodes_[(size_t)node].key == goalKey)
+                break;
+            const int u = nodes_[(size_t)node].u, v = nodes_[(size_t)node].v;
+            for (int i = 0; i < 4; i++) {
+                const int u2 = u + SU[i], v2 = v + SV[i];
+                if (!passable(u2, v2, f.mode) || !stepLegal(u, v, u2, v2))
+                    continue;
+                relax(node, u2, v2);
+            }
+            if (++iter >= cap)
+                break;
+        }
+    }
+    if (iter >= cap || node < 0)
+        return false;
+    const int next = nodes_[(size_t)node].parent;
+    if (next < 0)
+        return false;
+    *nu = nodes_[(size_t)next].u;
+    *nv = nodes_[(size_t)next].v;
+    return true;
+}
+
+bool FoeModel::nearestGem(int u0, int v0, int radius, int *pu, int *pv) const
+{
+    // Half-open: radius cells one way, radius - 1 the other; row and column
+    // 0 never chosen; the distance truncated to a whole cell.
+    int best = radius, bu = 0, bv = 0;
+    for (int v = v0 - radius; v < v0 + radius; v++)
+        for (int u = u0 - radius; u < u0 + radius; u++) {
+            if (!(v > 0 && u > 0 && v < view_->extentV && u < view_->extentU))
+                continue;
+            if (!gem_[(size_t)v * view_->extentU + u])
+                continue;
+            const int d = (int)(unsigned char)(long long)sqrt((double)((u0 - u) * (u0 - u) +
+                                                                         (v0 - v) * (v0 - v)));
+            if (d != 0 && d < best) {
+                best = d;
+                bu = u;
+                bv = v;
+            }
+        }
+    if (best >= radius)
+        return false;
+    *pu = bu;
+    *pv = bv;
+    return true;
+}
+
+bool FoeModel::farthestFree(int u0, int v0, int *pu, int *pv) const
+{
+    double best = 0;
+    int bu = u0, bv = v0;
+    for (int v = 0; v < view_->extentV; v++)
+        for (int u = 0; u < view_->extentU; u++) {
+            if (cell(u, v).kind == TILE_EMPTY || occ(u, v) != 0)
+                continue;
+            const double d = sqrt((double)((v - v0) * (v - v0) + (u - u0) * (u - u0)));
+            if (best < d) {
+                best = d;
+                bu = u;
+                bv = v;
+            }
+        }
+    if (!(best > 0))
+        return false;
+    *pu = bu;
+    *pv = bv;
+    return true;
+}
+
+void FoeModel::target(Foe &f, int *tu, int *tv, int *speed)
+{
+    *tu = player_.u;
+    *tv = player_.v;
+    *speed = 0x32;
+    switch (f.type) {
+    case 1:  // an escort: to the exit
+        *tu = view_->exitU;
+        *tv = view_->exitV;
+        *speed = 400;
+        break;
+    case 2:  // heads for a switch; not modelled: the player, as when none is near
+        *speed = 100;
+        break;
+    case 3: {  // a gem within reach if a way to it is found, else the player
+        int gu, gv, nu, nv;
+        *speed = 100;
+        if (f.moveDir == 0 && nearestGem(f.u, f.v, 5, &gu, &gv) &&
+            firstStep(f, gu, gv, 0x96, &nu, &nv)) {
+            *tu = gu;
+            *tv = gv;
+            *speed = 0x96;
+        }
+        break;
+    }
+    case 5:  // follows the last catcher in the list
+        for (const Foe &o : foes_)
+            if (o.kind == CATCHER) {
+                *tu = o.u;
+                *tv = o.v;
+                *speed = 0x96;
+            }
+        break;
+    case 7: {  // the free cell farthest from the player; held if there is none
+        int fu, fv;
+        if (farthestFree(player_.u, player_.v, &fu, &fv)) {
+            *tu = fu;
+            *tv = fv;
+            *speed = 0x96;
+        } else {
+            f.held = 1;
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+int FoeModel::chaseMove(const Foe &f, int tu, int tv, int speed)
+{
+    int nu, nv;
+    if (!firstStep(f, tu, tv, speed, &nu, &nv))
+        return 0;
+    const int du = nu - f.u, dv = nv - f.v;
+    int pm = 0;
+    if (dv == -1) pm = 1;
+    if (du == 1)  pm = 2;
+    if (dv == 1)  pm = 3;
+    if (du == -1) pm = 4;
+    // The turn table (foes turn as the player does).  As in the game, a
+    // reverse ends as a turn to the right.
+    const int facing = f.facing;
+    if (pm == opposite(facing))
+        pm = opposite(facing);
+    if (pm == right(facing))
+        pm = right(facing) + 10;
+    if (pm == left(facing))
+        pm = left(facing) + 10;
+    if (pm == opposite(facing))
+        pm = right(facing) + 10;
+    if (pm != facing && pm != opposite(facing))
+        return pm;  // a turn
+    const Cell &step = cell(nu, nv), &here = cell(f.u, f.v);
+    if (step.kind == TILE_EMPTY || here.kind == TILE_JUMP_PAD)
+        return 0;
+    if (step.kind == TILE_LIFT && step.height != f.h)
+        return 0;
+    if (here.kind == TILE_LIFT && step.height != f.h)
+        return 0;
+    if (step.kind == TILE_PLATFORM_TRACK)
+        return 0;  // a parked platform's timing is not modelled: taken as not there
+    return pm;
+}
+
+bool FoeModel::startMove(Foe &f, int move, bool sliding)
+{
+    const bool real = move >= 1 && move <= 4;
+    const int nu = real ? f.u + DIR_DU[move] : f.u;
+    const int nv = real ? f.v + DIR_DV[move] : f.v;
+    const Cell &here = cell(f.u, f.v), &dest = cell(nu, nv);
+    if (real && forward_or_back(move, f.facing)) {
+        const int o = occ(nu, nv);
+        if (o != 0 && (f.kind == THROWER || (f.kind == CATCHER && o != 4)))
+            return false;
+    }
+    if (here.kind == TILE_LIFT && real && f.h == dest.height - 1)
+        return false;
+    if (dest.kind == TILE_IMPASSABLE || (dest.kind == TILE_BOMBABLE && !dest.busy))
+        return false;
+    if (stairs(here.kind)) {
+        const int axis = here.kind - 4;
+        if (!(move == axis || move == opposite(axis)) && dest.height == here.height + 1)
+            return false;
+    }
+    if (!stairs(dest.kind) && !stairs(here.kind) && dest.height == here.height + 1)
+        return false;
+    if (real && occ(nu, nv) != 0 && occ(nu, nv) != 4)
+        return false;
+    if (real && !view_->inside(nu, nv))
+        return false;
+
+    const double since = clock_ - f.stepEnd;
+    f.animStart = (since <= 0 || since >= STEP_GRACE_MS) ? clock_ : f.stepEnd;
+    f.animMs    = sliding ? SLIDE_MS : f.stepMs;
+    f.moveDir   = move;
+    if (real) {
+        f.lastMoveDir = move;
+        f.fromU = f.u;
+        f.fromV = f.v;
+        f.u = nu;
+        f.v = nv;
+        f.h = dest.height;
+        setOcc(nu, nv, f.kind);
+    }
+    return true;
+}
+
+void FoeModel::tickFoe(size_t i)
+{
+    Foe &f = foes_[i];
+    f.held = clock_ < view_->player.freezeUntil ? 1 : 0;
+    int tu, tv, speed;
+    target(f, &tu, &tv, &speed);
+
+    if (f.moveDir != 0) {
+        // The move under way ends this tick if its time is up.
+        if (f.animMs <= clock_ - f.animStart) {
+            f.stepEnd = f.animStart + f.animMs;
+            if (f.moveDir >= 1 && f.moveDir <= 4) {
+                if (occ(f.fromU, f.fromV) == f.kind)
+                    setOcc(f.fromU, f.fromV, 0);
+            } else {
+                f.facing = f.moveDir - 10;
+            }
+            f.moveDir = 0;
+        }
+        return;
+    }
+    // A gem-taker at rest on a gem takes it.
+    if (f.type == 3 && view_->inside(f.u, f.v) && f.h == cell(f.u, f.v).height)
+        gem_[(size_t)f.v * view_->extentU + f.u] = 0;
+    int move = chaseMove(f, tu, tv, speed);
+    if (f.held)
+        move = 0;
+    // The terrain under a foe at rest overrides its choice.
+    bool sliding = false;
+    if (view_->inside(f.u, f.v) && f.h == cell(f.u, f.v).height) {
+        const Cell &here = cell(f.u, f.v);
+        const size_t at = (size_t)f.v * view_->extentU + f.u;
+        if (here.kind == TILE_STICKY && !spent_[at]) {
+            if (f.stuckSince == 0)
+                f.stuckSince = clock_;
+            if (clock_ - f.stuckSince <= STICKY_MS) {
+                move = 0;
+            } else {
+                f.stuckSince = 0;
+                spent_[at] = 1;
+            }
+        } else {
+            f.stuckSince = 0;
+        }
+        if (here.kind == TILE_SLIDE) {
+            f.facing = here.slideDir;
+            move = here.slideDir;
+            sliding = true;
+        } else if (here.kind == TILE_ICE && f.lastMoveDir != 0) {
+            move = f.lastMoveDir;
+        }
+    }
+    if (move != 0)
+        startMove(f, move, sliding);
+}
+
+void FoeModel::runTick(const std::function<Step(double)> &playerAt)
+{
+    if (view_ == nullptr || view_->tickMs <= 0)
+        return;
+    clock_ += view_->tickMs;
+    const Step at = playerAt(clock_);
+    if (at.u != player_.u || at.v != player_.v) {
+        if (occ(player_.u, player_.v) == playerOcc_)
+            setOcc(player_.u, player_.v, 0);
+        setOcc(at.u, at.v, playerOcc_);
+        player_ = at;
+    }
+    for (size_t i = 0; i < foes_.size(); i++)
+        tickFoe(i);
+}
+
+void FoeModel::run(double untilMs, const std::function<Step(double)> &playerAt)
+{
+    if (view_ == nullptr || view_->tickMs <= 0)
+        return;
+    while (clock_ + view_->tickMs <= untilMs + 1e-6)
+        runTick(playerAt);
+}
+
+}  // namespace bot

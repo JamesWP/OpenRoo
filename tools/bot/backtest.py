@@ -149,6 +149,7 @@ def play(job):
         "KAROO_RECORD": os.path.join(out, "bot.rec"),
         "KAROO_BOT_ACTIONS": os.path.join(out, "actions.jsonl"),
         "KAROO_BOT_MODEL_LOG": os.path.join(out, "model.jsonl"),
+        "KAROO_BOT_FOE_LOG": os.path.join(out, "foes.jsonl"),
         "KAROO_RECORD_LABEL": name,
         "KAROO_AUTO_EXIT_SECS": str(timeout),
     })

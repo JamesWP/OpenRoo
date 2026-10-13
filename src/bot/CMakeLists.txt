@@ -3,6 +3,7 @@ add_library(bot OBJECT
     botview.cpp
     collect.cpp
     explore.cpp
+    foemodel.cpp
     motor.cpp
     nav.cpp
     policy.cpp
