@@ -15,6 +15,13 @@
  * see each other and the player through the cells' occupants,
  * as in the game.
  *
+ * The search reads only the terrain (except a gem runner's and a switch
+ * runner's, which read the occupants, and any search past a sticky pad), so
+ * its answer, the first step from a cell towards a target, is the same every
+ * time while the terrain is: the model keeps it, across loads, until the
+ * terrain changes.  That is what makes a foe's walked path cheap to work out
+ * again for each plan the bot weighs.
+ *
  * What it leaves out: the lifts, platforms, bridges and falling tiles do not
  * move, foe bombs are not dropped, the idle animation's longer moves, and the
  * target of a switch runner (the view does not carry the switch cells), which
@@ -23,6 +30,7 @@
 #pragma once
 
 #include <functional>
+#include <unordered_map>
 #include <vector>
 #include "botview.h"
 #include "motor.h"
@@ -66,6 +74,7 @@ private:
     /* The search (foepath.cpp's FoePath::find): the first cell of the way
      * from the foe to the target, or false. */
     bool firstStep(const Foe &f, int tu, int tv, int cap, int *nu, int *nv);
+    bool search(const Foe &f, int tu, int tv, int cap, int *nu, int *nv);
     bool passable(int u, int v, int mode) const;
     bool stepLegal(int uf, int vf, int ut, int vt) const;
 
@@ -101,6 +110,13 @@ private:
     std::vector<Node> nodes_;
     std::vector<int>  openAt_, closedAt_;   // the node a key has, or -1
     std::vector<int>  keys_;                // keys set this search
+
+    // The first steps found, by (from, target, mode, cap), while the terrain
+    // hashes to terrain_; -1 for none.  sticky_: the level has sticky pads,
+    // whose rule reads occupants, so nothing is kept.
+    std::unordered_map<unsigned long long, int> firstSteps_;
+    unsigned long long terrain_ = 0;
+    bool sticky_ = false;
 };
 
 }  // namespace bot

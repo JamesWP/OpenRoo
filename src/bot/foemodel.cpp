@@ -94,8 +94,34 @@ void FoeModel::load(const BotView &view)
         foes_.push_back(f);
     }
     const size_t keys = (size_t)view.extentU * view.extentV;
-    openAt_.assign(keys, -1);
-    closedAt_.assign(keys, -1);
+    if (openAt_.size() != keys) {
+        openAt_.assign(keys, -1);
+        closedAt_.assign(keys, -1);
+        keys_.clear();
+    }
+
+    // What the search reads of the terrain, hashed: the kept first steps
+    // stand while it holds.
+    unsigned long long h = 1469598103934665603ull;
+    auto mix = [&h](unsigned x) { h = (h ^ x) * 1099511628211ull; };
+    mix((unsigned)view.extentU);
+    mix((unsigned)view.extentV);
+    sticky_ = false;
+    for (const Cell &c : view.cells) {
+        mix(c.height);
+        mix(c.kind);
+        mix(c.busy);
+        mix(c.track);
+        mix(c.liftBottom);
+        mix(c.liftTop);
+        mix(c.slideDir);
+        mix(c.jumpTop);
+        sticky_ = sticky_ || c.kind == TILE_STICKY;
+    }
+    if (h != terrain_) {
+        firstSteps_.clear();
+        terrain_ = h;
+    }
 }
 
 bool FoeModel::passable(int u, int v, int mode) const
@@ -163,6 +189,29 @@ bool FoeModel::stepLegal(int uf, int vf, int ut, int vt) const
 }
 
 bool FoeModel::firstStep(const Foe &f, int tu, int tv, int cap, int *nu, int *nv)
+{
+    const int stride = view_->extentU;
+    const bool keep = !sticky_ && f.mode != FOE_GEM_RUNNER && f.mode != FOE_SWITCH_RUNNER;
+    const unsigned long long memo =
+        ((((unsigned long long)(f.v * stride + f.u) * 65536 + (unsigned)(tv * stride + tu)) * 256 +
+          (unsigned)(f.mode & 0xff)) * 1024) + (unsigned)(cap & 0x3ff);
+    if (keep) {
+        const auto it = firstSteps_.find(memo);
+        if (it != firstSteps_.end()) {
+            if (it->second < 0)
+                return false;
+            *nu = it->second % stride;
+            *nv = it->second / stride;
+            return true;
+        }
+    }
+    const bool found = search(f, tu, tv, cap, nu, nv);
+    if (keep)
+        firstSteps_[memo] = found ? *nv * stride + *nu : -1;
+    return found;
+}
+
+bool FoeModel::search(const Foe &f, int tu, int tv, int cap, int *nu, int *nv)
 {
     const int stride = view_->extentU;
     auto key = [stride](int u, int v) { return stride * v + u; };
