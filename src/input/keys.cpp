@@ -9,7 +9,8 @@ static std::vector<KeyObserver *> g_observers;
 
 static unsigned char g_now[KEY_COUNT];   // 0x80 while held
 static unsigned char g_prev[KEY_COUNT];
-static bool          g_swallowed[KEY_COUNT];
+static bool          g_waiting[KEY_COUNT];  // pressed, and not yet read
+static bool          g_read[KEY_COUNT];     // read this tick
 static bool          g_started;
 
 void addSource(KeySource *source)       { if (source) g_sources.push_back(source); }
@@ -40,7 +41,12 @@ void update()
         memcpy(g_prev, g_now, sizeof(g_now));
         g_started = true;
     }
-    memset(g_swallowed, 0, sizeof(g_swallowed));
+    // A press waits while the key is held, until a tick has read it.
+    for (int k = 0; k < KEY_COUNT; k++) {
+        const bool held = g_now[k] & 0x80, was = g_prev[k] & 0x80;
+        g_waiting[k] = held && (!was || (g_waiting[k] && !g_read[k]));
+        g_read[k] = false;
+    }
 }
 
 static bool valid(int key) { return key > 0 && key < KEY_COUNT; }
@@ -52,12 +58,15 @@ bool down(int key)
 
 bool pressed(int key)
 {
-    return down(key) && !(g_prev[key] & 0x80) && !g_swallowed[key];
+    if (!valid(key) || !g_waiting[key])
+        return false;
+    g_read[key] = true;
+    return true;
 }
 
 void swallow(int key)
 {
-    if (valid(key)) g_swallowed[key] = true;
+    if (valid(key)) g_waiting[key] = false;
 }
 
 int firstDown()
