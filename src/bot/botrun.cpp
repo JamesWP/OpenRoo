@@ -13,34 +13,10 @@
 #include "policy.h"
 #include "progctrl.h"
 #include "sysdev.h"
-#include "tile.h"
 
 namespace bot {
 
 namespace {
-
-/* Why the player died, from its move state (movableentity.cpp, foe.cpp,
- * playtick.cpp, player.cpp):
- *   foe       1, a foe touched it;
- *   drop      2, it landed from too high, or went below the floor;
- *   timeout   3, the time limit ran out;
- *   bomb      4 on a cell with a live blast, a bomb's blast caught it;
- *   void      4 on a cell with no live blast: it fell off the map.  The blast
- *             check matches any height within one of the cell's blast height,
- *             which is 0 while no blast is live, so a player falling through
- *             empty space is caught at height 1 with the bomb's state;
- *   harakiri  6, the player's own harakiri key. */
-const char *death_cause(const Player &pl)
-{
-    switch (pl.moveState()) {
-    case 1:  return "foe";
-    case 2:  return "drop";
-    case 3:  return "timeout";
-    case 4:  return pl.curTile()->blastHeight() != 0 ? "bomb" : "void";
-    case 6:  return "harakiri";
-    default: return "unknown";
-    }
-}
 
 double env_seconds(const char *name, double fallback)
 {
@@ -112,6 +88,15 @@ public:
         frames_++;
         const World  *w  = game_->world();
         const Player *pl = w->player();
+        // A level can end in the tick it is completed, leaving play for the
+        // tally at once.
+        if (playing_ && game_->state() == GameState::LevelComplete) {
+            done_ = true;
+            policy_->end(BotView::capture(*game_));
+            trace_.close();
+            write("complete", "");
+            return true;
+        }
         if (game_->state() != GameState::Playing)
             return false;
         if (!playing_) {
@@ -133,7 +118,7 @@ public:
             outcome = "timeout";
         } else if (pl->moveState() != 0) {
             outcome = "death";
-            cause   = death_cause(*pl);
+            cause   = BotView::capture(*game_).deathCause();
         } else if (w->now() - lastGemMs_ > stuckMs_) {
             outcome = "stuck";
         } else if (w->now() - startMs_ > capMs_) {
@@ -142,6 +127,7 @@ public:
         if (!outcome)
             return false;
         done_ = true;
+        policy_->end(BotView::capture(*game_));
         trace_.close();
         write(outcome, cause);
         return true;
@@ -216,6 +202,13 @@ private:
         printTo(fp, "{\n");
         printTo(fp, "  \"outcome\": \"%s\",\n", outcome);
         printTo(fp, "  \"death_cause\": \"%s\",\n", cause);
+        std::string note;
+        for (char c : policy_->note()) {
+            if (c == '"' || c == '\\')
+                note += '\\';
+            note += c;
+        }
+        printTo(fp, "  \"note\": \"%s\",\n", note.c_str());
         printTo(fp, "  \"level_index\": %u,\n", (unsigned)s->levelIndex());
         printTo(fp, "  \"level\": \"%s\",\n", name.c_str());
         printTo(fp, "  \"frames\": %lu,\n", (unsigned long)(frames_ - startFrame_));

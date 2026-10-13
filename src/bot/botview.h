@@ -27,6 +27,7 @@ struct Cell {
     unsigned char slideDir = 0;
     unsigned char teleU = 0, teleV = 0;  // a teleporter's destination
     unsigned char blastHeight = 0;       // nonzero while a blast is live here
+    unsigned char jumpTop = 0;           // a jump pad's launch height
     bool          busy = false;          // a falling tile that has fallen
 
     bool operator==(const Cell &o) const;
@@ -37,6 +38,9 @@ struct Mover {
     int u = 0, v = 0, h = 0;
     int facing = 0;
     bool moving = false;   // a step or turn is under way
+    bool falling = false;  // in the air: falling, gliding or launched
+    /* At rest: neither stepping, turning nor in the air. */
+    bool atRest() const { return !moving && !falling; }
     double animStart = 0;  // clock ms the current or last move began
     double animMs = 0;     // how long that move takes
 };
@@ -91,6 +95,10 @@ public:
     std::vector<FoeView>     foes;
     std::vector<FallingView> fallings;
     std::vector<BombView>    bombs;
+
+    /* Why the player died (it has: player.moveState != 0): foe, drop,
+     * timeout, bomb, void, harakiri.  See botview.cpp. */
+    const char *deathCause() const;
 
     /* JSON, one line.  The whole grid when prev is null; otherwise only the
      * cells that differ from prev's, as "changed". */

@@ -93,7 +93,6 @@ public:
     // Nonzero while dead or respawning. Foe::checkPlayerContact sets it to 1
     // on contact with a foe.
     unsigned char *moveStateRef()              { return &moveState_; }
-    int   falling() const                     { return falling_; }
     void  setFalling(int n)                   { falling_ = n; }
     void  setField126(double d)                { field_126 = d; }
     void  setField12e(int n)                   { field_12e = n; }

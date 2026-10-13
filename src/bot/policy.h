@@ -25,6 +25,11 @@ public:
     virtual ~Policy() {}
     /* The actions to hold this tick, while the level is being played. */
     virtual unsigned act(const BotView &view) = 0;
+    /* The run is over (botrun.h): the view it ended on. */
+    virtual void end(const BotView &) {}
+    /* What the policy last made of the level, for the run's summary: why it
+     * stopped, say.  Empty when it has nothing to say. */
+    virtual std::string note() const { return {}; }
 };
 
 /* The policy KAROO_BOT names, or null if it names none:
