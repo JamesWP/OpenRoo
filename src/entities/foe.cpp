@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "foe.h"
+#include "foetype.h"
 #include "dbg.h"
 #include "tilenames.h"
 #include "levelmap.h"
@@ -198,9 +199,9 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
             s_type_seen[type] = 1;
             g_logger.write("foe: type %u (0x%02x)%s first seen in '%s'\n",
                       (unsigned)type, (unsigned)type,
-                      type > 0x64 ? " >0x64" : "", lvl);
+                      type > FOE_FACING_BASE ? " >0x64" : "", lvl);
         }
-        if (type > 0x64 && s_hi_level[type] != lh) {
+        if (type > FOE_FACING_BASE && s_hi_level[type] != lh) {
             s_hi_level[type] = lh;
             g_logger.write("foe: HIGHTYPE %u (0x%02x) in '%s'\n",
                       (unsigned)type, (unsigned)type, lvl);
@@ -234,8 +235,8 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
     p->deathCounter_ = ctx.deaths;
     p->type_     = type;
 
-    if (type > 0x64) {
-        p->facing_ = (unsigned char)(type - 0x64);  // facing_ carries the type - 0x64
+    if (type > FOE_FACING_BASE) {
+        p->facing_ = (unsigned char)(type - FOE_FACING_BASE);  // facing_ carries the type - 0x64
         type = 0;  // type is zeroed so the pathfinder mode below never sees it.
         if (s_diag_spawn && !s_logged_hightype) {
             s_logged_hightype = 1;
@@ -243,12 +244,12 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
         }
     } else {
         p->facing_ = 1;
-        if (type == 0x0b) {
+        if (type == FOE_GEM_CARRIER) {
             p->dropContents_ = 1;
             ++*ctx.crystalsInLevel;
-        } else if (type == 0x4d) {
+        } else if (type == FOE_LIFE_CARRIER) {
             p->dropContents_ = 7;
-        } else if (type == 0x07) {
+        } else if (type == FOE_GEM_RUNNER) {
             p->dropContents_ = 1;
         }
     }
@@ -386,7 +387,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
     }
 
     pickedUp_ = 0;
-    if ((signed char)type_ == 3 && moveDir_ == 0) {
+    if (type_ == FOE_GEM_THIEF && moveDir_ == 0) {
         Tile *t = tile(cellU_, cellV_);
 
         if ((int)heightCell_ == (int)t->height() &&
@@ -440,7 +441,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
         return;
     }
 
-    if ((signed char)type_ == 2) {
+    if (type_ == FOE_SWITCH_RUNNER) {
         Tile *t = tile(cellU_, cellV_);
 
         if ((signed char)t->objectMarker() == TILE_SWITCH) {
@@ -477,7 +478,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
         }
     }
 
-    if ((signed char)type_ == 4) {
+    if (type_ == FOE_RETURNER) {
         if (s_diag_step && !s_logged_repost) {
             s_logged_repost = 1;
             g_logger.write("foe: first return-to-post -- target=(%u,%u)\n",
@@ -502,7 +503,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
     pathfinder_->setCap(speed);
     pathfinder_->setTarget(targetU, targetV);
 
-    if ((signed char)type_ == 2)
+    if (type_ == FOE_SWITCH_RUNNER)
         pathfinder_->setMode((field_d3 != 0) ? 0 : 2);
 
     if (moveDir_ != 0)
@@ -615,12 +616,12 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
 
     held_ = hold;
     chaseSpeed_ = 0x32;
-    if (type_ == 1) {
+    if (type_ == FOE_EXIT_GUARD) {
         tu = escortU;
         tv = escortV;
         chaseSpeed_ = 400;
     }
-    if (type_ == 2) {
+    if (type_ == FOE_SWITCH_RUNNER) {
         tu = (unsigned char)cellU_;
         tv = (unsigned char)cellV_;
         if (Sim_FindNearestListedObjectTile(ctx.switches, *ctx.switchMax, ctx.map, &tu, &tv, 7) != 0) {
@@ -637,7 +638,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
             chaseSpeed_ = 100;
         }
     }
-    if (type_ == 3) {
+    if (type_ == FOE_GEM_THIEF) {
         tu = (unsigned char)cellU_;
         tv = (unsigned char)cellV_;
         if (Sim_FindNearestFlaggedTileInRadius(ctx.map, &tu, &tv, 5) == 0) {
@@ -654,7 +655,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
             }
         }
     }
-    if (type_ == 5) {
+    if (type_ == FOE_FOLLOWER) {
         int found = 0;
         held_ = 0;
         for (const Foe &other : foes) {
@@ -668,7 +669,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
         if (!found)
             held_ = 1;
     }
-    if (type_ == 7) {
+    if (type_ == FOE_GEM_RUNNER) {
         held_ = 0;
         if (Sim_FindFarthestOccupiedTile(map(), &tu, &tv) != 0)
             chaseSpeed_ = 0x96;
@@ -682,7 +683,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
 void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs,
                    const BombSounds &sounds)
 {
-    if (bombDropRequest_ == 0 || type_ == 2)
+    if (bombDropRequest_ == 0 || type_ == FOE_SWITCH_RUNNER)
         return;
     int spawn = 1, offset = 0;
     if (moveDir_ != 0) {

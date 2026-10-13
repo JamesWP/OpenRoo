@@ -11,6 +11,7 @@
  */
 
 #include "playtick.h"
+#include "foetype.h"
 #include "logger.h"
 #include "game.h"
 #include "prof.h"
@@ -64,7 +65,7 @@ void Play_SpawnTimedFoes(Game *self)
         if (self->world()->map()->tile(u, v)->occupant() == 0 && self->world()->foes().size() < E->maxFoes) {
             Foe &foe = Foe::spawn(self->world()->entityContext(), self->world()->foes(), (unsigned char)u,
                                   (unsigned char)v, E->height, 2,
-                                  (unsigned char)(E->field_0b + 100));
+                                  (unsigned char)(E->field_0b + FOE_FACING_BASE));
             if (((int)self->session()->foesKilled() + 1) % 15 == 0)
                 foe.setDropContents(7);
             else
