@@ -49,9 +49,14 @@ layers:
   # reads the game: botapi is the bot's vocabulary, the view it decides from
   # and the presses it makes; the run (bot, below) captures the views from
   # the game and presses the keys.  Then the model (the nav, the routes and
-  # the predictors) and the motor, peers.
+  # the predictors) and the motor, peers; the planner, which plans over the
+  # model; the tactical layer, which turns a plan's step into a script the
+  # motor runs; and the executive, the policy that drives them.
   - [botapi]
   - [botmodel, botmotor]
+  - [botplan]
+  - [bottactics]
+  - [botexec]
 
   # Drawing the game's screens and running it (sim); then the sequencer, the
   # order things happen in -- the frame's draw passes, and what each game state
