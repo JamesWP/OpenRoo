@@ -68,6 +68,8 @@ public:
     // Paraglider charges, and whether it is open.
     unsigned char glides() const               { return glides_; }
     int   gliding() const                      { return gliding_; }
+    // Nonzero while it falls.
+    int   falling() const                      { return falling_; }
     // The direction being moved in, 0 while still.  1 = -V, 2 = +U, 3 = +V, 4
     // = -U, matching updateMovement()'s stepU_/stepV_ table.
     int   moveDir() const                      { return moveDir_; }

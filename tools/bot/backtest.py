@@ -135,6 +135,7 @@ def play(job):
         "KAROO_STATE_DUMP": os.path.join(out, "state.json"),
         "KAROO_RECORD": os.path.join(out, "bot.rec"),
         "KAROO_BOT_ACTIONS": os.path.join(out, "actions.jsonl"),
+        "KAROO_BOT_MODEL_LOG": os.path.join(out, "model.jsonl"),
         "KAROO_RECORD_LABEL": name,
         "KAROO_AUTO_EXIT_SECS": str(timeout),
     })
@@ -211,8 +212,9 @@ def run_all(args, out):
         for s in pool.map(play, jobs):
             results.append(s)
             if not args.quiet:
-                print("  %-34s seed %-6s %-10s %s" % (s.get("level", "?")[:34], s["seed"],
-                                                      s["outcome"], s.get("death_cause", "")),
+                print("  %-34s seed %-6s %-10s %-8s %s" % (s.get("level", "?")[:34], s["seed"],
+                                                           s["outcome"], s.get("death_cause", ""),
+                                                           s.get("note", "")),
                       flush=True)
     results.sort(key=lambda s: (s["level_index"], s["seed"]))
     meta["wall_s"] = round(time.time() - t0, 1)
@@ -229,6 +231,8 @@ def summarise(results):
     by = {}
     for s in results:
         k = s["outcome"] + (":" + s["death_cause"] if s.get("death_cause") else "")
+        if s.get("note", "").startswith("no route"):
+            k += " (no route)"
         by[k] = by.get(k, 0) + 1
     print("completed %d/%d (%.0f%%)" % (passed, n, 100.0 * passed / n if n else 0))
     for k in sorted(by, key=lambda k: -by[k]):
@@ -312,7 +316,7 @@ def cmd_bless(args):
     path = resolve_run(args.run)
     with open(os.path.join(path, "run.json")) as f:
         meta = json.load(f)
-    keep = ("level_index", "level", "seed", "outcome", "death_cause",
+    keep = ("level_index", "level", "seed", "outcome", "death_cause", "note",
             "gems_collected", "gems_required", "frames")
     results = [{k: s[k] for k in keep if k in s} for s in load_run(args.run)]
     os.makedirs(os.path.dirname(BASELINE), exist_ok=True)
