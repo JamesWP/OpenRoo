@@ -10,6 +10,7 @@
  * 2 u increasing, 3 v increasing, 4 u decreasing. */
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,8 @@ struct Cell {
     unsigned char teleU = 0, teleV = 0;  // a teleporter's destination
     unsigned char blastHeight = 0;       // nonzero while a blast is live here
     unsigned char jumpTop = 0;           // a jump pad's launch height
+    bool          track = false;         // a platform's track runs here
+    unsigned char liftBottom = 0, liftTop = 0;  // a lift's two heights
     bool          busy = false;          // a falling tile that has fallen
 
     bool operator==(const Cell &o) const;
@@ -39,6 +42,8 @@ struct Mover {
     int facing = 0;
     bool moving = false;   // a step or turn is under way
     bool falling = false;  // in the air: falling, gliding or launched
+    bool turning = false;  // the move under way is a turn
+    int  moveDir = 0;      // the move under way: 1..4 a step, 11..14 a turn to (n - 10)
     /* At rest: neither stepping, turning nor in the air. */
     bool atRest() const { return !moving && !falling; }
     double animStart = 0;  // clock ms the current or last move began
@@ -51,6 +56,7 @@ struct PlayerView : Mover {
     bool reversed = false, frozenFoes = false, protection = false;
     double stepMs = 200;
     int  moveState = 0;     // nonzero once dead
+    double freezeUntil = 0; // the foes are held until then (clock ms), if frozen
 };
 
 struct FoeView : Mover {
@@ -58,6 +64,7 @@ struct FoeView : Mover {
     int  type = 0;          // its behaviour (Foe::chooseTarget)
     bool held = false;      // frozen
     bool dying = false;
+    int  homeU = 0, homeV = 0;  // where it was spawned
 };
 
 struct FallingView {
@@ -86,6 +93,7 @@ public:
 
     std::string level;
     double now = 0;           // clock ms
+    double tickMs = 0;        // the clock's step each tick
     int    timeLimitS = 0;
     unsigned timeElapsedMs = 0;
     int    gemsRequired = 0;
@@ -93,6 +101,7 @@ public:
 
     PlayerView               player;
     std::vector<FoeView>     foes;
+
     std::vector<FallingView> fallings;
     std::vector<BombView>    bombs;
 

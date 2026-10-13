@@ -9,7 +9,9 @@
 #include "keycodes.h"
 #include "logger.h"
 #include "player.h"
+#include <deque>
 #include "botview.h"
+#include "foemodel.h"
 #include "policy.h"
 #include "progctrl.h"
 #include "sysdev.h"
@@ -49,6 +51,9 @@ public:
         const std::string actions = sysdev::getEnv("KAROO_BOT_ACTIONS");
         if (!actions.empty())
             actions_.open(sysdev::nativePath(actions));
+        const std::string foeLog = sysdev::getEnv("KAROO_BOT_FOE_LOG");
+        if (!foeLog.empty())
+            foeLog_.open(sysdev::nativePath(foeLog));
         const std::string trace = sysdev::getEnv("KAROO_BOT_TRACE");
         if (!trace.empty())
             trace_.open(sysdev::nativePath(trace));
@@ -72,6 +77,7 @@ public:
         if (trace_)
             trace_ << view.toJson(frames_, haveLast_ ? &last_ : nullptr) << '\n';
         logAction(view);
+        checkFoes(view);
         const unsigned acts = policy_->act(view);
         held_     = acts;
         last_     = std::move(view);
@@ -160,6 +166,52 @@ private:
         }
     }
 
+    /* The foe check: every CHECK_TICKS, the foe model is run from the views
+     * of each look-ahead ago, with the player where it really went since,
+     * and its foes compared with where they are now. */
+    void checkFoes(const BotView &view)
+    {
+        if (!foeLog_.is_open())
+            return;
+        static const int CHECK_TICKS = 6;
+        static const int AHEAD[] = {6, 30, 60, 120};
+        const unsigned long tick = frames_;
+        track_.push_back({view.now, {view.player.u, view.player.v}});
+        while (track_.size() > 200)
+            track_.pop_front();
+        if (tick % CHECK_TICKS != 0 || view.foes.empty())
+            return;
+        for (const int ahead : AHEAD) {
+            for (const auto &[t, old] : past_) {
+                if (t + (unsigned long)ahead != tick || old.foes.size() != view.foes.size())
+                    continue;
+                sim_.load(old);
+                sim_.run(view.now, [this](double ms) {
+                    Step at = track_.front().second;
+                    for (const auto &[when, cell] : track_)
+                        if (when <= ms + 1e-6)
+                            at = cell;
+                    return at;
+                });
+                if (sim_.foeCount() != view.foes.size())
+                    continue;
+                printTo(foeLog_, "{\"frame\":%lu,\"ahead_ms\":%.1f,\"foes\":[", tick,
+                        view.now - old.now);
+                for (size_t i = 0; i < view.foes.size(); i++) {
+                    const Step p = sim_.foeCell(i);
+                    const FoeView &f = view.foes[i], &was = old.foes[i];
+                    printTo(foeLog_, "%s{\"pred\":[%d,%d],\"actual\":[%d,%d],\"was\":[%d,%d],"
+                            "\"type\":%d,\"kind\":%d}", i ? "," : "", p.u, p.v, f.u, f.v,
+                            was.u, was.v, f.type, f.kind);
+                }
+                printTo(foeLog_, "]}\n");
+            }
+        }
+        past_.push_back({tick, view});
+        while (!past_.empty() && past_.front().first + 120 < tick)
+            past_.pop_front();
+    }
+
     void writeAction(const BotView &view, const PlayerView &to)
     {
         static const char *const names[] = {"forward", "back", "left", "right", "bomb"};
@@ -228,6 +280,10 @@ private:
     std::ofstream trace_;   // KAROO_BOT_TRACE: the view each tick it acts
     BotView     last_;
     std::ofstream actions_; // KAROO_BOT_ACTIONS: the action log
+    std::ofstream foeLog_;  // KAROO_BOT_FOE_LOG: the foe model against the game
+    FoeModel        sim_;
+    std::deque<std::pair<double, Step>>         track_;  // the player's cell by clock
+    std::deque<std::pair<unsigned long, BotView>> past_; // the views the check runs from
     unsigned    held_ = 0, startKeys_ = 0;
     bool        started_ = false;
     PlayerView  from_;
