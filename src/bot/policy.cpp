@@ -1,6 +1,6 @@
 #include "policy.h"
 #include <stdio.h>
-#include "collect.h"
+#include "planner.h"
 #include "explore.h"
 #include "motor.h"
 
@@ -92,8 +92,8 @@ std::unique_ptr<Policy> makePolicy(const std::string &name)
         return std::make_unique<Idle>();
     if (name == "explore")
         return std::make_unique<Explore>();
-    if (name == "collect")
-        return std::make_unique<Collect>();
+    if (name == "plan")
+        return std::make_unique<Planner>();
     if (name == "wander")
         return std::make_unique<Wander>();
     return nullptr;
