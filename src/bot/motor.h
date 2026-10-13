@@ -28,8 +28,13 @@ class Motor {
 public:
     enum Status { Idle, Walking, Arrived, Blocked };
 
-    /* Starts along path; the first cell may be the player's own. */
-    void follow(std::vector<Step> path);
+    /* Starts along path, not before the clock reaches startMs; the first
+     * cell may be the player's own. */
+    void follow(std::vector<Step> path, double startMs = 0);
+
+    /* Stops: holds nothing more, so the player comes to rest after the move
+     * under way. */
+    void halt() { status_ = Idle; }
 
     /* The actions to hold this tick (policy.h's Action bits). */
     unsigned act(const BotView &view);
@@ -44,6 +49,7 @@ private:
     static unsigned toward(int f, int d);
 
     std::vector<Step> path_;
+    double   startMs_ = 0;
     size_t   next_ = 0;
     Status   status_ = Idle;
     unsigned lastAct_ = 0;
