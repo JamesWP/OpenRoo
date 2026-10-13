@@ -1,5 +1,5 @@
-/* A bot policy: what the bot holds down each tick, as player actions, from a
- * read-only look at the game.  The run (botrun.h) turns the actions into the
+/* A bot policy: what the bot holds down each tick, as player actions, from
+ * what it knows (botview.h).  The run (botrun.h) turns the actions into the
  * keys they are bound to.  This is the seam the planner plugs into
  * (docs/BOT_DESIGN.md). */
 #pragma once
@@ -7,7 +7,7 @@
 #include <memory>
 #include <string>
 
-class Game;
+#include "botview.h"
 
 namespace bot {
 
@@ -24,7 +24,7 @@ class Policy {
 public:
     virtual ~Policy() {}
     /* The actions to hold this tick, while the level is being played. */
-    virtual unsigned act(const Game &game) = 0;
+    virtual unsigned act(const BotView &view) = 0;
 };
 
 /* The policy KAROO_BOT names, or null if it names none:

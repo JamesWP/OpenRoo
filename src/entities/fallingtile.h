@@ -42,6 +42,13 @@ public:
     signed char cellU() const                  { return cellU_; }
     signed char cellV() const                  { return cellV_; }
     signed char heightCell() const             { return heightCell_; }
+    // Armed (someone stood on it) and when, in clock ms: it falls
+    // FALL_DELAY_MS after.  Read by the bot.
+    bool   armed() const                       { return armed_ != 0; }
+    double armedAt() const                     { return armedAt_; }
+    // Fallen and waiting to come back; it never does if noRespawn().
+    bool   respawnPending() const              { return respawnPending_ != 0; }
+    bool   noRespawn() const                   { return noRespawn_ != 0; }
 
     ~FallingTile();
 

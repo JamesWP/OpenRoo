@@ -137,6 +137,11 @@ public:
     void  setProtectionStart(double d)                { protectionStart_ = d; }
     int   protectionActive() const                     { return protectionActive_; }
     int   effectAActive() const                     { return effectAActive_; }
+    // The reversed-controls effect (0x0b): forward and back, left and right
+    // swap while it lasts.
+    int   reversedActive() const                    { return effectBActive_; }
+    // The current step time, ms: 200, or 100/400 under the speed effects.
+    double stepDuration() const                     { return stepDuration_; }
     // When each timed effect started, in clock ms; the HUD counts down from
     // them.
     double effectBStart() const                     { return effectBStart_; }
