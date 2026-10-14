@@ -1,5 +1,6 @@
 #include "walk.h"
 #include <stdio.h>
+#include <algorithm>
 
 namespace bot {
 
@@ -7,6 +8,9 @@ namespace {
 
 /* The waits a walk is also offered after, ms. */
 const double WAITS[] = {0, 600, 1500, 3000};
+/* How many other targets besides the planned one are offered, nearest
+ * first. */
+const size_t OTHERS = 6;
 
 }  // namespace
 
@@ -60,5 +64,25 @@ void offerWalks(const Situation &s, const std::vector<std::pair<Step, double>> &
         }
     }
 }
+
+
+std::vector<std::pair<Step, double>> targets(const Situation &s, const Plan &plan, Step planned,
+                                             const std::vector<Step> &others,
+                                             const Board *traps)
+{
+    auto timeTo = [&](Step c) { return s.from.cost(c.u, c.v); };
+    std::vector<std::pair<Step, double>> out{{planned, plan.cost - timeTo(planned)}};
+    std::vector<std::pair<double, Step>> near;
+    for (const Step &c : others)
+        if ((c.u != planned.u || c.v != planned.v) && timeTo(c) >= 0 &&
+            (!traps || traps->canFinishAfter(c)))
+            near.push_back({timeTo(c), c});
+    std::sort(near.begin(), near.end(),
+              [](const auto &a, const auto &b) { return a.first < b.first; });
+    for (size_t i = 0; i < near.size() && i < OTHERS; i++)
+        out.push_back({near[i].second, plan.cost});
+    return out;
+}
+
 
 }  // namespace bot
