@@ -12,6 +12,8 @@ namespace {
 /* Cells within this many ms are offered to evade to, the nearest EVADES. */
 const double EVADE_MS = 1500;
 const size_t EVADES = 12;
+/* The first steps choose checks at most. */
+const int MAX_CHECKS = 8;
 
 /* The cheapest safe option; options are sorted. */
 bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally)
@@ -68,6 +70,44 @@ bool realise(Situation &s, const Board &board, const Plan &plan, Option *out, Ta
     std::vector<Option> options;
     actions()[plan.steps.front().action]->offer(s, board, plan, options);
     return pick(s, options, out, tally);
+}
+
+bool choose(Situation &s, const Board &board, PlanOptions options, Choice *out,
+            std::vector<Tally> &tally)
+{
+    std::vector<Option> checked;   // beside options.root
+    for (int checks = 0;; checks++) {
+        const Plan plan = planGoal(board, planActions(), options);
+        if (checks == 0)
+            out->first = plan;
+        if (!plan.found || plan.steps.empty())
+            return false;
+        const PlanStep &step = plan.steps.front();
+        for (size_t i = 0; i < options.root.size(); i++) {
+            const PlanOptions::Known &k = options.root[i];
+            if (k.action == step.action && !(k.end < step.end) && !(step.end < k.end)) {
+                out->taken  = plan;
+                out->option = checked[i];
+                return true;   // the cheapest, on its real cost
+            }
+        }
+        if (checks == MAX_CHECKS)
+            return false;
+        Option o;
+        if (!realise(s, board, plan, &o, &tally[step.action])) {
+            options.root.push_back({step.action, step.end, -1});
+            checked.push_back(Option());
+            continue;
+        }
+        if (o.stepMs < 0) {
+            // The estimate stands: nothing more is known to plan by.
+            out->taken  = plan;
+            out->option = std::move(o);
+            return true;
+        }
+        options.root.push_back({step.action, step.end, o.stepMs});
+        checked.push_back(std::move(o));
+    }
 }
 
 bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *tally)

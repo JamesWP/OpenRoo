@@ -20,6 +20,7 @@ struct Option {
     double             cost = 0;      // ms, with the rest of the plan after it
     double             lingerMs = 1000;  // how long the end must stay safe
     bool               checked = false;  // found safe already (an ambush is, to be one)
+    double             stepMs = -1;      // what the plan step it does takes in fact, if known
     double             committedUntil = 0;  // the clock's ms: not to be broken off for another before
     int                kills = 0;
     std::vector<FoeModel::Kill> killed;  // where and when it expects them (the clock's ms)

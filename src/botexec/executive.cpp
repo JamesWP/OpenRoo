@@ -95,22 +95,17 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
         PlanOptions options;
         options.goal    = g;
         options.startBy = goal_wanted.by;
-        options.mu   = mu_;
-        const Plan best = planGoal(board, planActions(), options);
+        options.mu      = mu_;
+        Choice c;
+        have = choose(s, board, options, &c, tally);
         if (g == goals.front().kind)
-            first = best;
+            first = c.first;
         if (g == FINISH)
-            finish = best;
-        // The cheapest plan whose first step can be done safely now.
-        for (Plan plan = best; plan.found && !have; plan = planGoal(board, planActions(), options)) {
-            const int action = plan.steps.front().action;
-            have = realise(s, board, plan, &chosen, &tally[action]);
-            if (have)
-                planned = plan.describe();
-            options.notFirst |= 1u << action;
-        }
+            finish = c.first;
         if (have) {
-            goal = g;
+            planned = c.taken.describe();
+            chosen  = std::move(c.option);
+            goal    = g;
             break;
         }
     }

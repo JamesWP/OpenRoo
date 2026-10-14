@@ -96,17 +96,30 @@ private:
         const bool root = node.parent < 0;
         std::vector<PlanAction::Successor> next;
         for (size_t i = 0; i < actions_.size(); i++) {
-            if (root && (options_.notFirst & (1u << i)))
-                continue;
             next.clear();
             actions_[i]->expand(f, board_, options_, next);
             for (PlanAction::Successor &n : next) {
+                if (root && !known((int)i, n.step))
+                    continue;
                 n.step.action = (int)i;
                 n.step.name   = actions_[i]->name();
                 n.step.risk   = f.foes * n.step.ms / 1000.0;
                 push(n.facts, g + n.step.ms + options_.mu * n.step.risk, at, n.step);
             }
         }
+    }
+
+    /* A first step as found out, if it was: false if it cannot be had now;
+     * its ms the real one if known. */
+    bool known(int action, PlanStep &step) const
+    {
+        for (const PlanOptions::Known &k : options_.root)
+            if (k.action == action && !(k.end < step.end) && !(step.end < k.end)) {
+                if (k.ms < 0)
+                    return false;
+                step.ms = k.ms;
+            }
+        return true;
     }
 
     const Board       &board_;

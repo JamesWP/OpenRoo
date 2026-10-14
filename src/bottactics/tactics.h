@@ -48,6 +48,25 @@ struct Tally {
 /* The plan's first step, as the cheapest safe option: false if none. */
 bool realise(Situation &s, const Board &board, const Plan &plan, Option *out, Tally *tally);
 
+/* What choose found: the planner's first plan, on its estimates; the plan
+ * taken; and the option that does its first step. */
+struct Choice {
+    Plan   first;
+    Plan   taken;
+    Option option;
+};
+
+/* The cheapest plan to options' goal whose first step can be done safely
+ * now, by the actions (action.h).  The planner's estimates are checked only
+ * where they are acted on: the cheapest plan's first step is realised; one
+ * that cannot be is ruled out, and one whose option says what the step
+ * takes in fact (Option::stepMs) is costed so; then the planner is asked
+ * again, until the cheapest plan starts with a step checked already.  A few
+ * checks at most; tally: one per action.  False if no plan's first step can
+ * be done. */
+bool choose(Situation &s, const Board &board, PlanOptions options, Choice *out,
+            std::vector<Tally> &tally);
+
 /* Part of the way to goal, as far along as is safe, and not to a cell the
  * quota and the exit cannot be had from: false if no cell is. */
 bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *tally);

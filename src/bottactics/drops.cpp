@@ -82,6 +82,7 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
             // The foes were predicted chasing the player where this puts it:
             // broken off, the bomb would go off on a different chase.
             o.committedUntil = blast.until + CLEAR_MARGIN_MS;
+            o.stepMs         = o.committedUntil - view.now;
         }
         // The end must stay safe until the blast is over.
         o.lingerMs = std::max(1000.0, blast.until - view.now - o.schedule.back().t + 200);
