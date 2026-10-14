@@ -15,6 +15,9 @@ const size_t OTHERS = 6;
 /* Cells within this many ms are offered to evade to, the nearest EVADES. */
 const double EVADE_MS = 1500;
 const size_t EVADES = 12;
+/* A foe is a threat worth an ambush if the schedule ahead, then standing at
+ * its end this long, meets it. */
+const double THREAT_MS = 6000;
 
 /* The cheapest safe option; options are sorted. */
 bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally)
@@ -159,6 +162,33 @@ bool evade(Situation &s, const Board &board, Option *out, Tally *tally)
     std::vector<Option> options;
     offerWalks(s, to, "evade to", false, options);
     return pick(s, options, out, tally);
+}
+
+bool seize(Situation &s, const std::vector<Timed> &ahead, Option *out)
+{
+    const BotView &view = s.view;
+    // A bomb already down is still to do what it does, and the foes'
+    // chase is the player's, not yet settled while it falls.
+    if (view.player.bombs <= 0 || view.foes.empty() || !view.bombs.empty() ||
+        view.player.falling)
+        return false;
+    if (!checkPlan(s.foes, view, ahead, THREAT_MS).hit)
+        return false;
+    std::vector<Option> options;
+    offerAmbushes(s, options);
+    // Only a kill at the centre: the step under way was the plan's best, and
+    // there is no plan cost to weigh an ambush against, so one is taken only
+    // where it is as good as an ambush gets.  Off the centre the foe was
+    // passing by, and the prediction is at its least sure.
+    Option *best = nullptr;
+    for (Option &o : options)
+        if (o.kills > 0 && o.offCentre == 0 && (!best || o.cost < best->cost))
+            best = &o;
+    if (!best)
+        return false;
+    *out = std::move(*best);
+    out->what += " (seized)";
+    return true;
 }
 
 }  // namespace bot

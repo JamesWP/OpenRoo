@@ -57,8 +57,12 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
         o.schedule.insert(o.schedule.end(), walk.schedule.begin() + 1, walk.schedule.end());
         o.cost = walk.cost;
         o.blasts.push_back(blast);
-        if (wait)
+        if (wait) {
             o.script.push_back({ScriptStep::Wait, 0, {}, blast.until + CLEAR_MARGIN_MS});
+            // The foes were predicted chasing the player where this puts it:
+            // broken off, the bomb would go off on a different chase.
+            o.committedUntil = blast.until + CLEAR_MARGIN_MS;
+        }
         // The end must stay safe until the blast is over.
         o.lingerMs = std::max(1000.0, blast.until - view.now - o.schedule.back().t + 200);
         const Danger d = checkPlan(s.foes, view, o.schedule, o.lingerMs, o.blasts);

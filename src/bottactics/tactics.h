@@ -17,6 +17,11 @@
  *            blast out (drops.h).
  * A walk is also offered after a wait, so a foe can go by first.
  *
+ * While a script runs, seize looks for an ambush to take instead: a foe
+ * met on the way is better met at the centre of a blast than avoided, and
+ * waiting for it to be on the plan leaves only ambushes that catch it going
+ * by.
+ *
  * And two ways to keep the player safe while no step of any plan can be
  * done: approach, the farthest safe cell along the way to a goal (waiting
  * there for a foe to come within a bomb's reach is how an ambush becomes
@@ -62,5 +67,10 @@ bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *t
 
 /* A nearby cell to stand on, safe and not a trap: false if none. */
 bool evade(Situation &s, const Board &board, Option *out, Tally *tally);
+
+/* An ambush worth breaking off what is under way for: the schedule still
+ * ahead of the player meets a foe soon, bombs are held, and an ambush kills
+ * a foe at its blast's centre.  false if not. */
+bool seize(Situation &s, const std::vector<Timed> &ahead, Option *out);
 
 }  // namespace bot

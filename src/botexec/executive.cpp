@@ -5,7 +5,6 @@
 #include "danger.h"
 #include "goap.h"
 #include "sysdev.h"
-#include "drops.h"
 #include "tactics.h"
 
 namespace bot {
@@ -15,11 +14,9 @@ namespace {
 /* Ticks between checks of the running script, and between looks for a way
  * out when nothing was safe. */
 const unsigned long CHECK_TICKS = 15;
-/* Ticks between looks for an ambush while something else is under way. */
-const unsigned long HUNT_TICKS = 30;
-/* A foe is a threat if the script, then standing at its end this long, meets
- * it. */
-const double HUNT_LINGER_MS = 6000;
+/* Ticks between asking the tactics for something better to seize while a
+ * script runs. */
+const unsigned long SEIZE_TICKS = 30;
 
 /* The tallies the log keeps: one per action kind, then these. */
 enum { APPROACH = ACTION_KINDS, EVADE, TALLIES };
@@ -36,6 +33,16 @@ Step goal_of(const Board &board, const Plan &plan)
             return {s.end.u, s.end.v};
     }
     return {-1, -1};
+}
+
+/* Where and when the option expects its kills, as JSON. */
+std::string kills_json(const Option &o)
+{
+    std::string out;
+    for (const FoeModel::Kill &k : o.killed)
+        out += (out.empty() ? "" : ",") + std::string("[") + std::to_string((long)k.ms) + "," +
+               std::to_string(k.u) + "," + std::to_string(k.v) + "]";
+    return "[" + out + "]";
 }
 
 std::string quoted(const std::string &s)
@@ -147,67 +154,49 @@ void Executive::decide(const BotView &view)
                               std::to_string(p.cell.u) + "," + std::to_string(p.cell.v) + "]";
         printTo(log_, ",\"cut_off\":[%s],\"cut_off_pickups\":[%s],\"exit_cut\":%d", cut.c_str(),
                 cutPickups.c_str(), board.time(board.everything(), board.start(), board.exit()) < 0);
-        std::string predicted;
-        for (const FoeModel::Kill &k : chosen_.killed)
-            predicted += (predicted.empty() ? "" : ",") + std::string("[") +
-                         std::to_string((long)k.ms) + "," + std::to_string(k.u) + "," +
-                         std::to_string(k.v) + "]";
-        printTo(log_, ",\"predicted_kills\":[%s]", predicted.c_str());
+        printTo(log_, ",\"predicted_kills\":%s", kills_json(chosen_).c_str());
         printTo(log_, ",\"chose\":\"%s\"}\n", quoted(note_).c_str());
     }
 }
 
-bool Executive::stillSafe(const BotView &view, double lingerMs)
+bool Executive::stillSafe(const BotView &view)
 {
     if (exec_.status() != Executor::Running || chosen_.schedule.empty())
         return true;
-    // The rest of the schedule, from now; the cell the player is on first.
-    const double gone = view.now - chosenAt_;
-    std::vector<Timed> rest{{0, {view.player.u, view.player.v}}};
-    for (const Timed &m : chosen_.schedule)
-        if (m.t > gone)
-            rest.push_back({m.t - gone, m.cell});
-    return !checkPlan(foes_, view, rest, lingerMs, chosen_.blasts).hit;
+    return !checkPlan(foes_, view, ahead(view), chosen_.lingerMs, chosen_.blasts).hit;
 }
 
-bool Executive::hunt(const BotView &view)
+std::vector<Timed> Executive::ahead(const BotView &view) const
+{
+    return chosen_.ahead(view.now - chosenAt_, {view.player.u, view.player.v});
+}
+
+bool Executive::seize(const BotView &view)
 {
     Situation s(view, foes_);
-    std::vector<Option> options;
-    offerAmbushes(s, options);
-    const Option *best = nullptr;
-    for (const Option &o : options)
-        if (o.checked && o.kills > 0 && o.offCentre == 0 && (!best || o.cost < best->cost))
-            best = &o;
-    if (!best)
+    Option o;
+    if (!bot::seize(s, ahead(view), &o))
         return false;
-    chosen_   = *best;
+    chosen_   = std::move(o);
     chosenAt_ = view.now;
-    note_     = chosen_.what + " (hunted)";
+    note_     = chosen_.what;
     exec_.start(chosen_.script);
-    if (log_.is_open()) {
-        std::string predicted;
-        for (const FoeModel::Kill &k : chosen_.killed)
-            predicted += (predicted.empty() ? "" : ",") + std::string("[") +
-                         std::to_string((long)k.ms) + "," + std::to_string(k.u) + "," +
-                         std::to_string(k.v) + "]";
-        printTo(log_, "{\"now\":%.1f,\"cell\":[%d,%d,%d],\"hunt\":1,\"predicted_kills\":[%s],"
+    if (log_.is_open())
+        printTo(log_, "{\"now\":%.1f,\"cell\":[%d,%d,%d],\"seized\":1,\"predicted_kills\":%s,"
                 "\"chose\":\"%s\"}\n", view.now, view.player.u, view.player.v, view.player.h,
-                predicted.c_str(), quoted(note_).c_str());
-    }
+                kills_json(chosen_).c_str(), quoted(note_).c_str());
     return true;
 }
 
 unsigned Executive::act(const BotView &view)
 {
     ++ticks_;
-    // Hunting is for a foe near enough to matter, and not while the bomb of
-    // an ambush is still to go off.
-    if (ticks_ % HUNT_TICKS == 0 && decided_ && !stuck_ && view.player.bombs > 0 &&
-        !view.foes.empty() && view.bombs.empty() && chosen_.blasts.empty() &&
-        !view.player.falling && !stillSafe(view, HUNT_LINGER_MS) && hunt(view))
+    // Something better than the script under way, unless it is one not to
+    // be broken off.
+    if (ticks_ % SEIZE_TICKS == 0 && decided_ && !stuck_ && exec_.status() == Executor::Running &&
+        view.now >= chosen_.committedUntil && seize(view))
         return exec_.act(view);
-    if (ticks_ % CHECK_TICKS == 0 && !view.foes.empty() && !stillSafe(view, chosen_.lingerMs))
+    if (ticks_ % CHECK_TICKS == 0 && !view.foes.empty() && !stillSafe(view))
         exec_.halt();
     if (view.player.atRest()) {
         const bool idle = exec_.status() != Executor::Running;
