@@ -1,6 +1,10 @@
 /* The GOAP planner (docs/BOT_DESIGN.md, section 3.4): the cheapest sequence
- * of actions from the facts as they stand to the goal, the player at the exit
- * with the gem quota collected.
+ * of actions from the facts as they stand to a goal (goals.h, which also
+ * chooses it):
+ *
+ *   finish       the player at the exit with the gem quota collected;
+ *   remove foe   a foe fewer than now, by an ambush started before the foe
+ *                meets the player (PlanOptions::startBy).
  *
  * The facts: where the player is (a place, board.h), which bombable blocks
  * are spent, the gems still needed, the bombs held, the foes alive and the
@@ -46,6 +50,10 @@ namespace bot {
 
 enum ActionKind { COLLECT, BOMBS, BLAST, AMBUSH, EXIT, ACTION_KINDS };
 
+enum GoalKind { FINISH, REMOVE_FOE, GOAL_KINDS };
+
+const char *goalName(GoalKind goal);
+
 const char *actionName(ActionKind kind);
 
 struct PlanStep {
@@ -69,6 +77,8 @@ struct Plan {
 };
 
 struct PlanOptions {
+    GoalKind goal = FINISH;
+    double   startBy = -1;                   // ms: no step starts later (-1: no limit)
     double   mu = 0;                         // ms a foe-second
     unsigned notFirst = 0;                   // a bit per ActionKind
     int      maxNodes = 4000;

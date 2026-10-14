@@ -1,4 +1,5 @@
 #include "danger.h"
+#include <string>
 #include <stdlib.h>
 #include "fallingmodel.h"
 
@@ -112,6 +113,14 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
         if (k.byAdded)
             d.kills.push_back(k);
     return d;
+}
+
+double foeMeets(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
+                double horizonMs)
+{
+    const Danger d = checkPlan(sim, view, plan, horizonMs);
+    const std::string why = d.why;
+    return d.hit && (why == "catcher" || why == "thrower") ? d.t : -1;
 }
 
 }  // namespace bot

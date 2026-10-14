@@ -32,4 +32,9 @@ struct Danger {
 Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
                  double lingerMs, const std::vector<Blast> &extra = {});
 
+/* How soon a foe (a catcher, or a thrower's reach) meets the player on plan
+ * and then standing at its end, within horizonMs: ms from now, or -1. */
+double foeMeets(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
+                double horizonMs);
+
 }  // namespace bot

@@ -1,7 +1,6 @@
 #include "drops.h"
 #include <algorithm>
 #include <stdio.h>
-#include <stdlib.h>
 #include "danger.h"
 #include "walk.h"
 
@@ -15,15 +14,36 @@ const double RETREAT_MS = 2500;
 const size_t RETREATS = 16;
 /* An ambush: the drop sites within this many ms of the player (the nearest
  * SITES of them, and where it stands), the waits before the drop, the few
- * cells to retreat to; a kill off the blast's centre costs this much a cell. */
+ * cells to retreat to. */
 const double SITE_MS = 1500;
 const size_t SITES = 6;
 const double DELAYS[] = {0, 250, 500, 750, 1000, 1250, 1500, 2000};
 const size_t AMBUSH_RETREATS = 2;
-const double OFF_CENTRE_MS = 1200;
+/* A kill is counted on only if the foe dies with the blast this much earlier
+ * or later, too: the foe model's timing is good to about that, and a foe
+ * caught only on its way past the blast's edge is not caught at all if it
+ * is out. */
+const double SURE_MS = 250;
 /* A wait after a drop ends this long after the blast's zone clears: the
  * foe model's chase assumed the player stays put until then. */
 const double CLEAR_MARGIN_MS = 200;
+
+/* Whether o's blasts still kill as many foes, and the player stays safe,
+ * with them going off SURE_MS earlier or later. */
+bool sure(Situation &s, const Option &o, int killed)
+{
+    for (const double shift : {-SURE_MS, SURE_MS}) {
+        std::vector<Blast> shifted = o.blasts;
+        for (Blast &b : shifted) {
+            b.from += shift;
+            b.until += shift;
+        }
+        const Danger d = checkPlan(s.foes, s.view, o.schedule, o.lingerMs + SURE_MS, shifted);
+        if (d.hit || d.killed < killed)
+            return false;
+    }
+    return true;
+}
 
 /* The ways to walk clear after a drop at site facing facing, dropIn ms from
  * now: the option so far (its script and schedule up to the drop) with a
@@ -66,18 +86,11 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
         // The end must stay safe until the blast is over.
         o.lingerMs = std::max(1000.0, blast.until - view.now - o.schedule.back().t + 200);
         const Danger d = checkPlan(s.foes, view, o.schedule, o.lingerMs, o.blasts);
-        if (d.hit || d.killed < needKills)
+        if (d.hit || d.killed < needKills || (needKills > 0 && !sure(s, o, d.killed)))
             continue;
         o.checked = true;
         o.kills = d.killed;
         o.killed = d.kills;
-        // A foe the blast takes at its edge was on its way past: the bomb
-        // is better placed where the foe is at the centre when it goes.
-        for (const FoeModel::Kill &k : d.kills) {
-            const int off = std::max(abs(k.u - blast.cell.u), abs(k.v - blast.cell.v));
-            o.offCentre += off;
-            o.cost += OFF_CENTRE_MS * off;
-        }
         o.what = before.what;
         char buf[96];
         snprintf(buf, sizeof(buf), ", away to (%d,%d)", at.u, at.v);
@@ -92,10 +105,12 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
 {
     const BotView &view = s.view;
     const PlayerView &p = view.player;
-    if (p.bombs <= 0 || view.foes.empty())
+    // In the air the player's landing, and so the drop's time, is not
+    // known.
+    if (p.bombs <= 0 || view.foes.empty() || p.falling)
         return;
     // Where to drop it: here, or a cell or two off, so that the foe on its
-    // way arrives at the centre as it goes.
+    // way is in the blast as it goes.
     std::vector<std::pair<double, Step>> sites{{0, {p.u, p.v}}};
     std::vector<std::pair<double, Step>> near;
     for (int v = 0; v < view.extentV; v++)

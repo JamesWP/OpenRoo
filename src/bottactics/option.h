@@ -22,7 +22,6 @@ struct Option {
     bool               checked = false;  // found safe already (an ambush is, to be one)
     double             committedUntil = 0;  // the clock's ms: not to be broken off for another before
     int                kills = 0;
-    int                offCentre = 0;     // cells its kills are off its blast's centre, summed
     std::vector<FoeModel::Kill> killed;  // where and when it expects them (the clock's ms)
 
     /* The schedule still ahead, elapsedMs into it, from here: in ms from now. */
