@@ -71,6 +71,7 @@ struct FoeView : Mover {
     bool held = false;      // frozen
     bool dying = false;
     int  homeU = 0, homeV = 0;  // where it was spawned
+    int  drops = 0;         // what it leaves on its cell when killed (TileContents)
 };
 
 struct FallingView {

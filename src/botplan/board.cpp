@@ -25,6 +25,8 @@ Board::Board(const BotView &live, Worlds &worlds) : live_(live), worlds_(&worlds
     gemsNeeded_ = live.gemsRequired - live.player.gems;
     if (gemsNeeded_ < 0)
         gemsNeeded_ = 0;
+    for (const FoeView &f : live.foes)
+        carriers_ += carrier(f);
     for (int v = 0; v < live.extentV; v++)
         for (int u = 0; u < live.extentU; u++)
             if (live.cell(u, v).contents == CONTENTS_GRANT_09)
@@ -41,6 +43,11 @@ Board::Board(const BotView &live, Worlds &worlds) : live_(live), worlds_(&worlds
             if (i >= 0)
                 switches_.push_back({{u, v}, i});
         }
+}
+
+bool Board::carrier(const FoeView &foe)
+{
+    return foe.drops == CONTENTS_CRYSTAL && !foe.dying;
 }
 
 Changes Board::allBlocks() const
@@ -184,22 +191,24 @@ GemRoute Board::routeFrom(Changes s, Place from, const Step *taken, int need) co
     return r;
 }
 
-const GemRoute &Board::gemRoute(Changes s, Place from) const
+const GemRoute &Board::gemRoute(Changes s, Place from, int need) const
 {
     from.facing = facingOf(from);
-    const auto key = std::make_pair(s, from);
+    if (need < 0)
+        need = gemsNeeded_;
+    const auto key = std::make_tuple(s, from, need);
     auto it = routes_.find(key);
     if (it != routes_.end())
         return it->second;
-    return routes_[key] = routeFrom(s, from, nullptr, gemsNeeded_);
+    return routes_[key] = routeFrom(s, from, nullptr, need);
 }
 
 bool Board::canFinishFrom(Step cell) const
 {
     const Place at{cell.u, cell.v, worlds_->pointFacing()};
-    if (gemsNeeded_ <= 0)
+    if (fromMap() <= 0)
         return time(0, at, exit()) >= 0;
-    return gemRoute(0, at).found;
+    return gemRoute(0, at, fromMap()).found;
 }
 
 bool Board::canFinishAfter(Step gem) const
@@ -208,7 +217,7 @@ bool Board::canFinishAfter(Step gem) const
     auto it = after_.find(key);
     if (it != after_.end())
         return it->second;
-    const int need = gemsNeeded_ - 1;
+    const int need = fromMap() - 1;
     GemRoute r;
     const Place at{gem.u, gem.v, worlds_->pointFacing()};
     if (need <= 0)

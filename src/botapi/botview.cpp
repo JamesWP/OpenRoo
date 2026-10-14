@@ -108,8 +108,8 @@ std::string BotView::toJson(unsigned frame, const BotView *prev) const
     for (size_t i = 0; i < foes.size(); i++) {
         const FoeView &f = foes[i];
         appendf(out, "%s{\"cell\":[%d,%d,%d],\"facing\":%d,\"moving\":%d,\"kind\":%d,"
-                "\"type\":%d,\"held\":%d,\"dying\":%d}", i ? "," : "",
-                f.u, f.v, f.h, f.facing, f.moving, f.kind, f.type, f.held, f.dying);
+                "\"type\":%d,\"held\":%d,\"dying\":%d,\"drops\":%d}", i ? "," : "",
+                f.u, f.v, f.h, f.facing, f.moving, f.kind, f.type, f.held, f.dying, f.drops);
     }
     out += "],\"fallings\":[";
     for (size_t i = 0; i < fallings.size(); i++) {

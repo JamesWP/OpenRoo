@@ -30,6 +30,7 @@ public:
         start.gemsNeeded = board_.gemsNeeded();
         start.bombs      = board_.bombs();
         start.foes       = board_.foes();
+        start.carriers   = board_.carriers();
         push(start, 0, -1, PlanStep());
         Plan plan;
         while (!open_.empty() && plan.nodes < options_.maxNodes) {
@@ -57,16 +58,19 @@ private:
         return options_.goal == REMOVE_FOE ? f.foes < board_.foes() : f.atExit;
     }
 
-    /* The least the rest can cost: for finishing, the quota's route and the
-     * exit, with every block spent; a foe could be had at once. */
+    /* The least the rest can cost: for finishing, the route through the gems
+     * the carriers cannot give and the exit, in the most open world; a foe
+     * could be had at once. */
     double heuristic(const Facts &f) const
     {
         if (options_.goal == REMOVE_FOE)
             return 0;
         if (f.atExit)
             return 0;
-        if (f.gemsNeeded > 0) {
-            const GemRoute &r = board_.gemRoute(board_.everything(), f.at);
+        // The carriers' gems could stand in for the map's.
+        const int fromMap = f.gemsNeeded - f.carriers;
+        if (fromMap > 0) {
+            const GemRoute &r = board_.gemRoute(board_.everything(), f.at, fromMap);
             return r.found ? r.toLast + r.toExit : -1;
         }
         return board_.time(board_.everything(), f.at, board_.exit());

@@ -91,6 +91,7 @@ BotView capture(const Game &game)
         fv.dying = f.dyingStarted() != 0;
         fv.homeU = f.homeU();
         fv.homeV = f.homeV();
+        fv.drops = f.dropContents();
         view.foes.push_back(fv);
     }
     for (const FallingTile &ft : w->fallings()) {
