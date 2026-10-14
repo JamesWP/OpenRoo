@@ -1,422 +1,125 @@
 # A player bot: design
 
-A goal-oriented planner that plays Ka'roo levels, and, more importantly, the
-framework that lets us measure it, compare versions of it, and debug it.
+A bot that plays Ka'roo levels, and the framework that measures it.  The
+details live in the code's header comments; this is the shape and the
+reasons for it.
 
 ## 1. Aims
 
-- **Success means completing every level.**  Score does not count.  The
-  headline metric is the completion rate over the shipped levels.
-- **Standing goal, every level:** collect the level's gem quota (the number
-  `World::gemsRequired` says opens the exit, often fewer than the gems on the
-  map) and reach the exit, **without dying**.  Each level is planned on its own and lives are never
-  spent, so the bot never has to plan across levels (section 7).
-- **Items are only means to an end:** the bot takes an item when it helps
-  complete the level (bombs for a block, freeze or protection to get past a
-  foe, time when the limit is tight), and ignores it otherwise.
-- **Gates:** pick up bombs before blowing up the bombable blocks that wall off
-  an area; throw switches to extend bridges.
-- **Foes:** avoid them, lure them away from what we want, or lure them onto an
-  armed falling tile so they drop with it.
-- **Iteration speed:** a change to the bot is judged by running it over the
-  whole level corpus headless, in minutes, and diffing the results against a
-  baseline.  The framework gets the most effort.
+- **Complete every level**: collect the gem quota and reach the exit, without
+  dying.  Score does not count; time matters only against the time limit.
+  The headline number is the completion rate over the 75 shipped levels.
+- **One level, one life.**  A run stops at the first death, so the bot never
+  plans across levels.
+- **Perfect knowledge.**  The bot reads everything, hidden contents too.
+- **Items are means, not ends**: taken only when a plan needs them.
+- **Fast iteration**: a change is judged by running every level headless, in
+  minutes, and comparing against the last run.
 
-Non-goals for now: playing the menus (the harness starts the level directly);
-being fun to watch.
+## 2. Ethos
 
-## 2. What the engine already gives us
-
-| Seam | Where | Use |
-|---|---|---|
-| `input::KeySource` | `src/inputapi/keysource.h` | The bot's output.  It is a key source like the keyboard or a replay, and the game cannot tell them apart.  `exclusive()` keeps a real key from interfering. |
-| `const World &` | `src/entities/world.h` | The bot's input.  This is already intended as "a read-only view ... a player AI planning its moves"; constness is deep. |
-| Fixed step + seed | `KAROO_FIXED_DT`, `KAROO_SEED` | Determinism.  The sim's only `rand()` calls are the random pickup and the level builder's phases (`player.cpp`, `levelsetup.cpp`). |
-| Headless | `KAROO_HEADLESS`, `replaytest.py --headless` | No GL context, no draws, no display. |
-| State dump + events | `src/sim/gamestate.cpp`, `KAROO_STATE_DUMP` | An end-of-run JSON with load/complete/death events.  The backtest summary extends this rather than inventing a new one. |
-| Recorder | `KAROO_RECORD`, `src/testing/record.cpp` | Every bot run can also write a `.rec`, so any run replays in the real renderer to be watched. |
-| Foe pathfinder | `FoePath` (`src/entities/foepath.h`) | Foes chase with a deterministic A*-shaped search, run again every step.  Its route is not stable: re-searching from the next cell of a planned route can give a different route, even to a target that has not moved.  So the predictor reproduces the foe's step-by-step re-search (section 3.2), not one search. |
-
-Facts the design leans on:
-
-- **Movement is tank-style and grid-locked:** forward, back, turn left, turn
-  right, drop bomb, harakiri (`Player::act*`).  A step takes 200 ms (100 or
-  400 ms under the speed effects).  Ice, slides, teleporters, stairs and lifts
-  change where a step ends.
-- **Falling tile:** it arms when anything occupies the cell.  It falls 1500 ms
-  after arming and, unless its param says otherwise, comes back 5000 ms after
-  arming (`fallingtile.cpp`).  An occupant at the moment of the fall goes
-  with it.  That moment is the lure's target.
-- **Foes chase by type:** catchers touch, throwers drop bombs.  Each type has
-  its own chase speed, which is a search budget, and some types escort or head
-  for switches (`Foe::chooseTarget`).  Each tick a foe re-targets the
-  player's cell.  That is what makes luring possible: the player's position
-  steers the foe.
+- **Each layer answers one question.**  Complexity goes in the lowest layer
+  that can carry it.  The layers above stay generic: the planner, the
+  executive and the log never name an action.
+- **Actions are the unit of extension.**  An action is one class in one file
+  with both its halves: how the planner sees it (preconditions, effects,
+  estimated cost) and how it is done now (concrete options).  Adding one
+  touches nothing else.
+- **Estimate to search, check to act.**  The planner searches on cheap
+  estimates.  Only the step about to be acted on is checked against the
+  model, and its real cost goes back to the planner.  A wrong estimate costs
+  a little optimality, never safety.
+- **Count on a prediction only within its known error.**  An outcome is
+  relied on only if it survives the model's error, for example a kill that
+  still happens with the blast a little early or late.  Robust outcomes are
+  required; shapes that tend to be robust (such as "centred") are not rules.
+- **The engine is the authority.**  The model reproduces the engine's
+  rules, and its constants are measured from the engine, not guessed.
+- **Deterministic.**  No wall clock, no unseeded randomness, budgets in
+  nodes.  Two runs of the same build are byte-identical, so a refactor is
+  proven by identical recordings.
+- **Measured, not argued.**  Every change is judged on the whole corpus:
+  completions, deaths by cause, and whether predictions came true.
 
 ## 3. Architecture
 
 ```
-               const World&                               keys
-  ┌────────┐   (each tick)   ┌──────────────┐               ┌────────┐
-  │  Game  │ ──────────────▶ │  Perception  │──BotView──┐   │ Motor  │──▶ input::KeySource
-  └────────┘                 └──────────────┘           │   └────────┘
-                                                        ▼        ▲ cell path / maneuver
-     ┌───────────────────────────────────────────────────────┐  │
-     │ Executive (monitor): is the plan still valid?          │──┘
-     │   prediction vs. reality, preconditions, progress      │
-     └───────┬──────────────────────────────▲────────────────┘
-             │ replan                       │ next step
-     ┌───────▼────────┐  goal set  ┌────────┴──────┐  per action ┌───────────────┐
-     │ Goal selection │──────────▶ │ GOAP planner  │───────────▶ │ Tactical layer │
-     │ (risk)         │            │ (symbolic A*) │             │ space-time A*, │
-     └────────────────┘            └───────┬───────┘             │ maneuvers      │
-                                           │ costs, reachability └───────┬───────┘
-                                   ┌───────▼─────────────────────────────▼──┐
-                                   │ Model: nav graph, distances, route     │
-                                   │ optimiser, foe/tile/bomb prediction    │
-                                   └────────────────────────────────────────┘
+  Game ──▶ Perception ──BotView──▶ Executive ──script──▶ Motor ──▶ keys
+                                     │   ▲
+                         goals,  plan│   │option
+                                     ▼   │
+              Goal selection ──▶ Planner ◀──▶ Actions / tactics
+                                     │            │
+                                     ▼            ▼
+                 Model: nav, routes, foe / tile / bomb prediction, danger
 ```
 
-Every layer is a plain C++ class over a `BotView` value, with no engine calls.
-This one property makes every layer unit-testable without the game, and it
-lets the harness serialise exactly what the bot saw.
+Every layer is plain C++ over a `BotView` value, with no engine calls.
 
-### 3.1 Perception: `BotView`
+### 3.1 Perception
 
-A compact, copyable snapshot built from `const World &` once per tick:
-
-- **Grid:** per cell, height, kind, visible contents, passability class,
-  slide direction, teleporter destination, and the switch-to-bridge mapping.
-- **Player:** cell, facing, mid-step or not, bombs, glides, active timed
-  effects and their remaining time, lives, and gems collected vs. required.
-- **Foes:** cell, kind, type, held/frozen, dying, and last chase target.
-- **Falling tiles:** armed, `armedAt`, fallen/busy, and whether they respawn.
-- **Bombs:** cell, fuse remaining, and blast zone.
-- **Bridges and lifts:** extended/position.
-- **Clock and time left.**
-
-**Knowledge:** the bot starts with perfect knowledge.  It reads everything,
-including a bombable block's hidden contents (`field202`).  Some levels take a
-human many plays to learn where things are, and the bot should not have to.
-All reads go through the perception filter, so a "fair" mode (no hidden
-contents) can be added there later without touching the planner.
-
-`BotView` serialises to JSON.  That gives us the trace format, offline replay
-of the planner against recorded views, and planner unit tests built from
-ASCII maps.
+`BotView`: a copyable snapshot of everything the bot may know, built once a
+tick.  It serialises to JSON for traces and offline replays.
 
 ### 3.2 Model
 
-- **Nav graph:** cells and legal moves, with the cost of each move in ms.  It
-  covers turning (tank controls make facing part of the state:
-  `(u, v, facing)`), ice runs, slides, teleporters, stairs and drops (a fall
-  rule, so a high drop is a death edge).  Edges are *conditional* on symbolic
-  facts: "block B spent", "bridge S extended".
-- **Regions:** connected components under the current facts, plus the facts
-  that would join them.  This is how GOAP asks whether an item is reachable
-  and what it would take to reach it.
-- **Distances:** all-pairs travel times between points of interest (gems,
-  items, bomb pickups, blocks, switches, falling tiles, exit), cached per
-  fact-set.
-- **Route optimiser (the TSP part):** given a start, a set of gems, a count k
-  and an end, it picks the k gems and the order that make the cheapest route
-  to the end.  The quota is often below the gems on the map, so this is a
-  prize-collecting (k-of-n) tour, not a plain TSP: the choice of which gems
-  to skip matters as much as the order, and the hard-to-reach or guarded ones
-  are the obvious ones to skip.  Exact DP over subsets up to about 15 gems;
-  beyond that, a greedy pick refined with 2-opt/Or-opt and add/drop swaps.
-  GOAP never picks or orders gems itself; it calls this.
-- **Predictors:**
-  - Foe: the path the foe will actually walk, given a hypothesised player
-    trajectory.  A single search does not give it, because the foe searches
-    again after every step and the result is not stable.  So the predictor
-    steps the foe's own chase forward one step at a time, searching from each
-    new cell as the foe does, on a copy of the map.
-  - Falling tile: exact from the timers above.
-  - Bomb: exact from its fuse and its roll.
-
-  The predictors need two fidelities:
-  - **L1, the abstract model above.**  Cheap, and used inside search.
-  - **L2, the real engine stepped forward from a copy of the World.**  The
-    entities hold raw pointers into the World (`EntityContext`) and sound
-    voices, so a `World::clone()` is a refactor.  We defer it until the
-    calibration numbers (section 4.6) say L1 cannot time a lure.
+What happens if the player does X: the nav graph (where a move ends and
+what it costs, with tank controls, ice, slides, lifts and falls), the route
+optimiser (which k of the n gems, in what order), and the predictors for
+foes, falling tiles and bombs.  The foe predictor steps the foes' own chase
+search, since their routes are not stable.  The danger check runs a
+player schedule against all of them.
 
 ### 3.3 Goal selection
 
-Score does not count, so there is one goal: the gem quota, then the exit, alive.
-Goal selection is therefore small, and it chooses between *plans*, not goals:
+Which goals are worth planning for now, the most relevant first: *finish*
+always, and above it *remove foe* while bombs are held and a foe will meet
+the player soon.  Goals are relevant on sensed facts, not on plans.
 
-- GOAP proposes the plans; each plan's cost is `time + μ·risk`.
-- Risk is the model's estimate of the chance of dying: near-misses with
-  predicted foes, tight lure windows, falling tiles crossed close to their
-  fall.  It dominates the cost, because a death fails the level.
-- Time matters only against the level's time limit.  A plan that overruns it
-  is invalid, and that is the one case where a time bonus is worth a detour.
-- Items enter only through action preconditions.  `Blast` needs bombs, and a
-  route past a guarding foe can use freeze or protection, so the planner takes
-  an item when an action needs it.
+### 3.4 Planner
 
-The weight μ lives in the bot config, so the harness can sweep it.  Selection
-re-runs only on a significant event (a block spent, a foe died, a plan
-failed), not every tick.
+GOAP: A* over a small fact set (place, blocks spent, gems needed, bombs,
+foes, pickups) to a goal, by the actions it is given.  Cost is time, plus
+an optional weight on risk.
 
-### 3.4 GOAP planner
+### 3.5 Actions and tactics
 
-- **State:** a small fact set, such as `gemsNeeded` (quota minus collected), `bombs=n`,
-  `blockSpent[b]`, `switchOn[s]`, `foeAlive[f]`, `foeAway[f]`,
-  `itemTaken[i]`, `atExit`, and the player's abstract position (a point of
-  interest).
-- **Actions:** macro-actions whose costs come from the model:
-
-  | Action | Preconditions | Effects |
-  |---|---|---|
-  | `Collect(R, k)` | R reachable | k gems in R taken, the cheapest k (route optimiser) |
-  | `Take(item)` | reachable, not guarded | item effect (`bombs+3`, life, ...) |
-  | `Blast(block)` | `bombs≥1`, block adjacent cell reachable | `blockSpent`, regions merge |
-  | `Throw(switch)` | reachable | `switchOn`, bridge edges open |
-  | `LureAway(foe, from)` | foe alive | `foeAway[foe]` for a window |
-  | `LureToDrop(foe, tile)` | tile respawned/unarmed, reachable, foe chases | `foeAlive=false` |
-  | `Exit` | `gemsNeeded=0`, exit reachable | `atExit` |
-
-- **Search:** A* over the facts.  The heuristic is the route optimiser's cost
-  for the gems still needed and the exit under the most permissive fact-set,
-  which is a lower bound.  The search budget is counted in **nodes expanded, never
-  wall time**, so the bot stays deterministic.
-
-Example: a gem (or bomb pickup) guarded by foe `f2` becomes the plan
-`LureToDrop(f2, t7) → Take(gem) → Collect(A, k) → Exit`.  `Take` requires
-`¬guarded`, and either `LureAway` or `LureToDrop` satisfies that; the planner
-picks whichever costs less, risk included.
-
-### 3.5 Tactical layer
-
-The tactical layer turns one GOAP action into a timed cell path.
-
-- **Space-time A*** over `(u, v, facing, t)`.  Foe-occupied cells, predicted by
-  the model, are forbidden or penalised, and so are falling tiles that will be
-  gone by the time we arrive and bomb zones.
-- **Maneuvers** are small parametric scripts with a verification step.  For
-  example, `LureToDrop`:
-  1. Pick a tile T and a route that steps onto T (which arms it at
-     `t_arm`) and off again, so that the foe's predicted path puts it on T
-     during `[t_arm + 1500 − ε, t_arm + 1500]`.
-  2. Search over the approach timing (wait k steps) and the exit direction.
-  3. Accept only if the predictor says the foe is on T at the fall and the
-     player is off it and untouched.
+Each action expands states for the planner and offers concrete options
+for the step about to be done.  An option is a script, the player's
+schedule, any blasts and a cost, and is checked by the danger check.
+`choose` is the loop between planner and tactics: check the cheapest plan's
+first step, rule it out or cost it in fact, and plan again until the
+cheapest plan starts with a checked step.
 
 ### 3.6 Motor
 
-The motor turns a cell path into held keys under tank controls: it turns to
-face, holds forward, releases at the cell boundary, and knows that ice and
-slides keep moving without input.  It is the only part that presses the
-controls; the run turns the presses into keys, as a `KeySource`.
+Turns a script of cells, turns, drops and waits into key presses.  It is
+the only part that presses keys.
 
 ### 3.7 Executive
 
-Each tick the executive compares the current `BotView` with what the plan
-predicted.  It checks the foe positions against tolerance, that we are where
-the path said we should be, and that the preconditions still hold.  It also
-watches progress (time since the last fact change).  On a divergence it
-replans at the lowest layer that can absorb it: re-path first, then the
-action, then the whole plan.  Every decision goes to the decision log with its
-reason.
+The agent loop.  It decides from rest, and re-selects goals every half
+second while a script runs.  A higher goal breaks the script off, unless
+the option under way is committed (its bomb still to go off).  The rest of
+the script is re-checked for safety, and the script is stopped if it turns
+unsafe.  Every decision is logged with its reason.
 
-### 3.8 Placement in the code
+### 3.8 In the code
 
-- **One `src/` group per layer**, so `layers.yaml` and the layering check
-  hold the bot to this design:
+One `src/` group per layer, held to this order by the layering check:
+`botapi` (vocabulary), `botmodel`, `botmotor`, `botplan` (goals, planner),
+`bottactics` (actions, tactics), `botexec`, and `bot` (the only one that
+reads the game).  `tools/bot/` holds the Python orchestration and analysis.
 
-  | Group | Layer |
-  |---|---|
-  | `botapi` | the bot's vocabulary: `BotView`, the presses, the policy interface |
-  | `botmodel` | the model (3.2): nav, distances, route optimiser, predictors, danger check |
-  | `botmotor` | the motor (3.6) and the script executor |
-  | `botplan` | goal selection and GOAP (3.3, 3.4) |
-  | `bottactics` | the tactical layer (3.5) |
-  | `botexec` | the executive (3.7) |
-  | `bot` | the run: perception's capture from the game (3.1), the policies, the logs |
+## 4. Measuring
 
-  Only `bot` reads the game.  It sits on the `[screens, sim]` line and needs
-  `entities` (const World), `game` (the game state) and `inputapi`.  The
-  layers sit below it, and none of them links the game.
-- **`app`:** with `KAROO_BOT=<policy>` set, it adds the bot as the exclusive key
-  source.
-- **`tools/bot/`:** the Python orchestration and analysis (section 4).
-
-## 4. Backtest framework
-
-### 4.1 The runner
-
-A bot run is the game, headless, with `KAROO_BOT=<policy>`, plus engine support:
-
-- **`KAROO_START_LEVEL=<index | Theme\Name | path.jjm>`** starts a fresh game
-  straight into the level, skipping the launcher and menus.  It reuses the
-  level-select's start path (`sequencer/levelselect.cpp`).  Accepting a
-  `.jjm` path lets synthetic test levels run without editing `JJ.GAM`.
-- **End conditions:** level complete, **the first death** (a run is one
-  level, one life), time limit, a tick cap, and **stuck** (no fact progress for
-  N seconds).  The run then exits with a status.
-- **Fixed dt and seed, unthrottled, no rendering.**  It should run far faster
-  than real time.  Measure it first (section 6, P0).
-- **Outputs**, per run:
-  - `summary.json`: outcome, frames, gems collected and required, the death
-    cause and frame if it died, replans, nodes expanded, and prediction-error
-    stats.
-  - `trace.jsonl.gz`: a `BotView` per tick, or every k ticks, plus the bot's
-    keys.
-  - `decisions.jsonl`: the plan and its reason at every (re)plan.
-  - `bot.rec`: an ordinary recording.  Replaying it with `--no-headless`
-    lets you *watch* any run.
-
-### 4.2 The corpus and the suites
-
-- **Shipped levels (the 75 that JJ.GAM lists):** a static analyser (Python, from the `.jjm` and
-  `JJ.GAM`) tags each level: `foes`, `throwers`, `falling-tiles`,
-  `bombables`, `needs-bomb`, `switches`, `ice`, `teleporters`, gem count.
-  Suites are tag queries ("all no-foe levels"), so a phase of the bot is judged
-  only on what it claims to handle.
-- **Skill scenarios:** tiny synthetic levels written as ASCII, compiled to
-  `.jjm` (a writer added to `tools/jjm.py`).  Each isolates one skill:
-  "8-gem TSP", "bomb the block to reach the gem", "lure the catcher onto T",
-  "lure the foe away from the life", "ice run".  Each has a pass condition and
-  a tick cap.
-- **Planner unit tests:** the same ASCII maps loaded straight into a `BotView`,
-  with no engine.  They test the route optimiser, GOAP and the tactical
-  searches in milliseconds (ctest).
-
-### 4.3 Running many
-
-`python3 tools/bot/backtest.py run --suite shipped --config cfg.json [-j N] [--seeds 1,2,3]`
-
-- Runs one process per (level, seed), in a process pool.  Headless needs no
-  display, so it parallelises cleanly.
-- Writes everything to `results/<date>-<sha>-<label>/`, with a `run.json`
-  holding the git sha, dirty flag, config, config hash, dt, seeds and suite.
-- Results are *not* committed.  A small `tests/bot/baseline.json` is: the
-  blessed per-level summary, as `replaytest.py --bless` does it.
-
-### 4.4 Comparing
-
-`backtest.py compare <A> <B>` (or `compare --baseline`) prints a per-level
-diff of outcome, failure cause and time, with the regressions first.  Across
-seeds it reports the completion rate per level and flags changes smaller than
-the seed-to-seed spread as noise.  It exits non-zero on any level that went
-from complete to not complete.
-
-The headline number is the **completion rate** per suite.  Under it come the
-failures broken down by cause (death by foe, bomb, drop or void; timeout; stuck;
-no plan found), since that is what says what to work on next.  Time is
-reported but not optimised.  It is kept as a diagnostic: a bot far slower than
-the human recordings (`water01` completes at frame 3921) is usually wandering.
-
-### 4.5 Robustness
-
-A plan that only works on one exact frame is fragile.  The runner supports
-perturbations to measure that:
-
-- **Seeds** move the random pickups.
-- **Start offset:** idle for k frames first, which shifts the foes' phase
-  relative to ours.
-- **Reaction latency:** the bot sees the `BotView` k ticks late.
-- **Input jitter:** occasionally delay a key by one tick.
-
-The **robustness score** is the completion rate under a perturbation sweep.
-A lure that succeeds unperturbed but fails at offset +1 is reported as
-fragile.
-
-### 4.6 Model calibration
-
-The model is a prediction, so the harness measures it like one.  On every
-tick, the bot logs the model's predictions for t+Δ (Δ = 1, 5, 20 ticks): foe
-cells, our own cell, and falling-tile states.  When t+Δ arrives, the harness
-scores them against reality.
-
-- `calibrate.py` reports the hit rate per predictor, per Δ and per level tag.
-- **Motor calibration scenarios** measure turn time, step time, ice and slide
-  behaviour, and stairs empirically, and check them against the model's edge
-  costs.  The engine is the authority; the model's constants are fitted from
-  it.
-
-These numbers settle the L1-vs-L2 question with evidence: if foe prediction at
-Δ=8 (the lure window) is below ~95%, we build `World::clone()`.
-
-### 4.7 Determinism as a gate
-
-The bot is a pure function of the views it receives and its config: no wall
-clock, no unseeded randomness, and budgets in nodes, not milliseconds.  So
-running the same (sha, config, level, seed) twice must produce byte-identical
-traces.  `backtest.py check-determinism` does exactly that over a small suite,
-and it is the first test that runs.
-
-A side effect, and not a goal in itself: **a bot run is a replay test.**
-Every run already writes a `.rec`, and a replay-manifest entry's
-`start_level` starts the replay in the level, as the bot run did.  So a
-completed level's `.rec` and expected end state can go into the replay
-catalogue with no further work.  This gives the engine refactors regression
-coverage across every level the bot can finish, without anyone playing them by
-hand.  No effort beyond `start_level` is planned for it.
-
-### 4.8 Seeing what it did
-
-- **In game:** a bot overlay on the existing debug map (`debugui`).  It shows
-  the current GOAP plan as text, the tactical path, the foes' predicted cells
-  with their time, the falling-tile timers, and the region colouring.  It is
-  drawn from the same structures the decision log serialises.
-- **Offline:** `backtest.py report <run>` writes a static HTML page per level:
-  the map, the path actually walked, the deaths marked, the decision timeline,
-  and a link to the frame to replay from.
-- **Bisecting a failure:** the planner can be re-run offline from any traced
-  `BotView` (`botplan --view trace.jsonl.gz --tick 1234`).  This gives "what
-  would it have planned here", without re-running the level.
-
-## 5. Engine changes needed
-
-Each is small and self-contained; they come first.
-
-1. `KAROO_START_LEVEL`, including loading a bare `.jjm` path.
-2. Run end conditions and a summary for a headless bot run, with the
-   **death cause** (foe, bomb, drop, void, harakiri).
-3. Bot key-source wiring in `app` (`KAROO_BOT`).
-4. The start level for a replay: a `start_level` field in the replay manifest.
-5. A `.jjm` writer in `tools/jjm.py`.  Its cell-byte notes also look stale
-   against `tile.h` (height, kind, param, contents), so check them while we
-   are there.
-6. (Later, only if calibration demands it) `World::clone()`.
-
-## 6. Phases
-
-Each phase is a stack of PRs, each built on the previous one, and each ends
-with a suite the bot is judged on.
-
-| Phase | Builds | Judged on |
-|---|---|---|
-| **P0 Harness** | engine changes 1–4; `backtest.py run/compare/check-determinism`; a placeholder bot (a scripted key list) | the pipeline runs every level in parallel, deterministically; speed measured |
-| **P1 Perception + motor** | `BotView` + JSON, the motor, a "walk to cell" bot; motor calibration scenarios | the scenarios: reaches the target cell; turn and step costs fitted |
-| **P2 Navigation + collection** | nav graph, regions, distances, route optimiser | the foe-free, bomb-free shipped levels |
-| **P3 Prediction** | foe/tile/bomb predictors, the prediction log, `calibrate.py`, space-time A* avoidance | prediction hit rates; completion on the foe levels by avoidance alone |
-| **P4 GOAP** | facts, actions, the planner, risk-weighted plan choice; bombs, blocks, switches, bridges, time limits | the `needs-bomb` and `switches` suites |
-| **P5 Lures** | `LureAway`, `LureToDrop` maneuvers with verification | the lure scenarios, robustness sweeps, guarded-gem levels |
-| **P6 Tooling** | debug overlay, HTML report, `botplan` offline re-plan | — |
-
-Every phase is measured by the same number: the completion rate over every
-level, which should never go down.
-
-## 7. Decisions
-
-1. **Success:** complete every level.  Score is ignored; time matters only
-   against the level's time limit.
-2. **Knowledge:** perfect.  The bot reads hidden contents.  A fair mode can
-   come later through the perception filter.
-3. **Lives:** a run is one level and one life, and stops at the first death.
-   We believe every level can be completed without dying.  Collected gems
-   persist through a death, so using lives would make some levels easier,
-   but lives are a resource shared across levels.  Spending them would
-   force planning across levels, which we are avoiding.  If a level turns
-   out to need a death, we revisit this for that level.
-4. **Replay tests:** bot runs become replay tests as a by-product (section
-   4.7), with no dedicated effort.
-5. **Language:** the planner is C++, in-process, and works on `BotView`.  The
-   orchestration and analysis are Python.  `BotView` JSON still allows
-   offline experiments against traces.
-
+- **`backtest.py`** runs every level headless and in parallel, one process
+  per level and seed, and writes per level a summary, the decision log, a
+  trace and a recording that replays on screen.  `compare` diffs two runs,
+  regressions first; `check-determinism` runs twice and requires identical
+  results.
+- **Checks of the model against the game**: `calibrate.py` (moves),
+  `foecheck.py` and `modelcheck.py` (foe and nav predictions), `bombcheck.py`
+  (blasts), `ambushcheck.py` (did the predicted kills happen).
+- **A bot run is a replay test** as a by-product: a completed level's
+  recording can join the replay catalogue as is.
