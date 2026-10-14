@@ -138,6 +138,15 @@ std::string BotView::toJson(unsigned frame, const BotView *prev) const
                 "\"at_limit\":%d,\"phase_start\":%.1f}", i ? "," : "", p.originU, p.originV,
                 p.alongU, p.limit, p.height, p.state, p.atLimit, p.phaseStart);
     }
+    out += "],\"bridges\":[";
+    for (size_t i = 0; i < bridges.size(); i++) {
+        const BridgeView &b = bridges[i];
+        appendf(out, "%s{\"slot\":%d,\"height\":%d,\"deck\":[", i ? "," : "", b.slot, b.height);
+        for (size_t j = 0; j < b.deck.size(); j++)
+            appendf(out, "%s[%d,%d]", j ? "," : "", b.deck[j].u, b.deck[j].v);
+        appendf(out, "],\"extended\":%d,\"moving\":%d,\"phase_start\":%.1f}", b.extended,
+                b.moving, b.phaseStart);
+    }
     out += "]}";
     return out;
 }

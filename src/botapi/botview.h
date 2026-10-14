@@ -28,7 +28,7 @@ struct Cell {
     unsigned char kind     = 0;  // TileKind
     unsigned char contents = 0;  // TileContents: what is picked up here
     unsigned char hidden   = 0;  // a bombable block's contents, revealed by a blast
-    unsigned char param    = 0;
+    unsigned char param    = 0;  // a switch's: its slot + 1, as the level file has it
     unsigned char occupant = 0;  // nonzero while something stands here
     unsigned char slideDir = 0;
     unsigned char teleU = 0, teleV = 0;  // a teleporter's destination
@@ -104,6 +104,21 @@ struct PlatformView {
     double phaseStart = 0;     // clock ms the phase began
 };
 
+/* A switched bridge (bridgeobject.cpp): a deck of cells along one axis, at
+ * one height, which a switch of its slot extends or retracts, a cell every
+ * 100 ms.  An extended deck is walkable ground; a retracted one is void.
+ * Only the bridge the game finds for a slot (World::bridge) is a BridgeView:
+ * the switch works no other. */
+struct BridgeView {
+    int    slot = 0;
+    int    height = 0;
+    std::vector<Step> deck;    // from the anchor outwards
+    bool   extended = false;   // its state, or the one it is moving to
+    bool   moving = false;     // a switch has set it going
+    double phaseStart = 0;     // clock ms the move began
+    double moveMs() const { return 100.0 * deck.size(); }
+};
+
 struct BombView : Mover {
     double droppedAt = 0;   // clock ms; it blows 2 s later
 };
@@ -131,6 +146,7 @@ public:
     std::vector<BombView>    bombs;
     std::vector<LiftView>    lifts;
     std::vector<PlatformView> platforms;
+    std::vector<BridgeView>   bridges;
 
     /* Why the player died (it has: player.moveState != 0): foe, drop,
      * timeout, bomb, void, harakiri.  See botview.cpp. */

@@ -297,7 +297,7 @@ void BridgeObject::tick()
                           (unsigned)tileHeight_);
             }
 
-            t->setObjectMarker(0x14);
+            t->setObjectMarker(TILE_BRIDGE_DECK);
             t->setBusy(1);
             t->setHeight(tileHeight_);
             t->setBridgeAxis(axis);

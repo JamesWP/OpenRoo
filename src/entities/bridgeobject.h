@@ -28,6 +28,7 @@ struct BridgeExtent {
     int   slot;       // the switch that operates it
     bool  armed;      // moving
     int   phase;      // 0: extends next; 1: retracts next
+    int   height;     // the deck's
 };
 
 class SwitchCells;
@@ -50,6 +51,8 @@ public:
     // Draws it on the debug map, with its switch links (dbg.h).
     void debugDraw(const SwitchCells &sc) const;
 
+    // When the move under way began, clock ms.
+    double phaseStart() const        { return phaseStart_; }
     // The switch (GameTick, tilequery.cpp).
     // Nonzero while a switch has set it moving.
     int  armed() const               { return armed_; }
@@ -68,7 +71,7 @@ public:
     // A read-only view for the debug map.
     BridgeExtent extent() const
     {
-        return { axis_, restU_, restV_, step_, span_, posU_, posV_, slot_, armed_ != 0, phase_ };
+        return { axis_, restU_, restV_, step_, span_, posU_, posV_, slot_, armed_ != 0, phase_, height_ };
     }
 
     // The moving-loop sound, attached by InitLevelBasedSounds

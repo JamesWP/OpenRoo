@@ -1,6 +1,8 @@
 #include "capture.h"
 #include "game.h"
 #include "player.h"
+#include "bridgeobject.h"
+#include "tile.h"
 
 namespace bot {
 
@@ -52,6 +54,8 @@ BotView capture(const Game &game)
             c.liftBottom  = (unsigned char)t->liftBottom();
             c.liftTop     = (unsigned char)t->liftTop();
             c.busy        = t->busy() != 0;
+            if (t->objectMarker() == TILE_SWITCH)
+                c.param = (unsigned char)(t->field1f3() + 1);  // the level file's
         }
 
     view.level         = s->levelNameTableEntry(s->levelIndex());
@@ -122,6 +126,26 @@ BotView capture(const Game &game)
         pv.atLimit = pf.atLimit();
         pv.phaseStart = pf.phaseStart();
         view.platforms.push_back(pv);
+    }
+    for (const BridgeObject &br : w->bridges()) {
+        if (w->bridge(br.switchSlot()) != &br)
+            continue;  // a switch works only the first of its slot
+        const BridgeExtent e = br.extent();
+        BridgeView bv;
+        bv.slot = e.slot;
+        bv.height = e.height;
+        // The deck runs from the anchor along the step: a reversed bridge's
+        // rest is a cell past its anchor (bridgeobject.cpp, spawn).
+        const int u0 = (int)e.restU - (e.axis == 1 && e.step < 0 ? 1 : 0);
+        const int v0 = (int)e.restV - (e.axis == 2 && e.step < 0 ? 1 : 0);
+        for (int i = 0; i < e.span; i++)
+            bv.deck.push_back({u0 + (e.axis == 1 ? e.step * i : 0),
+                               v0 + (e.axis == 2 ? e.step * i : 0)});
+        // Phase 0 extends next; a moving bridge is shown in the state it moves to.
+        bv.moving = e.armed;
+        bv.extended = e.armed ? e.phase == 0 : e.phase == 1;
+        bv.phaseStart = e.armed ? br.phaseStart() : 0;  // unset until first armed
+        view.bridges.push_back(bv);
     }
     for (const Bomb &b : w->bombs()) {
         BombView bv;
