@@ -7,4 +7,4 @@ add_library(bot OBJECT
 target_include_directories(bot PUBLIC .)
 target_link_libraries(bot
     PUBLIC inputapi botapi botmodel
-    PRIVATE sysdev log base input level entities game botmotor botexec)
+    PRIVATE sysdev log base input level entities game botmotor botexec dbg imgui)

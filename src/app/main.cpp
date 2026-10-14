@@ -315,7 +315,7 @@ int Main_WinMain(const char *lpCmdLine)
     // The intro is only shown to a person at a display: a headless, replayed
     // or bot run takes it as ending at once, so its frame counts do not
     // depend on it.
-    const bool show = !d3d->headless() && !record_replaying() && bot::source() == nullptr;
+    const bool show = !d3d->headless() && !record_replaying() && !bot::active();
     const std::string path = std::string(kGameDir) + "/video/INTRO.AVI";
     if (movie.load(sysdev::nativePath(path.c_str()).c_str(), show))
         movie.play();
