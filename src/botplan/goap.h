@@ -23,9 +23,10 @@
  * (the default) the planner weighs time alone and leaves the foes to the
  * tactical layer.
  *
- * The planner can be told to keep certain actions out of a plan's first
- * step: those the tactical layer has found no safe way to do now.  The
- * cheapest plan that starts some other way is then the answer. */
+ * The estimates are checked where it matters, the first step (tactics.h,
+ * choose): the planner can be told what a first step was found to take, or
+ * that it cannot be had now, and the cheapest plan given that is the
+ * answer. */
 #pragma once
 
 #include <string>
@@ -98,7 +99,14 @@ struct PlanOptions {
     GoalKind goal = FINISH;
     double   startBy = -1;                   // ms: no step starts later (-1: no limit)
     double   mu = 0;                         // ms a foe-second
-    unsigned notFirst = 0;                   // a bit per action, by index
+    /* First steps found out already: by action and end, either not to be
+     * had now (ms < 0) or taking ms in fact, in place of the estimate. */
+    struct Known {
+        int    action;
+        Place  end;
+        double ms;
+    };
+    std::vector<Known> root;
     int      maxNodes = 4000;
     size_t   maxWorlds = 64;                 // what-if terrains built, besides the base
 };
