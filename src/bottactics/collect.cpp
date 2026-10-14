@@ -1,5 +1,5 @@
 /* Collect: with gems needed and a route to them in the world the facts make,
- * the whole quota, by the route optimiser's route (board.h), ending at its
+ * the gems still needed, from the map, by the route optimiser's route (board.h), ending at its
  * last gem.  Done as a walk to the route's next gem, or another of the
  * nearest gems (costed with the whole route still to do). */
 #include "action.h"
@@ -18,7 +18,7 @@ public:
     {
         if (f.gemsNeeded <= 0)
             return;
-        const GemRoute &r = board.gemRoute(f.changes, f.at);
+        const GemRoute &r = board.gemRoute(f.changes, f.at, f.gemsNeeded);
         if (!r.found)
             return;
         Successor n{f, {}};

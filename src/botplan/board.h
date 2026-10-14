@@ -62,6 +62,10 @@ public:
     int   gemsNeeded() const { return gemsNeeded_; }
     int   bombs() const { return live_.player.bombs; }
     int   foes() const { return (int)live_.foes.size(); }
+    /* Whether the foe leaves a gem when killed (foe.cpp, finishDespawn). */
+    static bool carrier(const FoeView &foe);
+    /* The foes that do. */
+    int   carriers() const { return carriers_; }
     Step  exit() const { return {live_.exitU, live_.exitV}; }
     /* The bomb pickups, on the map and hidden. */
     const std::vector<Pickup> &pickups() const { return pickups_; }
@@ -96,13 +100,17 @@ public:
     /* A turn to a facing, from a place, ms. */
     double turnMs(Place from, int facing) const;
 
-    const GemRoute &gemRoute(Changes s, Place from) const;
-    /* Whether, standing on that gem as things are, the rest of the quota and
-     * the exit can still be had: a gem that drops the player where it cannot
-     * is a trap. */
+    /* The way to collect need of the gems on the map (the quota, by default)
+     * and go on to the exit. */
+    const GemRoute &gemRoute(Changes s, Place from, int need = -1) const;
+    /* The gems the quota needs from the map: those the carriers cannot give. */
+    int   fromMap() const { return gemsNeeded_ > carriers_ ? gemsNeeded_ - carriers_ : 0; }
+    /* Whether, standing on that gem as things are, the rest of the quota (the
+     * carriers' gems aside) and the exit can still be had: a gem that drops
+     * the player where it cannot is a trap. */
     bool canFinishAfter(Step gem) const;
-    /* Whether, standing on that cell as things are, the quota and the exit can
-     * be had. */
+    /* Whether, standing on that cell as things are, the quota (the carriers'
+     * gems aside) and the exit can be had. */
     bool canFinishFrom(Step cell) const;
 
     /* The changes the world s lacks that stand in the way: on the quickest
@@ -128,10 +136,11 @@ private:
     const BotView &live_;
     Worlds        *worlds_;
     int            gemsNeeded_ = 0;
+    int            carriers_ = 0;
     std::vector<Pickup> pickups_;
     std::vector<std::pair<Step, int>> switches_;
     mutable std::map<Changes, std::vector<Step>> gems_;
-    mutable std::map<std::pair<Changes, Place>, GemRoute> routes_;
+    mutable std::map<std::tuple<Changes, Place, int>, GemRoute> routes_;
     mutable std::map<std::pair<int, int>, bool> after_;
     mutable std::map<Changes, std::vector<Site>> sites_;
     mutable std::map<std::tuple<Changes, int, int>, int> reach_;
