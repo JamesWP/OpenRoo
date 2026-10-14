@@ -335,6 +335,17 @@ bool debugUiShown()
     return g_debugUi && g_debugUiShown;
 }
 
+bool vsync()
+{
+    int interval = 0;
+    return SDL_GL_GetSwapInterval(&interval) && interval != 0;
+}
+
+void setVsync(bool on)
+{
+    SDL_GL_SetSwapInterval(on ? 1 : 0);
+}
+
 void debugUiNewFrame()
 {
     if (g_debugUi)

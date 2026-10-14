@@ -280,6 +280,10 @@ bool frameEnd()
     if (beginMain()) {
         ImGui::Checkbox("map", &g_showMap);
         ImGui::SameLine();
+        bool vsync = windev::vsync();
+        if (ImGui::Checkbox("vsync", &vsync))
+            windev::setVsync(vsync);
+        ImGui::SameLine();
         ImGui::TextDisabled("F10 hides this");
     }
     ImGui::End();

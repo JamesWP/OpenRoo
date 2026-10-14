@@ -145,6 +145,11 @@ void debugUiNewFrame();
 bool debugUiCapturesKeyboard();
 bool debugUiCapturesMouse();
 
+/* Whether the current OpenGL context waits for the display's refresh, and
+ * turning that on or off, for the UI's vsync toggle. */
+bool vsync();
+void setVsync(bool on);
+
 /* Pumps events, calling idle between them, until quit(); returns quit's
  * code. */
 int  runMessageLoop(const std::function<void()> &idle);
