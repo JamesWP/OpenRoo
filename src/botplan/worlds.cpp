@@ -16,19 +16,29 @@ void Worlds::update(const BotView &view)
 size_t Worlds::blockCount() const
 {
     const size_t n = base().blocks().size();
-    return n < 64 ? n : 64;
+    return n < 63 ? n : 63;
 }
 
-const Terrain &Worlds::get(Spent s)
+size_t Worlds::bridgeCount() const
+{
+    const size_t n = base().view().bridges.size(), room = 63 - blockCount();
+    return n < room ? n : room;
+}
+
+const Terrain &Worlds::get(Changes s)
 {
     auto it = worlds_.find(s);
     if (it != worlds_.end())
         return *it->second;
     std::vector<Step> blocks;
     for (size_t i = 0; i < blockCount(); i++)
-        if (s & ((Spent)1 << i))
+        if (s & ((Changes)1 << i))
             blocks.push_back(block(i));
-    return *(worlds_[s] = base().spent(blocks));
+    std::vector<size_t> bridges;
+    for (size_t i = 0; i < bridgeCount(); i++)
+        if (s & bridgeBit(i))
+            bridges.push_back(i);
+    return *(worlds_[s] = base().changed(blocks, bridges, (s & OPEN) != 0));
 }
 
 }  // namespace bot

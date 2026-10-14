@@ -68,6 +68,19 @@ double NavModel::fallsAlong(const std::vector<Step> &cells) const
     return ms;
 }
 
+const BridgeView *switchedBy(const BotView &view, int u, int v)
+{
+    if (!view.inside(u, v))
+        return nullptr;
+    const Cell &c = view.cell(u, v);
+    if (c.kind != TILE_SWITCH || c.param == 0)
+        return nullptr;
+    for (const BridgeView &b : view.bridges)
+        if (b.slot == c.param - 1)
+            return &b;
+    return nullptr;
+}
+
 bool NavModel::moving(const Cell &c)
 {
     return c.kind == TILE_LIFT || c.track;
@@ -153,6 +166,11 @@ unsigned long long navHash(const BotView &view)
         mix(c.slideDir);
         mix(c.liftBottom);
         mix(c.liftTop);
+    }
+    // The bridges' states (their decks are in the cells but for a moving one).
+    for (const BridgeView &b : view.bridges) {
+        mix(b.extended);
+        mix(b.moving);
     }
     // Where the platforms run.
     for (const PlatformView &p : view.platforms) {
@@ -338,7 +356,8 @@ Outcome NavModel::turn(int u, int v, int f, int delta) const
     return out;
 }
 
-Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs)
+Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
+             bool throughSwitches)
     : nav_(nav), eu_(nav.view().extentU), ev_(nav.view().extentV), startU_(u), startV_(v),
       startMs_(startMs)
 {
@@ -364,6 +383,8 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs)
         done[i] = 1;
         const int f  = i % 4 + 1;
         const int cu = (i / 4) % eu_, cv = (i / 4) / eu_;
+        if (!throughSwitches && (cu != u || cv != v) && switchedBy(nav.view(), cu, cv))
+            continue;
         for (int how = 0; how < 4; how++) {
             double start = c;
             Outcome o;

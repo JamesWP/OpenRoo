@@ -30,16 +30,16 @@ public:
     void expand(const Facts &f, const Board &board, const PlanOptions &options,
                 std::vector<Successor> &out) const override
     {
-        if (f.bombs <= 0 || f.spent == board.everything())
+        if (f.bombs <= 0 || (f.changes & board.allBlocks()) == board.allBlocks())
             return;
-        std::map<Spent, std::pair<double, Site>> best;
+        std::map<Changes, std::pair<double, Site>> best;
         // Only a blast that spends a block in the way is worth a bomb (and,
         // short of bombs, one in the way to a pickup).
-        const Spent wanted = board.inTheWay(f.spent, f.at, f.bombs <= 1);
-        for (const Site &site : board.sites(f.spent)) {
+        const Changes wanted = board.inTheWay(f.changes, f.at, f.bombs <= 1);
+        for (const Site &site : board.sites(f.changes)) {
             if (!(site.hits & wanted))
                 continue;
-            const double t = board.time(f.spent, f.at, {site.cell.u, site.cell.v});
+            const double t = board.time(f.changes, f.at, {site.cell.u, site.cell.v});
             if (t < 0)
                 continue;
             const double cost = t + board.turnMs(f.at, site.cell.facing) + BLAST_MS;
@@ -63,8 +63,8 @@ public:
         for (size_t i = 0; i < sorted.size() && i < BLASTS; i++) {
             const auto &[cost, site] = sorted[i];
             Successor n{f, {}};
-            n.facts.spent |= site.hits;
-            if (!board.worlds().has(n.facts.spent) && board.worlds().size() > options.maxWorlds)
+            n.facts.changes |= site.hits;
+            if (!board.worlds().has(n.facts.changes) && board.worlds().size() > options.maxWorlds)
                 continue;
             n.facts.bombs--;
             n.facts.unused = false;

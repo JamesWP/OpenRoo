@@ -1,8 +1,12 @@
-/* Worlds: the level's terrain (terrain.h) under each set of spent blocks the
+/* Worlds: the level's terrain (terrain.h) under each set of changes the
  * planner weighs, built when asked for and kept while the terrain stands.
  *
- * A set is a bit per bombable block of the level as it stands (the base,
- * numbered in grid order), the first 64 blocks. */
+ * A set of changes is a bit per bombable block of the level as it stands (the
+ * base, numbered in grid order), set when the block is spent; then a bit per
+ * bridge (BotView::bridges), set when it is switched from how it stands; 63
+ * bits in all, the blocks first.  The top bit, OPEN, marks the most open
+ * world, whose routes pass over switches: a bound for the planner, not a
+ * world to walk in (Board::everything). */
 #pragma once
 
 #include <map>
@@ -12,7 +16,9 @@
 
 namespace bot {
 
-using Spent = uint64_t;
+using Changes = uint64_t;
+
+const Changes OPEN = (Changes)1 << 63;
 
 class Worlds {
 public:
@@ -26,19 +32,22 @@ public:
      * will really have, and the same for every decision on the same terrain,
      * so the routes are found once. */
     int pointFacing() const { return facing_; }
-    /* The world with the blocks in s spent. */
-    const Terrain &get(Spent s);
-    bool has(Spent s) const { return worlds_.count(s) != 0; }
+    /* The world with the changes in s. */
+    const Terrain &get(Changes s);
+    bool has(Changes s) const { return worlds_.count(s) != 0; }
     size_t size() const { return worlds_.size(); }
 
     /* The blocks the bits stand for. */
     size_t blockCount() const;
     Step   block(size_t bit) const { return base().blocks()[bit]; }
+    /* The bridges that have bits, and the bit of each. */
+    size_t bridgeCount() const;
+    Changes bridgeBit(size_t i) const { return (Changes)1 << (blockCount() + i); }
 
 private:
     unsigned long long hash_ = 0;
     int facing_ = 1;
-    std::map<Spent, std::unique_ptr<Terrain>> worlds_;
+    std::map<Changes, std::unique_ptr<Terrain>> worlds_;
 };
 
 }  // namespace bot

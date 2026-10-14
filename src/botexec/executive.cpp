@@ -214,7 +214,7 @@ unsigned Executive::act(const BotView &view)
         if (now.front().kind != goal_ && decide(view, now, true))
             return exec_.act(view);
     }
-    if (ticks_ % CHECK_TICKS == 0 && !view.foes.empty() && !stillSafe(view))
+    if (ticks_ % CHECK_TICKS == 0 && !stillSafe(view))
         exec_.halt();
     if (view.player.atRest()) {
         const bool idle = exec_.status() != Executor::Running;

@@ -18,7 +18,7 @@ public:
     {
         if (f.gemsNeeded <= 0)
             return;
-        const GemRoute &r = board.gemRoute(f.spent, f.at);
+        const GemRoute &r = board.gemRoute(f.changes, f.at);
         if (!r.found)
             return;
         Successor n{f, {}};

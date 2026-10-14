@@ -16,7 +16,7 @@ public:
     {
         if (f.gemsNeeded > 0 || f.unused)
             return;
-        const double t = board.time(f.spent, f.at, board.exit());
+        const double t = board.time(f.changes, f.at, board.exit());
         if (t < 0)
             return;
         Successor n{f, {}};

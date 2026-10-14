@@ -7,11 +7,12 @@ const Action &exitAction();
 const Action &bombsAction();
 const Action &blastAction();
 const Action &ambushAction();
+const Action &switchAction();
 
 const std::vector<const Action *> &actions()
 {
     static const std::vector<const Action *> all{&collectAction(), &exitAction(), &bombsAction(),
-                                                 &blastAction(), &ambushAction()};
+                                                 &blastAction(), &ambushAction(), &switchAction()};
     return all;
 }
 

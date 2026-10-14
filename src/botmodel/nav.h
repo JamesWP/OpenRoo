@@ -12,11 +12,16 @@
  * space below it), or the step
  * is refused (a wall, a climb of one without stairs).
  *
+ * A switch is a route's end, never a way through: the player who comes to
+ * rest on one works its bridge (switchedBy), which only a plan that means to
+ * may do.
+ *
  * Foes are not seen.  Lifts are followed in time (liftmodel.h): a step on or
  * off a lift is allowed only while it is parked, so a move is asked for at a
  * time, and the quickest way waits for the lifts where it must.  Platforms
- * and bridges are taken as walls.  tools/bot/modelcheck.py measures how often the
- * model is right, against what the game did (botrun.h's model log). */
+ * are taken as walls; an extended bridge's deck is ground.
+ * tools/bot/modelcheck.py measures how often the model is right, against
+ * what the game did (botrun.h's model log). */
 #pragma once
 
 #include <map>
@@ -96,6 +101,9 @@ private:
     std::map<int, int> partner_;                // a platform's end cell index to its other end's
 };
 
+/* The bridge the switch on (u, v) works, or null if it is no working switch. */
+const BridgeView *switchedBy(const BotView &view, int u, int v);
+
 /* A hash of what the nav model reads (the terrain and the step time): its
  * answers stand while this does. */
 unsigned long long navHash(const BotView &view);
@@ -116,12 +124,16 @@ struct Leg {
 
 /* The quickest routes from one rest state to every other: Dijkstra over
  * (cell, facing), each move costing its time, and, where lifts are, waiting
- * for them (the routes start at the view's clock). */
+ * for them (the routes start at the view's clock).  A route ends at a working
+ * switch, unless it starts there. */
 class Paths {
 public:
     /* From rest on (u, v) facing f, setting off startMs from the view's
-     * clock (it matters where there are lifts). */
-    Paths(const NavModel &nav, int u, int v, int facing, double startMs = 0);
+     * clock (it matters where there are lifts).  With throughSwitches, the
+     * routes pass over switches as over ground: a bound, for the planner's
+     * most open world (worlds.h), not a way to be walked. */
+    Paths(const NavModel &nav, int u, int v, int facing, double startMs = 0,
+          bool throughSwitches = false);
 
     /* The least time from the start to come to rest on (u, v), any facing;
      * < 0 if never. */
