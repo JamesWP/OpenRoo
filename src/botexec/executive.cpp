@@ -123,6 +123,10 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
         note_  = board.noRoute();
         stuck_ = true;
         chosen = Option();
+        // Stuck among foes: keep out of their way, while what they do (a gem
+        // a carrier leaves, a bridge switched) may open a way.
+        if (!view.foes.empty() && evade(s, board, &chosen, &tally[EVADE]))
+            note_ += "; " + chosen.what;
     } else {
         // Nothing safe: keep safe, as near the way as may be.
         const Step to = goal_of(finish);
@@ -214,7 +218,9 @@ unsigned Executive::act(const BotView &view)
         if (now.front().kind != goal_ && decide(view, now, true))
             return exec_.act(view);
     }
-    if (ticks_ % CHECK_TICKS == 0 && !stillSafe(view))
+    // A retreat from the player's own bomb is not stopped short: standing
+    // still in its blast is worse than whatever turned the rest unsafe.
+    if (ticks_ % CHECK_TICKS == 0 && view.now >= chosen_.committedUntil && !stillSafe(view))
         exec_.halt();
     if (view.player.atRest()) {
         const bool idle = exec_.status() != Executor::Running;
@@ -225,7 +231,8 @@ unsigned Executive::act(const BotView &view)
         const bool cornered = idle && !stuck_ && chosen_.script.empty();
         if (!decided_ || changed ||
             (idle && !stuck_ && (!cornered || ticks_ % CHECK_TICKS == 0)) ||
-            (idle && stuck_ && navHash(view) != terrain_))
+            (idle && stuck_ && (navHash(view) != terrain_ ||
+                                (!view.foes.empty() && ticks_ % CHECK_TICKS == 0))))
             decide(view, goals(view), false);
     }
     return exec_.act(view);
