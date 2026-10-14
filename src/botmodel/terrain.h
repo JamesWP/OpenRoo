@@ -2,10 +2,12 @@
  * with some bombable blocks spent, and the quickest routes over it.
  *
  * A Terrain is a copy of the view's cells, so it stands while the cells it
- * was made from do.  spent() makes the Terrain of the same level after a bomb
- * has blown the given blocks: each is open ground at its height.  The planner
- * (docs/BOT_DESIGN.md, section 3.4) weighs such what-if terrains; the facts
- * that differ are which blocks are spent.
+ * was made from do.  changed() makes the Terrain of the same level after a
+ * bomb has blown the given blocks (each is open ground at its height) and the
+ * given bridges have been switched (an extended deck is void, a retracted
+ * one ground).  The planner (docs/BOT_DESIGN.md, section 3.4) weighs such
+ * what-if terrains; the facts that differ are which blocks are spent and
+ * which bridges switched.
  *
  * The routes from a cell are found when first asked for and kept. */
 #pragma once
@@ -20,12 +22,17 @@ namespace bot {
 
 class Terrain {
 public:
-    explicit Terrain(const BotView &view);
+    /* With throughSwitches, its routes pass over switches (Paths). */
+    explicit Terrain(const BotView &view, bool throughSwitches = false);
     Terrain(const Terrain &) = delete;
     Terrain &operator=(const Terrain &) = delete;
 
-    /* The same level with these blocks spent, as the blast spends them. */
-    std::unique_ptr<Terrain> spent(const std::vector<Step> &blocks) const;
+    /* The same level with these blocks spent, as the blast spends them, and
+     * these bridges (indices into view().bridges) switched, their moves
+     * done. */
+    std::unique_ptr<Terrain> changed(const std::vector<Step> &blocks,
+                                     const std::vector<size_t> &bridges,
+                                     bool throughSwitches = false) const;
 
     const BotView  &view() const { return view_; }
     const NavModel &nav() const { return nav_; }
@@ -40,6 +47,7 @@ private:
     BotView view_;
     NavModel nav_;
     std::vector<Step> blocks_;
+    bool throughSwitches_;
     mutable std::map<int, std::unique_ptr<Paths>> from_;
 };
 

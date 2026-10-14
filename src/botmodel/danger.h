@@ -21,7 +21,7 @@ namespace bot {
 struct Danger {
     bool        hit = false;
     double      t = 0;      // ms from now
-    const char *why = "";   // "catcher", "thrower", "bomb", "falling tile"
+    const char *why = "";   // "catcher", "thrower", "bomb", "falling tile", "bridge"
     int         killed = 0; // foes the extra blasts killed meanwhile
     std::vector<FoeModel::Kill> kills;  // those, where and when (the foe model's clock)
 };

@@ -19,13 +19,13 @@ public:
     void expand(const Facts &f, const Board &board, const PlanOptions &,
                 std::vector<Successor> &out) const override
     {
-        if (f.bombs != 0 || (f.foes == 0 && f.spent == board.everything()))
+        if (f.bombs != 0 || (f.foes == 0 && (f.changes & board.allBlocks()) == board.allBlocks()))
             return;
         const std::vector<Pickup> &pickups = board.pickups();
         for (size_t i = 0; i < pickups.size() && i < 32; i++) {
-            if ((f.pickups & (1u << i)) || !Board::available(pickups[i], f.spent))
+            if ((f.pickups & (1u << i)) || !Board::available(pickups[i], f.changes))
                 continue;
-            const double t = board.time(f.spent, f.at, pickups[i].cell);
+            const double t = board.time(f.changes, f.at, pickups[i].cell);
             if (t < 0)
                 continue;
             Successor n{f, {}};

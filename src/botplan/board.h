@@ -40,7 +40,7 @@ struct Pickup {
 /* A place a bomb dropped spends blocks from, and which. */
 struct Site {
     Place cell;
-    Spent hits = 0;
+    Changes hits = 0;
 };
 
 /* The way to collect the quota from a place and go on to the exit. */
@@ -66,23 +66,37 @@ public:
     /* The bomb pickups, on the map and hidden. */
     const std::vector<Pickup> &pickups() const { return pickups_; }
     /* Whether the pickup is there to take once the blocks in s are spent. */
-    static bool available(const Pickup &p, Spent s) { return p.block < 0 || (s >> p.block & 1); }
+    static bool available(const Pickup &p, Changes s) { return p.block < 0 || (s >> p.block & 1); }
 
     Worlds &worlds() const { return *worlds_; }
-    /* The set with every block spent. */
-    Spent everything() const;
+    /* The changes that spend every block. */
+    Changes allBlocks() const;
+    /* The most open world: every block spent, every bridge extended, and the
+     * switches passed over (worlds.h).  Its routes are a lower bound. */
+    Changes everything() const;
+    /* How many cells can be come to rest on from the cell, in the world s. */
+    int reach(Changes s, Step from) const;
+    /* Whether bridge i is extended in the world s. */
+    bool extended(Changes s, size_t i) const
+    {
+        return live_.bridges[i].extended != ((s & worlds_->bridgeBit(i)) != 0);
+    }
+    /* The bridge the switch on the cell works, by its index, or -1. */
+    int switched(Step cell) const;
+    /* The switches: each working switch cell and its bridge's index. */
+    const std::vector<std::pair<Step, int>> &switches() const { return switches_; }
 
     /* The gems to be had in the world s: those on the map, and those the
      * spent blocks hide. */
-    const std::vector<Step> &gems(Spent s) const;
+    const std::vector<Step> &gems(Changes s) const;
 
     /* The least time from a place to a cell, in the world s, ms; < 0 if
      * there is no way. */
-    double time(Spent s, Place from, Step to) const;
+    double time(Changes s, Place from, Step to) const;
     /* A turn to a facing, from a place, ms. */
     double turnMs(Place from, int facing) const;
 
-    const GemRoute &gemRoute(Spent s, Place from) const;
+    const GemRoute &gemRoute(Changes s, Place from) const;
     /* Whether, standing on that gem as things are, the rest of the quota and
      * the exit can still be had: a gem that drops the player where it cannot
      * is a trap. */
@@ -91,34 +105,37 @@ public:
      * be had. */
     bool canFinishFrom(Step cell) const;
 
-    /* The blocks, unspent in the world s, that stand in the way: on the
-     * quickest way from a place through the quota's gems to the exit once
-     * every block is spent (and, with pickups, to the bomb pickups too), a
-     * gem's or a pickup's own block too.  Spending any other block cannot
-     * shorten the way.  Empty when the way is clear. */
-    Spent inTheWay(Spent s, Place from, bool pickups) const;
+    /* The changes the world s lacks that stand in the way: on the quickest
+     * way from a place through the quota's gems to the exit in the most open
+     * world (and, with pickups, to the bomb pickups too), the blocks unspent
+     * (a gem's or a pickup's own block too) and the bridges not extended.
+     * Making any other change cannot shorten the way.  Empty when the way is
+     * clear. */
+    Changes inTheWay(Changes s, Place from, bool pickups) const;
 
     /* Every place, in the world s, a bomb would spend some block of that
      * world from: where it lands (rolling a step along the facing) within
      * reach of a block at its height. */
-    const std::vector<Site> &sites(Spent s) const;
+    const std::vector<Site> &sites(Changes s) const;
 
     /* Why there is no way to the goal at all, for the note: "no route: ...". */
     std::string noRoute() const;
 
 private:
-    GemRoute routeFrom(Spent s, Place from, const Step *taken, int need) const;
+    GemRoute routeFrom(Changes s, Place from, const Step *taken, int need) const;
     int facingOf(const Place &p) const { return p.facing ? p.facing : worlds_->pointFacing(); }
 
     const BotView &live_;
     Worlds        *worlds_;
     int            gemsNeeded_ = 0;
     std::vector<Pickup> pickups_;
-    mutable std::map<Spent, std::vector<Step>> gems_;
-    mutable std::map<std::pair<Spent, Place>, GemRoute> routes_;
+    std::vector<std::pair<Step, int>> switches_;
+    mutable std::map<Changes, std::vector<Step>> gems_;
+    mutable std::map<std::pair<Changes, Place>, GemRoute> routes_;
     mutable std::map<std::pair<int, int>, bool> after_;
-    mutable std::map<Spent, std::vector<Site>> sites_;
-    mutable std::map<std::tuple<Spent, Place, bool>, Spent> way_;
+    mutable std::map<Changes, std::vector<Site>> sites_;
+    mutable std::map<std::tuple<Changes, int, int>, int> reach_;
+    mutable std::map<std::tuple<Changes, Place, bool>, Changes> way_;
 };
 
 }  // namespace bot

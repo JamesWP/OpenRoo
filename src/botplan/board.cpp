@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "bombmodel.h"
 #include "route.h"
+#include "nav.h"
 #include "tile.h"
 
 namespace bot {
@@ -34,15 +35,38 @@ Board::Board(const BotView &live, Worlds &worlds) : live_(live), worlds_(&worlds
         if (hidden == CONTENTS_GRANT_09)
             pickups_.push_back({b, (int)i});
     }
+    for (int v = 0; v < live.extentV; v++)
+        for (int u = 0; u < live.extentU; u++) {
+            const int i = switched({u, v});
+            if (i >= 0)
+                switches_.push_back({{u, v}, i});
+        }
 }
 
-Spent Board::everything() const
+Changes Board::allBlocks() const
 {
-    const size_t n = worlds_->blockCount();
-    return n >= 64 ? ~(Spent)0 : ((Spent)1 << n) - 1;
+    return ((Changes)1 << worlds_->blockCount()) - 1;
 }
 
-const std::vector<Step> &Board::gems(Spent s) const
+Changes Board::everything() const
+{
+    Changes c = allBlocks() | OPEN;
+    for (size_t i = 0; i < worlds_->bridgeCount(); i++)
+        if (!live_.bridges[i].extended)
+            c |= worlds_->bridgeBit(i);
+    return c;
+}
+
+int Board::switched(Step cell) const
+{
+    const BridgeView *b = switchedBy(live_, cell.u, cell.v);
+    if (!b)
+        return -1;
+    const int i = (int)(b - live_.bridges.data());
+    return i < (int)worlds_->bridgeCount() ? i : -1;
+}
+
+const std::vector<Step> &Board::gems(Changes s) const
 {
     auto it = gems_.find(s);
     if (it != gems_.end())
@@ -54,13 +78,13 @@ const std::vector<Step> &Board::gems(Spent s) const
                 out.push_back({u, v});
     for (size_t i = 0; i < worlds_->blockCount(); i++) {
         const Step b = worlds_->block(i);
-        if ((s & ((Spent)1 << i)) && live_.cell(b.u, b.v).hidden == CONTENTS_CRYSTAL)
+        if ((s & ((Changes)1 << i)) && live_.cell(b.u, b.v).hidden == CONTENTS_CRYSTAL)
             out.push_back(b);
     }
     return gems_[s] = out;
 }
 
-double Board::time(Spent s, Place from, Step to) const
+double Board::time(Changes s, Place from, Step to) const
 {
     return worlds_->get(s).from(from.u, from.v, facingOf(from)).cost(to.u, to.v);
 }
@@ -71,7 +95,7 @@ double Board::turnMs(Place from, int facing) const
     return (turns == 3 ? 1 : turns) * live_.player.stepMs;
 }
 
-Spent Board::inTheWay(Spent s, Place from, bool pickups) const
+Changes Board::inTheWay(Changes s, Place from, bool pickups) const
 {
     from.facing = facingOf(from);
     const auto key = std::make_tuple(s, from, pickups);
@@ -79,15 +103,22 @@ Spent Board::inTheWay(Spent s, Place from, bool pickups) const
     if (it != way_.end())
         return it->second;
     const Terrain &w = worlds_->get(everything());
-    Spent mask = 0;
-    // The unspent blocks (of s) on the cells a path crosses.
+    Changes mask = 0;
+    // The unspent blocks and the bridges not extended (of s) on the cells a
+    // path crosses.
     auto cross = [&](const std::vector<Step> &cells) {
-        for (const Step &c : cells)
+        for (const Step &c : cells) {
             for (size_t i = 0; i < worlds_->blockCount(); i++) {
                 const Step b = worlds_->block(i);
                 if (b.u == c.u && b.v == c.v && !(s >> i & 1))
-                    mask |= (Spent)1 << i;
+                    mask |= (Changes)1 << i;
             }
+            for (size_t i = 0; i < worlds_->bridgeCount(); i++)
+                if (!extended(s, i))
+                    for (const Step &d : live_.bridges[i].deck)
+                        if (d.u == c.u && d.v == c.v)
+                            mask |= worlds_->bridgeBit(i);
+        }
     };
     Place at = from;
     auto go = [&](Step to) {
@@ -106,7 +137,21 @@ Spent Board::inTheWay(Spent s, Place from, bool pickups) const
     return way_[key] = mask;
 }
 
-GemRoute Board::routeFrom(Spent s, Place from, const Step *taken, int need) const
+int Board::reach(Changes s, Step from) const
+{
+    const auto key = std::make_tuple(s, from.u, from.v);
+    auto it = reach_.find(key);
+    if (it != reach_.end())
+        return it->second;
+    const Paths &p = worlds_->get(s).from(from.u, from.v, worlds_->pointFacing());
+    int n = 0;
+    for (int v = 0; v < live_.extentV; v++)
+        for (int u = 0; u < live_.extentU; u++)
+            n += p.cost(u, v) >= 0;
+    return reach_[key] = n;
+}
+
+GemRoute Board::routeFrom(Changes s, Place from, const Step *taken, int need) const
 {
     GemRoute r;
     const Terrain &w = worlds_->get(s);
@@ -139,7 +184,7 @@ GemRoute Board::routeFrom(Spent s, Place from, const Step *taken, int need) cons
     return r;
 }
 
-const GemRoute &Board::gemRoute(Spent s, Place from) const
+const GemRoute &Board::gemRoute(Changes s, Place from) const
 {
     from.facing = facingOf(from);
     const auto key = std::make_pair(s, from);
@@ -173,7 +218,7 @@ bool Board::canFinishAfter(Step gem) const
     return after_[key] = r.found;
 }
 
-const std::vector<Site> &Board::sites(Spent s) const
+const std::vector<Site> &Board::sites(Changes s) const
 {
     auto it = sites_.find(s);
     if (it != sites_.end())
@@ -182,7 +227,7 @@ const std::vector<Site> &Board::sites(Spent s) const
     const BotView &view = worlds_->get(s).view();
     std::vector<size_t> open;   // the blocks of the world not spent yet
     for (size_t i = 0; i < worlds_->blockCount(); i++)
-        if (!(s & ((Spent)1 << i)))
+        if (!(s & ((Changes)1 << i)))
             open.push_back(i);
     // A bomb dropped on p rolls at most a step before it lands, and blasts the
     // 3x3 around: p can be two cells from a block.
@@ -202,12 +247,12 @@ const std::vector<Site> &Board::sites(Spent s) const
                     const Blast blast = predictBomb(view, p.u, p.v, c.height, f, 0);
                     if (blast.lost)
                         continue;
-                    Spent hits = 0;
+                    Changes hits = 0;
                     for (const size_t j : open) {
                         const Step o = worlds_->block(j);
                         if (chebyshev(o.u - blast.cell.u, o.v - blast.cell.v) <= 1 &&
                             view.cell(o.u, o.v).height == blast.h)
-                            hits |= (Spent)1 << j;
+                            hits |= (Changes)1 << j;
                     }
                     if (hits)
                         out.push_back({{p.u, p.v, f}, hits});

@@ -42,6 +42,18 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
             d.why = "fallen tile";
             return d;
         }
+    // A bridge on its way back: its deck is going from under the player (a
+    // foe may work its switch).
+    for (const BridgeView &b : view.bridges)
+        if (b.moving && !b.extended)
+            for (const Timed &m : plan)
+                for (const Step &c : b.deck)
+                    if (c.u == m.cell.u && c.v == m.cell.v) {
+                        d.hit = true;
+                        d.t   = m.t;
+                        d.why = "bridge";
+                        return d;
+                    }
     for (size_t i = 0; i < plan.size(); i++) {
         const double falls = fallsAt(view, plan[i].cell, plan[i].t);
         if (falls < 0)

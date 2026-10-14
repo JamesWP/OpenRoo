@@ -78,8 +78,8 @@ the player soon.  Goals are relevant on sensed facts, not on plans.
 
 ### 3.4 Planner
 
-GOAP: A* over a small fact set (place, blocks spent, gems needed, bombs,
-foes, pickups) to a goal, by the actions it is given.  Cost is time, plus
+GOAP: A* over a small fact set (place, blocks spent and bridges switched,
+gems needed, bombs, foes, pickups) to a goal, by the actions it is given.  Cost is time, plus
 an optional weight on risk.
 
 ### 3.5 Actions and tactics

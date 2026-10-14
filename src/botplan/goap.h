@@ -6,16 +6,17 @@
  *   remove foe   a foe fewer than now, by an ambush started before the foe
  *                meets the player (PlanOptions::startBy).
  *
- * The facts: where the player is (a place, board.h), which bombable blocks
- * are spent, the gems still needed, the bombs held, the foes alive and the
+ * The facts: where the player is (a place, board.h), the changes made to
+ * the terrain (bombable blocks spent, bridges switched), the gems still needed, the bombs held, the foes alive and the
  * bomb pickups taken.  The actions are given: each a PlanAction, which says
  * from a state what states it leads to and at what estimated cost.  The
  * bot's are in actions.h, each with its preconditions and effects; the
  * planner knows none of them.
  *
  * The search is A* over the facts, the heuristic the quota's route from where
- * the player is and the exit in the world with every block spent, a lower
- * bound since the other actions only add.  Its budget is in nodes expanded and
+ * the player is and the exit in the most open world (every block spent,
+ * every bridge extended, worlds.h), a lower bound since the other actions
+ * only add.  Its budget is in nodes expanded and
  * worlds built, never time, so it is deterministic.
  *
  * A step's cost is time + mu * risk (section 3.4).  Its risk is the time it
@@ -43,7 +44,7 @@ const char *goalName(GoalKind goal);
 /* The facts a plan's state is made of. */
 struct Facts {
     Place    at;
-    Spent    spent = 0;
+    Changes  changes = 0;
     int      gemsNeeded = 0;
     int      bombs = 0;
     int      foes = 0;
@@ -53,7 +54,7 @@ struct Facts {
 
     auto key() const
     {
-        return std::make_tuple(at.u, at.v, at.facing, spent, gemsNeeded, bombs, foes, pickups,
+        return std::make_tuple(at.u, at.v, at.facing, changes, gemsNeeded, bombs, foes, pickups,
                                unused, atExit);
     }
     bool operator<(const Facts &o) const { return key() < o.key(); }
