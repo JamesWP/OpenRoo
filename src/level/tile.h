@@ -74,6 +74,8 @@ enum TileKind {
     // Bridges along u and v.
     TILE_BRIDGE_U    = 0x12,
     TILE_BRIDGE_V    = 0x13,
+    // An extended bridge's deck cell: stamped by the bridge, never in a file.
+    TILE_BRIDGE_DECK = 0x14,
     // Ice: whoever steps on keeps moving the way they entered until off it.
     TILE_ICE         = 0x15,
     // Blocked unconditionally.  On screen it is whatever the level's .leo
