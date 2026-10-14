@@ -1,5 +1,11 @@
 add_library(bottactics OBJECT
+    actions.cpp
+    ambush.cpp
+    blast.cpp
+    bombs.cpp
+    collect.cpp
     drops.cpp
+    exit.cpp
     option.cpp
     tactics.cpp
     walk.cpp)

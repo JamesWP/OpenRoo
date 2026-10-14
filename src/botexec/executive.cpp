@@ -6,6 +6,7 @@
 #include "goals.h"
 #include "goap.h"
 #include "sysdev.h"
+#include "action.h"
 #include "tactics.h"
 
 namespace bot {
@@ -18,20 +19,12 @@ const unsigned long CHECK_TICKS = 15;
 /* Ticks between looks at the goals while a script runs. */
 const unsigned long GOAL_TICKS = 30;
 
-/* The tallies the log keeps: one per action kind, then these. */
-enum { APPROACH = ACTION_KINDS, EVADE, TALLIES };
-
-/* Where the plan first goes: Collect's first gem, or where the first step
- * that goes anywhere ends. */
-Step goal_of(const Board &board, const Plan &plan)
+/* Where the plan first heads for. */
+Step goal_of(const Plan &plan)
 {
-    (void)board;
-    for (const PlanStep &s : plan.steps) {
-        if (s.kind == COLLECT)
-            return s.gems.front();
-        if (s.goes)
-            return {s.end.u, s.end.v};
-    }
+    for (const PlanStep &s : plan.steps)
+        if (s.heads.u >= 0)
+            return s.heads;
     return {-1, -1};
 }
 
@@ -84,7 +77,9 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
     worlds_.update(view);
     const Board board(view, worlds_);
 
-    Tally tally[TALLIES];
+    // A tally per action, then approach's and evade's.
+    const size_t APPROACH = actions().size(), EVADE = APPROACH + 1;
+    std::vector<Tally> tally(EVADE + 1);
     for (Tally &t : tally)
         t.all = log_.is_open();
     Plan first;            // the plan for the goal tried first
@@ -101,18 +96,18 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
         options.goal    = g;
         options.startBy = goal_wanted.by;
         options.mu   = mu_;
-        const Plan best = planGoal(board, options);
+        const Plan best = planGoal(board, planActions(), options);
         if (g == goals.front().kind)
             first = best;
         if (g == FINISH)
             finish = best;
         // The cheapest plan whose first step can be done safely now.
-        for (Plan plan = best; plan.found && !have; plan = planGoal(board, options)) {
-            const ActionKind kind = plan.steps.front().kind;
-            have = realise(s, board, plan, &chosen, &tally[kind]);
+        for (Plan plan = best; plan.found && !have; plan = planGoal(board, planActions(), options)) {
+            const int action = plan.steps.front().action;
+            have = realise(s, board, plan, &chosen, &tally[action]);
             if (have)
                 planned = plan.describe();
-            options.notFirst |= 1u << kind;
+            options.notFirst |= 1u << action;
         }
         if (have) {
             goal = g;
@@ -135,7 +130,7 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
         chosen = Option();
     } else {
         // Nothing safe: keep safe, as near the way as may be.
-        const Step to = goal_of(board, finish);
+        const Step to = goal_of(finish);
         if (!have && to.u >= 0)
             have = approach(s, board, to, &chosen, &tally[APPROACH]);
         if (!have)
@@ -174,10 +169,10 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
             printTo(log_, "%s%s", i ? ", " : "", goalName(goals[i].kind));
         printTo(log_, "\",\"goal\":\"%s\",\"plan\":\"%s\",\"nodes\":%d,\"taken_from\":\"%s\"",
                 goalName(goal_), first.describe().c_str(), first.nodes, planned.c_str());
-        static const char *const names[TALLIES] = {"collect", "fetch", "blast", "ambush", "exit",
-                                                   "approach", "evade"};
-        for (int i = 0; i < TALLIES; i++)
-            printTo(log_, ",\"%s\":[%d,%d]", names[i], tally[i].offered, tally[i].safe);
+        for (size_t i = 0; i < tally.size(); i++)
+            printTo(log_, ",\"%s\":[%d,%d]",
+                    i == APPROACH ? "approach" : i == EVADE ? "evade" : actions()[i]->name(),
+                    tally[i].offered, tally[i].safe);
         // The gems no way leads to, as things stand and with every block
         // spent.
         std::string cut;

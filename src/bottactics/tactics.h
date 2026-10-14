@@ -5,17 +5,9 @@
  * player's place over time while it runs (a schedule, nav.h), the blasts of
  * any bombs it drops and a cost.  Every option is checked against the foes,
  * the bombs and the falling tiles (danger.h), and the cheapest safe one is
- * the answer.  The options for each kind of step:
- *
- *   collect  walk to the route's next gem, or another of the nearest gems
- *            (costed with the whole route still to do);
- *   bombs    walk to the planned pickup, or another (likewise);
- *   exit     walk to the exit;
- *   ambush   turn, drop a bomb and walk away, taken only where the foe
- *            model says the blast kills a foe (drops.h);
- *   blast    walk to the site, turn, drop a bomb, walk clear and wait the
- *            blast out (drops.h).
- * A walk is also offered after a wait, so a foe can go by first.
+ * the answer.  The options each step offers are its action's (action.h);
+ * the shared ways to build them are walks (walk.h) and drops (drops.h).  A
+ * walk is also offered after a wait, so a foe can go by first.
  *
  * And two ways to keep the player safe while no step of any plan can be
  * done: approach, the farthest safe cell along the way to a goal (waiting

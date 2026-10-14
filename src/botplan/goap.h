@@ -8,24 +8,10 @@
  *
  * The facts: where the player is (a place, board.h), which bombable blocks
  * are spent, the gems still needed, the bombs held, the foes alive and the
- * bomb pickups taken.  The actions, macro-actions costed by the model:
- *
- *   action     preconditions                 effects
- *   Collect    gems needed, a route to them  the quota taken, at its last gem
- *              in the world the facts make
- *   Bombs(p)   none held, a foe or a block   3 bombs, at pickup p
- *              to use them on, p not taken
- *   Blast(s)   a bomb, a site s that spends  blocks spent (the world changes:
- *              a block                       what is reachable, what gems
- *                                            they hide), a bomb less, at s
- *   Ambush     a bomb, a foe                 a foe less, a bomb less
- *   Exit       no gems needed, no bombs      at the exit
- *              taken and left unused
- *
- * Items are only a means to an end (section 1): a plan that takes bombs must
- * use one.  Collect takes the whole quota, by the route optimiser's route
- * (board.h).  An ambush's cost is a guess: it is the tactical layer's to find
- * one (tactics.h).
+ * bomb pickups taken.  The actions are given: each a PlanAction, which says
+ * from a state what states it leads to and at what estimated cost.  The
+ * bot's are in actions.h, each with its preconditions and effects; the
+ * planner knows none of them.
  *
  * The search is A* over the facts, the heuristic the quota's route from where
  * the player is and the exit in the world with every block spent, a lower
@@ -43,27 +29,59 @@
 #pragma once
 
 #include <string>
+#include <tuple>
 #include <vector>
 #include "board.h"
 
 namespace bot {
 
-enum ActionKind { COLLECT, BOMBS, BLAST, AMBUSH, EXIT, ACTION_KINDS };
-
 enum GoalKind { FINISH, REMOVE_FOE, GOAL_KINDS };
 
 const char *goalName(GoalKind goal);
 
-const char *actionName(ActionKind kind);
+/* The facts a plan's state is made of. */
+struct Facts {
+    Place    at;
+    Spent    spent = 0;
+    int      gemsNeeded = 0;
+    int      bombs = 0;
+    int      foes = 0;
+    unsigned pickups = 0;    // a bit per board pickup taken (the first 32)
+    bool     unused = false; // bombs taken that the plan has not used yet
+    bool     atExit = false;
+
+    auto key() const
+    {
+        return std::make_tuple(at.u, at.v, at.facing, spent, gemsNeeded, bombs, foes, pickups,
+                               unused, atExit);
+    }
+    bool operator<(const Facts &o) const { return key() < o.key(); }
+};
 
 struct PlanStep {
-    ActionKind kind = EXIT;
-    bool       goes = false;       // it ends somewhere: end
+    int        action = -1;        // its index among the actions planned with
+    const char *name = "";         // the action's
     Place      end;                // where it ends (a pickup, the exit, a site)
-    std::vector<Step> gems;        // Collect: the gems, in order
-    Spent      hits = 0;           // Blast: the blocks it spends
+    Step       heads{-1, -1};      // where the player first heads for, if anywhere
     double     ms = 0;             // its time
     double     risk = 0;           // foe-seconds
+};
+
+struct PlanOptions;
+
+/* An action as the planner sees it: from a state, the states it leads to,
+ * each with the step that gets there (its ms an estimate). */
+class PlanAction {
+public:
+    struct Successor {
+        Facts    facts;
+        PlanStep step;
+    };
+
+    virtual ~PlanAction() = default;
+    virtual const char *name() const = 0;
+    virtual void expand(const Facts &f, const Board &board, const PlanOptions &options,
+                        std::vector<Successor> &out) const = 0;
 };
 
 struct Plan {
@@ -80,11 +98,14 @@ struct PlanOptions {
     GoalKind goal = FINISH;
     double   startBy = -1;                   // ms: no step starts later (-1: no limit)
     double   mu = 0;                         // ms a foe-second
-    unsigned notFirst = 0;                   // a bit per ActionKind
+    unsigned notFirst = 0;                   // a bit per action, by index
     int      maxNodes = 4000;
     size_t   maxWorlds = 64;                 // what-if terrains built, besides the base
 };
 
-Plan planGoal(const Board &board, const PlanOptions &options);
+/* The cheapest plan to options.goal by the actions (each expanded in their
+ * order: ties go to the earlier). */
+Plan planGoal(const Board &board, const std::vector<const PlanAction *> &actions,
+              const PlanOptions &options);
 
 }  // namespace bot
