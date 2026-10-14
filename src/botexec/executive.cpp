@@ -3,6 +3,7 @@
 #include "binio.h"
 #include "board.h"
 #include "danger.h"
+#include "goals.h"
 #include "goap.h"
 #include "sysdev.h"
 #include "tactics.h"
@@ -14,9 +15,8 @@ namespace {
 /* Ticks between checks of the running script, and between looks for a way
  * out when nothing was safe. */
 const unsigned long CHECK_TICKS = 15;
-/* Ticks between asking the tactics for something better to seize while a
- * script runs. */
-const unsigned long SEIZE_TICKS = 30;
+/* Ticks between looks at the goals while a script runs. */
+const unsigned long GOAL_TICKS = 30;
 
 /* The tallies the log keeps: one per action kind, then these. */
 enum { APPROACH = ACTION_KINDS, EVADE, TALLIES };
@@ -68,53 +68,88 @@ Executive::Executive()
         log_.open(sysdev::nativePath(path));
 }
 
-void Executive::decide(const BotView &view)
+std::vector<Goal> Executive::goals(const BotView &view)
 {
-    decided_ = true;
-    stuck_   = false;
-    gems_    = view.player.gems;
-    bombs_   = view.player.bombs;
-    terrain_ = navHash(view);
+    Senses senses;
+    senses.bombs = view.player.bombs;
+    senses.foes  = (int)view.foes.size();
+    if (!view.foes.empty())
+        senses.foeMeetsMs = foeMeets(foes_, view, ahead(view), FOE_HORIZON_MS);
+    return selectGoals(senses);
+}
 
+bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool midway)
+{
     Situation s(view, foes_);
     worlds_.update(view);
     const Board board(view, worlds_);
-    PlanOptions options;
-    options.mu = mu_;
-    const Plan first = planGoal(board, options);
 
     Tally tally[TALLIES];
     for (Tally &t : tally)
         t.all = log_.is_open();
+    Plan first;            // the plan for the goal tried first
     std::string planned;
+    Option chosen;
+    GoalKind goal = FINISH;
     bool have = false;
-    if (!first.found) {
-        note_  = board.noRoute();
-        stuck_ = true;
-        chosen_ = Option();
-    } else {
+    Plan finish;
+    for (const Goal &goal_wanted : goals) {
+        const GoalKind g = goal_wanted.kind;
+        if (midway && g == goal_)
+            break;  // only a goal above the one under way breaks it off
+        PlanOptions options;
+        options.goal    = g;
+        options.startBy = goal_wanted.by;
+        options.mu   = mu_;
+        const Plan best = planGoal(board, options);
+        if (g == goals.front().kind)
+            first = best;
+        if (g == FINISH)
+            finish = best;
         // The cheapest plan whose first step can be done safely now.
-        for (Plan plan = first; plan.found && !have; plan = planGoal(board, options)) {
+        for (Plan plan = best; plan.found && !have; plan = planGoal(board, options)) {
             const ActionKind kind = plan.steps.front().kind;
-            have = realise(s, board, plan, &chosen_, &tally[kind]);
+            have = realise(s, board, plan, &chosen, &tally[kind]);
             if (have)
                 planned = plan.describe();
             options.notFirst |= 1u << kind;
         }
-        // Nothing safe: keep safe, as near the way as may be.
-        const Step goal = goal_of(board, first);
-        if (!have && goal.u >= 0)
-            have = approach(s, board, goal, &chosen_, &tally[APPROACH]);
-        if (!have)
-            have = evade(s, board, &chosen_, &tally[EVADE]);
         if (have) {
-            chosenAt_ = view.now;
-            note_     = chosen_.what;
-        } else {
-            note_   = "no safe option";
-            chosen_ = Option();
+            goal = g;
+            break;
         }
     }
+    if (midway && !have)
+        return false;  // the script under way carries on
+
+    if (!midway) {
+        decided_ = true;
+        stuck_   = false;
+        gems_    = view.player.gems;
+        bombs_   = view.player.bombs;
+        terrain_ = navHash(view);
+    }
+    if (!have && !finish.found) {
+        note_  = board.noRoute();
+        stuck_ = true;
+        chosen = Option();
+    } else {
+        // Nothing safe: keep safe, as near the way as may be.
+        const Step to = goal_of(board, finish);
+        if (!have && to.u >= 0)
+            have = approach(s, board, to, &chosen, &tally[APPROACH]);
+        if (!have)
+            have = evade(s, board, &chosen, &tally[EVADE]);
+        if (!have) {
+            note_  = "no safe option";
+            chosen = Option();
+        }
+    }
+    chosen_   = std::move(chosen);
+    chosenAt_ = view.now;
+    goal_     = goal;
+    if (have)
+        note_ = chosen_.what;
     exec_.start(chosen_.script);
     if (reach_.is_open() && !reachDone_) {
         // Where the player can come to rest, as the model sees it, once.
@@ -133,9 +168,12 @@ void Executive::decide(const BotView &view)
     if (log_.is_open()) {
         const PlayerView &p = view.player;
         printTo(log_, "{\"now\":%.1f,\"cell\":[%d,%d,%d],\"facing\":%d,\"gems\":%d,"
-                "\"bombs\":%d,\"foes\":%d,\"plan\":\"%s\",\"nodes\":%d,\"taken_from\":\"%s\"",
-                view.now, p.u, p.v, p.h, p.facing, p.gems, p.bombs, (int)view.foes.size(),
-                first.describe().c_str(), first.nodes, planned.c_str());
+                "\"bombs\":%d,\"foes\":%d,\"midway\":%d,\"goals\":\"",
+                view.now, p.u, p.v, p.h, p.facing, p.gems, p.bombs, (int)view.foes.size(), midway);
+        for (size_t i = 0; i < goals.size(); i++)
+            printTo(log_, "%s%s", i ? ", " : "", goalName(goals[i].kind));
+        printTo(log_, "\",\"goal\":\"%s\",\"plan\":\"%s\",\"nodes\":%d,\"taken_from\":\"%s\"",
+                goalName(goal_), first.describe().c_str(), first.nodes, planned.c_str());
         static const char *const names[TALLIES] = {"collect", "fetch", "blast", "ambush", "exit",
                                                    "approach", "evade"};
         for (int i = 0; i < TALLIES; i++)
@@ -157,6 +195,7 @@ void Executive::decide(const BotView &view)
         printTo(log_, ",\"predicted_kills\":%s", kills_json(chosen_).c_str());
         printTo(log_, ",\"chose\":\"%s\"}\n", quoted(note_).c_str());
     }
+    return true;
 }
 
 bool Executive::stillSafe(const BotView &view)
@@ -168,34 +207,23 @@ bool Executive::stillSafe(const BotView &view)
 
 std::vector<Timed> Executive::ahead(const BotView &view) const
 {
-    return chosen_.ahead(view.now - chosenAt_, {view.player.u, view.player.v});
-}
-
-bool Executive::seize(const BotView &view)
-{
-    Situation s(view, foes_);
-    Option o;
-    if (!bot::seize(s, ahead(view), &o))
-        return false;
-    chosen_   = std::move(o);
-    chosenAt_ = view.now;
-    note_     = chosen_.what;
-    exec_.start(chosen_.script);
-    if (log_.is_open())
-        printTo(log_, "{\"now\":%.1f,\"cell\":[%d,%d,%d],\"seized\":1,\"predicted_kills\":%s,"
-                "\"chose\":\"%s\"}\n", view.now, view.player.u, view.player.v, view.player.h,
-                kills_json(chosen_).c_str(), quoted(note_).c_str());
-    return true;
+    const Step here{view.player.u, view.player.v};
+    if (exec_.status() != Executor::Running)
+        return {{0, here}};
+    return chosen_.ahead(view.now - chosenAt_, here);
 }
 
 unsigned Executive::act(const BotView &view)
 {
     ++ticks_;
-    // Something better than the script under way, unless it is one not to
-    // be broken off.
-    if (ticks_ % SEIZE_TICKS == 0 && decided_ && !stuck_ && exec_.status() == Executor::Running &&
-        view.now >= chosen_.committedUntil && seize(view))
-        return exec_.act(view);
+    // A goal above the one under way breaks it off, unless the option under
+    // way is not to be broken off.
+    if (ticks_ % GOAL_TICKS == 0 && decided_ && !stuck_ && exec_.status() == Executor::Running &&
+        view.now >= chosen_.committedUntil) {
+        const std::vector<Goal> now = goals(view);
+        if (now.front().kind != goal_ && decide(view, now, true))
+            return exec_.act(view);
+    }
     if (ticks_ % CHECK_TICKS == 0 && !view.foes.empty() && !stillSafe(view))
         exec_.halt();
     if (view.player.atRest()) {
@@ -208,7 +236,7 @@ unsigned Executive::act(const BotView &view)
         if (!decided_ || changed ||
             (idle && !stuck_ && (!cornered || ticks_ % CHECK_TICKS == 0)) ||
             (idle && stuck_ && navHash(view) != terrain_))
-            decide(view);
+            decide(view, goals(view), false);
     }
     return exec_.act(view);
 }

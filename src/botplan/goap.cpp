@@ -66,7 +66,7 @@ public:
             if (g > best_[node.facts] + 1e-9)
                 continue;  // reached more cheaply since
             plan.nodes++;
-            if (node.facts.atExit) {
+            if (reached(node.facts)) {
                 plan.found = true;
                 plan.cost  = node.g;
                 for (int i = at; nodes_[i].parent >= 0; i = nodes_[i].parent)
@@ -79,10 +79,17 @@ public:
     }
 
 private:
-    /* The least the rest can cost: the quota's route and the exit, with
-     * every block spent. */
+    bool reached(const Facts &f) const
+    {
+        return options_.goal == REMOVE_FOE ? f.foes < board_.foes() : f.atExit;
+    }
+
+    /* The least the rest can cost: for finishing, the quota's route and the
+     * exit, with every block spent; a foe could be had at once. */
     double heuristic(const Facts &f) const
     {
+        if (options_.goal == REMOVE_FOE)
+            return 0;
         if (f.atExit)
             return 0;
         if (f.gemsNeeded > 0) {
@@ -111,6 +118,8 @@ private:
         const Node &node = nodes_[from];
         if (node.parent < 0 && (options_.notFirst & (1u << kind)))
             return;
+        if (options_.startBy >= 0 && node.g > options_.startBy)
+            return;  // too late
         step.kind = kind;
         step.risk = node.facts.foes * step.ms / 1000.0;
         push(next, node.g + step.ms + options_.mu * step.risk, from, step);
@@ -258,6 +267,15 @@ const char *actionName(ActionKind kind)
     case AMBUSH:  return "ambush";
     case EXIT:    return "exit";
     default:      return "?";
+    }
+}
+
+const char *goalName(GoalKind goal)
+{
+    switch (goal) {
+    case FINISH:     return "finish";
+    case REMOVE_FOE: return "remove foe";
+    default:         return "?";
     }
 }
 
