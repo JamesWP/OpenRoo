@@ -18,7 +18,7 @@
  * bound since the other actions only add.  Its budget is in nodes expanded and
  * worlds built, never time, so it is deterministic.
  *
- * A step's cost is time + mu * risk (section 3.3).  Its risk is the time it
+ * A step's cost is time + mu * risk (section 3.4).  Its risk is the time it
  * spends among live foes, in foe-seconds; mu is in ms a foe-second.  At mu 0
  * (the default) the planner weighs time alone and leaves the foes to the
  * tactical layer.
