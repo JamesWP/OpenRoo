@@ -14,6 +14,7 @@
 #include "policies.h"
 #include "progctrl.h"
 #include "sysdev.h"
+#include "dbg.h"
 
 namespace bot {
 
@@ -36,8 +37,10 @@ int bound_key(const ProgableControl &pc, const char *action)
 
 class Run : public input::KeySource {
 public:
-    Run(const Game *game, const ProgableControl &pc, std::unique_ptr<Policy> policy)
-        : game_(game), policy_(std::move(policy))
+    /* interactive: engaged from the debug UI.  Its end leaves the game
+     * running, with the keyboard back; it has no summary or trace. */
+    Run(const Game *game, const ProgableControl &pc, std::unique_ptr<Policy> policy, bool interactive)
+        : game_(game), policy_(std::move(policy)), interactive_(interactive)
     {
         keyFor_[0] = bound_key(pc, "John_Move_Forward");
         keyFor_[1] = bound_key(pc, "John_Move_Back");
@@ -46,6 +49,8 @@ public:
         keyFor_[4] = bound_key(pc, "John_Release_Bomb");
         stuckMs_ = env_seconds("KAROO_BOT_STUCK_S", 60) * 1000.0;
         capMs_   = env_seconds("KAROO_BOT_MAX_S", 900) * 1000.0;
+        if (interactive)
+            return;
         summary_ = sysdev::getEnv("KAROO_BOT_SUMMARY");
         const std::string trace = sysdev::getEnv("KAROO_BOT_TRACE");
         if (!trace.empty())
@@ -53,6 +58,8 @@ public:
     }
 
     bool exclusive() const override { return true; }
+    bool done() const { return done_; }
+    const std::string &outcome() const { return outcome_; }
 
     void sample(unsigned char keys[input::KEY_COUNT]) override
     {
@@ -93,7 +100,7 @@ public:
             policy_->end(capture(*game_));
             trace_.close();
             write("complete", "");
-            return true;
+            return !interactive_;
         }
         if (game_->state() != GameState::Playing)
             return false;
@@ -128,12 +135,13 @@ public:
         policy_->end(capture(*game_));
         trace_.close();
         write(outcome, cause);
-        return true;
+        return !interactive_;
     }
 
 private:
-    void write(const char *outcome, const char *cause) const
+    void write(const char *outcome, const char *cause)
     {
+        outcome_ = std::string(outcome) + (*cause ? " by " : "") + cause;
         const World   *w  = game_->world();
         const Player  *pl = w->player();
         const Session *s  = game_->session();
@@ -176,6 +184,8 @@ private:
 
     const Game              *game_;
     std::unique_ptr<Policy>  policy_;
+    bool        interactive_;
+    std::string outcome_;   // set as the run ends
     int         keyFor_[5];
     double      stuckMs_, capMs_;
     std::string summary_;
@@ -193,11 +203,57 @@ private:
 };
 
 std::unique_ptr<Run> s_run;
+const Game             *s_game;
+const ProgableControl  *s_controls;
+bool                    s_fromEnv;
+unsigned                s_runLevel;   // the level an interactive run started on
+std::string             s_lastOutcome;
+
+/* Stands in for the run in the app's list of sources, so a run can come and
+ * go from the debug UI after the sources are set up. */
+class Proxy : public input::KeySource {
+public:
+    bool exclusive() const override { return s_run && !s_run->done(); }
+    void sample(unsigned char keys[input::KEY_COUNT]) override
+    {
+        if (s_run)
+            s_run->sample(keys);
+    }
+} s_proxy;
+
+void engage(bool on)
+{
+    s_run.reset();
+    if (!on)
+        return;
+    s_run = std::make_unique<Run>(s_game, *s_controls, makePolicy("plan"), true);
+    s_runLevel = s_game->session()->levelIndex();
+    s_lastOutcome.clear();
+    g_logger.logMessage(1, "BOT: engaged from the debug UI");
+}
+
+/* The debug UI's toggle: the plan policy plays the level in place of the
+ * keyboard until it ends or is untoggled. */
+void debug_panel()
+{
+    if (!dbg::active() || s_fromEnv)
+        return;
+    dbg::Section s("Bot");
+    if (!s)
+        return;
+    bool on = s_run && !s_run->done();
+    if (ImGui::Checkbox("bot plays (plan)", &on))
+        engage(on);
+    if (!s_lastOutcome.empty())
+        ImGui::TextDisabled("last run: %s", s_lastOutcome.c_str());
+}
 
 }  // namespace
 
 int init(const Game *game, const ProgableControl *controls)
 {
+    s_game     = game;
+    s_controls = controls;
     const std::string name = sysdev::getEnv("KAROO_BOT");
     if (name.empty())
         return 0;
@@ -207,12 +263,31 @@ int init(const Game *game, const ProgableControl *controls)
         return -1;
     }
     g_logger.logMessage(1, "BOT: playing with policy %s", name.c_str());
-    s_run = std::make_unique<Run>(game, *controls, std::move(policy));
+    s_run     = std::make_unique<Run>(game, *controls, std::move(policy), false);
+    s_fromEnv = true;
     return 1;
 }
 
-input::KeySource *source() { return s_run.get(); }
+input::KeySource *source() { return &s_proxy; }
 
-bool frame() { return s_run && s_run->frame(); }
+bool active() { return s_fromEnv; }
+
+bool frame()
+{
+    if (s_fromEnv)
+        return s_run->frame();
+    if (s_run) {
+        // A level loaded under the run is a fresh one: the run starts again.
+        if (s_game->session()->levelIndex() != s_runLevel)
+            engage(true);
+        s_run->frame();
+        if (s_run->done()) {
+            s_lastOutcome = s_run->outcome();
+            s_run.reset();
+        }
+    }
+    debug_panel();
+    return false;
+}
 
 }  // namespace bot

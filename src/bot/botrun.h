@@ -17,6 +17,10 @@
  * policy acts on, one JSON object a line: the whole grid on the first line,
  * then the cells that changed.
  *
+ * The debug UI's "Bot" section (F10) engages the plan policy on the level
+ * being played instead; that run ends with the keyboard back in hand, and
+ * starts again when another level is loaded under it.
+ *
  * The run also checks the bot's models against the game (checks.h). */
 #pragma once
 
@@ -31,11 +35,14 @@ namespace bot {
  * -1 (logged) when KAROO_BOT names no policy. */
 int init(const Game *game, const ProgableControl *controls);
 
-/* The run as a key source; null when there is none. */
+/* The run as a key source, whether or not one is on: add it once. */
 input::KeySource *source();
 
-/* Checks the end conditions once a frame.  True on the frame the run ends,
- * once the summary is written. */
+/* True when KAROO_BOT started a run. */
+bool active();
+
+/* Checks the end conditions once a frame, and draws the debug UI's toggle.
+ * True on the frame a KAROO_BOT run ends, once the summary is written. */
 bool frame();
 
 }  // namespace bot
