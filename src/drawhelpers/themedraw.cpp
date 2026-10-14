@@ -441,6 +441,8 @@ void particles(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n)
                 const Vec3 at = { rec->posX(), bob(rec, in, f.now, rec->posY()), rec->posZ() };
                 Generator *gen = ps->getGenerator(NULL);
                 Mat4 world;
+                // Face the camera first, then undo the world spin.
+                ps->setVector(view.x, view.y, view.z);
                 if (rec->movableType() == MOVE_TRANSLATE) {
                     world = translation(in.pos.x, in.pos.y, in.pos.z);
                     if (gen)
@@ -454,7 +456,6 @@ void particles(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n)
                     world = placement(rec, in, f.now, { 1.0f, 1.0f, 1.0f }, 0.0f);
                     ps->transformCorners(rot_y(-spinY).m);
                 }
-                ps->setVector(view.x, view.y, view.z);
                 f.dev->SetWorld(world);
                 ps->render(f.dev);
             }
