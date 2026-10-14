@@ -17,12 +17,10 @@
  * decision it last made, or why it has none.
  *
  * KAROO_BOT_MU=<ms> is the planner's weight on risk, in ms a foe-second (0).
- * Foes are also hunted: while bombs are held and the script under way would
- * meet a foe within a few seconds, every half second the tactical layer is
- * asked for an ambush that kills a foe at the centre of its blast, and one
- * found (it is safe, and the foe is there as the bomb goes off) is taken,
- * wherever the script was; waiting for the foe to be on the plan leaves only
- * ambushes that catch it on the way by.
+ * While a script runs, every half second the tactics are asked whether
+ * something is worth breaking it off for (an ambush, tactics.h), unless the
+ * option under way is committed: its bomb still to go off on the chase it
+ * was predicted with.
  * KAROO_BOT_REACH=<file> writes, once, a grid of where the player can come to
  * rest by the model: # as things stand, + once every block is spent, . never.
  * KAROO_BOT_DECISIONS=<file> logs every decision, one JSON object a line: the
@@ -48,12 +46,14 @@ public:
 
 private:
     void decide(const BotView &view);
-    /* Whether the script's rest, and standing at its end lingerMs, meets no
-     * foe or bomb. */
-    bool stillSafe(const BotView &view, double lingerMs);
-    /* An ambush that takes a foe at its blast's centre, if one can be had
-     * now: taken in place of what the script is doing. */
-    bool hunt(const BotView &view);
+    /* Whether the script's rest, and standing at its end, meets no foe or
+     * bomb. */
+    bool stillSafe(const BotView &view);
+    /* The chosen option's schedule still ahead, from where the player is. */
+    std::vector<Timed> ahead(const BotView &view) const;
+    /* What the tactics would rather do than the script under way, if
+     * anything (tactics.h, seize): started in its place. */
+    bool seize(const BotView &view);
 
     Executor  exec_;
     FoeModel  foes_;

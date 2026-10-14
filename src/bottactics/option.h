@@ -20,9 +20,13 @@ struct Option {
     double             cost = 0;      // ms, with the rest of the plan after it
     double             lingerMs = 1000;  // how long the end must stay safe
     bool               checked = false;  // found safe already (an ambush is, to be one)
+    double             committedUntil = 0;  // the clock's ms: not to be broken off for another before
     int                kills = 0;
     int                offCentre = 0;     // cells its kills are off its blast's centre, summed
     std::vector<FoeModel::Kill> killed;  // where and when it expects them (the clock's ms)
+
+    /* The schedule still ahead, elapsedMs into it, from here: in ms from now. */
+    std::vector<Timed> ahead(double elapsedMs, Step here) const;
 };
 
 }  // namespace bot
