@@ -50,6 +50,15 @@ NavModel::NavModel(const BotView &view) : view_(&view)
     }
 }
 
+void NavModel::arm(Step c, double atMs)
+{
+    const int at = c.v * view_->extentU + c.u;
+    double from, back;
+    if (back_.count(at) || !goneSpell(*view_, c, atMs, &from, &back))
+        return;
+    back_[at] = Fallen{back, view_->cell(c.u, c.v).height, from};
+}
+
 double NavModel::fallMs(int drop)
 {
     return drop >= 3 ? FALL_3_MS : drop >= 1 ? FALL_MS : 0.0;
@@ -204,7 +213,7 @@ Outcome NavModel::stepWhenOpen(int u, int v, int f, int d, double atMs, double *
     if (d >= DIR_MIN && d <= DIR_MAX) {
         parkStarts(u + DIR_DU[d], v + DIR_DV[d], atMs, &starts);
         const auto fallen = back_.find((v + DIR_DV[d]) * view_->extentU + u + DIR_DU[d]);
-        if (fallen != back_.end() && fallen->second.back > atMs)
+        if (fallen != back_.end() && fallen->second.from <= atMs && fallen->second.back > atMs)
             starts.push_back(fallen->second.back);
     }
     std::sort(starts.begin(), starts.end());
@@ -252,6 +261,17 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs) 
                 target.kind   = TILE_FALLING;
                 target.height = (unsigned char)fallen->second.height;
                 target.busy   = false;
+                bp = &target;
+            }
+        }
+        if (bp && timed && bp->kind == TILE_FALLING) {
+            // An armed tile is gone while it is fallen.
+            const auto armed = back_.find(nv * w.extentU + nu);
+            if (armed != back_.end() && armed->second.from <= atMs + t &&
+                atMs + t < armed->second.back) {
+                target = *bp;
+                target.kind   = TILE_EMPTY;
+                target.height = 0;
                 bp = &target;
             }
         }
