@@ -1,4 +1,6 @@
 #include "liftmodel.h"
+#include <algorithm>
+#include <cmath>
 
 namespace bot {
 
@@ -52,6 +54,50 @@ void platformSpells(const BotView &view, const PlatformView &p, double horizonMs
             state = 0;
         }
     }
+}
+
+const PlatformView *platformThrough(const BotView &view, int u, int v)
+{
+    for (const PlatformView &p : view.platforms) {
+        const int along = p.alongU ? u : v, across = p.alongU ? v : u;
+        const int start = p.alongU ? p.originU : p.originV;
+        if (across == (p.alongU ? p.originV : p.originU) && along >= start && along <= p.limit)
+            return &p;
+    }
+    return nullptr;
+}
+
+bool platformCellAt(const BotView &view, const PlatformView &p, double atMs, Step *cell)
+{
+    std::vector<Park> atOrigin, atLimit;
+    platformSpells(view, p, atMs + 10000.0, &atOrigin, &atLimit);
+    const int start = p.alongU ? p.originU : p.originV;
+    // The parks in order, each with the end it is at; between two the
+    // platform runs from the one end to the other at a cell a HEIGHT_MS.
+    std::vector<std::pair<Park, int>> parks;
+    for (const Park &k : atOrigin)
+        parks.push_back({k, start});
+    for (const Park &k : atLimit)
+        parks.push_back({k, p.limit});
+    std::sort(parks.begin(), parks.end(),
+              [](const auto &a, const auto &b) { return a.first.from < b.first.from; });
+    int along = -1;
+    for (size_t i = 0; i < parks.size() && along < 0; i++) {
+        const Park &k = parks[i].first;
+        if (atMs < k.from) {
+            // Under way to it, from the other end.
+            const int to = parks[i].second, from = to == start ? p.limit : start;
+            const double cells = std::max(0.0, (k.from - atMs) / HEIGHT_MS);
+            const double pos = to > from ? to - cells : to + cells;
+            along = (int)std::floor(std::max<double>(start, std::min<double>(p.limit, pos)));
+        } else if (atMs <= k.to + view.tickMs) {
+            along = parks[i].second;
+        }
+    }
+    if (along < 0)
+        return false;
+    *cell = p.alongU ? Step{along, p.originV} : Step{p.originU, along};
+    return true;
 }
 
 }  // namespace bot
