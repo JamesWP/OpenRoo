@@ -1,4 +1,5 @@
 #include "board.h"
+#include <algorithm>
 #include <set>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,15 +28,19 @@ Board::Board(const BotView &live, Worlds &worlds) : live_(live), worlds_(&worlds
         gemsNeeded_ = 0;
     for (const FoeView &f : live.foes)
         carriers_ += carrier(f);
+    auto kind = [](int contents, Pickup::Kind *k) {
+        *k = contents == CONTENTS_PARAGLIDER ? Pickup::Glider : Pickup::Bombs;
+        return contents == CONTENTS_GRANT_09 || contents == CONTENTS_PARAGLIDER;
+    };
+    Pickup::Kind k;
     for (int v = 0; v < live.extentV; v++)
         for (int u = 0; u < live.extentU; u++)
-            if (live.cell(u, v).contents == CONTENTS_GRANT_09)
-                pickups_.push_back({{u, v}, -1});
+            if (kind(live.cell(u, v).contents, &k))
+                pickups_.push_back({{u, v}, -1, k});
     for (size_t i = 0; i < worlds.blockCount(); i++) {
         const Step b = worlds.block(i);
-        const int hidden = live.cell(b.u, b.v).hidden;
-        if (hidden == CONTENTS_GRANT_09)
-            pickups_.push_back({b, (int)i});
+        if (kind(live.cell(b.u, b.v).hidden, &k))
+            pickups_.push_back({b, (int)i, k});
     }
     for (int v = 0; v < live.extentV; v++)
         for (int u = 0; u < live.extentU; u++) {
@@ -140,7 +145,8 @@ Changes Board::inTheWay(Changes s, Place from, bool pickups) const
     go(exit());
     if (pickups)
         for (const Pickup &p : pickups_)
-            cross(w.from(from.u, from.v, from.facing).cellsTo(p.cell.u, p.cell.v));
+            if (p.kind == Pickup::Bombs)
+                cross(w.from(from.u, from.v, from.facing).cellsTo(p.cell.u, p.cell.v));
     return way_[key] = mask;
 }
 
@@ -158,17 +164,31 @@ int Board::reach(Changes s, Step from) const
     return reach_[key] = n;
 }
 
-GemRoute Board::routeFrom(Changes s, Place from, const Step *taken, int need) const
+Taken Board::gemBit(Step gem) const
+{
+    const std::vector<Step> &all = gems(everything());
+    for (size_t i = 0; i < all.size() && i < 64; i++)
+        if (all[i].u == gem.u && all[i].v == gem.v)
+            return (Taken)1 << i;
+    return 0;
+}
+
+GemRoute Board::routeFrom(Changes s, Place from, Taken taken, int need, bool toExit) const
 {
     GemRoute r;
     const Terrain &w = worlds_->get(s);
     const Paths &start = w.from(from.u, from.v, from.facing);
-    // Only the gems that can be reached at all are in the route.
+    // Only the gems that can be reached at all, and are not taken, are in the
+    // route.
     std::vector<Step> all;
     for (const Step &g : gems(s))
-        if (start.cost(g.u, g.v) >= 0 && !(taken && g.u == taken->u && g.v == taken->v))
+        if (start.cost(g.u, g.v) >= 0 && !(taken & gemBit(g)))
             all.push_back(g);
     const int n = (int)all.size();
+    if (need < 0)
+        need = std::min(n, -1 - need);  // every one, up to that many
+    if (need == 0 || need > n)
+        return r;
     // The route optimiser's matrix: 0 the start, 1..n the gems, n + 1 the exit.
     std::vector<std::vector<double>> dist(n + 2, std::vector<double>(n + 2, -1));
     const Step ex = exit();
@@ -177,7 +197,7 @@ GemRoute Board::routeFrom(Changes s, Place from, const Step *taken, int need) co
                                   : w.from(all[i - 1].u, all[i - 1].v, worlds_->pointFacing());
         for (int j = 1; j < n + 1; j++)
             dist[i][j] = i == j ? 0 : row.cost(all[j - 1].u, all[j - 1].v);
-        dist[i][n + 1] = row.cost(ex.u, ex.v);
+        dist[i][n + 1] = toExit ? row.cost(ex.u, ex.v) : 0;
     }
     double cost;
     const std::vector<int> order = planRoute(dist, need, &cost);
@@ -191,20 +211,42 @@ GemRoute Board::routeFrom(Changes s, Place from, const Step *taken, int need) co
     return r;
 }
 
-const GemRoute &Board::gemRoute(Changes s, Place from, int need) const
+const GemRoute &Board::gemRoute(Changes s, Place from, int need, Taken taken) const
 {
     from.facing = facingOf(from);
     if (need < 0)
         need = gemsNeeded_;
-    const auto key = std::make_tuple(s, from, need);
+    const auto key = std::make_tuple(s, from, need, taken);
     auto it = routes_.find(key);
     if (it != routes_.end())
         return it->second;
-    return routes_[key] = routeFrom(s, from, nullptr, need);
+    return routes_[key] = routeFrom(s, from, taken, need, true);
+}
+
+const GemRoute &Board::gather(Changes s, Place from, Taken taken, int most) const
+{
+    from.facing = facingOf(from);
+    const auto key = std::make_tuple(s, from, -1 - most, taken);
+    auto it = routes_.find(key);
+    if (it != routes_.end())
+        return it->second;
+    return routes_[key] = routeFrom(s, from, taken, -1 - most, false);
+}
+
+bool Board::glidesToBe() const
+{
+    if (live_.player.glides > 0)
+        return true;
+    for (const Pickup &p : pickups_)
+        if (p.kind == Pickup::Glider)
+            return true;
+    return false;
 }
 
 bool Board::canFinishFrom(Step cell) const
 {
+    if (glidesToBe())
+        return true;  // a glide may lead on: no cell is known to be a trap
     const Place at{cell.u, cell.v, worlds_->pointFacing()};
     if (fromMap() <= 0)
         return time(0, at, exit()) >= 0;
@@ -213,6 +255,8 @@ bool Board::canFinishFrom(Step cell) const
 
 bool Board::canFinishAfter(Step gem) const
 {
+    if (glidesToBe())
+        return true;
     const auto key = std::make_pair(gem.u, gem.v);
     auto it = after_.find(key);
     if (it != after_.end())
@@ -223,7 +267,7 @@ bool Board::canFinishAfter(Step gem) const
     if (need <= 0)
         r.found = worlds_->get(0).from(at.u, at.v, at.facing).cost(exit().u, exit().v) >= 0;
     else
-        r = routeFrom(0, at, &gem, need);
+        r = routeFrom(0, at, gemBit(gem), need, true);
     return after_[key] = r.found;
 }
 

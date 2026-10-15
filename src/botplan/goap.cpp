@@ -29,6 +29,7 @@ public:
         start.at         = board_.start();
         start.gemsNeeded = board_.gemsNeeded();
         start.bombs      = board_.bombs();
+        start.glides     = board_.live().player.glides;
         start.foes       = board_.foes();
         start.carriers   = board_.carriers();
         push(start, 0, -1, PlanStep());
@@ -70,7 +71,7 @@ private:
         // The carriers' gems could stand in for the map's.
         const int fromMap = f.gemsNeeded - f.carriers;
         if (fromMap > 0) {
-            const GemRoute &r = board_.gemRoute(board_.everything(), f.at, fromMap);
+            const GemRoute &r = board_.gemRoute(board_.everything(), f.at, fromMap, f.taken);
             return r.found ? r.toLast + r.toExit : -1;
         }
         return board_.time(board_.everything(), f.at, board_.exit());

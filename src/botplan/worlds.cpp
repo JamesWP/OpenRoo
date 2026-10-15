@@ -1,6 +1,22 @@
 #include "worlds.h"
+#include "tile.h"
 
 namespace bot {
+
+namespace {
+
+/* Whether the player has, or could pick up, a glide. */
+bool glidesToBe(const BotView &view)
+{
+    if (view.player.glides > 0)
+        return true;
+    for (const Cell &c : view.cells)
+        if (c.contents == CONTENTS_PARAGLIDER || c.hidden == CONTENTS_PARAGLIDER)
+            return true;
+    return false;
+}
+
+}  // namespace
 
 void Worlds::update(const BotView &view)
 {
@@ -38,7 +54,8 @@ const Terrain &Worlds::get(Changes s)
     for (size_t i = 0; i < bridgeCount(); i++)
         if (s & bridgeBit(i))
             bridges.push_back(i);
-    return *(worlds_[s] = base().changed(blocks, bridges, (s & OPEN) != 0));
+    const bool open = (s & OPEN) != 0;
+    return *(worlds_[s] = base().changed(blocks, bridges, open, open && glidesToBe(base().view())));
 }
 
 }  // namespace bot

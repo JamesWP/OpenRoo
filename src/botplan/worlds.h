@@ -5,8 +5,9 @@
  * base, numbered in grid order), set when the block is spent; then a bit per
  * bridge (BotView::bridges), set when it is switched from how it stands; 63
  * bits in all, the blocks first.  The top bit, OPEN, marks the most open
- * world, whose routes pass over switches: a bound for the planner, not a
- * world to walk in (Board::everything). */
+ * world, whose routes pass over switches and glide where glides may be had,
+ * any number of times: a bound for the planner, not a world to walk in
+ * (Board::everything). */
 #pragma once
 
 #include <map>
