@@ -10,22 +10,6 @@
 
 namespace bot {
 
-namespace {
-
-/* The drop times tried for a bomb that rides a platform: over a platform's
- * cycle, a step apart. */
-const double RIDE_CYCLE_MS = 8000;
-const double RIDE_STEP_MS  = 100;
-
-int chebyshev(int du, int dv)
-{
-    du = abs(du);
-    dv = abs(dv);
-    return du > dv ? du : dv;
-}
-
-}  // namespace
-
 Board::Board(const BotView &live, Worlds &worlds) : live_(live), worlds_(&worlds)
 {
     gemsNeeded_ = live.gemsRequired - live.player.gems;
@@ -288,9 +272,8 @@ const std::vector<Site> &Board::sites(Changes s) const
         if (!(s & ((Changes)1 << i)))
             open.push_back(i);
     // A bomb dropped on p rolls at most a step before it lands, and blasts the
-    // 3x3 around: p can be two cells from a block.  Or it rolls onto a
-    // platform or a lift, which carries it on: p is next to the platform's
-    // track, or the lift.
+    // 3x3 around: p can be two cells from a block.  Or something carries it
+    // off (bombmodel.h).
     std::set<std::pair<int, int>> seen;
     std::vector<Step> candidates;
     for (const size_t i : open) {
@@ -300,11 +283,8 @@ const std::vector<Site> &Board::sites(Changes s) const
                 candidates.push_back({b.u + du, b.v + dv});
     }
     if (!open.empty())
-        for (int v = 0; v < view.extentV; v++)
-            for (int u = 0; u < view.extentU; u++)
-                if (view.cell(u, v).track || view.cell(u, v).kind == TILE_LIFT)
-                    for (int d = DIR_MIN; d <= DIR_MAX; d++)
-                        candidates.push_back({u + DIR_DU[d], v + DIR_DV[d]});
+        for (const Step &p : carriedFrom(view))
+            candidates.push_back(p);
     for (const Step &p : candidates) {
         if (!view.inside(p.u, p.v) || !seen.insert({p.u, p.v}).second)
             continue;
@@ -313,27 +293,16 @@ const std::vector<Site> &Board::sites(Changes s) const
             (c.kind == TILE_BOMBABLE && !c.busy))
             continue;
         for (int f = DIR_MIN; f <= DIR_MAX; f++) {
-            // A bomb that rides a platform blows where the platform
-            // has taken it: a drop at some time in its cycle may.
+            // Each spell of drop times its blocks (once, where carried, a
+            // drop at one time spends some and at another others).
             std::set<Changes> found;
-            for (double at = 0; at < RIDE_CYCLE_MS; at += RIDE_STEP_MS) {
-                const Blast blast = predictBomb(view, p.u, p.v, c.height, f, view.now + at);
-                if (blast.lost) {
-                    if (!blast.timed)
-                        break;
-                    continue;
-                }
+            for (const DropSpell &spell : dropSpells(view, p.u, p.v, c.height, f, view.now)) {
                 Changes hits = 0;
-                for (const size_t j : open) {
-                    const Step o = worlds_->block(j);
-                    if (chebyshev(o.u - blast.cell.u, o.v - blast.cell.v) <= 1 &&
-                        view.cell(o.u, o.v).height == blast.h)
+                for (const size_t j : open)
+                    if (spends(view, spell.blast, worlds_->block(j)))
                         hits |= (Changes)1 << j;
-                }
                 if (hits && found.insert(hits).second)
                     out.push_back({{p.u, p.v, f}, hits});
-                if (!blast.timed)
-                    break;
             }
         }
     }

@@ -1,4 +1,5 @@
 #include "bombmodel.h"
+#include <cmath>
 #include <stdlib.h>
 #include "liftmodel.h"
 #include "tile.h"
@@ -10,6 +11,10 @@ namespace {
 const double FUSE_MS = 2000.0;   // bomb.cpp
 const double CLEAR_MS = 2400.0;
 const double STEP_MS = 200.0;    // its one step
+/* The drops dropSpells tries: over a carrier's whole cycle (a lift's or a
+ * platform's runs and parks), a step apart. */
+const double CYCLE_MS      = 8000.0;
+const double SPELL_STEP_MS = 50.0;
 
 bool stairs(int k) { return k > 4 && k < 9; }
 
@@ -25,7 +30,6 @@ bool ride(const BotView &view, int u, int v, double atMs, double fuseAt, Blast *
         return false;
     b->cell = blows;
     b->h    = p->height;
-    b->timed = true;
     return true;
 }
 
@@ -39,10 +43,13 @@ bool may_roll(const Cell &a, int h, const Cell &b)
     return b.height <= h + 1;
 }
 
+/* Where and when it blows; *timed whether that hangs on when it was dropped
+ * (it went onto a platform or a lift). */
 Blast roll(const BotView &view, int u, int v, int h, int facing, double droppedAt,
-           bool rolled)
+           bool rolled, bool *timed)
 {
     Blast b;
+    *timed = false;
     // One step along its facing, if it may: once moving it is held, and a
     // held bomb takes no further move of its own.  Ice carries it on, the
     // way it went, until it enters a cell that is not ice or may not go on.
@@ -59,7 +66,7 @@ Blast roll(const BotView &view, int u, int v, int h, int facing, double droppedA
             // height the lift has taken it to.
             const double in = droppedAt - view.now + view.tickMs;
             const int at = liftHeightAt(view, *lift, in), after = liftHeightAt(view, *lift, in + STEP_MS);
-            b.timed = true;
+            *timed = true;
             if (at < 0 || at != after) {
                 b.lost = true;   // it moves under the step: not modelled
                 break;
@@ -84,10 +91,10 @@ Blast roll(const BotView &view, int u, int v, int h, int facing, double droppedA
             Blast r;
             r.from  = droppedAt + FUSE_MS;
             r.until = droppedAt + CLEAR_MS;
+            *timed = true;
             if (ride(view, nu, nv, in, r.from, &r) && ride(view, nu, nv, in + STEP_MS, r.from, &r))
                 return r;
-            b.lost  = true;
-            b.timed = true;
+            b.lost = true;
             break;
         }
         if (next.kind == TILE_EMPTY || next.height == 0) {
@@ -114,7 +121,65 @@ bool Blast::kills(int u, int v, int eh, double t) const
 
 Blast predictBomb(const BotView &view, int u, int v, int h, int facing, double droppedAt)
 {
-    return roll(view, u, v, h, facing, droppedAt, false);
+    bool timed;
+    return roll(view, u, v, h, facing, droppedAt, false, &timed);
+}
+
+std::vector<DropSpell> dropSpells(const BotView &view, int u, int v, int h, int facing,
+                                  double fromMs)
+{
+    std::vector<DropSpell> out;
+    bool timed;
+    const Blast first = roll(view, u, v, h, facing, fromMs, false, &timed);
+    if (!timed) {
+        if (!first.lost)
+            out.push_back({fromMs, INFINITY, first});
+        return out;
+    }
+    // Drops a step apart over a carrier's cycle; a spell is a run of them
+    // that blow on one cell at one height.
+    DropSpell run;
+    bool open = false;
+    auto close = [&](double at) {
+        if (open && at - run.from >= DROP_SLACK_MS) {
+            run.to = at;
+            out.push_back(run);
+        }
+        open = false;
+    };
+    for (double at = fromMs; at < fromMs + CYCLE_MS; at += SPELL_STEP_MS) {
+        const Blast b = at == fromMs ? first : roll(view, u, v, h, facing, at, false, &timed);
+        if (open && (b.lost || b.cell.u != run.blast.cell.u || b.cell.v != run.blast.cell.v ||
+                     b.h != run.blast.h))
+            close(at);
+        if (!open && !b.lost) {
+            run  = {at, at, b};
+            open = true;
+        }
+    }
+    close(fromMs + CYCLE_MS);
+    return out;
+}
+
+std::vector<Step> carriedFrom(const BotView &view)
+{
+    std::vector<Step> out;
+    for (int v = 0; v < view.extentV; v++)
+        for (int u = 0; u < view.extentU; u++) {
+            const Cell &c = view.cell(u, v);
+            if (!c.track && c.kind != TILE_LIFT)
+                continue;
+            for (int d = DIR_MIN; d <= DIR_MAX; d++)
+                if (view.inside(u + DIR_DU[d], v + DIR_DV[d]))
+                    out.push_back({u + DIR_DU[d], v + DIR_DV[d]});
+        }
+    return out;
+}
+
+bool spends(const BotView &view, const Blast &b, Step c)
+{
+    return !b.lost && abs(c.u - b.cell.u) <= 1 && abs(c.v - b.cell.v) <= 1 &&
+           view.cell(c.u, c.v).height == b.h;
 }
 
 Blast predictBomb(const BotView &view, const BombView &bomb)
@@ -128,7 +193,6 @@ Blast predictBomb(const BotView &view, const BombView &bomb)
             r.cell  = {bomb.u, bomb.v};
             r.h     = liftHeightAt(view, *lift, bomb.droppedAt + FUSE_MS - view.now);
             r.lost  = r.h < 0;
-            r.timed = true;
             r.from  = bomb.droppedAt + FUSE_MS;
             r.until = bomb.droppedAt + CLEAR_MS;
             return r;
@@ -140,19 +204,18 @@ Blast predictBomb(const BotView &view, const BombView &bomb)
         if (ride(view, bomb.u, bomb.v, 0, r.from, &r))
             return r;
     }
-    return roll(view, bomb.u, bomb.v, bomb.h, bomb.facing, bomb.droppedAt, rolled);
+    bool timed;
+    return roll(view, bomb.u, bomb.v, bomb.h, bomb.facing, bomb.droppedAt, rolled, &timed);
 }
 
 /* Whether the blast spends a bombable block. */
 bool spendsBlock(const BotView &view, const Blast &b)
 {
-    if (b.lost)
-        return false;
     for (int dv = -1; dv <= 1; dv++)
         for (int du = -1; du <= 1; du++) {
             const int u = b.cell.u + du, v = b.cell.v + dv;
             if (view.inside(u, v) && view.cell(u, v).kind == TILE_BOMBABLE &&
-                !view.cell(u, v).busy && view.cell(u, v).height == b.h)
+                !view.cell(u, v).busy && spends(view, b, {u, v}))
                 return true;
         }
     return false;

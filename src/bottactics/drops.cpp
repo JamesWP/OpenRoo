@@ -1,5 +1,6 @@
 #include "drops.h"
 #include <algorithm>
+#include <cmath>
 #include <stdio.h>
 #include "danger.h"
 #include "walk.h"
@@ -27,13 +28,6 @@ const double SURE_MS = 250;
 /* A wait after a drop ends this long after the blast's zone clears: the
  * foe model's chase assumed the player stays put until then. */
 const double CLEAR_MARGIN_MS = 200;
-/* A drop onto a platform: the longest wait for one the platform carries to a
- * block, and the times tried, a step apart. */
-const double RIDE_WAIT_MS = 8000;
-const double RIDE_STEP_MS = 100;
-/* And how long the drop may come late and still be carried there. */
-const double RIDE_SLACK_MS = 500;
-
 
 /* Whether o's blasts still kill as many foes, and the player stays safe,
  * with them going off SURE_MS earlier or later. */
@@ -211,27 +205,20 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
     before.script.push_back({ScriptStep::Turn, site.facing, {}, 0});
     double dropIn = std::max(before.cost + turnMs, p.bombReadyAt - view.now) + view.tickMs;
     const int h = view.cell(site.u, site.v).height;
-    if (predictBomb(view, site.u, site.v, h, site.facing, view.now + dropIn).timed) {
-        // It rides a platform: wait for a drop it carries to a block, with
-        // time to spare, as a script's drop comes late more than early.
-        auto spends = [&](double wait) {
-            return spendsBlock(view, predictBomb(view, site.u, site.v, h, site.facing,
-                                                 view.now + dropIn + wait));
-        };
-        double wait = 0, run = 0;
-        for (double w = 0; w < RIDE_WAIT_MS && run < RIDE_SLACK_MS; w += RIDE_STEP_MS) {
-            if (!spends(w)) {
-                run = 0;
-                continue;
-            }
-            if (run == 0)
-                wait = w;
-            run += RIDE_STEP_MS;
-        }
-        if (run < RIDE_SLACK_MS)
+    // Carried off (bombmodel.h), where it blows hangs on when: the first
+    // spell of drops that spends a block, at its start.
+    const std::vector<DropSpell> spells =
+        dropSpells(view, site.u, site.v, h, site.facing, view.now + dropIn);
+    if (spells.empty())
+        return;
+    if (!std::isinf(spells.back().to)) {
+        const auto spell = std::find_if(spells.begin(), spells.end(), [&](const DropSpell &d) {
+            return spendsBlock(view, d.blast);
+        });
+        if (spell == spells.end())
             return;
-        if (wait > 0) {
-            dropIn += wait;
+        if (spell->from > view.now + dropIn) {
+            dropIn = spell->from - view.now;
             before.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn - view.tickMs});
         }
     }
