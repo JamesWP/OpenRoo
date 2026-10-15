@@ -74,6 +74,10 @@ public:
     /* The time the drops along a walk of these cells take to land. */
     double fallsAlong(const std::vector<Step> &cells) const;
     Outcome turn(int u, int v, int f, int delta) const;
+    /* The falling tile on c is armed atMs from the view's clock, by a walk
+     * planned to go over it: it is gone while it is fallen (fallingmodel.h).
+     * The model the routes after that walk are found in. */
+    void arm(Step c, double atMs);
 
     static int opposite(int d) { return d > 2 ? d - 2 : d + 2; }
     static int turned(int d, int delta) { return (d - 1 + delta + 4) % 4 + 1; }
@@ -96,8 +100,9 @@ private:
     struct Fallen {
         double back;   // when it is back, ms from the view's clock
         int    height;
+        double from = -1e300;   // when it falls, for one not fallen yet (arm)
     };
-    std::map<int, Fallen> back_;                // a fallen tile's cell index
+    std::map<int, Fallen> back_;                // a fallen or armed tile's cell index
     std::map<int, int> partner_;                // a platform's end cell index to its other end's
 };
 
