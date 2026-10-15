@@ -35,17 +35,24 @@ public:
         std::map<Changes, std::pair<double, Site>> best;
         // Only a blast that spends a block in the way is worth a bomb (and,
         // short of bombs, one in the way to a pickup).
-        const Changes wanted = board.inTheWay(f.changes, f.at, f.bombs <= 1);
-        for (const Site &site : board.sites(f.changes)) {
-            if (!(site.hits & wanted))
-                continue;
-            const double t = board.time(f.changes, f.at, {site.cell.u, site.cell.v});
-            if (t < 0)
-                continue;
-            const double cost = t + board.turnMs(f.at, site.cell.facing) + BLAST_MS;
-            auto it = best.find(site.hits);
-            if (it == best.end() || cost < it->second.first)
-                best[site.hits] = {cost, site};
+        // When none of those can be reached yet (the way in the most open
+        // world runs deeper into the blocks than the player can come), any
+        // block that can be is.
+        const Changes inTheWay = board.inTheWay(f.changes, f.at, f.bombs <= 1);
+        for (const Changes wanted : {inTheWay, ~(Changes)0}) {
+            for (const Site &site : board.sites(f.changes)) {
+                if (!(site.hits & wanted))
+                    continue;
+                const double t = board.time(f.changes, f.at, {site.cell.u, site.cell.v});
+                if (t < 0)
+                    continue;
+                const double cost = t + board.turnMs(f.at, site.cell.facing) + BLAST_MS;
+                auto it = best.find(site.hits);
+                if (it == best.end() || cost < it->second.first)
+                    best[site.hits] = {cost, site};
+            }
+            if (!best.empty())
+                break;
         }
         // Leave out a set that another covers, and more, for little more.
         std::vector<std::pair<double, Site>> sorted;
