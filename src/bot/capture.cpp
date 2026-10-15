@@ -17,6 +17,7 @@ void fill_mover(Mover &m, const E &e)
     m.facing = e.facing();
     m.moving = e.moveDir() != 0;
     m.falling = e.falling() != 0 || e.gliding() != 0;
+    m.gliding = e.gliding() != 0;
     m.turning = e.moveDir() > 10;
     m.moveDir = e.moveDir();
     m.animStart = e.animStart();

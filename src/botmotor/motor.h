@@ -12,7 +12,9 @@
  * move carries the player on (ice, a slide, a teleporter): the motor holds
  * nothing while it is carried, and picks the path up from wherever on it the
  * player comes to rest.  It holds nothing on a sticky pad until the pad lets
- * go. */
+ * go.  In the air it holds nothing, but under a paraglider, which steps and
+ * turns as on the ground: there it walks on along the path, and the player
+ * comes down where it ends. */
 #pragma once
 
 #include <vector>
