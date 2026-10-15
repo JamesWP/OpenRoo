@@ -25,6 +25,13 @@ struct Park {
 void platformSpells(const BotView &view, const PlatformView &platform, double horizonMs,
                     std::vector<Park> *atOrigin, std::vector<Park> *atLimit);
 
+/* The platform whose track runs through (u, v), or null. */
+const PlatformView *platformThrough(const BotView &view, int u, int v);
+
+/* The cell the platform stands on (or is passing) atMs from the view's clock:
+ * where what rides it is.  False beyond the model's reach. */
+bool platformCellAt(const BotView &view, const PlatformView &platform, double atMs, Step *cell);
+
 /* The spells the lift parks within the next horizonMs of the view's clock, in
  * order. */
 std::vector<Park> parkSpells(const BotView &view, const LiftView &lift, double horizonMs);

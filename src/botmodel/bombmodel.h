@@ -8,7 +8,9 @@
  * carries it on the way it went.  At 2 s, for 0.4 s
  * it blasts the 3x3 block around its cell: anything there within one height
  * of the bomb dies, foe or player, and a bombable block at its exact height is
- * spent.  botrun.h's bomb log measures how often the model is right
+ * spent.  A bomb that rolls onto a platform parked at the end of its track
+ * rides it, as the player does (movableentity.cpp), and blows wherever the
+ * platform has carried it; onto the track with the platform away, it falls.  botrun.h's bomb log measures how often the model is right
  * (tools/bot/bombcheck.py). */
 #pragma once
 
@@ -21,12 +23,15 @@ struct Blast {
     int    h = 0;
     double from = 0, until = 0;   // clock ms the kill zone is live
     bool   lost = false;          // fell off the map: no blast to fear
+    bool   timed = false;         // onto a platform's track: where it blows, if at all, hangs on when it was dropped
     /* Whether an entity at (u, v), height h, at clock t is in the blast. */
     bool kills(int u, int v, int eh, double t) const;
 };
 
 /* A bomb dropped at clock droppedAt on (u, v) at height h, facing f. */
 Blast predictBomb(const BotView &view, int u, int v, int h, int facing, double droppedAt);
+/* Whether the blast spends a bombable block. */
+bool spendsBlock(const BotView &view, const Blast &blast);
 /* A bomb already in the view, rolling or not. */
 Blast predictBomb(const BotView &view, const BombView &bomb);
 
