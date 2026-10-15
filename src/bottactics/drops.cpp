@@ -68,14 +68,32 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
     for (int v = 0; v < view.extentV; v++)
         for (int u = 0; u < view.extentU; u++) {
             const double c = away.cost(u, v);
-            // Not onto a platform: it may carry the player along with the bomb.
-            if (c > 0 && c <= RETREAT_MS && !view.cell(u, v).track)
+            // Not onto a platform or a lift: it may carry the player along
+            // with the bomb.
+            if (c > 0 && c <= RETREAT_MS && !NavModel::moving(view.cell(u, v)))
                 cells.push_back({c, {u, v}});
         }
     std::sort(cells.begin(), cells.end(),
               [](const auto &a, const auto &b) { return a.first < b.first; });
+    // The falling tiles the way to the site passes: armed by it, they fall
+    // under a retreat back over them (the retreat's paths are from the view,
+    // before they were stepped on).
+    std::vector<Step> armed;
+    for (const Timed &t : before.schedule)
+        for (const FallingView &f : view.fallings)
+            if (f.u == t.cell.u && f.v == t.cell.v)
+                armed.push_back(t.cell);
+    auto crossesArmed = [&](Step to) {
+        for (const Step &c : away.cellsTo(to.u, to.v))
+            for (const Step &a : armed)
+                if (a.u == c.u && a.v == c.v)
+                    return true;
+        return false;
+    };
     for (size_t i = 0; i < cells.size() && i < most; i++) {
         const Step at = cells[i].second;
+        if (!armed.empty() && crossesArmed(at))
+            continue;
         Option o = before;
         o.script.push_back({ScriptStep::Drop, 0, {}, 0});
         Option walk;
