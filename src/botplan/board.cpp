@@ -12,6 +12,11 @@ namespace bot {
 
 namespace {
 
+/* The drop times tried for a bomb that rides a platform: over a platform's
+ * cycle, a step apart. */
+const double RIDE_CYCLE_MS = 8000;
+const double RIDE_STEP_MS  = 100;
+
 int chebyshev(int du, int dv)
 {
     du = abs(du);
@@ -283,34 +288,53 @@ const std::vector<Site> &Board::sites(Changes s) const
         if (!(s & ((Changes)1 << i)))
             open.push_back(i);
     // A bomb dropped on p rolls at most a step before it lands, and blasts the
-    // 3x3 around: p can be two cells from a block.
+    // 3x3 around: p can be two cells from a block.  Or it rolls onto a
+    // platform, which carries it on: p is next to the platform's track.
     std::set<std::pair<int, int>> seen;
+    std::vector<Step> candidates;
     for (const size_t i : open) {
         const Step b = worlds_->block(i);
         for (int du = -2; du <= 2; du++)
-            for (int dv = -2; dv <= 2; dv++) {
-                const Step p{b.u + du, b.v + dv};
-                if (!view.inside(p.u, p.v) || !seen.insert({p.u, p.v}).second)
+            for (int dv = -2; dv <= 2; dv++)
+                candidates.push_back({b.u + du, b.v + dv});
+    }
+    if (!open.empty())
+        for (int v = 0; v < view.extentV; v++)
+            for (int u = 0; u < view.extentU; u++)
+                if (view.cell(u, v).track)
+                    for (int d = DIR_MIN; d <= DIR_MAX; d++)
+                        candidates.push_back({u + DIR_DU[d], v + DIR_DV[d]});
+    for (const Step &p : candidates) {
+        if (!view.inside(p.u, p.v) || !seen.insert({p.u, p.v}).second)
+            continue;
+        const Cell &c = view.cell(p.u, p.v);
+        if (c.height == 0 || c.kind == TILE_IMPASSABLE || c.kind == TILE_EMPTY ||
+            c.kind == TILE_BOMBABLE)
+            continue;
+        for (int f = DIR_MIN; f <= DIR_MAX; f++) {
+            // A bomb that rides a platform blows where the platform
+            // has taken it: a drop at some time in its cycle may.
+            std::set<Changes> found;
+            for (double at = 0; at < RIDE_CYCLE_MS; at += RIDE_STEP_MS) {
+                const Blast blast = predictBomb(view, p.u, p.v, c.height, f, view.now + at);
+                if (blast.lost) {
+                    if (!blast.timed)
+                        break;
                     continue;
-                const Cell &c = view.cell(p.u, p.v);
-                if (c.height == 0 || c.kind == TILE_IMPASSABLE || c.kind == TILE_EMPTY ||
-                    c.kind == TILE_BOMBABLE)
-                    continue;
-                for (int f = DIR_MIN; f <= DIR_MAX; f++) {
-                    const Blast blast = predictBomb(view, p.u, p.v, c.height, f, 0);
-                    if (blast.lost)
-                        continue;
-                    Changes hits = 0;
-                    for (const size_t j : open) {
-                        const Step o = worlds_->block(j);
-                        if (chebyshev(o.u - blast.cell.u, o.v - blast.cell.v) <= 1 &&
-                            view.cell(o.u, o.v).height == blast.h)
-                            hits |= (Changes)1 << j;
-                    }
-                    if (hits)
-                        out.push_back({{p.u, p.v, f}, hits});
                 }
+                Changes hits = 0;
+                for (const size_t j : open) {
+                    const Step o = worlds_->block(j);
+                    if (chebyshev(o.u - blast.cell.u, o.v - blast.cell.v) <= 1 &&
+                        view.cell(o.u, o.v).height == blast.h)
+                        hits |= (Changes)1 << j;
+                }
+                if (hits && found.insert(hits).second)
+                    out.push_back({{p.u, p.v, f}, hits});
+                if (!blast.timed)
+                    break;
             }
+        }
     }
     return sites_[s] = out;
 }

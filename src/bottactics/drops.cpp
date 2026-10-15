@@ -27,6 +27,13 @@ const double SURE_MS = 250;
 /* A wait after a drop ends this long after the blast's zone clears: the
  * foe model's chase assumed the player stays put until then. */
 const double CLEAR_MARGIN_MS = 200;
+/* A drop onto a platform: the longest wait for one the platform carries to a
+ * block, and the times tried, a step apart. */
+const double RIDE_WAIT_MS = 8000;
+const double RIDE_STEP_MS = 100;
+/* And how long the drop may come late and still be carried there. */
+const double RIDE_SLACK_MS = 500;
+
 
 /* Whether o's blasts still kill as many foes, and the player stays safe,
  * with them going off SURE_MS earlier or later. */
@@ -61,7 +68,8 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
     for (int v = 0; v < view.extentV; v++)
         for (int u = 0; u < view.extentU; u++) {
             const double c = away.cost(u, v);
-            if (c > 0 && c <= RETREAT_MS)
+            // Not onto a platform: it may carry the player along with the bomb.
+            if (c > 0 && c <= RETREAT_MS && !view.cell(u, v).track)
                 cells.push_back({c, {u, v}});
         }
     std::sort(cells.begin(), cells.end(),
@@ -183,7 +191,32 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
     const int turns = (site.facing - arrives + 4) % 4;
     const double turnMs = (turns == 3 ? 1 : turns) * p.stepMs;
     before.script.push_back({ScriptStep::Turn, site.facing, {}, 0});
-    const double dropIn = std::max(before.cost + turnMs, p.bombReadyAt - view.now) + view.tickMs;
+    double dropIn = std::max(before.cost + turnMs, p.bombReadyAt - view.now) + view.tickMs;
+    const int h = view.cell(site.u, site.v).height;
+    if (predictBomb(view, site.u, site.v, h, site.facing, view.now + dropIn).timed) {
+        // It rides a platform: wait for a drop it carries to a block, with
+        // time to spare, as a script's drop comes late more than early.
+        auto spends = [&](double wait) {
+            return spendsBlock(view, predictBomb(view, site.u, site.v, h, site.facing,
+                                                 view.now + dropIn + wait));
+        };
+        double wait = 0, run = 0;
+        for (double w = 0; w < RIDE_WAIT_MS && run < RIDE_SLACK_MS; w += RIDE_STEP_MS) {
+            if (!spends(w)) {
+                run = 0;
+                continue;
+            }
+            if (run == 0)
+                wait = w;
+            run += RIDE_STEP_MS;
+        }
+        if (run < RIDE_SLACK_MS)
+            return;
+        if (wait > 0) {
+            dropIn += wait;
+            before.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn - view.tickMs});
+        }
+    }
     before.schedule.push_back({dropIn, {site.u, site.v}});
     retreats(s, before, {site.u, site.v}, site.facing, dropIn, true, 0, RETREATS, out);
 }
