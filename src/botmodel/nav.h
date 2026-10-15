@@ -113,6 +113,23 @@ unsigned long long navHash(const BotView &view);
 struct Timed {
     double t;
     Step   cell;
+    bool   aloft = false;  // high above the cell (gliding): out of reach of what is on it
+};
+
+/* Where a glide comes down (glide.h). */
+struct Landing {
+    Step   cell;
+    int    facing = 0;          // the player's, as it lands
+    double ms = 0;              // from the launch, at rest, to landing
+    std::vector<Step>  path;    // the launch cell, then the cells the player enters
+    std::vector<Timed> schedule;  // the player's cell over time, ms from the launch
+};
+
+/* The landings of glides, by launch (Terrain keeps them). */
+class GlideSource {
+public:
+    virtual ~GlideSource() = default;
+    virtual const std::vector<Landing> &glides(int u, int v, int facing) const = 0;
 };
 
 /* A stretch of a route: cells entered one move after another, after waiting
@@ -130,10 +147,11 @@ class Paths {
 public:
     /* From rest on (u, v) facing f, setting off startMs from the view's
      * clock (it matters where there are lifts).  With throughSwitches, the
-     * routes pass over switches as over ground: a bound, for the planner's
-     * most open world (worlds.h), not a way to be walked. */
+     * routes pass over switches as over ground, and with glides they glide
+     * where they can, as often as they like: bounds, for the planner's most
+     * open world (worlds.h), not ways to be walked. */
     Paths(const NavModel &nav, int u, int v, int facing, double startMs = 0,
-          bool throughSwitches = false);
+          bool throughSwitches = false, const GlideSource *glides = nullptr);
 
     /* The least time from the start to come to rest on (u, v), any facing;
      * < 0 if never. */

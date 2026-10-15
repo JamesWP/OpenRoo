@@ -16,14 +16,16 @@
 #include <memory>
 #include <vector>
 #include "botview.h"
+#include "glide.h"
 #include "nav.h"
 
 namespace bot {
 
-class Terrain {
+class Terrain : public GlideSource {
 public:
-    /* With throughSwitches, its routes pass over switches (Paths). */
-    explicit Terrain(const BotView &view, bool throughSwitches = false);
+    /* With throughSwitches its routes pass over switches, and with glides
+     * they glide (Paths): a bound. */
+    explicit Terrain(const BotView &view, bool throughSwitches = false, bool glides = false);
     Terrain(const Terrain &) = delete;
     Terrain &operator=(const Terrain &) = delete;
 
@@ -32,13 +34,16 @@ public:
      * done. */
     std::unique_ptr<Terrain> changed(const std::vector<Step> &blocks,
                                      const std::vector<size_t> &bridges,
-                                     bool throughSwitches = false) const;
+                                     bool throughSwitches = false, bool glides = false) const;
 
     const BotView  &view() const { return view_; }
     const NavModel &nav() const { return nav_; }
 
     /* The quickest routes from rest on (u, v) facing f. */
     const Paths &from(int u, int v, int facing) const;
+
+    /* The landings of a glide launched from rest on (u, v) facing f (glide.h). */
+    const std::vector<Landing> &glides(int u, int v, int facing) const override;
 
     /* The blocks not yet spent, in grid order (v, then u). */
     const std::vector<Step> &blocks() const { return blocks_; }
@@ -48,7 +53,9 @@ private:
     NavModel nav_;
     std::vector<Step> blocks_;
     bool throughSwitches_;
+    bool glides_on_;
     mutable std::map<int, std::unique_ptr<Paths>> from_;
+    mutable std::map<int, std::vector<Landing>> glides_;
 };
 
 }  // namespace bot

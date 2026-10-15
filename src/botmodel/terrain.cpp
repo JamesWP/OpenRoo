@@ -3,8 +3,8 @@
 
 namespace bot {
 
-Terrain::Terrain(const BotView &view, bool throughSwitches)
-    : view_(view), nav_(view_), throughSwitches_(throughSwitches)
+Terrain::Terrain(const BotView &view, bool throughSwitches, bool glides)
+    : view_(view), nav_(view_), throughSwitches_(throughSwitches), glides_on_(glides)
 {
     // A bridge on its way back is gone already: its deck goes from under
     // whoever is on it (one going out is there as far as it is stamped).
@@ -26,7 +26,7 @@ Terrain::Terrain(const BotView &view, bool throughSwitches)
 
 std::unique_ptr<Terrain> Terrain::changed(const std::vector<Step> &blocks,
                                           const std::vector<size_t> &bridges,
-                                          bool throughSwitches) const
+                                          bool throughSwitches, bool glides) const
 {
     BotView next = view_;
     for (const Step &b : blocks)
@@ -43,7 +43,16 @@ std::unique_ptr<Terrain> Terrain::changed(const std::vector<Step> &blocks,
             c.busy   = br.extended;
         }
     }
-    return std::make_unique<Terrain>(next, throughSwitches);
+    return std::make_unique<Terrain>(next, throughSwitches, glides);
+}
+
+const std::vector<Landing> &Terrain::glides(int u, int v, int facing) const
+{
+    const int key = ((v * view_.extentU) + u) * 4 + (facing - 1);
+    auto it = glides_.find(key);
+    if (it != glides_.end())
+        return it->second;
+    return glides_[key] = glideLandings(view_, u, v, facing);
 }
 
 const Paths &Terrain::from(int u, int v, int facing) const
@@ -51,7 +60,8 @@ const Paths &Terrain::from(int u, int v, int facing) const
     const int key = ((v * view_.extentU) + u) * 4 + (facing - 1);
     std::unique_ptr<Paths> &p = from_[key];
     if (!p)
-        p = std::make_unique<Paths>(nav_, u, v, facing, 0, throughSwitches_);
+        p = std::make_unique<Paths>(nav_, u, v, facing, 0, throughSwitches_,
+                                    glides_on_ ? this : nullptr);
     return *p;
 }
 

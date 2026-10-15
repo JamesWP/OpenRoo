@@ -25,13 +25,16 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
         return d;
     const double start = view.now;
     const double end   = start + plan.back().t + lingerMs;
-    auto playerAt = [&](double clock) {
-        Step at = plan.front().cell;
+    auto entryAt = [&](double clock) {
+        const Timed *at = &plan.front();
         for (const Timed &m : plan)
             if (start + m.t <= clock + 1e-6)
-                at = m.cell;
-        return at;
+                at = &m;
+        return *at;
     };
+    auto playerAt = [&](double clock) { return entryAt(clock).cell; };
+
+    // Aloft, the player is out of reach of the foes and the blasts below.
 
     // Falling tiles: not onto one that is gone, and off each one before it
     // falls (fallingmodel.h).
@@ -75,8 +78,9 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
             continue;
         // The player's cell through the blast's live time.
         for (double t = b.from; t < b.until; t += view.tickMs > 0 ? view.tickMs : 400) {
-            const Step at = playerAt(t);
-            if (view.inside(at.u, at.v) && b.kills(at.u, at.v, view.cell(at.u, at.v).height, t)) {
+            const Timed e = entryAt(t);
+            const Step at = e.cell;
+            if (!e.aloft && view.inside(at.u, at.v) && b.kills(at.u, at.v, view.cell(at.u, at.v).height, t)) {
                 d.hit = true;
                 d.t   = t - start;
                 d.why = "bomb";
@@ -97,7 +101,8 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
     while (sim.now() < end) {
         const double prev = sim.now();
         sim.runTick(playerAt);
-        const Step p = playerAt(sim.now());
+        const Timed e = entryAt(sim.now());
+        const Step p = e.cell;
         if (sim.foeCount() != before.size())
             before.resize(sim.foeCount(), {-100, -100});
         for (size_t i = 0; i < sim.foeCount(); i++) {
@@ -108,7 +113,7 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
                  (f.u == playerBefore.u && f.v == playerBefore.v &&
                   before[i].u == p.u && before[i].v == p.v));
             const bool thrown = !catcher && chebyshev(f, p) <= 1;
-            if (caught || thrown) {
+            if ((caught || thrown) && !e.aloft) {
                 d.hit = true;
                 d.t   = sim.now() - start;
                 d.why = caught ? "catcher" : "thrower";

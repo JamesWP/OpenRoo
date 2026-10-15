@@ -4,6 +4,7 @@ add_library(botmodel OBJECT
     fallingmodel.cpp
     liftmodel.cpp
     foemodel.cpp
+    glide.cpp
     nav.cpp
     route.cpp
     terrain.cpp)
