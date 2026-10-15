@@ -357,7 +357,7 @@ Outcome NavModel::turn(int u, int v, int f, int delta) const
 }
 
 Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
-             bool throughSwitches)
+             bool throughSwitches, const GlideSource *glides)
     : nav_(nav), eu_(nav.view().extentU), ev_(nav.view().extentV), startU_(u), startV_(v),
       startMs_(startMs)
 {
@@ -406,6 +406,19 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
                 open.push({nc, j});
             }
         }
+        // Gliding down, where the bound allows it.
+        if (glides)
+            for (const Landing &l : glides->glides(cu, cv, f)) {
+                const int j = index(l.cell.u, l.cell.v, l.facing);
+                const double nc = c + l.ms;
+                if (cost_[j] < 0 || nc < cost_[j]) {
+                    cost_[j]   = nc;
+                    parent_[j] = i;
+                    how_[j]    = 5;
+                    departs_[j] = c;
+                    open.push({nc, j});
+                }
+            }
         // Riding a platform to its other end.
         int pu, pv;
         double arrive;
@@ -467,8 +480,8 @@ std::vector<Step> Paths::cellsTo(int u, int v) const
     for (size_t k = chain.size() - 1; k-- > 0;) {
         const int from = chain[k + 1], to = chain[k];
         const int how = how_[to];
-        if (how == 4) {
-            cells.push_back({(to / 4) % eu_, (to / 4) / eu_});   // carried to the other end
+        if (how == 4 || how == 5) {
+            cells.push_back({(to / 4) % eu_, (to / 4) / eu_});   // carried, or glided, there
             continue;
         }
         if (how >= 2)
@@ -491,8 +504,8 @@ std::vector<Leg> Paths::legsTo(int u, int v) const
     for (size_t k = chain.size() - 1; k-- > 0;) {
         const int from = chain[k + 1], to = chain[k];
         const int how = how_[to];
-        if (how == 4) {
-            // Carried to the other end: wait there for the platform.
+        if (how == 4 || how == 5) {
+            // Carried to the other end (wait there for the platform), or glided.
             Leg leg;
             leg.waitUntil = cost_[to];
             leg.cells.push_back({(to / 4) % eu_, (to / 4) / eu_});
@@ -525,7 +538,7 @@ std::vector<Timed> Paths::scheduleTo(int u, int v) const
     for (size_t k = chain.size() - 1; k-- > 0;) {
         const int from = chain[k + 1], to = chain[k];
         const int how = how_[to];
-        if (how == 4) {
+        if (how == 4 || how == 5) {
             out.push_back({cost_[to] - startMs_, {(to / 4) % eu_, (to / 4) / eu_}});
             continue;
         }
