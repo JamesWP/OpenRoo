@@ -8,7 +8,7 @@
  *
  * The facts: where the player is (a place, board.h), the changes made to
  * the terrain (bombable blocks spent, bridges switched), the gems still
- * needed, the bombs held, the foes alive (and how many of them leave a gem
+ * needed (and those gathered already, short of the quota), the bombs and glides held, the foes alive (and how many of them leave a gem
  * when killed) and the bomb pickups taken.  The actions are given: each a PlanAction, which says
  * from a state what states it leads to and at what estimated cost.  The
  * bot's are in actions.h, each with its preconditions and effects; the
@@ -47,7 +47,9 @@ struct Facts {
     Place    at;
     Changes  changes = 0;
     int      gemsNeeded = 0;
+    Taken    taken = 0;      // gems gathered on the way, short of the quota
     int      bombs = 0;
+    int      glides = 0;
     int      foes = 0;
     int      carriers = 0;   // of the foes, those that leave a gem
     unsigned pickups = 0;    // a bit per board pickup taken (the first 32)
@@ -56,7 +58,7 @@ struct Facts {
 
     auto key() const
     {
-        return std::make_tuple(at.u, at.v, at.facing, changes, gemsNeeded, bombs, foes, carriers, pickups,
+        return std::make_tuple(at.u, at.v, at.facing, changes, gemsNeeded, taken, bombs, glides, foes, carriers, pickups,
                                unused, atExit);
     }
     bool operator<(const Facts &o) const { return key() < o.key(); }

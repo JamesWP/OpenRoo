@@ -8,11 +8,14 @@ const Action &bombsAction();
 const Action &blastAction();
 const Action &ambushAction();
 const Action &switchAction();
+const Action &gliderAction();
+const Action &glideAction();
 
 const std::vector<const Action *> &actions()
 {
     static const std::vector<const Action *> all{&collectAction(), &exitAction(), &bombsAction(),
-                                                 &blastAction(), &ambushAction(), &switchAction()};
+                                                 &blastAction(), &ambushAction(), &switchAction(),
+                                                 &gliderAction(), &glideAction()};
     return all;
 }
 

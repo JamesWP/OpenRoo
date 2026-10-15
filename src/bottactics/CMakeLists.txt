@@ -6,6 +6,8 @@ add_library(bottactics OBJECT
     collect.cpp
     drops.cpp
     exit.cpp
+    glide.cpp
+    glider.cpp
     option.cpp
     switch.cpp
     tactics.cpp

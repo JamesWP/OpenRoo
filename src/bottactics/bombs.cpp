@@ -23,7 +23,8 @@ public:
             return;
         const std::vector<Pickup> &pickups = board.pickups();
         for (size_t i = 0; i < pickups.size() && i < 32; i++) {
-            if ((f.pickups & (1u << i)) || !Board::available(pickups[i], f.changes))
+            if (pickups[i].kind != Pickup::Bombs || (f.pickups & (1u << i)) ||
+                !Board::available(pickups[i], f.changes))
                 continue;
             const double t = board.time(f.changes, f.at, pickups[i].cell);
             if (t < 0)
@@ -45,7 +46,7 @@ public:
     {
         std::vector<Step> live;
         for (const Pickup &p : board.pickups())
-            if (p.block < 0)
+            if (p.block < 0 && p.kind == Pickup::Bombs)
                 live.push_back(p.cell);
         const Place &end = plan.steps.front().end;
         offerWalks(s, targets(s, plan, {end.u, end.v}, live), "bombs", true, out);

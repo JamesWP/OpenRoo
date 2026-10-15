@@ -30,11 +30,16 @@ struct Place {
     }
 };
 
-/* A bomb pickup: on the map, or (block >= 0) hidden in that bombable block
- * until it is spent. */
+/* A set of gems taken, by Board::gemBit. */
+using Taken = uint64_t;
+
+/* A pickup the plans may use, bombs or a paraglider: on the map, or (block
+ * >= 0) hidden in that bombable block until it is spent. */
 struct Pickup {
+    enum Kind { Bombs, Glider };
     Step cell;
     int  block = -1;
+    Kind kind = Bombs;
 };
 
 /* A place a bomb dropped spends blocks from, and which. */
@@ -67,7 +72,9 @@ public:
     /* The foes that do. */
     int   carriers() const { return carriers_; }
     Step  exit() const { return {live_.exitU, live_.exitV}; }
-    /* The bomb pickups, on the map and hidden. */
+    /* Whether the player has, or could pick up, a glide. */
+    bool glidesToBe() const;
+    /* The pickups, on the map and hidden. */
     const std::vector<Pickup> &pickups() const { return pickups_; }
     /* Whether the pickup is there to take once the blocks in s are spent. */
     static bool available(const Pickup &p, Changes s) { return p.block < 0 || (s >> p.block & 1); }
@@ -100,9 +107,16 @@ public:
     /* A turn to a facing, from a place, ms. */
     double turnMs(Place from, int facing) const;
 
-    /* The way to collect need of the gems on the map (the quota, by default)
-     * and go on to the exit. */
-    const GemRoute &gemRoute(Changes s, Place from, int need = -1) const;
+    /* The way to collect need of the gems on the map not taken (the quota, by
+     * default) and go on to the exit. */
+    const GemRoute &gemRoute(Changes s, Place from, int need = -1, Taken taken = 0) const;
+    /* The way to collect every gem that can be reached and is not taken, up
+     * to most, ending at the last (toExit 0): what one part of the level
+     * gives before a glide to another. */
+    const GemRoute &gather(Changes s, Place from, Taken taken, int most) const;
+    /* The gem's bit in a Taken set: by its place among gems(everything()),
+     * the first 64. */
+    Taken gemBit(Step gem) const;
     /* The gems the quota needs from the map: those the carriers cannot give. */
     int   fromMap() const { return gemsNeeded_ > carriers_ ? gemsNeeded_ - carriers_ : 0; }
     /* Whether, standing on that gem as things are, the rest of the quota (the
@@ -110,7 +124,8 @@ public:
      * the player where it cannot is a trap. */
     bool canFinishAfter(Step gem) const;
     /* Whether, standing on that cell as things are, the quota (the carriers'
-     * gems aside) and the exit can be had. */
+     * gems aside) and the exit can be had; where glides may be had, any
+     * cell, the walk alone being no measure. */
     bool canFinishFrom(Step cell) const;
 
     /* The changes the world s lacks that stand in the way: on the quickest
@@ -130,7 +145,7 @@ public:
     std::string noRoute() const;
 
 private:
-    GemRoute routeFrom(Changes s, Place from, const Step *taken, int need) const;
+    GemRoute routeFrom(Changes s, Place from, Taken taken, int need, bool toExit) const;
     int facingOf(const Place &p) const { return p.facing ? p.facing : worlds_->pointFacing(); }
 
     const BotView &live_;
@@ -140,7 +155,7 @@ private:
     std::vector<Pickup> pickups_;
     std::vector<std::pair<Step, int>> switches_;
     mutable std::map<Changes, std::vector<Step>> gems_;
-    mutable std::map<std::tuple<Changes, Place, int>, GemRoute> routes_;
+    mutable std::map<std::tuple<Changes, Place, int, Taken>, GemRoute> routes_;
     mutable std::map<std::pair<int, int>, bool> after_;
     mutable std::map<Changes, std::vector<Site>> sites_;
     mutable std::map<std::tuple<Changes, int, int>, int> reach_;
