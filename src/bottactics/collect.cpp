@@ -1,9 +1,9 @@
-/* Collect: with gems needed and a route to them in the world the facts make,
- * the gems still needed, from the map, and on to the exit; or, where glides
- * may be had and the exit cannot be walked to, those to be had here, up to
- * the quota (to glide on, glide.cpp); or, where the exit is shut and a blast
- * may open it, the quota alone (blast.cpp then opens the way).  By the route optimiser's route
- * (board.h), ending at its last gem.  Done as a walk to the route's next gem, or another of the
+/* Collect: with gems needed, the gems still needed from the map in the world
+ * the facts make: on the route on to the exit if there is one; else (the exit
+ * shut, for a later step to open, or out of walking reach) the quota alone,
+ * or, where glides may be had, those to be had here, up to the quota (to
+ * glide on, glide.cpp).  By the route optimiser's route (board.h), ending at
+ * its last gem.  Done as a walk to the route's next gem, or another of the
  * nearest gems (costed with the whole route still to do). */
 #include "action.h"
 #include "walk.h"
@@ -23,18 +23,6 @@ class CollectAction : public Action {
         return n;
     }
 
-    /* Whether the player has bombs, or a pickup of them is not taken. */
-    static bool bombsToBe(const Facts &f, const Board &board)
-    {
-        if (f.bombs > 0)
-            return true;
-        const std::vector<Pickup> &pickups = board.pickups();
-        for (size_t i = 0; i < pickups.size() && i < 32; i++)
-            if (pickups[i].kind == Pickup::Bombs && !(f.pickups & (1u << i)))
-                return true;
-        return false;
-    }
-
 public:
     const char *name() const override { return "collect"; }
 
@@ -48,30 +36,18 @@ public:
             Successor n{f, {}};
             n.facts.gemsNeeded = 0;
             out.push_back(along(n, r));
-        } else if (board.time(f.changes, f.at, board.exit()) < 0 &&
-                   (f.changes & board.allBlocks()) != board.allBlocks() && bombsToBe(f, board)) {
-            // The exit is shut, and a blast may yet open it (into a pit the
-            // gems cannot be had from, as like as not): the quota first.
-            const GemRoute &g = board.gather(f.changes, f.at, f.taken, f.gemsNeeded);
-            if (!g.found || (int)g.gems.size() < f.gemsNeeded)
-                return;
-            Successor n{f, {}};
-            n.facts.gemsNeeded = 0;
-            for (const Step &gem : g.gems)
-                n.facts.taken |= board.gemBit(gem);
-            out.push_back(along(n, g));
-        } else if (board.glidesToBe()) {
-            // No way on to the exit from here: what this part of the level
-            // gives, up to the quota, to glide on.
-            const GemRoute &g = board.gather(f.changes, f.at, f.taken, f.gemsNeeded);
-            if (!g.found)
-                return;
-            Successor n{f, {}};
-            n.facts.gemsNeeded -= (int)g.gems.size();
-            for (const Step &gem : g.gems)
-                n.facts.taken |= board.gemBit(gem);
-            out.push_back(along(n, g));
+            return;
         }
+        // No way on to the exit from here: the quota for another step to go
+        // on from, or what this part of the level gives, to glide on.
+        const GemRoute &g = board.gather(f.changes, f.at, f.taken, f.gemsNeeded);
+        if (!g.found || ((int)g.gems.size() < f.gemsNeeded && !board.glidesToBe()))
+            return;
+        Successor n{f, {}};
+        n.facts.gemsNeeded -= (int)g.gems.size();
+        for (const Step &gem : g.gems)
+            n.facts.taken |= board.gemBit(gem);
+        out.push_back(along(n, g));
     }
 
     void offer(Situation &s, const Board &board, const Plan &plan,
