@@ -99,8 +99,8 @@ unsigned Motor::act(const BotView &view)
     }
 
     unsigned acts = toward(p.facing, d);
-    if (p.falling) {
-        stillTicks_ = 0;  // nothing to press in the air
+    if (p.falling && !p.gliding) {
+        stillTicks_ = 0;  // nothing to press in the air, but under a glider
         return 0;
     }
     if (p.moving) {

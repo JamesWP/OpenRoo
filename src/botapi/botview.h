@@ -47,6 +47,7 @@ struct Mover {
     int facing = 0;
     bool moving = false;   // a step or turn is under way
     bool falling = false;  // in the air: falling, gliding or launched
+    bool gliding = false;  // in the air under a paraglider: it can step and turn
     bool turning = false;  // the move under way is a turn
     int  moveDir = 0;      // the move under way: 1..4 a step, 11..14 a turn to (n - 10)
     /* At rest: neither stepping, turning nor in the air. */
