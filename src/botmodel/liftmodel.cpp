@@ -100,4 +100,30 @@ bool platformCellAt(const BotView &view, const PlatformView &p, double atMs, Ste
     return true;
 }
 
+const LiftView *liftAt(const BotView &view, int u, int v)
+{
+    for (const LiftView &l : view.lifts)
+        if (l.u == u && l.v == v)
+            return &l;
+    return nullptr;
+}
+
+int liftHeightAt(const BotView &view, const LiftView &l, double atMs)
+{
+    const std::vector<Park> parks = parkSpells(view, l, atMs + 10000.0);
+    for (size_t i = 0; i < parks.size(); i++) {
+        const Park &k = parks[i];
+        if (atMs < k.from) {
+            // On its way to it, from the other end.
+            const int other = k.height == l.top ? l.base : l.top;
+            const int heights = (int)std::ceil(std::max(0.0, k.from - atMs - view.tickMs) / HEIGHT_MS);
+            const int h = k.height > other ? k.height - heights : k.height + heights;
+            return std::max(std::min(l.base, l.top), std::min(std::max(l.base, l.top), h));
+        }
+        if (atMs <= k.to + view.tickMs)
+            return k.height;
+    }
+    return -1;
+}
+
 }  // namespace bot

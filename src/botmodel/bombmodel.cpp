@@ -51,7 +51,29 @@ Blast roll(const BotView &view, int u, int v, int h, int facing, double droppedA
         if (!step && view.cell(u, v).kind != TILE_ICE)
             break;
         const int nu = u + DIR_DU[facing], nv = v + DIR_DV[facing];
-        if (!view.inside(nu, nv) || !may_roll(view.cell(u, v), h, view.cell(nu, nv)))
+        if (!view.inside(nu, nv))
+            break;
+        if (const LiftView *lift = liftAt(view, nu, nv)) {
+            // Onto a lift: as onto ground at the height it stands through the
+            // step, and then it rides the lift up or down, and blows at the
+            // height the lift has taken it to.
+            const double in = droppedAt - view.now + view.tickMs;
+            const int at = liftHeightAt(view, *lift, in), after = liftHeightAt(view, *lift, in + STEP_MS);
+            b.timed = true;
+            if (at < 0 || at != after) {
+                b.lost = true;   // it moves under the step: not modelled
+                break;
+            }
+            if (at > h)
+                break;          // a face: it stays
+            b.cell  = {nu, nv};
+            b.h     = liftHeightAt(view, *lift, droppedAt + FUSE_MS - view.now);
+            b.lost  = b.h < 0;
+            b.from  = droppedAt + FUSE_MS;
+            b.until = droppedAt + CLEAR_MS;
+            return b;
+        }
+        if (!may_roll(view.cell(u, v), h, view.cell(nu, nv)))
             break;
         u = nu;
         v = nv;
@@ -100,6 +122,17 @@ Blast predictBomb(const BotView &view, const BombView &bomb)
     // Moving, its cell is already the step's end; seen after its first tick
     // at rest, it has taken (or been refused) its one step.
     const bool rolled = bomb.moving || view.now - bomb.droppedAt > view.tickMs * 1.5;
+    if (rolled && !bomb.moving)
+        if (const LiftView *lift = liftAt(view, bomb.u, bomb.v)) {
+            Blast r;
+            r.cell  = {bomb.u, bomb.v};
+            r.h     = liftHeightAt(view, *lift, bomb.droppedAt + FUSE_MS - view.now);
+            r.lost  = r.h < 0;
+            r.timed = true;
+            r.from  = bomb.droppedAt + FUSE_MS;
+            r.until = bomb.droppedAt + CLEAR_MS;
+            return r;
+        }
     if (rolled && !bomb.moving && view.inside(bomb.u, bomb.v) && view.cell(bomb.u, bomb.v).track) {
         Blast r;
         r.from  = bomb.droppedAt + FUSE_MS;

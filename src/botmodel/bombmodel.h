@@ -10,7 +10,9 @@
  * of the bomb dies, foe or player, and a bombable block at its exact height is
  * spent.  A bomb that rolls onto a platform parked at the end of its track
  * rides it, as the player does (movableentity.cpp), and blows wherever the
- * platform has carried it; onto the track with the platform away, it falls.  botrun.h's bomb log measures how often the model is right
+ * platform has carried it; onto the track with the platform away, it falls.
+ * A lift it rolls onto (parked at its height or below) carries it up or down
+ * the same way.  botrun.h's bomb log measures how often the model is right
  * (tools/bot/bombcheck.py). */
 #pragma once
 
@@ -23,7 +25,7 @@ struct Blast {
     int    h = 0;
     double from = 0, until = 0;   // clock ms the kill zone is live
     bool   lost = false;          // fell off the map: no blast to fear
-    bool   timed = false;         // onto a platform's track: where it blows, if at all, hangs on when it was dropped
+    bool   timed = false;         // onto a platform or a lift: where it blows, if at all, hangs on when it was dropped
     /* Whether an entity at (u, v), height h, at clock t is in the blast. */
     bool kills(int u, int v, int eh, double t) const;
 };

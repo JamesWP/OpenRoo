@@ -32,6 +32,13 @@ const PlatformView *platformThrough(const BotView &view, int u, int v);
  * where what rides it is.  False beyond the model's reach. */
 bool platformCellAt(const BotView &view, const PlatformView &platform, double atMs, Step *cell);
 
+/* The lift on (u, v), or null. */
+const LiftView *liftAt(const BotView &view, int u, int v);
+
+/* The lift's height atMs from the view's clock, parked or on its way (the
+ * height it has passed).  -1 beyond the model's reach. */
+int liftHeightAt(const BotView &view, const LiftView &lift, double atMs);
+
 /* The spells the lift parks within the next horizonMs of the view's clock, in
  * order. */
 std::vector<Park> parkSpells(const BotView &view, const LiftView &lift, double horizonMs);
