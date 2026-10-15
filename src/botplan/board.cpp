@@ -289,7 +289,8 @@ const std::vector<Site> &Board::sites(Changes s) const
             open.push_back(i);
     // A bomb dropped on p rolls at most a step before it lands, and blasts the
     // 3x3 around: p can be two cells from a block.  Or it rolls onto a
-    // platform, which carries it on: p is next to the platform's track.
+    // platform or a lift, which carries it on: p is next to the platform's
+    // track, or the lift.
     std::set<std::pair<int, int>> seen;
     std::vector<Step> candidates;
     for (const size_t i : open) {
@@ -301,7 +302,7 @@ const std::vector<Site> &Board::sites(Changes s) const
     if (!open.empty())
         for (int v = 0; v < view.extentV; v++)
             for (int u = 0; u < view.extentU; u++)
-                if (view.cell(u, v).track)
+                if (view.cell(u, v).track || view.cell(u, v).kind == TILE_LIFT)
                     for (int d = DIR_MIN; d <= DIR_MAX; d++)
                         candidates.push_back({u + DIR_DU[d], v + DIR_DV[d]});
     for (const Step &p : candidates) {
@@ -309,7 +310,7 @@ const std::vector<Site> &Board::sites(Changes s) const
             continue;
         const Cell &c = view.cell(p.u, p.v);
         if (c.height == 0 || c.kind == TILE_IMPASSABLE || c.kind == TILE_EMPTY ||
-            c.kind == TILE_BOMBABLE)
+            (c.kind == TILE_BOMBABLE && !c.busy))
             continue;
         for (int f = DIR_MIN; f <= DIR_MAX; f++) {
             // A bomb that rides a platform blows where the platform
