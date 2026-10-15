@@ -16,6 +16,11 @@ double fallsAt(const BotView &view, Step c, double enterMs);
  * comes back). */
 bool goneAt(const BotView &view, Step c, double atMs);
 
+/* The spell the falling tile on c is gone for if it is armed at armedMs:
+ * [*from, *back), ms from the view's clock (*back huge if it never returns).
+ * False if c holds no falling tile. */
+bool goneSpell(const BotView &view, Step c, double armedMs, double *from, double *back);
+
 /* When the fallen tile on c is back, ms from the view's clock; < 0 if it is
  * not fallen, a huge number if it never returns. */
 double backAt(const BotView &view, Step c);

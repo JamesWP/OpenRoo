@@ -30,6 +30,19 @@ double backAt(const BotView &view, Step c)
     return -1;
 }
 
+bool goneSpell(const BotView &view, Step c, double armedMs, double *from, double *back)
+{
+    if (!view.inside(c.u, c.v) || view.cell(c.u, c.v).kind != TILE_FALLING)
+        return false;
+    bool respawns = true;
+    for (const FallingView &f : view.fallings)
+        if (f.u == c.u && f.v == c.v)
+            respawns = f.respawns;
+    *from = armedMs + FALL_MS;
+    *back = respawns ? armedMs + BACK_MS : 1e12;
+    return true;
+}
+
 bool goneAt(const BotView &view, Step c, double atMs)
 {
     const double back = backAt(view, c);
