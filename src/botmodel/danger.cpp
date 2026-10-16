@@ -114,7 +114,7 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
                 ((f.u == p.u && f.v == p.v) ||
                  (f.u == playerBefore.u && f.v == playerBefore.v &&
                   before[sim.foeId(i)].u == p.u && before[sim.foeId(i)].v == p.v));
-            const bool thrown = !catcher && chebyshev(f, p) <= 1;
+            const bool thrown = sim.throwsAtPlayer(i) && chebyshev(f, p) <= 1;
             if ((caught || thrown) && !e.aloft) {
                 d.hit = true;
                 d.t   = sim.now() - start;
@@ -135,6 +135,8 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
     for (const FoeModel::Kill &k : sim.kills())
         if (k.byAdded)
             d.kills.push_back(k);
+        else
+            d.foeKills++;
     return d;
 }
 

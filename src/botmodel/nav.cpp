@@ -194,6 +194,14 @@ const char *NavModel::refused(const Cell &a, int h, const Cell &b, int d) const
     return nullptr;
 }
 
+bool parkedFoe(const BotView &view, int u, int v)
+{
+    for (const FoeView &f : view.foes)
+        if (f.u == u && f.v == v && f.kind == 3 && f.held && !f.moving && !f.dying)
+            return true;
+    return false;
+}
+
 unsigned long long navHash(const BotView &view)
 {
     unsigned long long h = 1469598103934665603ull;
@@ -230,6 +238,9 @@ unsigned long long navHash(const BotView &view)
         mix(p.limit);
         mix(p.alongU);
     }
+    for (const FoeView &f : view.foes)
+        if (parkedFoe(view, f.u, f.v))
+            mix((unsigned)(f.v * view.extentU + f.u));
     mix((unsigned)view.player.stepMs);
     return h;
 }
@@ -337,6 +348,8 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
             }
         }
         const char *why = bp ? refused(n == 0 ? origin : w.cell(cu, cv), ch, *bp, dir) : "edge";
+        if (!why && parkedFoe(w, nu, nv))
+            why = "foe";
         if (why) {
             if (n == 0) {
                 out.why = why;

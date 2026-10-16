@@ -681,6 +681,22 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
     }
 }
 
+bool FoeModel::reaches(size_t i, int u, int v)
+{
+    int nu, nv;
+    return firstStep(foes_[i], u, v, 0x96, &nu, &nv);
+}
+
+bool FoeModel::bombsCatchers(size_t i) const
+{
+    return foes_[i].kind == THROWER && foes_[i].type == FOE_FOLLOWER;
+}
+
+bool FoeModel::throwsAtPlayer(size_t i) const
+{
+    return foes_[i].kind == THROWER && !foes_[i].held && foes_[i].type != FOE_FOLLOWER;
+}
+
 int FoeModel::killed() const
 {
     int n = 0;
@@ -716,6 +732,21 @@ int gemsWiped(const BotView &view, const std::vector<FoeModel::Kill> &kills)
     for (const FoeModel::Kill &k : kills)
         n += view.cell(k.u, k.v).contents == CONTENTS_CRYSTAL;
     return n;
+}
+
+int catchersHunted(FoeModel &sim, const BotView &view)
+{
+    sim.load(view);
+    int most = 0;
+    for (size_t i = 0; i < sim.foeCount(); i++) {
+        if (!sim.bombsCatchers(i))
+            continue;
+        int n = 0;
+        for (size_t k = 0; k < sim.foeCount(); k++)
+            n += sim.foeKind(k) == CATCHER && sim.reaches(i, sim.foeCell(k).u, sim.foeCell(k).v);
+        most = std::max(most, n);
+    }
+    return most;
 }
 
 }  // namespace bot

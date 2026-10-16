@@ -2,7 +2,8 @@
  * gem (board.h) taken too, if gems are needed.  Its cost is a
  * guess: whether one can be had depends on where the foes go, which only the
  * tactical layer predicts.  Done as a turn, a drop and a walk away, taken
- * only where the foe model says the blast kills a foe (drops.h). */
+ * only where the foe model says the blast kills a foe (drops.h).  Not while
+ * a follower can still be let out to the catchers (release.cpp). */
 #include "action.h"
 #include "drops.h"
 
@@ -40,7 +41,8 @@ public:
     void expand(const Facts &f, const Board &board, const PlanOptions &,
                 std::vector<Successor> &out) const override
     {
-        if (f.bombs <= 0 || f.foes <= 0)
+        // A follower to let out bombs the catchers for one bomb (release.cpp).
+        if (f.bombs <= 0 || f.foes <= 0 || board.releasePending(f.changes, f.bombs))
             return;
         Successor n{f, {}};
         n.facts.bombs--;

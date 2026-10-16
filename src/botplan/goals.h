@@ -5,7 +5,9 @@
  *   remove foe   bombs held, and a foe meets the player soon on the course
  *                it is on (sensed with the danger check, danger.h), above
  *                finishing: a foe met is better met with a bomb than avoided,
- *                unless the bomb is one the way to the exit needs (goap.cpp).
+ *                unless the bomb is one the way to the exit needs (goap.cpp);
+ *                or, met soon or not, while a follower is out after the
+ *                catchers (foemodel.h), which bombs them.
  *
  * Each goal is planned for in turn (goap.h) until one can be done safely;
  * the executive asks again as things change, and a goal above the one
@@ -25,6 +27,7 @@ struct Senses {
     int    bombs = 0;
     int    foes = 0;
     double foeMeetsMs = -1;   // a foe meets the player this soon, or -1: none soon
+    int    hunted = 0;        // catchers a follower can reach (foemodel.h)
 };
 
 struct Goal {

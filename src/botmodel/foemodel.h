@@ -76,6 +76,14 @@ public:
     size_t foeCount() const { return foes_.size(); }
     Step   foeCell(size_t i) const { return {foes_[i].u, foes_[i].v}; }
     int    foeKind(size_t i) const { return foes_[i].kind; }
+    /* Whether foe i's search finds a way to (u, v) as the foes stand, at the
+     * budget its type chases with (a follower's, a catcher). */
+    bool reaches(size_t i, int u, int v);
+    /* Whether foe i is a thrower that follows the catchers (foetype.h). */
+    bool bombsCatchers(size_t i) const;
+    /* Whether foe i is a thrower that bombs the player when beside it: not
+     * held, and not a follower (whose bombs, dropped(), are at catchers). */
+    bool throwsAtPlayer(size_t i) const;
     /* Its index among the view's foes: kept as the foes before it die. */
     size_t foeId(size_t i) const { return foes_[i].id; }
 
@@ -162,5 +170,8 @@ int spareGems(const BotView &view);
  * cell, nothing if it carries nothing, in place of a gem there
  * (Foe::finishDespawn). */
 int gemsWiped(const BotView &view, const std::vector<FoeModel::Kill> &kills);
+/* How many catchers a follower in the view can reach, the most any one can:
+ * those it will bomb (loads sim with the view). */
+int catchersHunted(FoeModel &sim, const BotView &view);
 
 }  // namespace bot

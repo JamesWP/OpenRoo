@@ -66,8 +66,10 @@ std::vector<Goal> Executive::goals(const BotView &view)
     Senses senses;
     senses.bombs = view.player.bombs;
     senses.foes  = (int)view.foes.size();
-    if (!view.foes.empty())
+    if (!view.foes.empty()) {
         senses.foeMeetsMs = foeMeets(foes_, view, ahead(view), FOE_HORIZON_MS);
+        senses.hunted     = catchersHunted(foes_, view);
+    }
     return selectGoals(senses);
 }
 

@@ -48,6 +48,14 @@ struct Site {
     Changes hits = 0;
 };
 
+/* A bombable block that pens a thrower in: spent, the thrower can reach
+ * catchers it cannot now.  A follower bombs the catchers it follows
+ * (foemodel.h), so they die without a bomb of the player's. */
+struct Release {
+    Changes gate = 0;   // the block's bit
+    int     foes = 0;   // the catchers it then reaches
+};
+
 /* The way to collect the quota from a place and go on to the exit. */
 struct GemRoute {
     bool              found = false;
@@ -141,6 +149,13 @@ public:
      * reach of a block at its height. */
     const std::vector<Site> &sites(Changes s) const;
 
+    /* The blocks, each spent alone, that let a follower out to catchers. */
+    const std::vector<Release> &releases() const;
+    /* The catchers a follower can reach now: it will bomb them. */
+    int hunted() const;
+    /* Whether a release is still to be had in the world s, with bombs. */
+    bool releasePending(Changes s, int bombs) const;
+
     /* Why there is no way to the goal at all, for the note: "no route: ...". */
     std::string noRoute() const;
 
@@ -160,6 +175,9 @@ private:
     mutable std::map<Changes, std::vector<Site>> sites_;
     mutable std::map<std::tuple<Changes, int, int>, int> reach_;
     mutable std::map<std::tuple<Changes, Place, bool>, Changes> way_;
+    mutable std::vector<Release> releases_;
+    mutable bool releasesFound_ = false;
+    mutable int  hunted_ = 0;
 };
 
 }  // namespace bot

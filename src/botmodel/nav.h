@@ -125,6 +125,10 @@ private:
 /* The bridge the switch on (u, v) works, or null if it is no working switch. */
 const BridgeView *switchedBy(const BotView &view, int u, int v);
 
+/* Whether a held thrower stands on (u, v), at rest: a follower with no
+ * catcher left to follow stays there, in the way (foetype.h). */
+bool parkedFoe(const BotView &view, int u, int v);
+
 /* A hash of what the nav model reads (the terrain and the step time): its
  * answers stand while this does. */
 unsigned long long navHash(const BotView &view);
