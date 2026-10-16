@@ -23,7 +23,8 @@ public:
     {
     }
 
-    Plan run()
+    /* The facts as they stand. */
+    Facts now() const
     {
         Facts start;
         start.at         = board_.start();
@@ -32,6 +33,13 @@ public:
         start.glides     = board_.live().player.glides;
         start.foes       = board_.foes();
         start.carriers   = board_.carriers();
+        return start;
+    }
+
+    Plan run() { return run(now()); }
+
+    Plan run(const Facts &start)
+    {
         push(start, 0, -1, PlanStep());
         Plan plan;
         while (!open_.empty() && plan.nodes < options_.maxNodes) {
@@ -54,9 +62,24 @@ public:
     }
 
 private:
-    bool reached(const Facts &f) const
+    bool reached(const Facts &f)
     {
-        return options_.goal == REMOVE_FOE ? f.foes < board_.foes() : f.atExit;
+        if (options_.goal != REMOVE_FOE)
+            return f.atExit;
+        return f.foes < board_.foes() && finishable(f);
+    }
+
+    /* Whether the level can still be finished after f, if it can be now: a
+     * foe is not removed with a bomb the way to the exit needs. */
+    bool finishable(const Facts &f)
+    {
+        PlanOptions finish = options_;
+        finish.goal    = FINISH;
+        finish.startBy = -1;
+        finish.root.clear();
+        if (finishableNow_ < 0)
+            finishableNow_ = Search(board_, actions_, finish).run().found;
+        return !finishableNow_ || Search(board_, actions_, finish).run(f).found;
     }
 
     /* The least the rest can cost: for finishing, the route through the gems
@@ -130,6 +153,7 @@ private:
     const Board       &board_;
     const std::vector<const PlanAction *> &actions_;
     const PlanOptions &options_;
+    int                finishableNow_ = -1;   // unknown yet
     std::vector<Node>  nodes_;
     std::map<Facts, double> best_;
     // (f, g, node): the least f first, then the node pushed first.

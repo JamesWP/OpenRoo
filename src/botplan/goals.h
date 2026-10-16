@@ -4,7 +4,8 @@
  *   finish       always: the level is the point;
  *   remove foe   bombs held, and a foe meets the player soon on the course
  *                it is on (sensed with the danger check, danger.h), above
- *                finishing: a foe met is better met with a bomb than avoided.
+ *                finishing: a foe met is better met with a bomb than avoided,
+ *                unless the bomb is one the way to the exit needs (goap.cpp).
  *
  * Each goal is planned for in turn (goap.h) until one can be done safely;
  * the executive asks again as things change, and a goal above the one
