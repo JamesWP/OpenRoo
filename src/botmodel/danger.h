@@ -5,10 +5,12 @@
  * along the plan and then while it stands at the plan's end for a margin.
  * At each tick: a catcher on the player's cell, or swapping cells with it,
  * is a catch; standing beside a thrower (within one cell, diagonals too) is
- * what makes it drop a bomb, and counts as a hit; so does standing in a
- * bomb's blast (bombmodel.h), of a bomb in the view or one the caller means
- * to drop, or one a foe drops along the way; and so does still standing on a falling tile when it falls, 1.5 s
- * after it was stepped on (or armed already). */
+ * what makes it drop a bomb, and counts as a hit, unless it is held or a
+ * follower (whose bombs are at the catchers, and modelled); so does standing
+ * in a bomb's blast (bombmodel.h), of a bomb in the view, one the caller
+ * means to drop or one a foe drops along the way; and so does still standing
+ * on a falling tile when it falls, 1.5 s after it was stepped on (or armed
+ * already). */
 #pragma once
 
 #include <vector>
@@ -24,6 +26,7 @@ struct Danger {
     const char *why = "";   // "catcher", "thrower", "bomb", "falling tile", "bridge"
     int         killed = 0; // foes the extra blasts killed meanwhile
     std::vector<FoeModel::Kill> kills;  // those, where and when (the foe model's clock)
+    int         foeKills = 0;  // foes the other blasts killed (a thrower's, say)
 };
 
 /* plan's times are ms from the view's clock; the player stays on the last

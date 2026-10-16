@@ -1,6 +1,7 @@
 add_library(bottactics OBJECT
     actions.cpp
     ambush.cpp
+    await.cpp
     blast.cpp
     bombs.cpp
     collect.cpp
@@ -9,6 +10,7 @@ add_library(bottactics OBJECT
     glide.cpp
     glider.cpp
     option.cpp
+    release.cpp
     switch.cpp
     tactics.cpp
     walk.cpp)

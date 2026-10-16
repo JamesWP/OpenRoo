@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "bombmodel.h"
+#include "foemodel.h"
 #include "route.h"
 #include "nav.h"
 #include "tile.h"
@@ -324,6 +325,40 @@ std::string Board::noRoute() const
     snprintf(buf, sizeof(buf), "no route: %d gems needed, %d reachable, exit %s", gemsNeeded_,
              reachable, exitReachable ? "reachable" : "unreachable");
     return buf;
+}
+
+const std::vector<Release> &Board::releases() const
+{
+    if (releasesFound_)
+        return releases_;
+    releasesFound_ = true;
+    FoeModel sim;
+    hunted_ = catchersHunted(sim, live_);
+    for (size_t b = 0; b < worlds_->blockCount() && b < 63; b++) {
+        BotView opened = live_;
+        const Step c = worlds_->block(b);
+        opened.cells[(size_t)c.v * opened.extentU + c.u].busy = 1;
+        const int then = catchersHunted(sim, opened);
+        if (then > hunted_)
+            releases_.push_back({(Changes)1 << b, then - hunted_});
+    }
+    return releases_;
+}
+
+int Board::hunted() const
+{
+    releases();
+    return hunted_;
+}
+
+bool Board::releasePending(Changes s, int bombs) const
+{
+    if (bombs <= 0)
+        return false;
+    for (const Release &r : releases())
+        if (!(s & r.gate))
+            return true;
+    return false;
 }
 
 }  // namespace bot
