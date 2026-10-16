@@ -113,7 +113,7 @@ struct PlanOptions {
     };
     std::vector<Known> root;
     int      maxNodes = 4000;
-    size_t   maxWorlds = 64;                 // what-if terrains built, besides the base
+    size_t   maxWorlds = 512;                // what-if terrains built, besides the base
 };
 
 /* The cheapest plan to options.goal by the actions (each expanded in their
