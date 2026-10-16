@@ -391,11 +391,11 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     def run_opts(p):
-        p.add_argument("--policy", required=True, help="KAROO_BOT: the bot's policy")
+        p.add_argument("--policy", help="KAROO_BOT: the bot's policy", default="planner")
         p.add_argument("--levels", nargs="*", default=[],
                        help="indices, ranges (0-9) or names; default every level")
         p.add_argument("--seeds", default=SEEDS, help="comma-separated KAROO_SEEDs")
-        p.add_argument("-j", "--jobs", type=int, default=os.cpu_count()-1)
+        p.add_argument("-j", "--jobs", type=int, default=min(1,os.cpu_count()-1))
         p.add_argument("--timeout", type=int, default=120,
                        help="wall seconds a single level may take")
         p.add_argument("--env", action="append", default=[], metavar="NAME=VALUE",
