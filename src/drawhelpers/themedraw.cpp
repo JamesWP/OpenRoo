@@ -99,14 +99,9 @@ void begin_record(Frame &f, const ThemeLevelObject *rec)
     f.dev->SetDepth(depth);
 }
 
-/* Depth writes come back on: a record that wrote none must not leave later
- * draws (the scene objects, the next pass) drawing without them. */
 void end_record(Frame &f)
 {
     f.dev->SetSpecular(false);
-    DepthState depth = f.dev->depth();
-    depth.write = true;
-    f.dev->SetDepth(depth);
 }
 
 /* A sub-object's texture, address mode and blend. */
@@ -343,6 +338,26 @@ ThemeLevelObject *burst_record(Frame &f, ThemeObjectType look)
 }
 
 }  // namespace
+
+void beginPass(Frame &f, Pass pass)
+{
+    f.dev->SetSpecular(false);
+    f.dev->SetDepth(DepthState{ true, pass != Pass::Particles });
+    StencilState st;
+    switch (pass) {
+    case Pass::Opaque:
+        st = { true, CompareFunc::Always, 1, StencilOp::Keep, StencilOp::Keep, StencilOp::Replace };
+        break;
+    case Pass::Shadows:
+        st = { true, CompareFunc::Equal, 1, StencilOp::Keep, StencilOp::Keep, StencilOp::DecrSat };
+        bindTexture(f.dev, 0, f.shadow);
+        f.dev->SetBlend(BlendState::alpha());
+        break;
+    default:
+        break;   // stencil off
+    }
+    f.dev->SetStencil(st);
+}
 
 void objects(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n,
              const FieldVertex (*quads)[4])

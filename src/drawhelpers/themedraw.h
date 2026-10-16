@@ -16,6 +16,7 @@
 #include "theme.h"
 
 class RenderDevice;
+class Texture;
 struct VertexBuffer;
 
 namespace draw {
@@ -42,6 +43,7 @@ struct Options {
 struct Frame {
     RenderDevice    *dev;
     ThemeAssetBlock *theme;    // the looks; drawing advances their animators
+    const Texture   *shadow;   // the shadows' texture
     Vec3             eye;      // billboards and particle systems face
     Vec3             target;   // along target - eye
     Options          opts;
@@ -73,6 +75,13 @@ struct Instance {
 
 /* A field record's quad: position, colour and one UV set. */
 typedef Diffuse1Vertex FieldVertex;
+
+/* Sets the device state a pass's draws share, all of it, so no pass depends
+ * on what the one before left: depth test on, writing except for the
+ * particles; the stencil (the opaque draws mark every pixel with 1, the
+ * shadows each darken a marked pixel once); no specular.  Records still set
+ * what is theirs -- their depth write, their blend, their texture. */
+void beginPass(Frame &f, Pass pass);
 
 /* A look's model, billboard and field records at each instance.  A field
  * record draws the unit tile-top quad at each instance's position, animated
