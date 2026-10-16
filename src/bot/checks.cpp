@@ -73,7 +73,7 @@ void Checks::checkFoes(const BotView &view)
         return;
     for (const int ahead : AHEAD) {
         for (const auto &[t, old] : past_) {
-            if (t + (unsigned long)ahead != tick || old.foes.size() != view.foes.size())
+            if (t + (unsigned long)ahead != tick || old.foes.empty())
                 continue;
             sim_.load(old);
             sim_.run(view.now, [this](double ms) {
@@ -83,13 +83,28 @@ void Checks::checkFoes(const BotView &view)
                         at = cell;
                 return at;
             });
-            if (sim_.foeCount() != view.foes.size())
+            // How many foes are left, the dying not counted, against the
+            // model's (which leaves the dying out, and whose blasts kill at
+            // once): a record of its own.
+            size_t was = 0, alive = 0;
+            for (const FoeView &f : old.foes)
+                was += !f.dying;
+            for (const FoeView &f : view.foes)
+                alive += !f.dying;
+            printTo(foeLog_, "{\"frame\":%lu,\"ahead_ms\":%.1f,\"count\":{\"was\":%zu,"
+                    "\"pred\":%zu,\"actual\":%zu,\"dropped\":%zu}}\n", tick, view.now - old.now,
+                    was, sim_.foeCount(), alive, sim_.dropped().size());
+            for (const FoeModel::Kill &k : sim_.kills())
+                printTo(foeLog_, "{\"frame\":%lu,\"ahead_ms\":%.1f,\"kill\":[%d,%d,%.0f]}\n",
+                        tick, view.now - old.now, k.u, k.v, k.ms - old.now);
+            // Where they are: while no foe has died, foe by foe.
+            if (old.foes.size() != view.foes.size() || sim_.foeCount() != view.foes.size())
                 continue;
             printTo(foeLog_, "{\"frame\":%lu,\"ahead_ms\":%.1f,\"foes\":[", tick,
                     view.now - old.now);
-            for (size_t i = 0; i < view.foes.size(); i++) {
+            for (size_t i = 0; i < sim_.foeCount(); i++) {
                 const Step p = sim_.foeCell(i);
-                const FoeView &f = view.foes[i], &was = old.foes[i];
+                const FoeView &f = view.foes[sim_.foeId(i)], &was = old.foes[sim_.foeId(i)];
                 printTo(foeLog_, "%s{\"pred\":[%d,%d],\"actual\":[%d,%d],\"was\":[%d,%d],"
                         "\"type\":%d,\"kind\":%d}", i ? "," : "", p.u, p.v, f.u, f.v,
                         was.u, was.v, f.type, f.kind);

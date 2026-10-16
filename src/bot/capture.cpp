@@ -93,6 +93,8 @@ BotView capture(const Game &game)
         fv.homeU = f.homeU();
         fv.homeV = f.homeV();
         fv.drops = f.dropContents();
+        fv.lastDrop    = f.lastContact();
+        fv.dropPending = f.bombDropRequest() != 0;
         view.foes.push_back(fv);
     }
     for (const FallingTile &ft : w->fallings()) {

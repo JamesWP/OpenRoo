@@ -1,6 +1,7 @@
 #include "foemodel.h"
 #include <algorithm>
 #include <math.h>
+#include <stdlib.h>
 #include "foetype.h"
 #include "tile.h"
 
@@ -14,6 +15,8 @@ const double STEP_GRACE_MS   = 20.0;   // a step this soon after the last starts
 const int    CATCHER = 2, THROWER = 3;
 const double SLIDE_MS        = 150.0;  // movableentity.cpp
 const double STICKY_MS       = 3000.0;
+const unsigned DROP_EVERY_MS = 2000;   // foe.cpp's Foe::step
+const double DROP_LATE_MS    = 50.0;   // Foe::dropBomb: this soon into a move it still drops
 
 int opposite(int d) { return d > 2 ? d - 2 : d + 2; }
 int right(int d)    { return d % 4 + 1; }
@@ -67,15 +70,21 @@ void FoeModel::load(const BotView &view)
     }
     clock_ = view.now;
     blasts_.clear();
+    byCaller_.clear();
+    dropped_.clear();
     kills_.clear();
     for (const BombView &b : view.bombs)
         blasts_.push_back(predictBomb(view, b));
-    viewBlasts_ = blasts_.size();
+    byCaller_.assign(blasts_.size(), 0);
     player_ = {view.player.u, view.player.v};
     playerOcc_ = view.player.protection ? 3 : 4;
     foes_.clear();
-    for (const FoeView &fv : view.foes) {
+    for (size_t i = 0; i < view.foes.size(); i++) {
+        const FoeView &fv = view.foes[i];
+        if (fv.dying)
+            continue;
         Foe f;
+        f.id = i;
         f.u = fv.u;
         f.v = fv.v;
         f.h = fv.h;
@@ -86,6 +95,8 @@ void FoeModel::load(const BotView &view)
         f.homeU = fv.homeU;
         f.homeV = fv.homeV;
         f.stepMs = fv.kind == THROWER ? THROWER_STEP_MS : CATCHER_STEP_MS;
+        f.lastDrop    = fv.lastDrop;
+        f.dropPending = fv.dropPending;
         if (fv.moving) {
             f.moveDir   = fv.moveDir;
             f.animStart = fv.animStart;
@@ -442,12 +453,14 @@ void FoeModel::target(Foe &f, int *tu, int *tv, int *speed)
         }
         break;
     }
-    case FOE_FOLLOWER:
+    case FOE_FOLLOWER:  // held if there is no catcher
+        f.held = 1;
         for (const Foe &o : foes_)
             if (o.kind == CATCHER) {
                 *tu = o.u;
                 *tv = o.v;
                 *speed = 0x96;
+                f.held = 0;
             }
         break;
     case FOE_GEM_RUNNER: {  // held if there is no free cell
@@ -551,7 +564,39 @@ void FoeModel::tickFoe(size_t i)
     f.held = clock_ < view_->player.freezeUntil ? 1 : 0;
     int tu, tv, speed;
     target(f, &tu, &tv, &speed);
+    // A thrower with its target beside it asks for a bomb.  As in the game,
+    // the time since the last is compared unsigned.
+    if (f.kind == THROWER && !f.held && !f.dropPending && abs(tu - f.u) < 2 &&
+        abs(tv - f.v) < 2 &&
+        (unsigned)((int)clock_ - (int)f.lastDrop) >= DROP_EVERY_MS) {
+        f.lastDrop    = clock_;
+        f.dropPending = true;
+    }
+    stepFoe(f, tu, tv, speed);
+    dropBomb(f);
+}
 
+void FoeModel::dropBomb(Foe &f)
+{
+    if (!f.dropPending || f.type == FOE_SWITCH_RUNNER)
+        return;
+    Step at{f.u, f.v};
+    if (f.moveDir != 0) {
+        if (clock_ - f.animStart >= DROP_LATE_MS)
+            return;  // asked for still: dropped once it is at rest
+        if (f.moveDir >= 1 && f.moveDir <= 4)
+            at = {f.fromU, f.fromV};  // just set off: behind it
+    }
+    const int h = view_->inside(at.u, at.v) ? cell(at.u, at.v).height : f.h;
+    const Blast b = predictBomb(*view_, at.u, at.v, h, f.facing, clock_);
+    blasts_.push_back(b);
+    byCaller_.push_back(0);
+    dropped_.push_back(b);
+    f.dropPending = false;
+}
+
+void FoeModel::stepFoe(Foe &f, int tu, int tv, int speed)
+{
     if (f.moveDir != 0) {
         // The move under way ends this tick if its time is up.
         if (f.animMs <= clock_ - f.animStart) {
@@ -618,11 +663,12 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
     // The blasts: a foe in one dies, and its cell is freed.
     for (size_t i = 0; i < foes_.size();) {
         const Foe &f = foes_[i];
-        bool dead = false, byView = false;
-        for (size_t k = 0; k < blasts_.size(); k++)
+        bool dead = false, byOther = false;
+        // A thrower takes no harm from a blast (movableentity.cpp).
+        for (size_t k = 0; k < blasts_.size() && f.kind != THROWER; k++)
             if (blasts_[k].kills(f.u, f.v, f.h, clock_)) {
                 dead = true;
-                byView = byView || k < viewBlasts_;
+                byOther = byOther || !byCaller_[k];
             }
         if (!dead) {
             ++i;
@@ -630,7 +676,7 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
         }
         if (occ(f.u, f.v) == f.kind)
             setOcc(f.u, f.v, 0);
-        kills_.push_back({clock_, f.u, f.v, !byView});
+        kills_.push_back({clock_, f.u, f.v, !byOther});
         foes_.erase(foes_.begin() + (long)i);
     }
 }

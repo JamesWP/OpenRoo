@@ -9,7 +9,9 @@ Reads the foe logs (KAROO_BOT_FOE_LOG, src/bot/botrun.h): the foe model
 really went since, against where each foe really is.  Prints the hit rate by
 look-ahead, then by foe type and kind, then by level, and a baseline beside
 each: how often "the foe stays where it was" would have been right, so a
-rate can be read against how much the foes moved.
+rate can be read against how much the foes moved.  Then the foes' deaths: of
+the look-aheads over which some foe died or the model said one would, how
+often the model left the right number alive, by level.
 """
 import argparse
 import collections
@@ -31,6 +33,8 @@ def main():
     run = backtest.resolve_run(args.run)
     by = collections.defaultdict(lambda: [0, 0, 0])   # key -> hits, stays, n
     misses = collections.defaultdict(list)
+    deaths = collections.defaultdict(lambda: [0, 0])  # (level, ahead) -> right, n
+    death_misses = collections.defaultdict(list)
     for path in sorted(glob.glob(os.path.join(run, "levels", "*", "foes.jsonl"))):
         with open(os.path.join(os.path.dirname(path), "summary.json")) as f:
             level = json.load(f).get("level", "?")
@@ -38,6 +42,19 @@ def main():
             for line in f:
                 r = json.loads(line)
                 ahead = "%4.0f ms" % r["ahead_ms"]
+                if "kill" in r:
+                    continue
+                if "count" in r:
+                    c = r["count"]
+                    if c["pred"] != c["was"] or c["actual"] != c["was"]:
+                        d = deaths[(level, ahead)]
+                        d[0] += c["pred"] == c["actual"]
+                        d[1] += 1
+                        if c["pred"] != c["actual"]:
+                            death_misses[(level, ahead)].append(
+                                "frame %d: %d foes, pred %d actual %d, %d bombs dropped"
+                                % (r["frame"], c["was"], c["pred"], c["actual"], c["dropped"]))
+                    continue
                 for f in r["foes"]:
                     hit = f["pred"] == f["actual"]
                     stay = f["was"] == f["actual"]
@@ -57,7 +74,15 @@ def main():
         for key in sorted(k for k in by if k[0] == section):
             h, s, n = by[key]
             print("  %-50s %5.1f%%  %5.1f%%  (%d)" % (key[1][:50], 100.0 * h / n, 100.0 * s / n, n))
+    print("deaths, by level:%s" % (" " * 31 + "right   (n)"))
+    for key in sorted(deaths):
+        right, n = deaths[key]
+        print("  %-50s %5.1f%%  (%d)" % (("%s, %s" % key)[:50], 100.0 * right / n, n))
     if args.examples:
+        for key in sorted(death_misses, key=lambda k: -len(death_misses[k]))[:8]:
+            print("  death misses %s, %s: %d" % (key[0], key[1], len(death_misses[key])))
+            for e in death_misses[key][:args.examples]:
+                print("    " + e)
         print("misses:")
         for key in sorted(misses, key=lambda k: -len(misses[k]))[:8]:
             print("  %s, %s: %d" % (key[0], key[1], len(misses[key])))

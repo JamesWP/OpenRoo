@@ -70,13 +70,10 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
         }
     }
 
-    std::vector<Blast> blasts = extra;
-    for (const BombView &b : view.bombs)
-        blasts.push_back(predictBomb(view, b));
-    for (const Blast &b : blasts) {
+    // The player's cell through a blast's live time.
+    auto blasted = [&](const Blast &b) {
         if (b.lost)
-            continue;
-        // The player's cell through the blast's live time.
+            return false;
         for (double t = b.from; t < b.until; t += view.tickMs > 0 ? view.tickMs : 400) {
             const Timed e = entryAt(t);
             const Step at = e.cell;
@@ -84,34 +81,39 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
                 d.hit = true;
                 d.t   = t - start;
                 d.why = "bomb";
-                return d;
+                return true;
             }
         }
-    }
+        return false;
+    };
+    std::vector<Blast> blasts = extra;
+    for (const BombView &b : view.bombs)
+        blasts.push_back(predictBomb(view, b));
+    for (const Blast &b : blasts)
+        if (blasted(b))
+            return d;
     if (view.foes.empty())
         return d;
 
     sim.load(view);
     for (const Blast &b : extra)
         sim.addBlast(b);
-    std::vector<Step> before;
+    std::vector<Step> before(view.foes.size());   // by foeId
     for (size_t i = 0; i < sim.foeCount(); i++)
-        before.push_back(sim.foeCell(i));
+        before[sim.foeId(i)] = sim.foeCell(i);
     Step playerBefore = playerAt(start);
     while (sim.now() < end) {
         const double prev = sim.now();
         sim.runTick(playerAt);
         const Timed e = entryAt(sim.now());
         const Step p = e.cell;
-        if (sim.foeCount() != before.size())
-            before.resize(sim.foeCount(), {-100, -100});
         for (size_t i = 0; i < sim.foeCount(); i++) {
             const Step f = sim.foeCell(i);
             const bool catcher = sim.foeKind(i) == 2;
             const bool caught = catcher &&
                 ((f.u == p.u && f.v == p.v) ||
                  (f.u == playerBefore.u && f.v == playerBefore.v &&
-                  before[i].u == p.u && before[i].v == p.v));
+                  before[sim.foeId(i)].u == p.u && before[sim.foeId(i)].v == p.v));
             const bool thrown = !catcher && chebyshev(f, p) <= 1;
             if ((caught || thrown) && !e.aloft) {
                 d.hit = true;
@@ -119,12 +121,16 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
                 d.why = caught ? "catcher" : "thrower";
                 return d;
             }
-            before[i] = f;
+            before[sim.foeId(i)] = f;
         }
         playerBefore = p;
         if (sim.now() == prev)
             break;  // no tick step: nothing moves
     }
+    // A bomb a foe dropped meanwhile (at a catcher, say) may catch the player.
+    for (const Blast &b : sim.dropped())
+        if (blasted(b))
+            return d;
     d.killed = sim.killed();
     for (const FoeModel::Kill &k : sim.kills())
         if (k.byAdded)
