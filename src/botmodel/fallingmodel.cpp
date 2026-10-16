@@ -16,10 +16,18 @@ double fallsAt(const BotView &view, Step c, double enterMs)
     if (!view.inside(c.u, c.v) || view.cell(c.u, c.v).kind != TILE_FALLING)
         return -1;
     double at = enterMs + FALL_MS;
-    for (const FallingView &f : view.fallings)
-        if (f.u == c.u && f.v == c.v && f.armed)
+    for (const FallingView &f : view.fallings) {
+        if (f.u != c.u || f.v != c.v || !f.armed)
+            continue;
+        // Armed already: it falls when that arming says, unless it has
+        // fallen and is back by the time the player steps on, which arms it
+        // afresh.
+        const double back = f.respawns ? f.armedAt + BACK_MS - view.now : 1e12;
+        if (enterMs < back)
             at = std::min(at, f.armedAt + FALL_MS - view.now);
-    return at;
+    }
+    // Never < 0, which would say there is no falling tile.
+    return std::max(at, 0.0);
 }
 
 double backAt(const BotView &view, Step c)
