@@ -53,6 +53,9 @@ public:
     unsigned char turnKind() const             { return turnKind_; }
     double animDuration() const                { return animDuration_; }
     double animStart() const                   { return animStart_; }
+    // A foe: the clock of its last bomb, and a bomb asked for and not yet dropped.
+    double lastContact() const                 { return lastContact_; }
+    int   bombDropRequest() const              { return bombDropRequest_; }
     unsigned char type() const                 { return type_; }
     int   dyingStarted() const                 { return dyingStarted_; }
     // Which death this was in the level's count (0 while alive).

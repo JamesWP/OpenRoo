@@ -22,13 +22,17 @@
  * terrain changes.  That is what makes a foe's walked path cheap to work out
  * again for each plan the bot weighs.
  *
- * A foe caught by a blast dies (a bomb in the view, or one the caller adds).
+ * A catcher caught by a blast dies: a bomb in the view, one the caller adds,
+ * or one a thrower drops.  A thrower never does.  A thrower drops a bomb when
+ * its target is within a cell of it (diagonals too), at most every 2 s, once
+ * it is at rest or has just set off (Foe::step, Foe::dropBomb).  A follower's
+ * target is a catcher, so its bombs kill foes.
  *
  * What it leaves out: the lifts, platforms, bridges and falling tiles do not
- * move, foe bombs are not dropped, the idle animation's longer moves, and the
- * target of a switch runner (the view does not carry the switch cells), which
- * is taken to be the player (foetype.h).  botrun.h's foe log measures how often it is right against the game
- * (tools/bot/foecheck.py). */
+ * move, the idle animation's longer moves, and the target of a switch runner
+ * (the view does not carry the switch cells), which is taken to be the player
+ * (foetype.h).  botrun.h's foe log measures how often it is right against the
+ * game (tools/bot/foecheck.py). */
 #pragma once
 
 #include <functional>
@@ -41,14 +45,15 @@ namespace bot {
 
 class FoeModel {
 public:
-    /* Starts from the view: the foes as they stand, at the view's clock, and
-     * the blasts of the bombs in it (bombmodel.h). */
+    /* Starts from the view: the foes as they stand (but those dying, which
+     * harm nothing now), at the view's clock, and the blasts of the bombs in
+     * it (bombmodel.h). */
     void load(const BotView &view);
     /* A blast more, of a bomb the caller means to drop: a foe in it dies. */
-    void addBlast(const Blast &b) { blasts_.push_back(b); }
+    void addBlast(const Blast &b) { blasts_.push_back(b); byCaller_.push_back(1); }
     /* A foe a blast killed: when (the model's clock), where it stood, and
      * whether only a blast the caller added did it (not a bomb in the view,
-     * which would have anyway). */
+     * or a foe's, which would have anyway). */
     struct Kill {
         double ms;
         int    u, v;
@@ -58,6 +63,8 @@ public:
     const std::vector<Kill> &kills() const { return kills_; }
     /* How many of them only the caller's blasts killed. */
     int  killed() const;
+    /* The blasts of the bombs the foes dropped since load(). */
+    const std::vector<Blast> &dropped() const { return dropped_; }
 
     /* Ticks the foes until the clock reaches untilMs, the player standing on
      * playerAt(t) at each tick's clock t. */
@@ -69,9 +76,12 @@ public:
     size_t foeCount() const { return foes_.size(); }
     Step   foeCell(size_t i) const { return {foes_[i].u, foes_[i].v}; }
     int    foeKind(size_t i) const { return foes_[i].kind; }
+    /* Its index among the view's foes: kept as the foes before it die. */
+    size_t foeId(size_t i) const { return foes_[i].id; }
 
 private:
     struct Foe {
+        size_t id;                 // index in the view's foes
         int    u, v, h, facing;
         int    kind, type, mode;   // the search's mode: the type, a chaser's for a facing type
         int    homeU, homeV;
@@ -81,6 +91,8 @@ private:
         int    held = 0;
         int    lastMoveDir = 0;    // ice carries it on this way
         double stuckSince = 0;     // on a sticky pad since then, or 0
+        double lastDrop = 0;       // a thrower's last bomb
+        bool   dropPending = false;
     };
 
     /* The cell's height and kind, beyond the grid a wall. */
@@ -97,6 +109,9 @@ private:
 
     /* One foe's tick (Foe::chooseTarget, then Foe::step). */
     void tickFoe(size_t i);
+    void stepFoe(Foe &f, int tu, int tv, int speed);
+    /* Foe::dropBomb: a thrower's bomb asked for is dropped, if it may be now. */
+    void dropBomb(Foe &f);
     void target(Foe &f, int *tu, int *tv, int *speed);
     /* tilequery.cpp's Sim_FindNearestFlaggedTileInRadius (a gem near a type
      * 3) and Sim_FindFarthestOccupiedTile (a type 7's target). */
@@ -111,7 +126,8 @@ private:
     const BotView    *view_ = nullptr;
     std::vector<Foe>  foes_;
     std::vector<Blast> blasts_;
-    size_t viewBlasts_ = 0;   // the blasts that came from the view
+    std::vector<char>  byCaller_;   // a blast the caller added, by blasts_ index
+    std::vector<Blast> dropped_;
     std::vector<Kill> kills_;
     std::vector<unsigned char> occ_;   // the cells' occupants, as the sim moves them
     std::vector<unsigned char> gem_;   // a gem still on the cell (type 3 foes eat them)
