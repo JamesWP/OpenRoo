@@ -11,6 +11,9 @@ const double WAITS[] = {0, 600, 1500, 3000};
 /* How many other targets besides the planned one are offered, nearest
  * first. */
 const size_t OTHERS = 6;
+/* A step off a platform is held this long either side of the moment it
+ * stands over the cell (script.h). */
+const double STEP_OFF_MS = 110;
 
 }  // namespace
 
@@ -33,6 +36,16 @@ bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, do
     // Each leg of the route is walked after the wait before it (for a lift).
     std::vector<Leg> legs = paths.legsTo(target.u, target.v);
     for (size_t i = 0; i < legs.size(); i++) {
+        if (legs[i].stepOff) {
+            // Off the platform as it passes the cell, then on from beside it.
+            const std::vector<Step> &c = legs[i].cells;
+            o.script.push_back({ScriptStep::Turn, legs[i].facing, {}, 0});
+            o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + legs[i].waitUntil - STEP_OFF_MS});
+            o.script.push_back({ScriptStep::StepOff, 0, {c[0], c[1]},
+                                s.view.now + legs[i].waitUntil + STEP_OFF_MS});
+            o.script.push_back({ScriptStep::Walk, 0, {c.begin() + 1, c.end()}, 0});
+            continue;
+        }
         if (legs[i].waitUntil > 0)
             o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + legs[i].waitUntil});
         ScriptStep w;

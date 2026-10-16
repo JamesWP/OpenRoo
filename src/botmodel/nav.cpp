@@ -47,6 +47,14 @@ NavModel::NavModel(const BotView &view) : view_(&view)
         spells_[b] = atLimit;
         partner_[a] = b;
         partner_[b] = a;
+        const int start = p.alongU ? p.originU : p.originV;
+        for (int along = start + 1; along < p.limit; along++) {
+            const Step at = p.alongU ? Step{along, p.originV} : Step{p.originU, along};
+            for (const double t : platformPasses(view, p, along, LIFT_HORIZON_MS)) {
+                alight_[a].push_back({at, t});
+                alight_[b].push_back({at, t});
+            }
+        }
     }
 }
 
@@ -110,6 +118,40 @@ bool NavModel::ride(int u, int v, double atMs, int *pu, int *pv, double *arriveM
             return true;
         }
     return false;
+}
+
+std::vector<NavModel::Alighting> NavModel::alightings(int u, int v, double atMs) const
+{
+    std::vector<Alighting> out;
+    const auto it = alight_.find(v * view_->extentU + u);
+    if (it == alight_.end())
+        return out;
+    // The first pass of each cell after atMs.
+    for (const Alighting &a : it->second) {
+        if (a.ms < atMs)
+            continue;
+        bool seen = false;
+        for (Alighting &o : out)
+            if (o.at.u == a.at.u && o.at.v == a.at.v) {
+                o.ms = std::min(o.ms, a.ms);
+                seen = true;
+            }
+        if (!seen)
+            out.push_back(a);
+    }
+    return out;
+}
+
+Outcome NavModel::stepOff(int u, int v, int f, int d, double atMs) const
+{
+    const PlatformView *p = platformThrough(*view_, u, v);
+    if (!p || (p->alongU ? DIR_DU[d] != 0 : DIR_DV[d] != 0)) {
+        Outcome out;
+        out.facing = f;
+        out.why = "along the track";
+        return out;
+    }
+    return stepImpl(u, v, f, d, true, atMs, p->height);
 }
 
 int NavModel::liftHeight(int u, int v, double atMs, double forMs) const
@@ -227,7 +269,8 @@ Outcome NavModel::stepWhenOpen(int u, int v, int f, int d, double atMs, double *
     return first;
 }
 
-Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs) const
+Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
+                           int fromHeight) const
 {
     const BotView &w = *view_;
     Outcome out;
@@ -235,7 +278,10 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs) 
     // A lift is open only at the height it is parked at, when timed.
     const double through = w.player.stepMs + LIFT_MARGIN_MS;
     Cell origin = w.cell(u, v);
-    if (timed && moving(origin)) {
+    if (fromHeight >= 0) {
+        origin.kind   = TILE_KIND_01;
+        origin.height = (unsigned char)fromHeight;
+    } else if (timed && moving(origin)) {
         const int h = liftHeight(u, v, atMs, through);
         if (h < 0) {
             out.why = "moving";
@@ -386,6 +432,7 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
     parent_.assign(n, -1);
     how_.assign(n, -1);
     departs_.assign(n, 0.0);
+    alightAt_.assign(n, -1);
 
     using Item = std::pair<double, int>;
     std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open;
@@ -452,7 +499,32 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
                 open.push({arrive, j});
             }
         }
+        // Stepping off it sideways as it passes a cell between its ends.
+        if (timed)
+            for (const NavModel::Alighting &a : nav.alightings(cu, cv, c))
+                for (int how = 0; how < 2; how++) {
+                    const Outcome o = nav.stepOff(a.at.u, a.at.v, f, how == 0 ? f : NavModel::opposite(f), a.ms);
+                    if (o.kind != Outcome::Rest)
+                        continue;
+                    const int j = index(o.u, o.v, o.facing);
+                    const double nc = a.ms + o.ms;
+                    if (cost_[j] < 0 || nc < cost_[j]) {
+                        cost_[j]     = nc;
+                        parent_[j]   = i;
+                        how_[j]      = (signed char)(6 + how);
+                        departs_[j]  = a.ms;
+                        alightAt_[j] = a.at.v * eu_ + a.at.u;
+                        open.push({nc, j});
+                    }
+                }
     }
+}
+
+Outcome Paths::alighted(int from, int to) const
+{
+    const int f = from % 4 + 1;
+    const int au = alightAt_[to] % eu_, av = alightAt_[to] / eu_;
+    return nav_.stepOff(au, av, f, how_[to] == 6 ? f : NavModel::opposite(f), departs_[to]);
 }
 
 double Paths::cost(int u, int v) const
@@ -504,6 +576,12 @@ std::vector<Step> Paths::cellsTo(int u, int v) const
             cells.push_back({(to / 4) % eu_, (to / 4) / eu_});   // carried, or glided, there
             continue;
         }
+        if (how >= 6) {
+            const Outcome o = alighted(from, to);
+            cells.push_back({alightAt_[to] % eu_, alightAt_[to] / eu_});   // carried there
+            cells.insert(cells.end(), o.cells.begin(), o.cells.end());
+            continue;
+        }
         if (how >= 2)
             continue;  // a turn passes no cell
         const int f  = from % 4 + 1;
@@ -529,6 +607,18 @@ std::vector<Leg> Paths::legsTo(int u, int v) const
             Leg leg;
             leg.waitUntil = cost_[to];
             leg.cells.push_back({(to / 4) % eu_, (to / 4) / eu_});
+            legs.push_back(leg);
+            continue;
+        }
+        if (how >= 6) {
+            // Carried on to the cell, and off it as the platform passes.
+            Leg leg;
+            leg.waitUntil = departs_[to];
+            leg.stepOff = true;
+            leg.facing = from % 4 + 1;
+            leg.cells.push_back({alightAt_[to] % eu_, alightAt_[to] / eu_});
+            const Outcome o = alighted(from, to);
+            leg.cells.insert(leg.cells.end(), o.cells.begin(), o.cells.end());
             legs.push_back(leg);
             continue;
         }
@@ -560,6 +650,15 @@ std::vector<Timed> Paths::scheduleTo(int u, int v) const
         const int how = how_[to];
         if (how == 4 || how == 5) {
             out.push_back({cost_[to] - startMs_, {(to / 4) % eu_, (to / 4) / eu_}});
+            continue;
+        }
+        if (how >= 6) {
+            const Outcome o = alighted(from, to);
+            const double at = departs_[to] - startMs_;
+            out.push_back({at - nav_.view().player.stepMs, {alightAt_[to] % eu_, alightAt_[to] / eu_}});
+            const double each = o.cells.empty() ? 0 : o.ms / (double)o.cells.size();
+            for (size_t c = 0; c < o.cells.size(); c++)
+                out.push_back({at + each * (double)c, o.cells[c]});
             continue;
         }
         if (how >= 2)

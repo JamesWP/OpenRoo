@@ -79,6 +79,20 @@ unsigned Executor::act(const BotView &view)
                 return 0;
             }
             return p.atRest() && view.now >= p.bombReadyAt ? (unsigned)PRESS_BOMB : 0u;
+        case ScriptStep::StepOff: {
+            if (p.u == s.path[1].u && p.v == s.path[1].v) {
+                next();
+                continue;
+            }
+            const int d = Motor::direction(s.path[0].u, s.path[0].v, s.path[1].u, s.path[1].v);
+            const bool back = (d - p.facing + 4) % 4 == 2;
+            if (view.now > s.untilMs || (d != p.facing && !back)) {
+                status_ = Failed;
+                return 0;
+            }
+            const unsigned a = back ? PRESS_BACK : PRESS_FORWARD;
+            return p.reversed ? (a == PRESS_FORWARD ? PRESS_BACK : PRESS_FORWARD) : a;
+        }
         case ScriptStep::Walk:
             if (!stepStarted_) {
                 stepStarted_ = true;

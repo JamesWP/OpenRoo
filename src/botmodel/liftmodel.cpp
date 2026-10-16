@@ -56,6 +56,26 @@ void platformSpells(const BotView &view, const PlatformView &p, double horizonMs
     }
 }
 
+std::vector<double> platformPasses(const BotView &view, const PlatformView &p, int along,
+                                   double horizonMs)
+{
+    std::vector<double> out;
+    const int start = p.alongU ? p.originU : p.originV;
+    if (along <= start || along >= p.limit)
+        return out;
+    std::vector<Park> atOrigin, atLimit;
+    platformSpells(view, p, horizonMs, &atOrigin, &atLimit);
+    // Each park ends a run from the other end, at a cell a HEIGHT_MS.
+    for (const Park &k : atOrigin)
+        if (k.from - (along - start) * HEIGHT_MS >= 0)
+            out.push_back(k.from - (along - start) * HEIGHT_MS);
+    for (const Park &k : atLimit)
+        if (k.from - (p.limit - along) * HEIGHT_MS >= 0)
+            out.push_back(k.from - (p.limit - along) * HEIGHT_MS);
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
 const PlatformView *platformThrough(const BotView &view, int u, int v)
 {
     for (const PlatformView &p : view.platforms) {
