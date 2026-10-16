@@ -111,14 +111,17 @@ public:
             startFrame_  = frames_;
             lastProgressMs_ = w->now();
         }
-        /* Progress is a gem, or a cell never stood on before: a level with
-         * a long way to its exit (lift after lift) is not stuck, a bot going
-         * round the same cells is. */
+        /* Progress is a gem, a foe fewer, or a cell never stood on before: a
+         * level with a long way to its exit (lift after lift) is not stuck,
+         * nor a bot waiting while its foes die, a bot going round the same
+         * cells is. */
         const int cell = (pl->cellU() * 256 + pl->cellV()) * 256 + pl->heightCell();
-        if (pl->gemsCollected() != lastGems_ || visited_.insert(cell).second) {
+        const size_t foes = w->foes().size();
+        if (pl->gemsCollected() != lastGems_ || foes < lastFoes_ || visited_.insert(cell).second) {
             lastGems_       = pl->gemsCollected();
             lastProgressMs_ = w->now();
         }
+        lastFoes_ = foes;
 
         const char *outcome = nullptr;
         const char *cause   = "";
@@ -205,6 +208,7 @@ private:
     unsigned long frames_ = 0, startFrame_ = 0;
     double      startMs_ = 0, lastProgressMs_ = 0;
     int         lastGems_ = 0;
+    size_t      lastFoes_ = (size_t)-1;
     std::set<int> visited_;
 };
 
