@@ -1,12 +1,16 @@
-/* Blast(s): with a bomb, from a site s whose blast spends a block in the way
- * (or, short of bombs, one in the way to a pickup): the blocks spent (the
- * world changes: what is reachable, what gems they hide), a bomb less, at s.
+/* Blast(s): with a bomb, from a site s whose blast spends a block: the blocks
+ * spent (the world changes: what is reachable, what gems they hide), a bomb
+ * less, at s.  Any block, not only those on the quickest way through the
+ * quota in the most open world: where the bombs are few (Castle\Sprenggebiet)
+ * that way can spend them all short of the next pickup, and only another
+ * order of blocks gets there.
  * Done as a walk to the site, a turn, a drop, a walk clear and a wait for the
  * blast to be out (drops.h). */
 #include "action.h"
 #include <algorithm>
 #include <map>
 #include "drops.h"
+#include "fallingmodel.h"
 
 namespace bot {
 
@@ -18,6 +22,9 @@ const double BLAST_MS = 2600;
 /* A blast that spends all of another's blocks and more is taken in its stead
  * if it costs no more than this much longer. */
 const double COVER_MS = 1000;
+/* A site on a falling tile is taken as this much dearer: the drop may have
+ * to wait there, and it falls. */
+const double FALLING_SITE_MS = 3000;
 /* The blasts offered from a place: the cheapest few sets of blocks. */
 const size_t BLASTS = 24;
 
@@ -33,26 +40,16 @@ public:
         if (f.bombs <= 0 || (f.changes & board.allBlocks()) == board.allBlocks())
             return;
         std::map<Changes, std::pair<double, Site>> best;
-        // Only a blast that spends a block in the way is worth a bomb (and,
-        // short of bombs, one in the way to a pickup).
-        // When none of those can be reached yet (the way in the most open
-        // world runs deeper into the blocks than the player can come), any
-        // block that can be is.
-        const Changes inTheWay = board.inTheWay(f.changes, f.at, f.bombs <= 1);
-        for (const Changes wanted : {inTheWay, ~(Changes)0}) {
-            for (const Site &site : board.sites(f.changes)) {
-                if (!(site.hits & wanted))
-                    continue;
-                const double t = board.time(f.changes, f.at, {site.cell.u, site.cell.v});
-                if (t < 0)
-                    continue;
-                const double cost = t + board.turnMs(f.at, site.cell.facing) + BLAST_MS;
-                auto it = best.find(site.hits);
-                if (it == best.end() || cost < it->second.first)
-                    best[site.hits] = {cost, site};
-            }
-            if (!best.empty())
-                break;
+        for (const Site &site : board.sites(f.changes)) {
+            const double t = board.time(f.changes, f.at, {site.cell.u, site.cell.v});
+            if (t < 0)
+                continue;
+            double cost = t + board.turnMs(f.at, site.cell.facing) + BLAST_MS;
+            if (fallsAt(board.live(), {site.cell.u, site.cell.v}, 0) >= 0)
+                cost += FALLING_SITE_MS;
+            auto it = best.find(site.hits);
+            if (it == best.end() || cost < it->second.first)
+                best[site.hits] = {cost, site};
         }
         // Leave out a set that another covers, and more, for little more.
         std::vector<std::pair<double, Site>> sorted;
