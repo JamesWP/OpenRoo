@@ -7,9 +7,10 @@
  *           model (foemodel.h), with the foes chasing the player along the
  *           walk, whether a foe dies in it; only the candidates where one
  *           does are offered.
- *   blast   from a given site: walk there, turn to its facing, drop, walk
- *           away and wait for the blast to clear and the blocks it spends to
- *           be gone.
+ *   blast   from a given site: walk there, turn to its facing, drop (at
+ *           once, or after a wait if there is no way clear yet, a falling
+ *           tile behind not back), walk away and wait for the blast to
+ *           clear and the blocks it spends to be gone.
  * Both wait the blast out: the foes are predicted chasing the player where
  * the plan puts it, and a new plan would put it elsewhere.
  * In both the player must be safe until the blast is over (danger.h), and
