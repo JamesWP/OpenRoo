@@ -2,6 +2,7 @@
 #include "prof.h"
 #include "profpanel.h"
 #include "windev.h"
+#include "clock.h"
 #include <algorithm>
 #include <math.h>
 #include <stdarg.h>
@@ -283,6 +284,17 @@ bool frameEnd()
         bool vsync = windev::vsync();
         if (ImGui::Checkbox("vsync", &vsync))
             windev::setVsync(vsync);
+        ImGui::SameLine();
+        static const char *const kRates[] = {"unlimited", "0.5x (30)", "1x (60)", "2x (120)", "3x (180)", "4x (240)", "5x (300)"};
+        static const double kFps[] = {0, 30, 60, 120, 180, 240, 300};
+        static int rate = 0;
+        ImGui::SetNextItemWidth(110);
+        if (ImGui::Combo("target fps", &rate, kRates, 7))
+            clock_setFrameLimit(kFps[rate]);
+        ImGui::SameLine();
+        bool fake = clock_fakeTime();
+        if (ImGui::Checkbox("fixed dt", &fake))
+            clock_setFakeTime(fake);
         ImGui::SameLine();
         ImGui::TextDisabled("F10 hides this");
     }

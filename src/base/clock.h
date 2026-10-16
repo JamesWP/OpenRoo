@@ -30,3 +30,10 @@ double clock_previous_seconds(void);
 /* The frame number: the count of clock_advance() calls.  The state log and
  * recordings number frames by it. */
 unsigned clock_frame(void);
+
+/* Debug-UI controls.  Fake time advances the clock a fixed 1/60s per tick
+ * whatever the real frame rate; the frame limit paces frames to that many
+ * per second (0: unlimited, vsync alone decides). */
+void clock_setFakeTime(bool on);
+bool clock_fakeTime(void);
+void clock_setFrameLimit(double fps);
