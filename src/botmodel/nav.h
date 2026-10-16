@@ -18,8 +18,10 @@
  *
  * Foes are not seen.  Lifts are followed in time (liftmodel.h): a step on or
  * off a lift is allowed only while it is parked, so a move is asked for at a
- * time, and the quickest way waits for the lifts where it must.  Platforms
- * are taken as walls; an extended bridge's deck is ground.
+ * time, and the quickest way waits for the lifts where it must.  A platform
+ * is boarded at an end of its track while parked there, and ridden to the
+ * other end or stepped off sideways as it passes a cell between (alightings);
+ * an extended bridge's deck is ground.
  * tools/bot/modelcheck.py measures how often the model is right, against
  * what the game did (botrun.h's model log). */
 #pragma once
@@ -62,6 +64,17 @@ public:
      * False if no platform ends on the cell; *pu, *pv the other end's cell
      * and *arriveMs when it parks there. */
     bool ride(int u, int v, double atMs, int *pu, int *pv, double *arriveMs) const;
+    /* Where else the player on the end cell (u, v) at atMs can step off the
+     * platform: each cell strictly between its ends, with the first moment
+     * after atMs the platform stands over it (platformPasses). */
+    struct Alighting {
+        Step   at;
+        double ms;
+    };
+    std::vector<Alighting> alightings(int u, int v, double atMs) const;
+    /* A step in direction d, across the track, off the platform standing over
+     * (u, v) at atMs, at the platform's height. */
+    Outcome stepOff(int u, int v, int f, int d, double atMs) const;
     /* Whether the cell is one a lift or a platform carries: open only while
      * it is parked there. */
     static bool moving(const Cell &c);
@@ -88,7 +101,9 @@ private:
     /* Whether the game refuses a step from a (standing at height h) to b in
      * direction d, and why. */
     const char *refused(const Cell &a, int h, const Cell &b, int d) const;
-    Outcome stepImpl(int u, int v, int f, int d, bool timed, double atMs) const;
+    /* From a platform that carries the player when fromHeight >= 0. */
+    Outcome stepImpl(int u, int v, int f, int d, bool timed, double atMs,
+                     int fromHeight = -1) const;
     /* The height the lift on (u, v) stands parked at through [atMs, atMs +
      * forMs], or -1. */
     int liftHeight(int u, int v, double atMs, double forMs) const;
@@ -104,6 +119,7 @@ private:
     };
     std::map<int, Fallen> back_;                // a fallen or armed tile's cell index
     std::map<int, int> partner_;                // a platform's end cell index to its other end's
+    std::map<int, std::vector<Alighting>> alight_;  // a platform's end cell index to its passes
 };
 
 /* The bridge the switch on (u, v) works, or null if it is no working switch. */
@@ -141,6 +157,9 @@ public:
  * until waitUntil (ms from the view's clock; 0 for no wait). */
 struct Leg {
     double            waitUntil = 0;
+    bool              stepOff = false;  // cells[0] is a platform passing at waitUntil:
+                                        // the step to cells[1] is taken off it then,
+    int               facing = 0;       // facing this way, turned to while on board
     std::vector<Step> cells;
 };
 
@@ -183,6 +202,8 @@ public:
 private:
     int bestState(int u, int v) const;
     std::vector<int> chainTo(int u, int v) const;
+    /* The step off a platform into state to (how_ 6 or 7) from state from. */
+    Outcome alighted(int from, int to) const;
     int index(int u, int v, int f) const { return ((v * eu_) + u) * 4 + (f - 1); }
 
     const NavModel &nav_;
@@ -191,7 +212,9 @@ private:
     double startMs_;
     std::vector<double> cost_;
     std::vector<int>    parent_;     // state index, -1 at the start
-    std::vector<signed char> how_;   // the move into it: 0 forward, 1 back, 2 right, 3 left
+    std::vector<signed char> how_;   // the move into it: 0 forward, 1 back, 2 right, 3 left,
+                                     // 4 a ride, 5 a glide, 6 forward or 7 back off a platform
+    std::vector<int>    alightAt_;   // for 6 and 7: the cell index stepped off from
     std::vector<double> departs_;    // when the move into it started
 };
 

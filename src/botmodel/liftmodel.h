@@ -25,6 +25,14 @@ struct Park {
 void platformSpells(const BotView &view, const PlatformView &platform, double horizonMs,
                     std::vector<Park> *atOrigin, std::vector<Park> *atLimit);
 
+/* The moments, ms from the view's clock and within horizonMs, at which the
+ * platform under way stands exactly over the cell `along` its track, strictly
+ * between its ends.  A step off it there is taken only close to one: within
+ * 0.15 of a cell past the cell (movableentity.cpp), so just after it when
+ * advancing and just before it when retreating. */
+std::vector<double> platformPasses(const BotView &view, const PlatformView &platform, int along,
+                                   double horizonMs);
+
 /* The platform whose track runs through (u, v), or null. */
 const PlatformView *platformThrough(const BotView &view, int u, int v);
 
