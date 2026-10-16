@@ -9,7 +9,8 @@
  *   death      the player dies (death_cause says how: foe, drop, bomb,
  *              void, harakiri; botrun.cpp);
  *   timeout    the level's time limit runs out;
- *   stuck      no gem for KAROO_BOT_STUCK_S seconds of game time (60);
+ *   stuck      no gem and no new cell for KAROO_BOT_STUCK_S seconds of game
+ *              time (60);
  *   cap        KAROO_BOT_MAX_S seconds of game time in the level (900).
  * and then writes KAROO_BOT_SUMMARY, a JSON object, and asks the app to end.
  *
