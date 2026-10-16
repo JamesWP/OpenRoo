@@ -139,4 +139,12 @@ private:
     bool sticky_ = false;
 };
 
+/* How many gems the level can lose and still make its quota: those on the
+ * map, hidden in blocks and carried by foes, less those still needed. */
+int spareGems(const BotView &view);
+/* How many gems the kills wipe: a foe dying leaves what it drops on its
+ * cell, nothing if it carries nothing, in place of a gem there
+ * (Foe::finishDespawn). */
+int gemsWiped(const BotView &view, const std::vector<FoeModel::Kill> &kills);
+
 }  // namespace bot
