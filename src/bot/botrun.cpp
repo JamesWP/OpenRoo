@@ -1,6 +1,7 @@
 #include "botrun.h"
 #include <fstream>
 #include <memory>
+#include <set>
 #include <stdlib.h>
 #include <strings.h>
 #include <string>
@@ -108,11 +109,15 @@ public:
             playing_     = true;
             startMs_     = w->now();
             startFrame_  = frames_;
-            lastGemMs_   = w->now();
+            lastProgressMs_ = w->now();
         }
-        if (pl->gemsCollected() != lastGems_) {
-            lastGems_  = pl->gemsCollected();
-            lastGemMs_ = w->now();
+        /* Progress is a gem, or a cell never stood on before: a level with
+         * a long way to its exit (lift after lift) is not stuck, a bot going
+         * round the same cells is. */
+        const int cell = (pl->cellU() * 256 + pl->cellV()) * 256 + pl->heightCell();
+        if (pl->gemsCollected() != lastGems_ || visited_.insert(cell).second) {
+            lastGems_       = pl->gemsCollected();
+            lastProgressMs_ = w->now();
         }
 
         const char *outcome = nullptr;
@@ -124,7 +129,7 @@ public:
         } else if (pl->moveState() != 0) {
             outcome = "death";
             cause   = capture(*game_).deathCause();
-        } else if (w->now() - lastGemMs_ > stuckMs_) {
+        } else if (w->now() - lastProgressMs_ > stuckMs_) {
             outcome = "stuck";
         } else if (w->now() - startMs_ > capMs_) {
             outcome = "cap";
@@ -198,8 +203,9 @@ private:
     bool        playing_ = false;
     unsigned    enterTick_ = 0;
     unsigned long frames_ = 0, startFrame_ = 0;
-    double      startMs_ = 0, lastGemMs_ = 0;
+    double      startMs_ = 0, lastProgressMs_ = 0;
     int         lastGems_ = 0;
+    std::set<int> visited_;
 };
 
 std::unique_ptr<Run> s_run;
