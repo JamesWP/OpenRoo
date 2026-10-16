@@ -75,6 +75,38 @@ static void clock_log_progress(void)
 
 static ClockFrameHook g_frameHook;
 
+/* Debug-UI overrides, set at run time.  The fake time is a fixed step of
+ * nominal 60fps per tick whatever the display rate; the frame limit sleeps
+ * the frame out to a target rate (0: none). */
+static bool      g_fakeTime;
+static bool      g_resync;      // the real counter is re-read as a new baseline
+static double    g_frameLimit;  // frames per second, 0 for unlimited
+static unsigned long long g_nextFrame;  // the counter value the next frame may start at
+
+void clock_setFakeTime(bool on)
+{
+    if (g_fakeTime && !on) g_resync = true;
+    g_fakeTime = on;
+}
+bool clock_fakeTime(void) { return g_fakeTime; }
+void clock_setFrameLimit(double fps) { g_frameLimit = fps > 0.0 ? fps : 0.0; g_nextFrame = 0; }
+
+static void clock_pace(void)
+{
+    if (g_frameLimit <= 0.0) return;
+    const unsigned long long freq = sysdev::perfFrequency();
+    const unsigned long long step = (unsigned long long)((double)freq / g_frameLimit);
+    unsigned long long now = sysdev::perfCounter();
+    if (g_nextFrame != 0 && now < g_nextFrame) {
+        const double ms = (double)(g_nextFrame - now) * 1000.0 / (double)freq;
+        if (ms > 2.0) sysdev::sleepMs((unsigned)(ms - 1.0));
+        while (sysdev::perfCounter() < g_nextFrame) {}
+        g_nextFrame += step;
+    } else {
+        g_nextFrame = now + step;  // late (or first): do not try to catch up
+    }
+}
+
 void clock_setFrameHook(ClockFrameHook fn) { g_frameHook = fn; }
 
 unsigned clock_frame(void) { return g_calls; }
@@ -85,20 +117,25 @@ double clock_advance(void)
     clock_log_progress();
     if (g_frameHook)
         g_frameHook();
+    clock_pace();
 
-    if (g_fixed_dt > 0.0) {
+    if (g_fixed_dt > 0.0 || g_fakeTime) {
+        const double step = g_fixed_dt > 0.0 ? g_fixed_dt : 1.0 / 60.0;
         // The first read returns 0.0, as on the real clock.
         if (!g_started) { g_started = true; return g_accum; }
-        g_accum += g_fixed_dt;
+        g_accum += step;
         g_prevClock = g_accum;  // the frame's elapsed-time source
         return g_accum;
     }
 
     uint32_t cur = (uint32_t)(sysdev::perfCounter() >> g_shift);
 
-    if (!g_started) {
+    if (!g_started || g_resync) {
+        const bool first = !g_started;
+        g_resync  = false;
         g_last    = cur;
         g_started = true;
+        if (!first) g_prevClock = g_accum;
         return g_accum;
     }
 
