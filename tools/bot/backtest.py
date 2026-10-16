@@ -395,7 +395,7 @@ def main():
         p.add_argument("--levels", nargs="*", default=[],
                        help="indices, ranges (0-9) or names; default every level")
         p.add_argument("--seeds", default=SEEDS, help="comma-separated KAROO_SEEDs")
-        p.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
+        p.add_argument("-j", "--jobs", type=int, default=os.cpu_count()-1)
         p.add_argument("--timeout", type=int, default=120,
                        help="wall seconds a single level may take")
         p.add_argument("--env", action="append", default=[], metavar="NAME=VALUE",
