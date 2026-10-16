@@ -130,6 +130,7 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
         }
     std::sort(near.begin(), near.end(),
               [](const auto &a, const auto &b) { return a.first < b.first; });
+    const int spare = spareGems(view);
     for (size_t i = 0; i < near.size() && i < SITES; i++)
         sites.push_back(near[i]);
     for (const auto &[walkMs, site] : sites) {
@@ -165,6 +166,10 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
                 before.schedule.push_back({dropIn, site});
                 const size_t first = out.size();
                 retreats(s, before, site, facing, dropIn, true, 1, AMBUSH_RETREATS, out);
+                // Not a kill that wipes a gem the quota needs.
+                out.erase(std::remove_if(out.begin() + first, out.end(),
+                                         [&](const Option &o) { return gemsWiped(view, o.killed) > spare; }),
+                          out.end());
                 for (size_t i = first; i < out.size(); i++) {
                     char more[48];
                     snprintf(more, sizeof(more), ", %d foe%s", out[i].kills,

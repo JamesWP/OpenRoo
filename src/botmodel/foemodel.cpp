@@ -1,4 +1,5 @@
 #include "foemodel.h"
+#include <algorithm>
 #include <math.h>
 #include "foetype.h"
 #include "tile.h"
@@ -648,6 +649,27 @@ void FoeModel::run(double untilMs, const std::function<Step(double)> &playerAt)
         return;
     while (clock_ + view_->tickMs <= untilMs + 1e-6)
         runTick(playerAt);
+}
+
+int spareGems(const BotView &view)
+{
+    int have = 0;
+    for (int v = 0; v < view.extentV; v++)
+        for (int u = 0; u < view.extentU; u++) {
+            const Cell &c = view.cell(u, v);
+            have += (c.contents == CONTENTS_CRYSTAL) + (c.hidden == CONTENTS_CRYSTAL);
+        }
+    for (const FoeView &f : view.foes)
+        have += f.drops == CONTENTS_CRYSTAL && !f.dying;
+    return have - std::max(0, view.gemsRequired - view.player.gems);
+}
+
+int gemsWiped(const BotView &view, const std::vector<FoeModel::Kill> &kills)
+{
+    int n = 0;
+    for (const FoeModel::Kill &k : kills)
+        n += view.cell(k.u, k.v).contents == CONTENTS_CRYSTAL;
+    return n;
 }
 
 }  // namespace bot
