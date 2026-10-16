@@ -28,6 +28,9 @@ const double SURE_MS = 250;
 /* A wait after a drop ends this long after the blast's zone clears: the
  * foe model's chase assumed the player stays put until then. */
 const double CLEAR_MARGIN_MS = 200;
+/* The waits a blast's drop is tried after: a fallen tile is back 5 s after
+ * it was stepped on (fallingmodel.h). */
+const double BLAST_WAITS[] = {0, 2500, 5500};
 
 /* Whether o's blasts still kill as many foes, and the player stays safe,
  * with them going off SURE_MS earlier or later. */
@@ -215,8 +218,20 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
             before.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn - view.tickMs});
         }
     }
-    before.schedule.push_back({dropIn, {site.u, site.v}});
-    retreats(s, before, {site.u, site.v}, site.facing, dropIn, true, 0, RETREATS, out);
+    // Dropped as soon as it is there, or, if there is no way clear then (the
+    // falling tiles behind gone), after a wait for them to come back.
+    for (const double wait : BLAST_WAITS) {
+        if (wait > 0 && !std::isinf(spells.back().to))
+            break;  // a carried bomb's drop is timed to its carrier
+        Option o = before;
+        if (wait > 0)
+            o.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn + wait - view.tickMs});
+        o.schedule.push_back({dropIn + wait, {site.u, site.v}});
+        const size_t had = out.size();
+        retreats(s, o, {site.u, site.v}, site.facing, dropIn + wait, true, 0, RETREATS, out);
+        if (out.size() > had)
+            break;
+    }
 }
 
 }  // namespace bot
