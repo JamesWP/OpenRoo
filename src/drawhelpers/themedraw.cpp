@@ -99,9 +99,14 @@ void begin_record(Frame &f, const ThemeLevelObject *rec)
     f.dev->SetDepth(depth);
 }
 
+/* Depth writes come back on: a record that wrote none must not leave later
+ * draws (the scene objects, the next pass) drawing without them. */
 void end_record(Frame &f)
 {
     f.dev->SetSpecular(false);
+    DepthState depth = f.dev->depth();
+    depth.write = true;
+    f.dev->SetDepth(depth);
 }
 
 /* A sub-object's texture, address mode and blend. */
@@ -412,6 +417,7 @@ void shadows(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n)
                     rec->mesh()->drawMeshBuffer(f.dev, model_frame(rec, inst[k], f.now));
             }
         }
+        end_record(f);
     }
 }
 
