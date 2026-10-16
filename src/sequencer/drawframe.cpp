@@ -57,7 +57,10 @@ static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
         PROF_SCOPE("opaque");
         level->draw(f, draw::Pass::Opaque, world->map());
         world->draw(f, draw::Pass::Opaque, deaths);
-        // The scene objects are part of the opaque picture.
+        // The scene objects are part of the opaque picture.  They set no depth
+        // state of their own, and the last record drawn may have had none to
+        // write, so the pass's state is set again.
+        draw::beginPass(f, draw::Pass::Opaque);
         Scene_DrawSceneObjects(renderer, d3d, eye, f.now);
     }
     draw::beginPass(f, draw::Pass::Effects);
