@@ -33,6 +33,7 @@ static draw::Frame frame_for(Game *g, Renderer *renderer, const FrameTime &t)
     draw::Frame f;
     f.dev     = renderer->device;
     f.theme   = &renderer->themeBlock;
+    f.shadow  = &renderer->texShadow;
     f.eye     = { cam->eye()[0], cam->eye()[1], cam->eye()[2] };
     f.target  = { cam->target()[0], cam->target()[1], cam->target()[2] };
     f.opts    = { c->videoReflection() != 0, c->videoHighlights() != 0,
@@ -51,35 +52,27 @@ static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
     RenderDevice *d3d = renderer->device;
     float *eye = g->camera()->pose()->eye();
 
+    draw::beginPass(f, draw::Pass::Opaque);
     {
         PROF_SCOPE("opaque");
         level->draw(f, draw::Pass::Opaque, world->map());
         world->draw(f, draw::Pass::Opaque, deaths);
+        // The scene objects are part of the opaque picture.
+        Scene_DrawSceneObjects(renderer, d3d, eye, f.now);
     }
+    draw::beginPass(f, draw::Pass::Effects);
     {
         PROF_SCOPE("effects");
-        Scene_DrawSceneObjects(renderer, d3d, eye, f.now);
-        set_stencil_enable(d3d, false);
         world->draw(f, draw::Pass::Effects, deaths);
     }
-    /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option.
-     * Each shadow decrements the stencil the scene set, so overlapping
-     * shadows darken once. */
+    /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
     if (d3d->hasStencil() && d3d->bitDepth() > 16 && f.opts.shadows > 0) {
         PROF_SCOPE("shadows");
-        bindTexture(d3d, 0, &renderer->texShadow);
-        d3d->SetBlend(BlendState::alpha());
-        StencilState st = d3d->stencil();
-        st.enable = true;
-        st.ref    = 1;
-        st.func   = CompareFunc::Equal;
-        st.pass   = StencilOp::DecrSat;
-        d3d->SetStencil(st);
+        draw::beginPass(f, draw::Pass::Shadows);
         world->draw(f, draw::Pass::Shadows, deaths);
         level->draw(f, draw::Pass::Shadows, world->map());
-        set_stencil_enable(d3d, false);
     }
-    set_depth_write(d3d, false);
+    draw::beginPass(f, draw::Pass::Particles);
     {
         PROF_SCOPE("translucent");
         level->draw(f, draw::Pass::Particles, world->map());

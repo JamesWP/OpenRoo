@@ -110,6 +110,19 @@ Window::~Window()
 {
 }
 
+/* The back buffer: 8 bits a colour, no alpha, double buffered, and the depth
+ * and stencil asked for. */
+static void set_framebuffer_attributes(int depthBits, int stencilBits)
+{
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, depthBits);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, stencilBits);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+}
+
 bool Window::create(WindowHandler *handler,
                     const WindowConfig &config)
 {
@@ -129,6 +142,10 @@ bool Window::create(WindowHandler *handler,
         return true;
     }
 
+    // The window's pixel format is chosen as it is created (on X11 the visual
+    // cannot change after), so the framebuffer is asked for here, not only
+    // when the context is made.
+    set_framebuffer_attributes(24, 8);
     SDL_Window *win = SDL_CreateWindow(config.title, config.width, config.height,
                                        SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
     if (!win) {
@@ -167,19 +184,19 @@ bool Window::createGLContext(const GLContextConfig &c)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, c.major);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, c.minor);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 0);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, c.depthBits);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, c.stencilBits);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    set_framebuffer_attributes(c.depthBits, c.stencilBits);
     SDL_GLContext ctx = SDL_GL_CreateContext(g_sdlWindow);
     if (!ctx) {
         WD_LOG("windev: SDL_GL_CreateContext failed: %s\n", SDL_GetError());
         return false;
     }
     g_glContext = ctx;
+    {
+        int d = 0, st = 0;
+        SDL_GL_GetAttribute(SDL_GL_DEPTH_SIZE, &d);
+        SDL_GL_GetAttribute(SDL_GL_STENCIL_SIZE, &st);
+        WD_LOG("windev: GL context depth %d stencil %d bits\n", d, st);
+    }
     return true;
 }
 
