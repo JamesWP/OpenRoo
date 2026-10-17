@@ -81,6 +81,26 @@ bool has_particles(ThemeAssetBlock &theme, int look)
     return false;
 }
 
+/* Whether any of a look's records shatters (the theme's `explode`). */
+bool has_debris(ThemeAssetBlock &theme, int look)
+{
+    ThemeObjectTypeSlot *slot = theme.slot(look);
+    for (uint32_t r = 0; r < slot->instanceCount(); r++)
+        if (slot->records()[r].explodes() != 0)
+            return true;
+    return false;
+}
+
+/* The live look a dying foe's stands beside, to compare their sizes. */
+int living_foe(int look)
+{
+    switch (look) {
+    case THEME_OBJ_FOE_CATCHER_DYING: return THEME_OBJ_FOE_CATCHER;
+    case THEME_OBJ_FOE_THROWER_DYING: return THEME_OBJ_FOE_THROWER;
+    default:                          return -1;
+    }
+}
+
 /* The projection the game draws with (render/renderstate.cpp). */
 Mat4 projection()
 {
@@ -129,10 +149,15 @@ public:
         if (!theme_block_.load(dev_, &textures_, &models_, path, sounds))
             g_logger.write("gallery: could not load %s\n", path);
         looks_.clear();
-        for (int look = 0; look < THEME_OBJ_COUNT; look++)
-            if (has_particles(theme_block_, look))
-                looks_.push_back(look);
-        g_logger.write("gallery: %s, %u looks with particles\n", kThemes[theme_],
+        for (int look = 0; look < THEME_OBJ_COUNT; look++) {
+            if (!has_particles(theme_block_, look) && !has_debris(theme_block_, look))
+                continue;
+            const int living = living_foe(look);
+            if (living >= 0)
+                looks_.push_back(living);
+            looks_.push_back(look);
+        }
+        g_logger.write("gallery: %s, %u looks with particles or debris\n", kThemes[theme_],
                        (unsigned)looks_.size());
         started_ = now_;
     }
@@ -183,6 +208,10 @@ public:
         for (size_t i = 0; i < looks_.size(); i++)
             if (looks_[i] == THEME_OBJ_EXIT)
                 at[i].conditions = draw::COND_ACTIVE;  // open: it glows and emits
+        // A dying foe as Foe::draw has it: dead, its animation at the start.
+        for (size_t i = 0; i < looks_.size(); i++)
+            if (living_foe(looks_[i]) >= 0)
+                at[i].conditions = draw::COND_DEAD;
 
         draw::beginPass(f, draw::Pass::Opaque);
         for (size_t i = 0; i < looks_.size(); i++) {
@@ -245,7 +274,7 @@ private:
         dev_->SetDepth(DepthState{ false, false });
         const float cw = w * 0.012f, ch = w * 0.016f;
         char title[160];
-        snprintf(title, sizeof(title), "%s  -  %u particle looks  -  left/right theme, up/down zoom",
+        snprintf(title, sizeof(title), "%s  -  %u looks  -  left/right theme, up/down zoom",
                  kThemes[theme_], (unsigned)looks_.size());
         r_->fontMain.drawCentered(w * 0.5f, h * 0.03f, cw, ch, 0.75f, title, dev_, 0,
                                   0xffffffff, 0xffc0c0c0);
