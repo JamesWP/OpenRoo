@@ -1,16 +1,36 @@
 cmake_minimum_required(VERSION 3.20)
 
-# The platform to build for: -DOPENROO_PLATFORM=linux (the default; native) or
-# -DOPENROO_PLATFORM=windows (cross-compiled with MinGW-w64, run under Wine/Proton).
-set(OPENROO_PLATFORM "linux" CACHE STRING "linux or windows")
-set_property(CACHE OPENROO_PLATFORM PROPERTY STRINGS linux windows)
+# The platform to build for: -DOPENROO_PLATFORM=linux (the default; native),
+# -DOPENROO_PLATFORM=windows (cross-compiled with MinGW-w64, run under
+# Wine/Proton) or -DOPENROO_PLATFORM=rg35xx (the Anbernic RG35XX Plus handheld,
+# cross-compiled with the SDK from github.com/JamesWP/rg35xx-plus-sdk; point
+# -DRG35XX_SDK=<dir> at the unpacked SDK, or at that repo's output/host).
+set(OPENROO_PLATFORM "linux" CACHE STRING "linux, windows or rg35xx")
+set_property(CACHE OPENROO_PLATFORM PROPERTY STRINGS linux windows rg35xx)
 if(OPENROO_PLATFORM STREQUAL "windows")
     if(NOT CMAKE_TOOLCHAIN_FILE)
         set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/mingw.cmake")
     endif()
+elseif(OPENROO_PLATFORM STREQUAL "rg35xx")
+    set(RG35XX_SDK "$ENV{RG35XX_SDK}" CACHE PATH "The RG35XX Plus SDK (holding share/buildroot/toolchainfile.cmake)")
+    if(NOT CMAKE_TOOLCHAIN_FILE)
+        if(NOT EXISTS "${RG35XX_SDK}/share/buildroot/toolchainfile.cmake")
+            message(FATAL_ERROR "OPENROO_PLATFORM=rg35xx needs -DRG35XX_SDK=<dir> (or $RG35XX_SDK): "
+                                "the SDK holding share/buildroot/toolchainfile.cmake")
+        endif()
+        set(CMAKE_TOOLCHAIN_FILE "${RG35XX_SDK}/share/buildroot/toolchainfile.cmake")
+    endif()
 elseif(NOT OPENROO_PLATFORM STREQUAL "linux")
-    message(FATAL_ERROR "OPENROO_PLATFORM must be windows or linux, not '${OPENROO_PLATFORM}'")
+    message(FATAL_ERROR "OPENROO_PLATFORM must be linux, windows or rg35xx, not '${OPENROO_PLATFORM}'")
 endif()
+
+# The intro movie needs FFmpeg, which the rg35xx SDK does not have.
+if(OPENROO_PLATFORM STREQUAL "rg35xx")
+    set(video_default OFF)
+else()
+    set(video_default ON)
+endif()
+option(OPENROO_VIDEO "Play the intro movie (needs FFmpeg)" ${video_default})
 
 project(OpenRoo VERSION 0.1.0 LANGUAGES CXX)
 
@@ -32,7 +52,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 # name them see their headers.
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(FetchSDL)
-include(FetchFFmpeg)  # the intro movie's decoder
+if(OPENROO_VIDEO)
+    include(FetchFFmpeg)  # the intro movie's decoder
+endif()
 include(FetchImGui)   # the debug UI
 include(FetchGLES)    # the OpenGL ES headers for src/gl
 
@@ -63,6 +85,26 @@ if(WIN32)
     # The SDL and FFmpeg DLLs next to the executable (launch.sh copies them into run/).
     add_custom_command(TARGET OpenRoo POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_RUNTIME_DLLS} ${FFMPEG_RUNTIME_DLLS} $<TARGET_FILE_DIR:OpenRoo>)
+endif()
+
+if(OPENROO_PLATFORM STREQUAL "rg35xx")
+    # The SDK's SDL3 (with the device's video driver) ships in lib/ beside the
+    # executable.  DT_RPATH, not DT_RUNPATH, so it wins over whatever
+    # LD_LIBRARY_PATH the device's launcher sets.
+    set_target_properties(OpenRoo PROPERTIES BUILD_RPATH "$ORIGIN/lib")
+    target_link_options(OpenRoo PRIVATE -Wl,--disable-new-dtags)
+    # build/rg35xx/OpenRoo: the app directory to copy to the SD card, less the
+    # game data (see data/rg35xx/mux_launch.sh).
+    set(pkg "${CMAKE_BINARY_DIR}/rg35xx/OpenRoo")
+    add_custom_target(rg35xx-package
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${pkg}/lib"
+        COMMAND ${CMAKE_STRIP} -o "${pkg}/OpenRoo" $<TARGET_FILE:OpenRoo>
+        COMMAND ${CMAKE_STRIP} -o "${pkg}/lib/libSDL3.so.0" "$<TARGET_SONAME_FILE:SDL3::SDL3-shared>"
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${PROJECT_SOURCE_DIR}/data/rg35xx/mux_launch.sh"
+                "${PROJECT_SOURCE_DIR}/data/rg35xx/openroo.ini.default" "${pkg}"
+        DEPENDS OpenRoo
+        COMMENT "Packaging ${pkg}")
 endif()
 
 # Only the platform groups may include SDL.
