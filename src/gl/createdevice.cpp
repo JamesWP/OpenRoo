@@ -1,6 +1,6 @@
 /* GLRenderDevice::Create and the enumeration the launcher uses: puts the
  * game's window full-screen in the display mode asked for, makes an OpenGL
- * 3.3 core context on it, and builds the program and the buffers every draw
+ * ES 3.2 context on it, and builds the program and the buffers every draw
  * shares.
  *
  * The mode list is the 4:3 modes of 32 bits and then of 16, each group by
@@ -117,10 +117,9 @@ static bool create_objects(GLRenderDevice::Native *n, char *error, size_t errorS
     // State no setter changes.
     gl.ActiveTexture(GL_TEXTURE0);
     gl.Disable(GL_DITHER);
-    gl.Disable(GL_MULTISAMPLE);
     gl.FrontFace(GL_CCW);
     gl.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    gl.ClearDepth(1.0);
+    gl.ClearDepthf(1.0f);
     gl.ClearStencil(0);
     gl.StencilMask(0xFF);
     gl.DepthFunc(GL_LEQUAL);
@@ -176,16 +175,16 @@ bool GLRenderDevice::Create(windev::Window *window, const AdapterId *adapter, in
     if (mode_ == NULL)
         return false;
 
-    const windev::GLContextConfig want = { 3, 3, 24, 8 };
+    const windev::GLContextConfig want = { 3, 2, 24, 8 };
     if (!window->createGLContext(want)) {
-        strcpy(lastError_, "Could not create an OpenGL 3.3 context.");
+        strcpy(lastError_, "Could not create an OpenGL ES 3.2 context.");
         mode_ = NULL;
         return false;
     }
     gl_set_window(window);
     const char *missing = NULL;
     if (!gl_load(*window, &missing)) {
-        snprintf(lastError_, sizeof(lastError_), "OpenGL lacks %s.", missing);
+        snprintf(lastError_, sizeof(lastError_), "OpenGL ES lacks %s.", missing);
         window->destroyGLContext();
         mode_ = NULL;
         return false;

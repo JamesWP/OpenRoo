@@ -429,17 +429,18 @@ static void bind_vertices(GLRenderDevice::Native *n, VertexFormat format,
         gl.DisableVertexAttribArray(1);
         gl.VertexAttrib4f(1, 0.0f, 0.0f, 1.0f, 0.0f);
     }
-    // D3DCOLORs are 0xAARRGGBB: bytes B, G, R, A.
+    // D3DCOLORs are 0xAARRGGBB: bytes B, G, R, A.  OpenGL ES has no BGRA
+    // attribute format, so the shader swizzles them back.
     if (l.color >= 0) {
         gl.EnableVertexAttribArray(2);
-        gl.VertexAttribPointer(2, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, stride, at(l.color));
+        gl.VertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride, at(l.color));
     } else {
         gl.DisableVertexAttribArray(2);
         gl.VertexAttrib4f(2, 1.0f, 1.0f, 1.0f, 1.0f);
     }
     if (l.specular >= 0) {
         gl.EnableVertexAttribArray(3);
-        gl.VertexAttribPointer(3, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, stride, at(l.specular));
+        gl.VertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride, at(l.specular));
     } else {
         gl.DisableVertexAttribArray(3);
         gl.VertexAttrib4f(3, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -555,9 +556,12 @@ static void capture_frame(GLRenderDevice::Native *n, unsigned frame)
         return;
 
     const unsigned w = n->vpX + n->vpW, h = n->vpY + n->vpH;
-    std::vector<uint8_t> rgb((size_t)w * h * 3);
+    // RGBA is the one format OpenGL ES always reads back; the alpha is dropped.
+    std::vector<uint8_t> rgba((size_t)w * h * 4), rgb((size_t)w * h * 3);
     gl.PixelStorei(GL_PACK_ALIGNMENT, 1);
-    gl.ReadPixels(0, 0, (GLsizei)w, (GLsizei)h, GL_RGB, GL_UNSIGNED_BYTE, rgb.data());
+    gl.ReadPixels(0, 0, (GLsizei)w, (GLsizei)h, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
+    for (size_t i = 0; i < (size_t)w * h; i++)
+        memcpy(&rgb[i * 3], &rgba[i * 4], 3);
     char path[460];
     snprintf(path, sizeof(path), "%s-%u.ppm", prefix, frame);
     if (FILE *f = fopen(sysdev::nativePath(path).c_str(), "wb")) {
@@ -899,8 +903,11 @@ bool GLRenderDevice::DrawBuffer(Prim prim, const VertexBuffer *buf, uint32_t fir
         // What the buffer holds, not what the game meant to put in it.
         std::vector<uint8_t> bytes((size_t)count * vb->stride);
         gl.BindBuffer(GL_ARRAY_BUFFER, vb->buffer);
-        gl.GetBufferSubData(GL_ARRAY_BUFFER, (GLintptr)first * vb->stride,
-                            (GLsizeiptr)bytes.size(), bytes.data());
+        if (const void *p = gl.MapBufferRange(GL_ARRAY_BUFFER, (GLintptr)first * vb->stride,
+                                              (GLsizeiptr)bytes.size(), GL_MAP_READ_BIT)) {
+            memcpy(bytes.data(), p, bytes.size());
+            gl.UnmapBuffer(GL_ARRAY_BUFFER);
+        }
         gl_trace_draw(state_, prim, vb->format, bytes.data(), count, flags);
     }
     submit(n, state_, (float)((double)mode_->dwWidth / (double)mode_->dwHeight),
