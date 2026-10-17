@@ -59,6 +59,37 @@ The game file defaults to `JJ`; name another on the command line.
 `game/` is your imported data and is never written. `run/` is where the game
 runs: your config, saves, high scores and logs.
 
+## RG35XX Plus (muOS)
+
+The Anbernic RG35XX Plus handheld is a cross-compiled target, built with the
+SDK from [rg35xx-plus-sdk](https://github.com/JamesWP/rg35xx-plus-sdk) (its
+toolchain, and an SDL3 with a video driver for the device's Mali GPU).  Build
+that, or unpack its SDK tarball, then:
+
+```bash
+cmake -S . -B build-rg35xx -DOPENROO_PLATFORM=rg35xx -DRG35XX_SDK=<sdk>   # <sdk>: the unpacked SDK, or that repo's output/host
+cmake --build build-rg35xx -j --target rg35xx-package                       # build-rg35xx/rg35xx/OpenRoo/
+```
+
+Copy `build-rg35xx/rg35xx/OpenRoo/`, and the contents of your imported
+`game/` beside it, to `MUOS/application/OpenRoo/` on the SD card (`adb push`
+works); it is then under **Applications**.  `video/` can be left out: the
+SDK has no FFmpeg, so this build skips the intro movie (`OPENROO_VIDEO`).
+
+The controls (any SDL gamepad on the other platforms too):
+
+| Button | Key | In the game |
+|---|---|---|
+| D-pad | arrows | move, turn; menus |
+| A | Return | confirm |
+| B | B | bomb |
+| X / Y | Page Up / Page Down | tilt the camera |
+| L1 / R1 | X / C | rotate the camera |
+| L2 / R2 | Z / A | zoom out / in |
+| Select | Tab | overview |
+| Start | Escape | pause, back |
+| Menu | Delete | harakiri |
+
 ## Tests
 
 ```bash

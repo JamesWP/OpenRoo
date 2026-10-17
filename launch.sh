@@ -47,6 +47,7 @@ PLATFORM=$(sed -n 's/^OPENROO_PLATFORM:[A-Z]*=//p' "$BUILD_DIR/CMakeCache.txt")
 case "$PLATFORM" in
   linux)   NATIVE=1; EXE=OpenRoo ;;
   windows) NATIVE=0; EXE=OpenRoo.exe ;;
+  rg35xx)  echo "ERROR: $BUILD_DIR is an rg35xx build; it runs on the device (see README.md)" >&2; exit 1 ;;
   *) echo "ERROR: $BUILD_DIR has no OPENROO_PLATFORM (got '$PLATFORM'); reconfigure it" >&2; exit 1 ;;
 esac
 [[ -f "$BUILD_DIR/$EXE" ]] || { echo "ERROR: $BUILD_DIR/$EXE missing after build"; exit 1; }
