@@ -2,10 +2,8 @@
  * simulation (particletypes.h), the Face and XFace corner geometry, and every
  * class's lifecycle and serialisation (particles.h).
  *
- * DETERMINISM: loading and cloning draw from the game's rand(), which the
- * simulation shares (the slots' shapes, XFace's corner table, and the
- * generators' tables in generators.cpp), so those draws are kept exactly as
- * the original made them, redundant ones included. */
+ * The random choices loading makes -- XFace's shapes, and the generators'
+ * tables -- draw from the effects' own random numbers (fxrand.h). */
 
 #include <stdint.h>
 #include "particles.h"
@@ -13,8 +11,7 @@
 #include "generators.h"
 #include "logger.h"
 #include <stdlib.h>
-#include "gametime.h"
-#include "crtrand.h"
+#include "fxrand.h"
 #include <math.h>
 #include <string.h>
 #include <new>
@@ -44,7 +41,7 @@ void ParticleSystem::render(RenderDevice *dev)
     if (slots_.count == 0)
         return;
     if (!buffer_) {
-        buffer_ = dev->CreateParticleBuffer(slots_.count, slots_.shapes.data());
+        buffer_ = dev->CreateParticleBuffer(slots_.count, slots_.shapes.empty() ? nullptr : slots_.shapes.data());
         if (!buffer_)
             return;
         ParticleTables t;
@@ -227,38 +224,25 @@ static bool ps_read(void *dst, unsigned size, std::istream &in)
     return readBytes(in, dst, size);
 }
 
-/* Sampling constant shared with the generators: 1/32767. */
-static const float PS_RAND_SCALE = 1.0f / 32767.0f;
-
 void ParticleSlots::release()
 {
     shapes.clear();
     count = 0;
 }
 
-/* DETERMINISM: rand() is reseeded from the game clock on every call, and the
- * last slot is skipped (the loop bound is count - 1).  With shapes 0 the
- * indices come out meaningless, but are drawn all the same. */
 void ParticleSlots::assignShapes(uint32_t nShapes)
 {
-    CRT_RAND_SEED = (unsigned)hooks_GameTime(NULL);
-    if (count - 1 == 0)
-        return;
-    float span = (float)(int)(nShapes - 1);
-    for (uint32_t i = 0; i < count - 1; i++) {
-        int r = (int)crt_rand();
-        shapes[i] = (uint32_t)(int)((double)r * span * PS_RAND_SCALE + 0.5);
-    }
+    shapes.resize(count);
+    for (uint32_t &shape : shapes)
+        shape = fx_index(nShapes);
 }
 
-int ParticleSlots::alloc(uint32_t n, uint32_t nShapes)
+int ParticleSlots::alloc(uint32_t n)
 {
     release();
     if (n < 2)
         return false;
     count = n;
-    shapes.assign(n, 0);
-    assignShapes(nShapes);
     return true;
 }
 
@@ -289,11 +273,6 @@ void ParticleSystem::release(int flags)
     slots_.release();
 }
 
-int ParticleSystem::setCapacity(uint32_t count)
-{
-    return slots_.alloc(count, 0) != 0;
-}
-
 int ParticleSystem::setGenerator(Generator *gen)
 {
     if (gen == NULL)
@@ -321,7 +300,7 @@ int ParticleSystem::copyFrom(const ParticleSystem *src)
     release(1);
     if (strcmp(src->pName_, pName_) != 0)
         return false;
-    if (!slots_.alloc(src->slots_.count, 0))
+    if (!slots_.alloc(src->slots_.count))
         return false;
 
     if (src->pGenerator_) {
@@ -386,8 +365,7 @@ static int ps_load_sub_object(std::istream &in, T **out,
 }
 
 /* Release, re-make the slots at the stored count, then load and attach each
- * sub-object.  The slots are made directly rather than through setCapacity,
- * so a subclass's override does not run here. */
+ * sub-object. */
 int ParticleSystem::load(std::istream &in)
 {
     release(1);
@@ -397,7 +375,7 @@ int ParticleSystem::load(std::istream &in)
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle count could not be read");
         return false;
     }
-    if (!slots_.alloc(count, 0)) {
+    if (!slots_.alloc(count)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle list could not be created");
         return false;
     }
@@ -450,16 +428,6 @@ void XFaceParticleSystem::release(int flags)
     ParticleSystem::release(flags);
 }
 
-/* Release virtually, size the slots and reset the scale to 1. */
-int FaceParticleSystem::setCapacity(uint32_t count)
-{
-    release(1);
-    if (!ParticleSystem::setCapacity(count))
-        return false;
-    flScale_ = 1.0f;
-    return true;
-}
-
 /* The scale comes from the source. */
 int FaceParticleSystem::copyFrom(const ParticleSystem *src)
 {
@@ -504,12 +472,6 @@ static float corner_direction_cosine(const float a[3], const float b[3])
     return (float)cos(acos(dot / (la * lb)));
 }
 
-/* DETERMINISM: one rand() draw, mapped to [-1, 1]. */
-static float rand_signed_unit(void)
-{
-    return (float)((double)(int)crt_rand() * (2.0f / 32767.0f) - 1.0f);
-}
-
 /* Build dwCornerTableCount corner entries.  Each is a quad in the XZ plane
  * whose half-size steps from flSizeMin to flSizeMax, rotated into a random
  * orientation, plus three per-entry values drawn from the lifetime, speed and
@@ -540,7 +502,7 @@ int XFaceParticleSystem::buildCorners()
                                    { s, 0, n }, { s, 0, s }, { n, 0, n } };
         std::copy_n(&quad[0][0], 18, &e->flCorner[0][0]);
 
-        float axis[3] = { rand_signed_unit(), rand_signed_unit(), rand_signed_unit() };
+        float axis[3] = { fx_uniform(-1.0f, 1.0f), fx_uniform(-1.0f, 1.0f), fx_uniform(-1.0f, 1.0f) };
         bool along_x = !(axis[0] < 1.0f || axis[0] > 1.0f)
                     && !(axis[1] < 0.0f || axis[1] > 0.0f)
                     && !(axis[2] < 0.0f || axis[2] > 0.0f);
@@ -559,38 +521,23 @@ int XFaceParticleSystem::buildCorners()
         for (int c = 0; c < 6; c++)
             xface_transform_corner(e->flCorner[c], m);
 
-        e->flRotVel[0] = (float)(((double)life_max - life_min)
-                                 * (int)crt_rand() * PS_RAND_SCALE + life_min);
-        e->flRotVel[1] = (float)(((double)speed_max - speed_min)
-                                 * (int)crt_rand() * PS_RAND_SCALE + speed_min);
-        e->flRotVel[2] = (float)(((double)rot_max - rot_min)
-                                 * (int)crt_rand() * PS_RAND_SCALE + rot_min);
+        e->flRotVel[0] = fx_uniform(life_min, life_max);
+        e->flRotVel[1] = fx_uniform(speed_min, speed_max);
+        e->flRotVel[2] = fx_uniform(rot_min, rot_max);
         e->flRotAccum[0] = e->flRotAccum[1] = e->flRotAccum[2] = 0.0f;
     }
     return true;
 }
 
-/* The base capacity result is discarded; the shape indices are re-drawn from
- * the corner count. */
-int XFaceParticleSystem::setCapacity(uint32_t count)
-{
-    ParticleSystem::setCapacity(count);
-    slots_.assignShapes(dwCornerTableCount_);
-    if (!buildCorners()) {
-        release(1);
-        return false;
-    }
-    return true;
-}
-
-/* PRESERVED: dwCornerTableCount is not copied, so a clone has the one corner
- * entry the constructor leaves it -- and draws rand() for that many. */
+/* The ranges come from the source; the corner entries and the slots' shapes
+ * are drawn afresh. */
 int XFaceParticleSystem::copyFrom(const ParticleSystem *src)
 {
     if (!ParticleSystem::copyFrom(src))
         return false;
-    std::copy(std::begin(static_cast<const XFaceParticleSystem *>(src)->ranges),
-              std::end(static_cast<const XFaceParticleSystem *>(src)->ranges), ranges);
+    const XFaceParticleSystem *x = static_cast<const XFaceParticleSystem *>(src);
+    dwCornerTableCount_ = x->dwCornerTableCount_;
+    std::copy(std::begin(x->ranges), std::end(x->ranges), ranges);
     slots_.assignShapes(dwCornerTableCount_);
     if (!buildCorners()) {
         ParticleSystem::release(1);
@@ -603,8 +550,11 @@ int XFaceParticleSystem::load(std::istream &in)
 {
     if (!ParticleSystem::load(in))
         return false;
-    if (ps_read(&dwCornerTableCount_, 4, in) && ps_read(ranges, sizeof(ranges), in))
-        return setCapacity(slots_.count);
+    if (ps_read(&dwCornerTableCount_, 4, in) && ps_read(ranges, sizeof(ranges), in)) {
+        slots_.assignShapes(dwCornerTableCount_);
+        if (buildCorners())
+            return true;
+    }
     release(1);
     g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading XFaceParticleSystem failed, because the attributes could not be read");
     return false;

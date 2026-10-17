@@ -24,11 +24,11 @@ struct ParticleLook;
  * each draws with (XFace only). */
 struct ParticleSlots {
     void release();
-    /* Give every slot but the last a random shape index in [0, shapes-1]. */
+    /* Give every slot a random shape index in [0, shapes-1]. */
     void assignShapes(uint32_t shapes);
-    /* `count` slots, all shape 0 until assignShapes; fewer than two is
+    /* `count` slots, with no shapes until assignShapes; fewer than two is
      * refused. */
-    int alloc(uint32_t count, uint32_t shapes);
+    int alloc(uint32_t count);
 
     uint32_t              count = 0;
     std::vector<uint32_t> shapes;
@@ -76,7 +76,6 @@ protected:
     virtual void release(int flags);
     /* Type-name gate, then new slots, generator and environment like src's. */
     virtual int copyFrom(const ParticleSystem *src);
-    virtual int setCapacity(uint32_t count);
     virtual int load(std::istream &in);
     /* The corners render draws with. */
     virtual void look(ParticleLook &out) const = 0;
@@ -108,7 +107,6 @@ public:
 
 protected:
     int  copyFrom(const ParticleSystem *src) override;
-    int  setCapacity(uint32_t count) override;
     int  load(std::istream &in) override;
     void look(ParticleLook &out) const override;
 
@@ -138,7 +136,6 @@ public:
 protected:
     void  release(int flags) override;
     int  copyFrom(const ParticleSystem *src) override;
-    int  setCapacity(uint32_t count) override;
     int  load(std::istream &in) override;
     void look(ParticleLook &out) const override;
 
