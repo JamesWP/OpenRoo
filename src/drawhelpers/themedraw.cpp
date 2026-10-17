@@ -8,6 +8,7 @@
  * left to right: scale, then rotation, then translation. */
 #include <math.h>
 #include "themedraw.h"
+#include <vector>
 #include "renderdevice.h"
 #include "texture.h"
 #include "d3dmath.h"
@@ -47,6 +48,13 @@ Mat4 mul(const Mat4 &a, const Mat4 &b)
     Mat4 d;
     m4_mul(&d, &b, &a);  // m4_mul(d, x, y) is y * x
     return d;
+}
+
+/* The placements of one particle draw; kept to save allocating each frame. */
+std::vector<ParticleInstance> &scratch_instances()
+{
+    static std::vector<ParticleInstance> at;
+    return at;
 }
 
 Mat4 identity()
@@ -449,37 +457,41 @@ void particles(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n)
             ps->tick((float)(f.elapsed * 0.001));
         f.dev->SetSpecular(rec->specular() != 0 && f.opts.highlights);
 
+        // Every instance a sub-object shows at is one placement of one draw.
+        ps->setVector(view.x, view.y, view.z);
+        Generator *gen = ps->getGenerator(NULL);
         for (uint32_t s = 0; s < rec->subObjectCount(); s++) {
             const SceneSubObject &sub = rec->subObjects()[s];
+            std::vector<ParticleInstance> &at = scratch_instances();
+            at.clear();
             for (unsigned k = 0; k < n; k++) {
                 const Instance &in = inst[k];
                 if (!visible(sub.dwVisibilityGate, in.conditions))
                     continue;
-                bind(f, sub);
-
                 const float spinY = (float)(rec->rotRateY() * f.now)
                                   + (rec->randomYAngle() != 0 ? in.phase : 0.0f) + in.rot.y;
-                const Vec3 at = { rec->posX(), bob(rec, in, f.now, rec->posY()), rec->posZ() };
-                Generator *gen = ps->getGenerator(NULL);
-                Mat4 world;
-                // Face the camera first, then undo the world spin.
-                ps->setVector(view.x, view.y, view.z);
+                const Vec3 pos = { rec->posX(), bob(rec, in, f.now, rec->posY()), rec->posZ() };
+                // Turn the camera-facing corners back against the world's spin.
+                ParticleInstance pi = { identity(), rot_y(-spinY) };
                 if (rec->movableType() == MOVE_TRANSLATE) {
-                    world = translation(in.pos.x, in.pos.y, in.pos.z);
+                    pi.world = translation(in.pos.x, in.pos.y, in.pos.z);
                     if (gen)
-                        gen->setPosition(at.x, at.y, at.z);
-                    ps->transformCorners(rot_y(-spinY).m);
+                        gen->setPosition(pos.x, pos.y, pos.z);
                 } else if (rec->movableType() == MOVE_GENERATOR) {
-                    world = identity();
+                    // The particles stay where they were emitted: only the
+                    // generator moves (to the last instance, if several).
+                    pi.corners = identity();
                     if (gen)
-                        gen->setPosition(at.x + in.pos.x, at.y + in.pos.y, at.z + in.pos.z);
+                        gen->setPosition(pos.x + in.pos.x, pos.y + in.pos.y, pos.z + in.pos.z);
                 } else {
-                    world = placement(rec, in, f.now, { 1.0f, 1.0f, 1.0f }, 0.0f);
-                    ps->transformCorners(rot_y(-spinY).m);
+                    pi.world = placement(rec, in, f.now, { 1.0f, 1.0f, 1.0f }, 0.0f);
                 }
-                f.dev->SetWorld(world);
-                ps->render(f.dev);
+                at.push_back(pi);
             }
+            if (at.empty())
+                continue;
+            bind(f, sub);
+            ps->render(f.dev, at.data(), (uint32_t)at.size());
         }
         end_record(f);
     }

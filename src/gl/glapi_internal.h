@@ -51,7 +51,8 @@ namespace windev { class Window; }
     X(Uniform1i, UNIFORM1I) \
     X(GetUniformBlockIndex, GETUNIFORMBLOCKINDEX) \
     X(UniformBlockBinding, UNIFORMBLOCKBINDING) \
-    X(Uniform1f, UNIFORM1F) X(Uniform2fv, UNIFORM2FV) X(Uniform3fv, UNIFORM3FV) \
+    X(Uniform1f, UNIFORM1F) X(Uniform1fv, UNIFORM1FV) X(Uniform2fv, UNIFORM2FV) \
+    X(Uniform3fv, UNIFORM3FV) X(Uniform4fv, UNIFORM4FV) \
     X(Uniform4iv, UNIFORM4IV) X(UniformMatrix4fv, UNIFORMMATRIX4FV) \
     X(TransformFeedbackVaryings, TRANSFORMFEEDBACKVARYINGS) \
     X(BeginTransformFeedback, BEGINTRANSFORMFEEDBACK) \

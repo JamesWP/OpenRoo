@@ -1,9 +1,9 @@
 /* ParticleSystem: the slots, the tick and render that drive the device's
- * simulation (particletypes.h), the Face and XFace corner geometry, and every
+ * simulation (particletypes.h), the Face and XFace shapes, and every
  * class's lifecycle and serialisation (particles.h).
  *
- * The random choices loading makes -- XFace's shapes, and the generators'
- * tables -- draw from the effects' own random numbers (fxrand.h). */
+ * The random choices loading makes -- XFace's shapes and which slot takes
+ * which -- draw from the effects' own random numbers (fxrand.h). */
 
 #include <stdint.h>
 #include "particles.h"
@@ -31,22 +31,28 @@ void ParticleSystem::tick(float dt)
     if (pEnvironment_)
         pEnvironment_->tick(dt);
     pendingDt_ += dt;
+    age_ += dt;
 }
 
-/* The buffer is made, and the generator's tables sent, at the first render:
- * the device is only to be had here.  The step is everything ticked since the
- * last render, and runs only once however many times the system is drawn. */
 void ParticleSystem::render(RenderDevice *dev)
 {
-    if (slots_.count == 0)
+    const ParticleInstance one = { dev->world(), cornerTransform() };
+    render(dev, &one, 1);
+}
+
+/* The buffer is made at the first render: the device is only to be had
+ * here.  The step is everything ticked since the last render, so it runs
+ * once however many times the system is drawn. */
+void ParticleSystem::render(RenderDevice *dev, const ParticleInstance *instances, uint32_t count)
+{
+    if (slots_.count == 0 || count == 0)
         return;
     if (!buffer_) {
-        buffer_ = dev->CreateParticleBuffer(slots_.count, slots_.shapes.empty() ? nullptr : slots_.shapes.data());
+        buffer_ = dev->CreateParticleBuffer(
+            slots_.count, slots_.shapes.empty() ? nullptr : slots_.shapes.data());
         if (!buffer_)
             return;
-        ParticleTables t;
-        if (pGenerator_ && pGenerator_->tables(t))
-            dev->SetParticleTables(buffer_, t);
+        uploadShapes(dev);
         nextSlot_ = 0;
     }
 
@@ -66,10 +72,15 @@ void ParticleSystem::render(RenderDevice *dev)
 
     ParticleLook l;
     look(l);
-    dev->DrawParticles(buffer_, l);
+    dev->DrawParticles(buffer_, l, instances, count);
 }
 
-/* ─── Tick and Face corner transform ───────────────────────────────────────
+Mat4 ParticleSystem::cornerTransform() const
+{
+    return { { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 } };
+}
+
+/* ─── Matrices ─────────────────────────────────────────────────────────────
  *
  * Row-major 4x4, row-vector convention (D3D style): out[r][c] = sum_k a[r][k]
  * * b[k][c]. */
@@ -89,18 +100,6 @@ static void mat_mul(PMat4 out, const PMat4 a, const PMat4 b)
             t[r * 4 + c] = a[r * 4 + 0] * b[0 * 4 + c] + a[r * 4 + 1] * b[1 * 4 + c]
                          + a[r * 4 + 2] * b[2 * 4 + c] + a[r * 4 + 3] * b[3 * 4 + c];
     for (int i = 0; i < 16; i++) out[i] = t[i];
-}
-
-/* (v,1) x m as a row vector, w-divided when w != 0. */
-static void transform_point(float v[3], const PMat4 m)
-{
-    float o[4];
-    for (int c = 0; c < 4; c++)
-        o[c] = v[0] * m[0 * 4 + c] + v[1] * m[1 * 4 + c] + v[2] * m[2 * 4 + c] + m[3 * 4 + c];
-    if (o[3] != 0.0f) {
-        o[0] /= o[3]; o[1] /= o[3]; o[2] /= o[3];
-    }
-    v[0] = o[0]; v[1] = o[1]; v[2] = o[2];
 }
 
 /* Axis rotations, row-vector convention. */
@@ -126,42 +125,6 @@ static void mat_rot_z(PMat4 m, float a)
     m[4] = s;  m[5] = c;
 }
 
-/* A rotation angle is baked into the corners once it exceeds this. */
-#define ROT_STEP_THRESHOLD 0.01
-
-void XFaceParticleSystem::tick(float dt)
-{
-    if (pCornerTable_) {
-        for (uint32_t i = 0; i < dwCornerTableCount_; i++) {
-            XFaceCornerEntry *e = &pCornerTable_[i];
-            PMat4 m;
-            mat_identity(m);
-            bool fired = false;
-            for (int axis = 0; axis < 3; axis++)
-                e->flRotAccum[axis] += e->flRotVel[axis];
-            for (int axis = 0; axis < 3; axis++) {
-                if ((double)e->flRotAccum[axis] > ROT_STEP_THRESHOLD) {
-                    PMat4 rot;
-                    switch (axis) {
-                    case 0: mat_rot_x(rot, e->flRotAccum[axis]); break;
-                    case 1: mat_rot_y(rot, e->flRotAccum[axis]); break;
-                    default: mat_rot_z(rot, e->flRotAccum[axis]); break;
-                    }
-                    mat_mul(m, m, rot);
-                    e->flRotAccum[axis] = 0.0f;
-                    fired = true;
-                }
-            }
-            if (fired)
-                for (int c = 0; c < 6; c++)
-                    transform_point(e->flCorner[c], m);
-        }
-    }
-    ParticleSystem::tick(dt);
-}
-
-/* ─── Face corner geometry ───────────────────────────────────
- */
 static void vec_cross(float o[3], const float a[3], const float b[3])
 {
     o[0] = a[1] * b[2] - a[2] * b[1];
@@ -169,52 +132,25 @@ static void vec_cross(float o[3], const float a[3], const float b[3])
     o[2] = a[0] * b[1] - a[1] * b[0];
 }
 
-static float vec_len(const float v[3])
-{
-    return sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-}
-
-/* Rebuild the six baked corner offsets from a direction vector: two scaled
- * basis vectors perpendicular to dir form a centred quad (two triangles 0-1-2
- * / 3-4-5 with 3=2, 4=1, 5=1+2, all shifted by -(1+2)/2). */
+/* ─── Face: billboards ─────────────────────────────────────────────────────
+ *
+ * The device builds each quad, square to the facing, and carries it through
+ * the corner transform (particletypes.h). */
 void FaceParticleSystem::setVector(float x, float y, float z)
 {
-    float basis[3] = { 1.0f, 0.0f, 0.0f };
-    if (x == 1.0f && y == 0.0f && z == 0.0f) {
-        basis[0] = 0.0f; basis[1] = 1.0f;
-    }
-    float dir[3] = { x, y, z };
-    float len = vec_len(dir);
-    float d[3] = { x / len, y / len, z / len };
-
-    float e2[3], e1[3];
-    vec_cross(e2, d, basis);  // corner 2 direction
-    vec_cross(e1, d, e2);     // corner 1 direction (from unnormalised e2)
-
-    float s2 = flScale_ / vec_len(e2);
-    float s1 = flScale_ / vec_len(e1);
-    for (int i = 0; i < 3; i++) { e2[i] *= s2; e1[i] *= s1; }
-
-    float (*c)[3] = flCorner_;
-    for (int i = 0; i < 3; i++) {
-        c[0][i] = 0.0f;
-        c[1][i] = e1[i];
-        c[2][i] = e2[i];
-        c[3][i] = e2[i];
-        c[4][i] = e1[i];
-        c[5][i] = e1[i] + e2[i];
-    }
-    float centre[3] = { c[5][0] * 0.5f, c[5][1] * 0.5f, c[5][2] * 0.5f };
-    for (int i = 0; i < 6; i++)
-        for (int k = 0; k < 3; k++)
-            c[i][k] -= centre[k];
+    facing_ = { x, y, z };
+    mat_identity(corners_.m);
 }
 
-/* Carry the six baked corners through a matrix. */
+/* Composes: a second transform applies after the first. */
 void FaceParticleSystem::transformCorners(float *matrix)
 {
-    for (int c = 0; c < 6; c++)
-        transform_point(flCorner_[c], matrix);
+    mat_mul(corners_.m, corners_.m, matrix);
+}
+
+Mat4 FaceParticleSystem::cornerTransform() const
+{
+    return corners_;
 }
 
 /* ─── The slots and the ParticleSystem lifecycle ───────────────────────────
@@ -406,25 +342,28 @@ const float XFaceParticleSystem::XFACE_UV[6][2] = { {0,0}, {1,1}, {0,1}, {1,0}, 
 
 void FaceParticleSystem::look(ParticleLook &out) const
 {
-    out.shapes = &flCorner_;
-    out.shapeCount = 1;
+    out.facing = facing_;
+    out.size = flScale_;
     std::copy(&FACE_UV[0][0], &FACE_UV[0][0] + 12, &out.uv[0][0]);
 }
 
 /* Two-sided: the original drew every quad twice, culling each winding in
- * turn, so a corner entry rotated past edge-on still shows. */
+ * turn, so a shape turned past edge-on still shows. */
 void XFaceParticleSystem::look(ParticleLook &out) const
 {
-    static_assert(offsetof(XFaceCornerEntry, flCorner) == 0, "corners first");
-    out.shapes = reinterpret_cast<const float (*)[6][3]>(pCornerTable_.get());
-    out.shapeCount = pCornerTable_ ? dwCornerTableCount_ : 0;
-    out.perParticleShape = true;
+    out.tumbling = true;
+    out.time = age_;
     std::copy(&XFACE_UV[0][0], &XFACE_UV[0][0] + 12, &out.uv[0][0]);
+}
+
+void XFaceParticleSystem::uploadShapes(RenderDevice *dev)
+{
+    dev->SetParticleShapes(buffer_, shapes_.data(), (uint32_t)shapes_.size());
 }
 
 void XFaceParticleSystem::release(int flags)
 {
-    pCornerTable_.reset();
+    shapes_.clear();
     ParticleSystem::release(flags);
 }
 
@@ -449,82 +388,57 @@ int FaceParticleSystem::load(std::istream &in)
     return true;
 }
 
-/* The corner transform divides by w when w != 1.0 -- not the `w != 0` test
- * transform_point uses for the Face corners. */
-static void xface_transform_corner(float v[3], const PMat4 m)
-{
-    float o[4];
-    for (int c = 0; c < 4; c++)
-        o[c] = v[0] * m[0 * 4 + c] + v[1] * m[1 * 4 + c] + v[2] * m[2 * 4 + c] + m[3 * 4 + c];
-    if ((double)o[3] != 1.0) {
-        o[0] /= o[3]; o[1] /= o[3]; o[2] /= o[3];
-    }
-    v[0] = o[0]; v[1] = o[1]; v[2] = o[2];
-}
+/* The original turned each shape by these X, Y and Z angles a frame; it ran
+ * at about this many frames a second. */
+static const float SHAPE_TURNS_PER_SECOND = 60.0f;
 
-/* cos(acos(a.b / (|a||b|))): the cosine of the angle between a and b, the long
- * way round. */
-static float corner_direction_cosine(const float a[3], const float b[3])
-{
-    double dot = ((double)a[2] * b[2] + (double)a[1] * b[1]) + (double)a[0] * b[0];
-    double la = sqrt(((double)a[0] * a[0] + (double)a[1] * a[1]) + (double)a[2] * a[2]);
-    double lb = sqrt(((double)b[0] * b[0] + (double)b[1] * b[1]) + (double)b[2] * b[2]);
-    return (float)cos(acos(dot / (la * lb)));
-}
-
-/* Build dwCornerTableCount corner entries.  Each is a quad in the XZ plane
- * whose half-size steps from flSizeMin to flSizeMax, rotated into a random
- * orientation, plus three per-entry values drawn from the lifetime, speed and
- * rotation ranges.
- *
- * PRESERVED: those three land in flRotVel[0..2], which the tick treats as
- * X/Y/Z rotation velocities. */
+/* Build dwCornerTableCount shapes.  Each is a quad whose half-size steps from
+ * the first size range's low end to its high, turned to a random
+ * orientation, which tumbles: a frame's turn is about X, Y and Z by angles
+ * drawn from the other three ranges in turn.  That turn is a single rotation
+ * about one axis, which is what the device is given. */
 int XFaceParticleSystem::buildCorners()
 {
-    uint32_t count = dwCornerTableCount_;
-    pCornerTable_.reset(new XFaceCornerEntry[count]());
-    XFaceCornerEntry *table = pCornerTable_.get();
-
+    const uint32_t count = dwCornerTableCount_;
+    shapes_.assign(count, ParticleShape());
     const float *p = this->ranges;
-    float size_min = p[0], size_max = p[1];
-    float life_min = p[2], life_max = p[3];
-    float speed_min = p[4], speed_max = p[5];
-    float rot_min = p[6], rot_max = p[7];
-
-    float step = (float)(((double)size_max - size_min) / (double)(int)count);
-    static const float AXIS[3][3] = { { 1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 } };
+    const float size_min = p[0], size_max = p[1];
+    const float step = (size_max - size_min) / (float)count;
+    static const float AXIS_X[3] = { 1, 0, 0 }, AXIS_Y[3] = { 0, 1, 0 };
 
     for (uint32_t i = 0; i < count; i++) {
-        XFaceCornerEntry *e = &table[i];
-        float s = (float)((double)(int)(i + 1) * step + size_min);
-        float n = -s;
-        const float quad[6][3] = { { n, 0, n }, { s, 0, s }, { n, 0, s },
-                                   { s, 0, n }, { s, 0, s }, { n, 0, n } };
-        std::copy_n(&quad[0][0], 18, &e->flCorner[0][0]);
+        ParticleShape &shape = shapes_[i];
 
-        float axis[3] = { fx_uniform(-1.0f, 1.0f), fx_uniform(-1.0f, 1.0f), fx_uniform(-1.0f, 1.0f) };
-        bool along_x = !(axis[0] < 1.0f || axis[0] > 1.0f)
-                    && !(axis[1] < 0.0f || axis[1] > 0.0f)
-                    && !(axis[2] < 0.0f || axis[2] > 0.0f);
-        const float *ref = along_x ? AXIS[1] : AXIS[0];
-
+        // A quad in the XZ plane, then the plane turned to a random normal.
+        const float s = (float)(i + 1) * step + size_min, n = -s;
+        const float quad[6][2] = { { n, n }, { s, s }, { n, s }, { s, n }, { s, s }, { n, n } };
+        float normal[3] = { fx_uniform(-1.0f, 1.0f), fx_uniform(-1.0f, 1.0f),
+                            fx_uniform(-1.0f, 1.0f) };
         float u[3], v[3];
-        vec_cross(u, axis, ref);
-        vec_cross(v, axis, u);
-
-        const float *rows[3] = { u, axis, v };
-        PMat4 m;
-        mat_identity(m);
-        for (int r = 0; r < 3; r++)
-            for (int c = 0; c < 3; c++)
-                m[r * 4 + c] = corner_direction_cosine(rows[r], AXIS[c]);
+        vec_cross(u, normal, normal[1] == 0.0f && normal[2] == 0.0f ? AXIS_Y : AXIS_X);
+        vec_cross(v, normal, u);
+        const float lu = sqrtf(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]);
+        const float lv = sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
         for (int c = 0; c < 6; c++)
-            xface_transform_corner(e->flCorner[c], m);
+            for (int k = 0; k < 3; k++)
+                shape.corners[c][k] = quad[c][0] * u[k] / lu + quad[c][1] * v[k] / lv;
 
-        e->flRotVel[0] = fx_uniform(life_min, life_max);
-        e->flRotVel[1] = fx_uniform(speed_min, speed_max);
-        e->flRotVel[2] = fx_uniform(rot_min, rot_max);
-        e->flRotAccum[0] = e->flRotAccum[1] = e->flRotAccum[2] = 0.0f;
+        // A frame's turn, as an axis and an angle.
+        PMat4 m, r;
+        mat_rot_x(m, fx_uniform(p[2], p[3]));
+        mat_rot_y(r, fx_uniform(p[4], p[5]));
+        mat_mul(m, m, r);
+        mat_rot_z(r, fx_uniform(p[6], p[7]));
+        mat_mul(m, m, r);
+        // As a column-vector rotation C = m^T: the axis is C - C^T's.
+        const float cosine = std::min(1.0f, std::max(-1.0f, (m[0] + m[5] + m[10] - 1.0f) * 0.5f));
+        const float angle = acosf(cosine);
+        float axis[3] = { m[6] - m[9], m[8] - m[2], m[1] - m[4] };
+        const float la = sqrtf(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
+        if (la > 1e-6f && angle > 0.0f) {
+            shape.axis = { axis[0] / la, axis[1] / la, axis[2] / la };
+            shape.rate = angle * SHAPE_TURNS_PER_SECOND;
+        }
     }
     return true;
 }
