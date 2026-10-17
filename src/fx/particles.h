@@ -7,20 +7,19 @@
 #include <stddef.h>
 class RenderDevice;
 
-struct ParticleBuffer;
-struct ParticleLook;
+#include "particletypes.h"
 
 /* ParticleSystem hierarchy: a fixed number of particle slots on the device,
  * the generator that emits into them and the environment that moves, fades
  * and retires them.  Implemented in particles.cpp.
  *
  * The particles themselves live only on the device (particletypes.h): the
- * system's tick does the CPU's share -- how many to emit and from where in
- * the generator's tables, how far colours fade -- and the next render hands
+ * system's tick does the CPU's share -- how many to emit, how far colours
+ * fade -- and the next render hands
  * that to the device as one step before drawing.  Ticks that come between
  * two renders are folded into one step. */
 
-/* The slots, as the CPU knows them: how many, and the corner-table entry
+/* The slots, as the CPU knows them: how many, and the shape
  * each draws with (XFace only). */
 struct ParticleSlots {
     void release();
@@ -55,9 +54,13 @@ public:
     /* Run what has been ticked since the last render on the device, then
      * draw the particles with the device's current state and world. */
     void render(RenderDevice *dev);
+    /* The same, drawn at each of `count` placements in one draw. */
+    void render(RenderDevice *dev, const ParticleInstance *instances, uint32_t count);
     /* Face only: the quad's direction, and a transform of its corners. */
     virtual void  setVector(float, float, float) {}
     virtual void  transformCorners(float *) {}
+    /* What transformCorners has made of the corners since setVector. */
+    virtual Mat4  cornerTransform() const;
 
     Generator *getGenerator(const char *name);
     void enableRenderNode();
@@ -77,8 +80,10 @@ protected:
     /* Type-name gate, then new slots, generator and environment like src's. */
     virtual int copyFrom(const ParticleSystem *src);
     virtual int load(std::istream &in);
-    /* The corners render draws with. */
+    /* How render draws. */
     virtual void look(ParticleLook &out) const = 0;
+    /* Hands the device what buffer_'s slots draw with, once it is made. */
+    virtual void uploadShapes(RenderDevice *) {}
 
     /* Hand the slots to the new sub-object first; only if it accepts is the
      * old one dropped.  A NULL argument is refused. */
@@ -96,6 +101,7 @@ protected:
     ParticleBuffer *buffer_ = nullptr;
     uint32_t        nextSlot_ = 0;     // where the next emission starts
     float           pendingDt_ = 0.0f; // ticked but not yet stepped
+    float           age_ = 0.0f;       // seconds ticked
 };
 
 class FaceParticleSystem : public ParticleSystem {
@@ -104,6 +110,7 @@ public:
 
     void  setVector(float x, float y, float z) override;
     void  transformCorners(float *matrix) override;
+    Mat4  cornerTransform() const override;
 
 protected:
     int  copyFrom(const ParticleSystem *src) override;
@@ -112,38 +119,29 @@ protected:
 
 private:
     static const float FACE_UV[6][2];
-    float           flCorner_[6][3] = {}; // six baked xyz corner offsets
+    Vec3            facing_ = { 0, 0, 1 };
+    Mat4            corners_ = { { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 } };
     float           flScale_;
 };
 
-/* Corner-table entry.  Tick accumulates flRotVel into flRotAccum each frame;
- * when an accumulated angle exceeds 0.01 it is baked into flCorner as an axis
- * rotation and reset. */
-struct XFaceCornerEntry {
-    float flCorner[6][3];  // six xyz corner offsets
-    float flRotVel[3];     // per-tick X/Y/Z rotation increments
-    float flRotAccum[3];   // accumulated angles, reset when applied
-};
-
-/* Each particle is drawn with one of the corner-table entries, tumbling, and
- * two-sided. */
+/* Each particle is drawn with one of dwCornerTableCount shapes, tumbling,
+ * and two-sided. */
 class XFaceParticleSystem : public ParticleSystem {
 public:
     XFaceParticleSystem();
-
-    void  tick(float dt) override;
 
 protected:
     void  release(int flags) override;
     int  copyFrom(const ParticleSystem *src) override;
     int  load(std::istream &in) override;
     void look(ParticleLook &out) const override;
+    void uploadShapes(RenderDevice *dev) override;
 
 private:
     int buildCorners();
 
     static const float XFACE_UV[6][2];
-    std::unique_ptr<XFaceCornerEntry[]> pCornerTable_; // dwCornerTableCount entries
+    std::vector<ParticleShape> shapes_;  // dwCornerTableCount of them
     uint32_t             dwCornerTableCount_;
     float             ranges[8];
 };

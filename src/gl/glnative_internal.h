@@ -101,16 +101,23 @@ struct GLTexture : DeviceTexture {
     PixelFormat format;   // what the game's pixels were converted to first
 };
 
+/* Slots to a row of a GLParticleBuffer's texture. */
+static const unsigned PARTICLE_ROW_SLOTS = 64;
+
 /* Two buffers of slots, each slot three vec4s: position and life, velocity
  * and shape index, colour (0..255).  A step reads one and writes the other by
- * transform feedback; `current` is the one last written. */
+ * transform feedback (`current` is the one last written), then copies it into
+ * `slots`, PARTICLE_ROW_SLOTS slots of three texels to a row, for the draw to
+ * read.  The buffers hold whole rows; the slots past `count` stay dead. */
 struct GLParticleBuffer : ParticleBuffer {
     ~GLParticleBuffer() override;
     uint32_t count = 0;
+    uint32_t rows = 0;
     GLuint   buffers[2] = { 0, 0 };  // 0 when headless
     int      current = 0;
-    GLuint   tables = 0;             // RGBA32F rows: pos, vel, life, colour
-    int      tableCounts[4] = { 0, 0, 0, 0 };
+    GLuint   slots = 0;              // RGBA32F
+    GLuint   shapes = 0;             // RGBA32F, seven texels a ParticleShape
+    uint32_t shapeCount = 0;
 };
 
 struct GLVertexBuffer : VertexBuffer {
@@ -187,9 +194,11 @@ public:
         uint32_t count, uint32_t flags) override;
     void LogState(const char *tag) override;
     ParticleBuffer *CreateParticleBuffer(uint32_t count, const uint32_t *shapes) override;
-    void SetParticleTables(ParticleBuffer *pb, const ParticleTables &t) override;
+    void SetParticleShapes(ParticleBuffer *pb, const ParticleShape *shapes,
+        uint32_t count) override;
     void StepParticles(ParticleBuffer *pb, const ParticleStep &step) override;
-    bool DrawParticles(const ParticleBuffer *pb, const ParticleLook &look) override;
+    bool DrawParticles(const ParticleBuffer *pb, const ParticleLook &look,
+        const ParticleInstance *instances, uint32_t count) override;
 
     /* The backend's own objects. */
     struct Native;
@@ -221,8 +230,7 @@ struct GLRenderDevice::Native {
     // The particle programs (particles.cpp); 0 if they did not build.
     GLuint particleSim = 0, particleDraw = 0;
     GLuint particleSimVao = 0, particleDrawVao = 0;
-    GLuint particleShapes = 0;          // DrawParticles' corners, RGBA32F
-    uint32_t particleShapeRows = 0;
+    GLuint particleInstances = 0;       // DrawParticles' ParticleInstances
 
     unsigned  presented = 0;           // frames shown so far
     uint32_t  dirty = GLDirty::All;

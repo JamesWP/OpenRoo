@@ -1,14 +1,14 @@
 /* Every Generator and Environment virtual: the per-tick bookkeeping each
- * hands the device (the particles themselves are simulated there; see
- * particletypes.h), Load, CopyFrom, the constructors, and the table builders
- * Load and CopyFrom run.
- *
- * The tables draw from the effects' own random numbers (fxrand.h). */
+ * hands the device (the particles themselves are simulated and drawn from
+ * their distributions there; see particletypes.h), Load, CopyFrom and the
+ * constructors; and the Gaussian sampler ExplodeDebris fills its table
+ * with, from the effects' own random numbers (fxrand.h). */
 
 #include <string.h>
 #include <stdint.h>
 #include "generators.h"
 #include "fxrand.h"
+#include "logger.h"
 #include <new>
 #include <math.h>
 #include <stdlib.h>
@@ -77,74 +77,74 @@ void MagnetEnvironment::takeField(ParticleField &out)
     take_fade(out, dwTargetRGB_, &flFadePending_);
 }
 
-/* ─── TableGenerator emission ─── */
+/* ─── Emission ─── */
 
-/* dt's share of the emission rate: whole particles, with the fraction carried
- * into the next tick.  Their table cursors step on as they would have one
- * particle at a time. */
-void TableGenerator::tick(float dt)
+
+EmitterGenerator::EmitterGenerator()
+    : seed_((uint32_t)fx_index(0x7fffffff))
+{
+}
+
+/* dt's share of the rate: whole particles, with the fraction carried into
+ * the next tick. */
+void EmitterGenerator::tick(float dt)
 {
     if (dwEnabled_ == 0)
         return;
-    float acc = dt * flDtScale_ + flAccumulator_;
-    flAccumulator_ = acc;
+    float acc = dt * rate_ + accumulator_;
+    accumulator_ = acc;
     if (!(acc >= 0.0f))
         return;
     int count = (int)acc;  // truncates toward zero
-    flAccumulator_ = acc - (float)count;
-    if (count <= 0)
-        return;
-
-    if (pendingCount_ == 0) {
-        pendingCursor_[0] = dwPosIdx_;
-        pendingCursor_[1] = dwVelIdx_;
-        pendingCursor_[2] = dwLifeIdx_;
-        pendingCursor_[3] = dwProbIdx_;
-    }
+    accumulator_ = acc - (float)count;
     // More than the slots hold is lost anyway.
-    pendingCount_ = std::min<uint32_t>(pendingCount_ + (uint32_t)count, 1u << 20);
-    dwPosIdx_  = (dwPosIdx_ + (uint32_t)count) % POS_COUNT;
-    dwVelIdx_  = (uint32_t)((dwVelIdx_ + 3ull * (uint32_t)count) % VEL_COUNT);
-    dwLifeIdx_ = (dwLifeIdx_ + (uint32_t)count) % LIFE_COUNT;
-    dwProbIdx_ = (dwProbIdx_ + (uint32_t)count) % COLOUR_COUNT;
+    if (count > 0)
+        pendingCount_ = std::min<uint32_t>(pendingCount_ + (uint32_t)count, 1u << 20);
 }
 
-void TableGenerator::takeEmit(ParticleEmit &out)
+void EmitterGenerator::takeEmit(ParticleEmit &out)
 {
     out.count = pendingCount_;
-    out.pos = pendingCursor_[0];
-    out.vel = pendingCursor_[1];
-    out.life = pendingCursor_[2];
-    out.colour = pendingCursor_[3];
-    out.velStride = 3;
-    placement(out);
     pendingCount_ = 0;
-}
-
-bool TableGenerator::tables(ParticleTables &out) const
-{
-    out.pos = flPosTable_;      out.posCount = POS_COUNT;
-    out.vel = flVelTable_;      out.velCount = VEL_COUNT;
-    out.life = pLifeTable_;     out.lifeCount = LIFE_COUNT;
-    out.colour = pEmitProb_;    out.colourCount = COLOUR_COUNT;
-    return true;
+    out.seed = seed_;
+    seed_ = seed_ * 1664525u + 1013904223u;
+    out.dirMean = dirMean_;
+    out.dirVariance = dirVariance_;
+    out.speedMean = speedMean_;
+    out.speedVariance = speedVariance_;
+    out.lifeMean = lifeMean_;
+    out.lifeVariance = lifeVariance_;
+    out.colourCount = std::min<uint32_t>((uint32_t)colours_.size() / 2, PARTICLE_COLOURS);
+    for (uint32_t i = 0; i < out.colourCount; i++) {
+        out.colours[i] = colours_[i * 2];
+        out.weights[i] = (float)colours_[i * 2 + 1];
+    }
+    placement(out);
 }
 
 void StdGenerator::placement(ParticleEmit &out) const
 {
-    (void)out;  // as sampled
+    if (emitMode_ == 1) {
+        out.spawn = ParticleSpawn::Box;
+        out.posA = boxMin_;
+        out.posB = boxMax_;
+    } else {
+        out.spawn = ParticleSpawn::Gauss;
+        out.posA = posMean_;
+        out.posB = posVariance_;
+    }
 }
 
 void XStdGenerator::placement(ParticleEmit &out) const
 {
+    StdGenerator::placement(out);
     out.posOffset = vec3_of(flPosOffset_);
     out.velOffset = vec3_of(flVelOffset_);
 }
 
-/* Sample -> scale -> transform -> offset; velocity is NOT run through the
- * matrix. */
 void CylinderGenerator::placement(ParticleEmit &out) const
 {
+    out.spawn = ParticleSpawn::Circle;
     out.posScale = flScale_;
     std::copy(std::begin(flMatrix_), std::end(flMatrix_), out.posMatrix.m);
     out.posOffset = vec3_of(flOrigin_);
@@ -298,13 +298,6 @@ static void gauss_fill(float *out, int n, float mu, float spread)
     }
 }
 
-/* n samples uniform between a and b. */
-static void uniform_fill(float *out, int n, float a, float b)
-{
-    for (int i = 0; i < n; i++)
-        out[i] = fx_uniform(a, b);
-}
-
 /* Gates on matching type name, then copies only dwEnabled. */
 int Generator::copyFrom(const Generator *src)
 {
@@ -314,193 +307,67 @@ int Generator::copyFrom(const Generator *src)
     return true;
 }
 
-/* Copies the (colour, weight) pairs, and fills the 200 colours emission
- * cycles through from them; white for an empty table, or one of no
- * weight. */
-static void type_table_clone(std::vector<uint32_t> *table, uint32_t *pcount, uint32_t *emit_prob,
-                             const uint32_t *src, uint32_t count)
+/* The direction, speed and life, as the files have them (see
+ * EmitterGenerator). */
+bool EmitterGenerator::loadMotion(std::istream &in)
 {
-    *pcount = count;
-    if (src != NULL && count)
-        table->assign(src, src + (size_t)count * 2);
-    else
-        table->assign((size_t)count * 2, 0);
-
-    if (src == NULL || count == 0) {
-        for (int i = 0; i < 200; i++)
-            emit_prob[i] = 0xFFFFFFFF;
-        return;
-    }
-
-    // Pick an entry with weight at random, and take its colour weight times,
-    // until the table is full.
-    bool weighted = false;
-    for (uint32_t i = 0; i < count; i++)
-        weighted = weighted || src[i * 2 + 1] != 0;
-    if (!weighted) {
-        std::fill(emit_prob, emit_prob + 200, 0xFFFFFFFF);
-        return;
-    }
-    int out = 0;
-    while (out < 200) {
-        uint32_t idx;
-        do
-            idx = fx_index(count);
-        while (src[idx * 2 + 1] == 0);
-        for (uint32_t j = 0; j < src[idx * 2 + 1] && out < 200; j++)
-            emit_prob[out++] = src[idx * 2];
-    }
-}
-
-static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint32_t *emit_prob, std::istream &in)
-{
-    uint32_t count;
-    if (!readBytes(in, &count, 4))
+    float dirMean[3], dirVariance[3], v[4];
+    if (!read1(dirMean, 12, in) || !read1(dirVariance, 12, in) || !read1(v, 16, in)
+        || !read1(&rate_, 4, in))
         return false;
-    std::vector<uint32_t> pairs((size_t)count * 2);
-    if (!readBytes(in, pairs.data(), (size_t)count * 8))
-        return false;
-    type_table_clone(ptable, pcount, emit_prob, pairs.data(), count);
+    dirMean_ = vec3_of(dirMean);
+    dirVariance_ = vec3_of(dirVariance);
+    speedMean_ = v[0];
+    speedVariance_ = v[1];
+    lifeMean_ = v[2];
+    lifeVariance_ = v[3];
     return true;
 }
 
-/* Interleave three 500-sample columns into flPosTable (x, y, z per entry). */
-void StdGenerator::stdInterleavePos(const float *x, const float *y,
-                               const float *z)
+/* A count, then that many (colour, weight) pairs.  Only the first
+ * PARTICLE_COLOURS are used; no shipping effect has more than seven. */
+bool EmitterGenerator::loadColours(std::istream &in)
 {
-    for (int k = 0; k < 500; k++) {
-        flPosTable_[k * 3 + 0] = x[k];
-        flPosTable_[k * 3 + 1] = y[k];
-        flPosTable_[k * 3 + 2] = z[k];
-    }
+    uint32_t count;
+    if (!read1(&count, 4, in))
+        return false;
+    colours_.assign((size_t)count * 2, 0);
+    if (count && !readBytes(in, colours_.data(), (size_t)count * 8))
+        return false;
+    if (count > PARTICLE_COLOURS)
+        g_logger.write("particles: %s has %u colours; the first %u are used\n", pName_,
+                       count, PARTICLE_COLOURS);
+    return true;
 }
 
-void StdGenerator::stdBuildSphere(const float *mn, const float *mx)
-{
-    float a[3] = { mn[0], mn[1], mn[2] }, b[3] = { mx[0], mx[1], mx[2] };
-    std::copy(std::begin(a), std::end(a), flSphMin_);
-    std::copy(std::begin(b), std::end(b), flSphMax_);
-    dwEmitMode_ = 0;
-    float *col[3] = { new float[500], new float[500], new float[500] };
-    for (int i = 0; i < 3; i++)
-        gauss_fill(col[i], 500, a[i], b[i]);
-    stdInterleavePos(col[0], col[1], col[2]);
-    for (int i = 0; i < 3; i++)
-        delete[] col[i];
-    dwPosIdx_ = 0;
-}
-
-void StdGenerator::stdBuildBox(const float *mn, const float *mx)
-{
-    float a[3] = { mn[0], mn[1], mn[2] }, b[3] = { mx[0], mx[1], mx[2] };
-    std::copy(std::begin(b), std::end(b), flBoxMax_);
-    std::copy(std::begin(a), std::end(a), flBoxMin_);
-    dwEmitMode_ = 1;
-    float *col[3] = { new float[500], new float[500], new float[500] };
-    for (int i = 0; i < 3; i++)
-        uniform_fill(col[i], 500, a[i], b[i]);
-    stdInterleavePos(col[0], col[1], col[2]);
-    for (int i = 0; i < 3; i++)
-        delete[] col[i];
-    dwPosIdx_ = 0;
-}
-
-static void build_velocity_table(float *table, const float *a, const float *b,
-                                 float lmin, float lmax)
-{
-    float *col[4] = { new float[500], new float[500], new float[500], new float[500] };
-    for (int i = 0; i < 3; i++)
-        gauss_fill(col[i], 500, a[i], b[i]);
-    gauss_fill(col[3], 500, lmin, lmax);
-
-    for (int k = 0; k < 500; k++) {
-        float *v = &table[k * 3];
-        v[0] = col[0][k];
-        v[1] = col[1][k];
-        v[2] = col[2][k];
-        double x = v[0], y = v[1], z = v[2];
-        double len = sqrt(z * z + x * x + y * y);
-        if (len > 0.0) {
-            v[0] = (float)(x / len);
-            v[1] = (float)(y / len);
-            v[2] = (float)(z / len);
-        }
-        double s = col[3][k];
-        v[0] = (float)(s * v[0]);
-        v[1] = (float)(s * v[1]);
-        v[2] = (float)(s * v[2]);
-    }
-    for (int i = 0; i < 4; i++)
-        delete[] col[i];
-}
-
-void StdGenerator::stdBuildVelocity(const float *vmin, const float *vmax,
-                               float lmin, float lmax)
-{
-    float a[3] = { vmin[0], vmin[1], vmin[2] }, b[3] = { vmax[0], vmax[1], vmax[2] };
-    build_velocity_table(flVelTable_, a, b, lmin, lmax);
-    dwVelIdx_ = 0;
-    std::copy(std::begin(a), std::end(a), flVelMin_);
-    std::copy(std::begin(b), std::end(b), flVelMax_);
-    flLifeMin_ = lmin;
-    flLifeMax_ = lmax;
-}
-
-void StdGenerator::stdBuildRate(float lo, float hi)
-{
-    flEmitRateMin_ = lo;
-    flEmitRateMax_ = hi;
-    gauss_fill(pLifeTable_, 100, lo, hi);
-}
-
-/* Copies every field but the type table, which is cloned instead — cloning
- * redraws the colours, so a copy's differ from its source's. */
 int StdGenerator::copyFrom(const Generator *gsrc)
 {
     if (!Generator::copyFrom(gsrc))
         return false;
-    const StdGenerator *src = static_cast<const StdGenerator *>(gsrc);
-    *this = *src;
+    *this = *static_cast<const StdGenerator *>(gsrc);
     pendingCount_ = 0;
-    type_table_clone(&typeTable_, &dwTypeTableCount_, pEmitProb_,
-                     src->typeTable_.data(), src->dwTypeTableCount_);
     return true;
 }
 
-/* Builds the sphere or box position table (whichever dwEmitMode selects), then
- * always rebuilds the velocity and rate tables. */
 int StdGenerator::load(std::istream &in)
 {
-    if (!read1(&dwEmitMode_, 4, in))      return false;
-    if (!read1(flBoxMax_, 12, in))        return false;
-    if (!read1(flBoxMin_, 12, in))        return false;
-    if (!read1(flSphMin_, 12, in))        return false;
-    if (!read1(flSphMax_, 12, in))        return false;
-    if (!read1(flVelMin_, 12, in))        return false;
-    if (!read1(flVelMax_, 12, in))        return false;
-    if (!read1(&flLifeMin_, 4, in))       return false;
-    if (!read1(&flLifeMax_, 4, in))       return false;
-    if (!read1(&flEmitRateMin_, 4, in))   return false;
-    if (!read1(&flEmitRateMax_, 4, in))   return false;
-    if (!read1(&flDtScale_, 4, in))       return false;
-    if (dwEmitMode_ == 0)
-        stdBuildSphere(flSphMin_, flSphMax_);
-    if (dwEmitMode_ == 1)
-        stdBuildBox(flBoxMin_, flBoxMax_);
-    stdBuildVelocity(flVelMin_, flVelMax_,
-                       flLifeMin_, flLifeMax_);
-    stdBuildRate(flEmitRateMin_, flEmitRateMax_);
-    return type_table_load(&typeTable_, &dwTypeTableCount_, pEmitProb_, in);
+    float box[6], pos[6];
+    if (!read1(&emitMode_, 4, in) || !read1(box, 24, in) || !read1(pos, 24, in))
+        return false;
+    boxMax_ = vec3_of(box);
+    boxMin_ = vec3_of(box + 3);
+    posMean_ = vec3_of(pos);
+    posVariance_ = vec3_of(pos + 3);
+    return loadMotion(in) && loadColours(in);
 }
 
-/* PRESERVED: copies flPosOffset but not flVelOffset — a copied generator keeps
- * its own velocity offset regardless of the source's. */
 int XStdGenerator::copyFrom(const Generator *gsrc)
 {
     if (!StdGenerator::copyFrom(gsrc))
         return false;
     const XStdGenerator *src = static_cast<const XStdGenerator *>(gsrc);
     std::copy(std::begin(src->flPosOffset_), std::end(src->flPosOffset_), flPosOffset_);
+    std::copy(std::begin(src->flVelOffset_), std::end(src->flVelOffset_), flVelOffset_);
     return true;
 }
 
@@ -633,66 +500,22 @@ void CylinderGenerator::setPosition(float x, float y, float z)
     flOrigin_[2] = z;
 }
 
-/* PRESERVED: drops the type table by zeroing the pointer and count without
- * freeing it first — a leak on every reload, papered over because Load's own
- * type-table read immediately replaces both. */
-void CylinderGenerator::cylBuildVelocity(const float *vmin, const float *vmax,
-                               float lmin, float lmax)
-{
-    float a[3] = { vmin[0], vmin[1], vmin[2] }, b[3] = { vmax[0], vmax[1], vmax[2] };
-    build_velocity_table(flVelTable_, a, b, lmin, lmax);
-    dwVelIdx_ = 0;
-    std::copy(std::begin(a), std::end(a), flVelMin_);
-    std::copy(std::begin(b), std::end(b), flVelMax_);
-    typeTable_.clear();
-    dwTypeTableCount_ = 0;
-    flLifeMin_ = lmin;
-    flLifeMax_ = lmax;
-}
-
-/* Std's rate-table builder (StdGenerator::stdBuildRate), run on Cylinder's
- * own fields. */
-void CylinderGenerator::cylBuildRate(float lo, float hi)
-{
-    flEmitRateMin_ = lo;
-    flEmitRateMax_ = hi;
-    gauss_fill(pLifeTable_, 100, lo, hi);
-}
-
 int CylinderGenerator::copyFrom(const Generator *gsrc)
 {
     if (!Generator::copyFrom(gsrc))
         return false;
-    const CylinderGenerator *src = static_cast<const CylinderGenerator *>(gsrc);
-    *this = *src;
+    *this = *static_cast<const CylinderGenerator *>(gsrc);
     pendingCount_ = 0;
-    type_table_clone(&this->typeTable_, &this->dwTypeTableCount_, this->pEmitProb_,
-                     src->typeTable_.data(), src->dwTypeTableCount_);
     return true;
 }
 
-/* Reads its own direction back out to rebuild the matrix via
- * cylSetDirection.  The position table (the unit circle) is the constructor's
- * and is never rebuilt here. */
 int CylinderGenerator::load(std::istream &in)
 {
     if (!read1(flOrigin_, 12, in))        return false;
     if (!read1(&flScale_, 4, in))         return false;
     if (!read1(flDirection_, 12, in))     return false;
-    if (!read1(flVelMin_, 12, in))        return false;
-    if (!read1(flVelMax_, 12, in))        return false;
-    if (!read1(&flLifeMin_, 4, in))       return false;
-    if (!read1(&flLifeMax_, 4, in))       return false;
-    if (!read1(&flEmitRateMin_, 4, in))   return false;
-    if (!read1(&flEmitRateMax_, 4, in))   return false;
-    if (!read1(&flDtScale_, 4, in))       return false;
-    setDirection(flDirection_[0], flDirection_[1],
-                      flDirection_[2]);
-    cylBuildVelocity(flVelMin_, flVelMax_,
-                       flLifeMin_, flLifeMax_);
-    cylBuildRate(flEmitRateMin_, flEmitRateMax_);
-    return type_table_load(&typeTable_, &dwTypeTableCount_,
-                           pEmitProb_, in);
+    setDirection(flDirection_[0], flDirection_[1], flDirection_[2]);
+    return loadMotion(in) && loadColours(in);
 }
 
 Generator::Generator()
@@ -703,8 +526,6 @@ Generator::Generator()
 StdGenerator::StdGenerator()
 {
     pName_ = (char *)"StdGenerator";
-    for (int i = 0; i < 200; i++)
-        pEmitProb_[i] = 0xFFFFFFFF;
 }
 
 XStdGenerator::XStdGenerator()
@@ -712,9 +533,7 @@ XStdGenerator::XStdGenerator()
     pName_ = (char *)"XStdGenerator";
 }
 
-/* The position table is the unit circle, at 500 random angles.
- *
- * PRESERVED: calls SetDirection(0,1,0) to set flDirection, then immediately
+/* PRESERVED: calls SetDirection(0,1,0) to set flDirection, then immediately
  * overwrites the matrix it built with plain identity — so flDirection reads
  * (0,1,0) but flMatrix does not reflect it until SetDirection is called again.
  */
@@ -724,15 +543,6 @@ CylinderGenerator::CylinderGenerator()
     setDirection(0.0f, 1.0f, 0.0f);
     static const float IDENTITY[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 };
     std::copy(std::begin(IDENTITY), std::end(IDENTITY), flMatrix_);
-    for (int i = 0; i < 200; i++)
-        pEmitProb_[i] = 0xFFFFFFFF;
-    float *angle = new float[500];
-    uniform_fill(angle, 500, 0.0f, 6.2831855f);
-    for (int k = 0; k < 500; k++) {
-        flPosTable_[k * 3 + 0] = (float)sin((double)angle[k]);
-        flPosTable_[k * 3 + 2] = (float)cos((double)angle[k]);
-    }
-    delete[] angle;
 }
 
 template <typename T>

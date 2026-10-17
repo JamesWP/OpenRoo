@@ -2,12 +2,12 @@
  * ParticleBuffer holds a fixed number of particle slots on the device, and
  * StepParticles advances every slot at once -- emitting into dead slots,
  * moving live ones through a force field, fading and retiring them -- with
- * nothing read back.  DrawParticles then draws the live ones as quads.
+ * nothing read back.  DrawParticles then draws the live ones as quads, at any
+ * number of placements in one draw.
  *
- * Emission samples precomputed tables (ParticleTables) rather than a random
- * source: the emitter builds them once on the CPU, and a step names where in
- * them its first new particle reads; the k-th new particle reads k entries
- * further on (k * velStride for velocity), wrapping at each table's end. */
+ * Nothing about a new particle is decided on the CPU: a step carries the
+ * distributions it is drawn from (ParticleEmit), and the device draws from
+ * them with random numbers of its own. */
 
 #pragma once
 #include <stdint.h>
@@ -19,28 +19,44 @@ struct ParticleBuffer {
     virtual ~ParticleBuffer() {}
 };
 
-/* What new particles sample.  Each table is `count` entries; pos and vel are
- * xyz triples, colour is 0xAARRGGBB. */
-struct ParticleTables {
-    const float    *pos = nullptr;    uint32_t posCount = 0;
-    const float    *vel = nullptr;    uint32_t velCount = 0;
-    const float    *life = nullptr;   uint32_t lifeCount = 0;  // seconds
-    const uint32_t *colour = nullptr; uint32_t colourCount = 0;
-};
+/* Where new particles start: per axis from a normal distribution, or
+ * uniform in a box, or on the unit circle in the XZ plane. */
+enum class ParticleSpawn { Gauss, Box, Circle };
+
+/* Up to this many colours to choose new particles' from. */
+constexpr unsigned PARTICLE_COLOURS = 8;
 
 /* One step's emission: `count` particles into the slots from `firstSlot`
- * (wrapping), each into its slot only if that slot is dead.  A new particle's
- * position is (table pos * posScale) * posMatrix + posOffset, its velocity
- * table vel + velOffset. */
+ * (wrapping), each into its slot only if that slot is dead.  Every value is
+ * drawn afresh for each particle, on the device, from `seed`.
+ *
+ * A "gauss(mean, variance)" draw is normal about mean with that variance, cut
+ * off at about 2.45 standard deviations; a variance that is not positive
+ * gives the mean.  The new particle's
+ *   position  the spawn's draw * posScale, through posMatrix, + posOffset
+ *             (Gauss: gauss(posA, posB) per axis; Box: uniform between posA
+ *             and posB per axis; Circle: a uniform angle round the circle);
+ *   velocity  gauss(dirMean, dirVariance) per axis, made unit length, times
+ *             gauss(speedMean, speedVariance), + velOffset;
+ *   life      gauss(lifeMean, lifeVariance) seconds;
+ *   colour    one of `colours`, picked in proportion to its weight; white if
+ *             there are none. */
 struct ParticleEmit {
     uint32_t count = 0;
     uint32_t firstSlot = 0;
-    uint32_t pos = 0, vel = 0, life = 0, colour = 0;  // table cursors of the first one
-    uint32_t velStride = 1;
+    uint32_t seed = 0;
+    ParticleSpawn spawn = ParticleSpawn::Gauss;
+    Vec3     posA = { 0, 0, 0 }, posB = { 0, 0, 0 };
     float    posScale = 1.0f;
     Mat4     posMatrix = { { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 } };
     Vec3     posOffset = { 0, 0, 0 };
+    Vec3     dirMean = { 0, 0, 0 }, dirVariance = { 0, 0, 0 };
+    float    speedMean = 0.0f, speedVariance = 0.0f;
     Vec3     velOffset = { 0, 0, 0 };
+    float    lifeMean = 0.0f, lifeVariance = 0.0f;
+    uint32_t colourCount = 0;
+    uint32_t colours[PARTICLE_COLOURS] = {};  // 0xAARRGGBB
+    float    weights[PARTICLE_COLOURS] = {};
 };
 
 enum class ParticleFieldKind {
@@ -70,14 +86,32 @@ struct ParticleStep {
     ParticleField field;
 };
 
-/* How DrawParticles draws: every live particle as a quad of six corners
- * (two triangles) about its position, in the world transform, lit as the
- * vertices of VertexFormat::Lit are (not at all).  The corners come from
- * `shapes`, shapeCount entries of six xyz offsets; a particle uses entry 0, or
- * with perParticleShape the entry its slot was made with. */
+/* A tumbling particle's shape: a quad's six corners, which turn about
+ * `axis` (unit length) at `rate` radians a second. */
+struct ParticleShape {
+    float corners[6][3] = {};
+    Vec3  axis = { 0, 1, 0 };
+    float rate = 0.0f;
+};
+
+/* One placement of a buffer's particles: they are drawn through `world`, and
+ * each quad's corners through `corners` first (row vectors, as Mat4 is). */
+struct ParticleInstance {
+    Mat4 world;
+    Mat4 corners;
+};
+
+/* How DrawParticles draws: every live particle as a quad of six corners (two
+ * triangles) about its position, lit as the vertices of VertexFormat::Lit are
+ * (not at all), with the corners' texture coordinates `uv`.
+ *
+ * A billboard's quad is `size` across each way, square to `facing`.  A
+ * tumbling particle's is the ParticleShape its slot was made with
+ * (SetParticleShapes), turned for `time` seconds; it is two-sided. */
 struct ParticleLook {
-    const float (*shapes)[6][3] = nullptr;
-    uint32_t     shapeCount = 0;
-    bool         perParticleShape = false;
-    float        uv[6][2] = {};
+    bool  tumbling = false;
+    Vec3  facing = { 0, 0, 1 };
+    float size = 1.0f;
+    float time = 0.0f;
+    float uv[6][2] = {};
 };

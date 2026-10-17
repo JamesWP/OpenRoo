@@ -201,8 +201,8 @@ static GLuint link(GLuint vs, GLuint fs, const char *const *varyings, int nVaryi
     }
     gl.UseProgram(p);
     gl.Uniform1i(gl.GetUniformLocation(p, "uTex"), 0);
-    gl.Uniform1i(gl.GetUniformLocation(p, "uTables"), 1);
-    gl.Uniform1i(gl.GetUniformLocation(p, "uShapes"), 1);
+    gl.Uniform1i(gl.GetUniformLocation(p, "uSlots"), 1);
+    gl.Uniform1i(gl.GetUniformLocation(p, "uShapes"), 2);
     return p;
 }
 
@@ -216,18 +216,17 @@ GLuint gl_build_program(char *error, size_t errorSize)
 /* ── Particles ──
  *
  * Both stay inside what OpenGL ES 3.0 has as well: transform feedback,
- * texelFetch, gl_VertexID, instancing and integer uniforms, with no
- * extension.  Each slot is three vec4s (see GLParticleBuffer): position and
+ * texelFetch, gl_VertexID, instancing, integer and unsigned arithmetic, with
+ * no extension.  Each slot is three vec4s (see GLParticleBuffer): position and
  * life (dead below zero), velocity and shape index, and colour in 0..255.
  *
  * The step runs one vertex per slot with the rasteriser off, and writes the
  * slot's next state.  A slot in this step's emission range that is dead takes
- * a new particle from the tables; then every live slot ages, moves through
- * the field, dies or fades. */
+ * a new particle, drawn from a hash of the slot and the step's seed; then
+ * every live slot ages, moves through the field, dies or fades. */
 static const char *kParticleStep = R"GLSL(
 precision highp float;
 precision highp int;
-precision highp sampler2D;
 
 layout(location = 0) in vec4 aPosLife;
 layout(location = 1) in vec4 aVel;
@@ -237,15 +236,22 @@ out vec4 oPosLife;
 out vec4 oVel;
 out vec4 oColor;
 
-uniform sampler2D uTables;  // rows: pos, vel, life, colour
-uniform ivec4 uCounts;      // the four tables' lengths
-uniform ivec4 uCursor;      // where the first new particle reads each
-uniform ivec4 uEmit;        // count, first slot, slots, velocity stride
-uniform float uDt;
+uniform ivec4 uEmit;        // count, first slot, slots, seed
+uniform int   uSpawn;       // 0 gauss, 1 box, 2 circle
+uniform vec3  uPosA;
+uniform vec3  uPosB;
 uniform float uPosScale;
 uniform mat4  uPosMatrix;
 uniform vec3  uPosOffset;
+uniform vec3  uDirMean;
+uniform vec3  uDirVariance;
+uniform vec2  uSpeed;       // mean, variance
 uniform vec3  uVelOffset;
+uniform vec2  uLife;        // mean, variance
+uniform int   uColourCount;
+uniform vec4  uColours[8];  // 0..255
+uniform float uWeights[8];
+uniform float uDt;
 uniform int   uField;       // 0 none, 1 gravity, 2 magnet
 uniform vec3  uAccel;
 uniform vec3  uClipOn;
@@ -257,9 +263,55 @@ uniform vec3  uHalfExtent;
 uniform vec3  uFadeRGB;
 uniform float uFadeStep;
 
-vec4 table(int row, int cursor, int k, int stride, int count)
+uint hash(uint v)
 {
-    return texelFetch(uTables, ivec2((cursor + k * stride) % count, row), 0);
+    uint s = v * 747796405u + 2891336453u;
+    uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
+    return (w >> 22u) ^ w;
+}
+
+uint g_rng;
+
+float uniform01()
+{
+    g_rng = hash(g_rng);
+    return float(g_rng >> 8u) * (1.0 / 16777216.0);
+}
+
+float gauss(float mean, float variance)
+{
+    if (!(variance > 0.0))
+        return mean;
+    float z = 0.0;
+    for (int i = 0; i < 8; i++) {
+        float r = sqrt(-2.0 * log(1.0 - uniform01()));
+        z = r * cos(6.2831853 * uniform01());
+        if (abs(z) <= 2.45)
+            break;
+    }
+    return mean + clamp(z, -2.45, 2.45) * sqrt(variance);
+}
+
+vec3 gauss3(vec3 mean, vec3 variance)
+{
+    return vec3(gauss(mean.x, variance.x), gauss(mean.y, variance.y),
+                gauss(mean.z, variance.z));
+}
+
+vec4 colour()
+{
+    float total = 0.0;
+    for (int i = 0; i < uColourCount; i++)
+        total += uWeights[i];
+    if (uColourCount == 0 || !(total > 0.0))
+        return vec4(255.0);
+    float pick = uniform01() * total;
+    for (int i = 0; i < uColourCount; i++) {
+        pick -= uWeights[i];
+        if (pick < 0.0)
+            return uColours[i];
+    }
+    return uColours[uColourCount - 1];
 }
 
 void main()
@@ -272,12 +324,25 @@ void main()
     if (k < 0)
         k += uEmit.z;
     if (k < uEmit.x && pl.w < 0.0) {
-        vec4 p = uPosMatrix * vec4(table(0, uCursor.x, k, 1, uCounts.x).xyz * uPosScale, 1.0);
-        if (p.w != 0.0)
-            p.xyz /= p.w;
-        pl = vec4(p.xyz + uPosOffset, table(2, uCursor.z, k, 1, uCounts.z).x);
-        vel = table(1, uCursor.y, k, uEmit.w, uCounts.y).xyz + uVelOffset;
-        col = table(3, uCursor.w, k, 1, uCounts.w);
+        g_rng = hash(uint(gl_VertexID) ^ hash(uint(uEmit.w)));
+        vec3 p;
+        if (uSpawn == 1) {
+            p = mix(uPosA, uPosB, vec3(uniform01(), uniform01(), uniform01()));
+        } else if (uSpawn == 2) {
+            float a = 6.2831853 * uniform01();
+            p = vec3(sin(a), 0.0, cos(a));
+        } else {
+            p = gauss3(uPosA, uPosB);
+        }
+        vec4 t = uPosMatrix * vec4(p * uPosScale, 1.0);
+        if (t.w != 0.0)
+            t.xyz /= t.w;
+        vec3 dir = gauss3(uDirMean, uDirVariance);
+        if (length(dir) > 0.0)
+            dir = normalize(dir);
+        vel = dir * gauss(uSpeed.x, uSpeed.y) + uVelOffset;
+        pl = vec4(t.xyz + uPosOffset, gauss(uLife.x, uLife.y));
+        col = colour();
     }
 
     if (uField != 0 && pl.w >= 0.0) {
@@ -320,42 +385,94 @@ out vec4 oColor;
 void main() { oColor = vec4(0.0); }
 )GLSL";
 
-/* The draw: one instance per slot, six vertices each, which the main
- * program's fragment shader finishes as it does the Lit vertices the
- * particles were once drawn as.  A dead slot's vertices are put outside the
- * clip volume. */
+/* The draw: one instance per placement, six vertices per slot.  The slots
+ * are read from the texture the step copies them into (PARTICLE_ROW_SLOTS slots
+ * of three texels to a row), the placement's matrices from instanced
+ * attributes; the main program's fragment shader finishes it.  A dead slot's
+ * vertices are put outside the clip volume. */
 static const char *kParticleDraw = R"GLSL(
 precision highp float;
 precision highp int;
 precision highp sampler2D;
 
-layout(location = 0) in vec4 aPosLife;
-layout(location = 1) in vec4 aVel;      // .w: the slot's shape
-layout(location = 2) in vec4 aColor;
+layout(location = 3) in vec4 aWorld0;   // the placement's world, by rows
+layout(location = 4) in vec4 aWorld1;
+layout(location = 5) in vec4 aWorld2;
+layout(location = 6) in vec4 aWorld3;
+layout(location = 7) in vec4 aCorner0;  // and its corner transform
+layout(location = 8) in vec4 aCorner1;
+layout(location = 9) in vec4 aCorner2;
+layout(location = 10) in vec4 aCorner3;
 
-uniform sampler2D uShapes;   // six corners per row
-uniform int  uShapeCount;
-uniform int  uPerParticle;
-uniform vec2 uCornerUV[6];
+uniform sampler2D uSlots;
+uniform sampler2D uShapes;   // seven texels a shape: six corners, axis and rate
+uniform int   uShapeCount;
+uniform int   uRowSlots;
+uniform int   uTumbling;
+uniform vec3  uFacing;
+uniform float uSize;
+uniform float uTime;
+uniform vec2  uCornerUV[6];
 
 out vec4  vColor;
 out vec3  vSpecular;
 out vec2  vUV;
 out float vFogDepth;
 
+/* The six corners of a quad `size` across, square to `facing`. */
+vec3 billboard(int corner)
+{
+    vec3 basis = uFacing == vec3(1.0, 0.0, 0.0) ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 d = normalize(uFacing);
+    vec3 e2 = cross(d, basis);
+    if (length(e2) < 1e-6)
+        e2 = cross(d, vec3(0.0, 1.0, 0.0));
+    vec3 e1 = cross(d, e2);
+    e1 *= uSize / length(e1);
+    e2 *= uSize / length(e2);
+    vec3 c = corner == 1 || corner == 4 ? e1
+           : corner == 2 || corner == 3 ? e2
+           : corner == 5 ? e1 + e2 : vec3(0.0);
+    return c - (e1 + e2) * 0.5;
+}
+
+/* Corner `corner` of shape `shape`, turned for uTime. */
+vec3 tumbled(int shape, int corner)
+{
+    vec3 v = texelFetch(uShapes, ivec2(shape * 7 + corner, 0), 0).xyz;
+    vec4 spin = texelFetch(uShapes, ivec2(shape * 7 + 6, 0), 0);
+    float a = spin.w * uTime;
+    vec3 k = spin.xyz;
+    return v * cos(a) + cross(k, v) * sin(a) + k * dot(k, v) * (1.0 - cos(a));
+}
+
 void main()
 {
-    vColor = aColor / 255.0;
+    int slot = gl_VertexID / 6;
+    int corner = gl_VertexID - slot * 6;
+    ivec2 at = ivec2((slot % uRowSlots) * 3, slot / uRowSlots);
+    vec4 posLife = texelFetch(uSlots, at, 0);
+    vec4 vel = texelFetch(uSlots, at + ivec2(1, 0), 0);
+    vec4 color = texelFetch(uSlots, at + ivec2(2, 0), 0);
+
+    vColor = color / 255.0;
     vSpecular = vec3(0.0);
-    vUV = uCornerUV[gl_VertexID] * uUV.xy + uUV.zw;
+    vUV = uCornerUV[corner] * uUV.xy + uUV.zw;
     vFogDepth = 0.0;
-    if (aPosLife.w < 0.0) {
+    if (posLife.w < 0.0) {
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
         return;
     }
-    int shape = uPerParticle != 0 ? clamp(int(aVel.w), 0, uShapeCount - 1) : 0;
-    vec3 corner = texelFetch(uShapes, ivec2(gl_VertexID, shape), 0).xyz;
-    vec4 view = uView * (uWorld * vec4(aPosLife.xyz + corner, 1.0));
+
+    vec3 offset;
+    if (uTumbling != 0) {
+        offset = tumbled(clamp(int(vel.w), 0, uShapeCount - 1), corner);
+    } else {
+        vec4 c = mat4(aCorner0, aCorner1, aCorner2, aCorner3) * vec4(billboard(corner), 1.0);
+        offset = c.w != 0.0 ? c.xyz / c.w : c.xyz;
+    }
+    mat4 world = mat4(aWorld0, aWorld1, aWorld2, aWorld3);
+    vec4 view = uView * (world * vec4(posLife.xyz + offset, 1.0));
     gl_Position = uProj * view;
     gl_Position.z = gl_Position.z * 2.0 - gl_Position.w;
     gl_Position.xy += uTarget.xy * gl_Position.w;
