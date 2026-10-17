@@ -297,6 +297,8 @@ void LevelPlacements::bombables(draw::Frame &f, const LevelMap *map)
         const bool fire = t->blastTime() != c.firedBlast;
         c.firedBlast = t->blastTime();
         draw::fireEffects(f, THEME_OBJ_BOMBABLE_EXPLODING, fire);
+        if (fire)
+            draw::explode(f, THEME_OBJ_BOMBABLE_EXPLODING);
         draw::objects(f, THEME_OBJ_BOMBABLE_EXPLODING, &in);
     }
 }

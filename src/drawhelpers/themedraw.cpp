@@ -509,8 +509,16 @@ void fireEffects(Frame &f, ThemeObjectType look, bool fire)
             else
                 ps->disableRenderNode();
         }
-        if (fire && rec->explodes() != 0)
-            rec->explodeDebris().begin(rec->mesh(), 0, rec->explodeDir());
+    }
+}
+
+void explode(Frame &f, ThemeObjectType look)
+{
+    ThemeObjectTypeSlot *slot = f.theme->slot(look);
+    for (uint32_t r = 0; r < slot->instanceCount(); r++) {
+        ThemeLevelObject *rec = &slot->records()[r];
+        if (rec->explodes() != 0)
+            rec->explodeDebris().begin(rec->explodeDir());
     }
 }
 

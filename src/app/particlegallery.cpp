@@ -215,6 +215,8 @@ public:
             }
             case Play::Fire:
                 draw::fireEffects(f, look, fmod(t, kFireEvery) < kFireFor);
+                if (fmod(t, kFireEvery) < elapsed)
+                    draw::explode(f, look);
                 draw::particles(f, look, &in);
                 break;
             }

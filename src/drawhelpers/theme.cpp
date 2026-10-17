@@ -93,7 +93,7 @@ static void dump_record(const char *slotName, int i, const ThemeLevelObject &r)
         g_logger.write("THEME_STRUCT:   %s[%d] explode=%lu dir=(%g,%g,%g) verts=%d scaled=%g%s\n",
                   slotName, i, (unsigned long)r.explodes(),
                   r.explodeDir()[0], r.explodeDir()[1], r.explodeDir()[2],
-                  r.explodeDebris().vertexCount(), r.explodeDebris().explodeScaledCount(),
+                  r.explodeDebris().vertexCount(), r.explodeDebris().dropRate(),
                   (r.mesh() != NULL && r.explodeDebris().vertexCount() > 0) ? "" : "  SUSPICIOUS explode");
     for (uint32_t k = 0; k < r.subObjectCount() && k < 8; k++) {
         const SceneSubObject &so = r.subObjects()[k];
@@ -674,9 +674,7 @@ void ThemeParser::explode(ThemeObjectTypeSlot *slot, ThemeLevelObject *rec)
     if (ntok <= 6 || slot == NULL || rec->pMesh_ == NULL)
         return;
     rec->bExplode_ = 1;
-    rec->explode_.allocateExplodeBuffers(rec->pMesh_);
-    Gen_FillGaussianField(&rec->explode_, atof_f(tok[1]), atof_f(tok[2]));
-    rec->explode_.storeExplodeScaledCount(atof_f(tok[3]));
+    rec->explode_.setup(rec->pMesh_, atof_f(tok[1]), atof_f(tok[2]), atof_f(tok[3]));
 
     const double a = (double)-1.5707963705062866f;
     const double c = cos(a), s = sin(a);

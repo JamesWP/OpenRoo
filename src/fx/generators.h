@@ -14,7 +14,6 @@
 struct ParticleEmit;
 struct ParticleField;
  
-#include "explodedebris.h"
 
 /* Base of every emitter.  pName identifies the concrete class for Load
  * and for copyFrom's type check, and dwEnabled gates whether it emits at
@@ -223,8 +222,4 @@ private:
     float     flMatrix_[16] = {};  // rebuilt whenever SetDirection is called
 };
 
-/* Gen_FillGaussianField writes into an ExplodeDebris (explodedebris.h); its
- * layout and the offsets this relies on are asserted there. */
-  void  
-Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma);
 

@@ -478,6 +478,7 @@ void GLRenderDevice::Release()
         gl.DeleteVertexArrays(1, &n->vao);
         gl.DeleteProgram(n->program);
         gl_release_particle_objects(n);
+        gl_release_shard_objects(n);
         n->window->destroyGLContext();
     }
     *n = Native();

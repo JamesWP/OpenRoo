@@ -101,9 +101,11 @@ void shadows(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n = 
 /* A look's particle-system records at each instance. */
 void particles(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n = 1);
 
-/* A dying look's effects: while fire is set its particle systems emit, and
- * the frame it is set its exploding records start their debris. */
+/* A dying look's particle systems: they emit while fire is set. */
 void fireEffects(Frame &f, ThemeObjectType look, bool fire);
+
+/* A dying look's exploding records start their debris again. */
+void explode(Frame &f, ThemeObjectType look);
 
 /* Bursts: one-shot particle effects that play at a point for a second.  A
  * look whose first record is a particle system holds a burst per system;
