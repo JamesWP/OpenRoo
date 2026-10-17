@@ -2,6 +2,7 @@ add_library(app OBJECT
     launcher.cpp
     launcherdialogs.cpp
     main.cpp
+    particlegallery.cpp
     process.cpp)
 target_include_directories(app PUBLIC .)
 target_link_libraries(app

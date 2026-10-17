@@ -282,3 +282,18 @@ It pins two things nothing else does:
   exercises.
 
 Assert on the `complete` event for the level — see above.
+
+## The particle gallery -- every particle effect at once
+
+```bash
+KAROO_PARTICLE_GALLERY=1 bash launch.sh --skip-launcher       # from the first theme
+KAROO_PARTICLE_GALLERY=Space bash launch.sh --skip-launcher   # from that one
+```
+
+A test scene, not a level (`src/app/particlegallery.cpp`): one theme at a
+time, every look with a particle system on a floor tile of its own, labelled
+with its theme-file keyword and drawn through the same theme draws a level
+uses. Bursts and dying effects fire again every few seconds and the speed
+trail runs in a circle. Left/Right change theme, Up/Down zoom, Space stops the
+camera's orbit, Escape quits. Use it to check a change to the particles by eye;
+`KAROO_SCREENSHOT` works here too.

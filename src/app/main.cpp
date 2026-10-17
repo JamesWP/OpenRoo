@@ -49,6 +49,7 @@
 #include "keypress.h"
 #include "levelselect.h"
 #include "botrun.h"
+#include "particlegallery.h"
 
 
 /* The render state (renderer.h).  app owns it and passes it down; nothing
@@ -295,6 +296,15 @@ int Main_WinMain(const char *lpCmdLine)
     if (!Render_ConfigureRenderState(&s_renderer, game->world(), game->camera()->pose(), kGameDir))
         windev::quit(1);
     Menu_BuildMenuGeometry(&s_menuArt, s_renderer.device, kGameDir);
+
+    if (ParticleGallery_Requested() && !d3d->headless()) {
+        const int code = ParticleGallery_Run(&s_renderer);
+        s_renderer.themeBlock.release(&s_renderer.textures, &s_renderer.models);
+        s_renderer.device = NULL;
+        delete_game(Game::instance());
+        device.reset();
+        return code;
+    }
 
     // KAROO_START_LEVEL: straight into a fresh game at that level, past the
     // menus, as the bot harness runs one level at a time.
