@@ -1,5 +1,5 @@
 /* The OpenGL backend's one public function: makes a RenderDevice that draws
- * with OpenGL 3.3 core profile.  Nothing else of src/gl/ is for use outside
+ * with OpenGL ES 3.2.  Nothing else of src/gl/ is for use outside
  * it; everything after this goes through renderdevice.h. */
 
 #pragma once

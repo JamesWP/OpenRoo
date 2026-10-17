@@ -2,7 +2,7 @@
  * talks to the rendering backend.  One instance exists; app owns it and
  * Renderer::device points at it.
  *
- * It is a pure interface.  The backend -- OpenGL 3.3, core profile, drawing
+ * It is a pure interface.  The backend -- OpenGL ES 3.2, drawing
  * everything with one shader program -- lives in src/gl/, which implements it
  * and exposes one function that makes a device (gl/glrenderdevice.h); nothing
  * outside src/gl/ includes the backend's headers (cmake/CheckNativeGL.cmake

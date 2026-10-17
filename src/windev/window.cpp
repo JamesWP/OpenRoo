@@ -183,7 +183,7 @@ bool Window::createGLContext(const GLContextConfig &c)
         return false;
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, c.major);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, c.minor);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     set_framebuffer_attributes(c.depthBits, c.stencilBits);
     SDL_GLContext ctx = SDL_GL_CreateContext(g_sdlWindow);
     if (!ctx) {

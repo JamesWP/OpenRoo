@@ -1,4 +1,4 @@
-/* The OpenGL entry points the backend uses: a core-profile 3.3 subset, loaded
+/* The OpenGL ES entry points the backend uses: an OpenGL ES 3.2 subset, loaded
  * by name through the window (windev::Window::glProcAddress) once the context
  * exists, so nothing links against the system's OpenGL library.  Only the
  * gl group includes this.
@@ -12,7 +12,10 @@
 #ifndef OPENROO_GL_BACKEND
 #error "Only the gl group's own sources may include this header; use glrenderdevice.h"
 #endif
-#include <GL/glcorearb.h>
+/* The Khronos header, vendored under khronos/ so every platform builds
+ * against the same one; no prototypes, only the PFNGL...PROC types. */
+#define GL_GLES_PROTOTYPES 0
+#include <GLES3/gl32.h>
 
 namespace windev { class Window; }
 
@@ -20,7 +23,7 @@ namespace windev { class Window; }
     X(Enable, ENABLE) X(Disable, DISABLE) X(GetString, GETSTRING) \
     X(GetIntegerv, GETINTEGERV) X(GetError, GETERROR) \
     X(Viewport, VIEWPORT) X(Clear, CLEAR) X(ClearColor, CLEARCOLOR) \
-    X(ClearDepth, CLEARDEPTH) X(ClearStencil, CLEARSTENCIL) \
+    X(ClearDepthf, CLEARDEPTHF) X(ClearStencil, CLEARSTENCIL) \
     X(ColorMask, COLORMASK) X(DepthMask, DEPTHMASK) X(DepthFunc, DEPTHFUNC) \
     X(StencilFunc, STENCILFUNC) X(StencilOp, STENCILOP) X(StencilMask, STENCILMASK) \
     X(BlendFunc, BLENDFUNC) X(CullFace, CULLFACE) X(FrontFace, FRONTFACE) \
@@ -35,7 +38,7 @@ namespace windev { class Window; }
     X(GenBuffers, GENBUFFERS) X(DeleteBuffers, DELETEBUFFERS) \
     X(BindBuffer, BINDBUFFER) X(BindBufferBase, BINDBUFFERBASE) \
     X(BufferData, BUFFERDATA) X(BufferSubData, BUFFERSUBDATA) \
-    X(GetBufferSubData, GETBUFFERSUBDATA) \
+    X(MapBufferRange, MAPBUFFERRANGE) X(UnmapBuffer, UNMAPBUFFER) \
     X(GenVertexArrays, GENVERTEXARRAYS) X(DeleteVertexArrays, DELETEVERTEXARRAYS) \
     X(BindVertexArray, BINDVERTEXARRAY) \
     X(EnableVertexAttribArray, ENABLEVERTEXATTRIBARRAY) \

@@ -62,8 +62,8 @@ out float vFogDepth;
 
 void main()
 {
-    vec4 color = aColor;
-    vec3 specular = aSpecular.rgb * uFlags.z;
+    vec4 color = aColor.bgra;  // D3DCOLOR bytes, read as RGBA
+    vec3 specular = aSpecular.bgr * uFlags.z;
     vec2 uv = aUV;
     float fogDepth;
 
@@ -100,6 +100,7 @@ void main()
         }
     }
     gl_Position.xy += uTarget.xy * gl_Position.w;
+    gl_PointSize = 1.0;
 
     vColor = color;
     vSpecular = specular;
@@ -146,7 +147,7 @@ void main()
 
 static GLuint compile(GLenum type, const char *body, char *error, size_t errorSize)
 {
-    const char *sources[3] = { "#version 330 core\n", kBlocks, body };
+    const char *sources[3] = { "#version 320 es\nprecision highp float;\nprecision highp int;\n", kBlocks, body };
     GLuint s = gl.CreateShader(type);
     gl.ShaderSource(s, 3, sources, NULL);
     gl.CompileShader(s);

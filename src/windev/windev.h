@@ -41,7 +41,7 @@ public:
     virtual void onDestroyed() {}
 };
 
-/* What the OpenGL context must provide: a core profile of at least
+/* What the OpenGL context must provide: OpenGL ES of at least
  * major.minor, with a depth buffer of at least depthBits and a stencil buffer
  * of at least stencilBits, and no alpha channel in the back buffer. */
 struct GLContextConfig {
@@ -76,7 +76,7 @@ public:
 
     // ── The OpenGL context, for the rendering backend (src/gl) ──
 
-    /* Makes an OpenGL core-profile context of at least major.minor on this
+    /* Makes an OpenGL ES context of at least major.minor on this
      * window and makes it current.  The window was created with the
      * capability.  False on failure; the reason is in the log. */
     bool createGLContext(const GLContextConfig &config);

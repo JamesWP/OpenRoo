@@ -3,7 +3,7 @@
  * only -- game code goes through renderdevice.h, and gets its device from
  * glrenderdevice.h.
  *
- * The backend is OpenGL 3.3 core profile: everything is drawn by one GLSL
+ * The backend is OpenGL ES 3.2: everything is drawn by one GLSL
  * program (shaders.cpp) from vertex buffers, with the transforms, light,
  * material and fog in two uniform blocks and the texture sampler in a sampler
  * object.  There is no fixed-function state to set.  The game's pipeline
