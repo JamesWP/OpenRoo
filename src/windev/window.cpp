@@ -318,6 +318,13 @@ bool listDisplayModes(unsigned display, std::vector<DisplaySize> &out)
             out.push_back(s);
     }
     SDL_free(modes);
+    // A driver with no mode list (the RG35XX's fbdev one) still has the
+    // desktop's mode, which full screen uses anyway.
+    if (out.empty()) {
+        const SDL_DisplayMode *desktop = SDL_GetDesktopDisplayMode((SDL_DisplayID)display);
+        if (desktop)
+            out.push_back({ (unsigned)desktop->w, (unsigned)desktop->h });
+    }
     return !out.empty();
 }
 
