@@ -16,6 +16,11 @@ void setLog(LogFn fn);
  * (windev::runMessageLoop). */
 input::KeySource &keyboard();
 
+/* The first gamepad as a key source: its buttons press the keys the default
+ * bindings use (the table in sdlinput.cpp).  Holds nothing while no gamepad
+ * is connected. */
+input::KeySource &gamepad();
+
 /* While set, the keyboard holds no key: something else (the debug UI's text
  * box) has it. */
 void setKeyboardSuppressed(bool suppressed);
