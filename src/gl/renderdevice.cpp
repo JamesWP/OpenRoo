@@ -36,7 +36,7 @@ bool gl_usable()
     return g_window != NULL && g_window->hasGLContext();
 }
 
-static bool fx_nodraw(void)
+bool gl_fx_nodraw(void)
 {
     static int cached = -1;
     if (cached < 0) {
@@ -476,6 +476,7 @@ void GLRenderDevice::Release()
         gl.DeleteSamplers(1, &n->sampler);
         gl.DeleteVertexArrays(1, &n->vao);
         gl.DeleteProgram(n->program);
+        gl_release_particle_objects(n);
         n->window->destroyGLContext();
     }
     *n = Native();
@@ -790,16 +791,22 @@ GLVertexBuffer::~GLVertexBuffer()
 
 // ── Drawing ──
 
+void gl_prepare_draw(GLRenderDevice::Native *n, const PipelineState &st, float aspect,
+                     VertexFormat format, uint32_t flags)
+{
+    flush_pipeline(n, st);
+    if (n->dirty & GLDirty::Scene)
+        upload_scene(n, st, aspect);
+    upload_draw(n, st, format, flags);
+}
+
 /* Issues the draw of `count` vertices in `buffer` from `offset` bytes. */
 static void submit(GLRenderDevice::Native *n, const PipelineState &st, float aspect,
                    Prim prim, VertexFormat format, GLuint buffer, size_t offset,
                    uint32_t count, uint32_t flags, size_t indexOffset = 0,
                    bool indexed = false)
 {
-    flush_pipeline(n, st);
-    if (n->dirty & GLDirty::Scene)
-        upload_scene(n, st, aspect);
-    upload_draw(n, st, format, flags);
+    gl_prepare_draw(n, st, aspect, format, flags);
     bind_vertices(n, format, buffer, offset);
     if (indexed)
         gl.DrawElements(gl_prim(prim), (GLsizei)count, GL_UNSIGNED_SHORT,
@@ -831,7 +838,7 @@ bool GLRenderDevice::Draw(Prim prim, VertexFormat format, const void *verts,
                         uint32_t count, uint32_t flags)
 {
     Native *n = native_;
-    if (!n->active || fx_nodraw())
+    if (!n->active || gl_fx_nodraw())
         return true;
     if (!prim_complete(prim, count))
         return false;
@@ -851,7 +858,7 @@ bool GLRenderDevice::DrawIndexed(Prim prim, VertexFormat format, const void *ver
                                uint32_t indexCount, uint32_t flags)
 {
     Native *n = native_;
-    if (!n->active || fx_nodraw())
+    if (!n->active || gl_fx_nodraw())
         return true;
     if (!prim_complete(prim, indexCount))
         return false;
@@ -884,7 +891,7 @@ bool GLRenderDevice::DrawBuffer(Prim prim, const VertexBuffer *buf, uint32_t fir
 {
     const GLVertexBuffer *vb = static_cast<const GLVertexBuffer *>(buf);
     Native *n = native_;
-    if (!n->active || fx_nodraw())
+    if (!n->active || gl_fx_nodraw())
         return true;
     if (!vb || !prim_complete(prim, count) || first > vb->count || count > vb->count - first)
         return false;

@@ -1,23 +1,18 @@
-/* Every Generator and Environment virtual — Tick/emit, Load, CopyFrom,
- * the dtors and constructors, and the ring helpers the two environment ticks
- * share.
+/* Every Generator and Environment virtual: the per-tick bookkeeping each
+ * hands the device (the particles themselves are simulated there; see
+ * particletypes.h), Load, CopyFrom, the constructors, and the table builders
+ * Load and CopyFrom run.
  *
- * The ring is one NULL-terminated doubly-linked list, partitioned as
- * [pRingHead, pRingCurrent) live and [pRingCurrent, pRingTail] free.  An
- * environment's tick owns ageing and retirement; a generator's emit owns
- * adding new particles at pRingCurrent.  Ring allocation itself lives
- * elsewhere — this file only honours the contract. */
+ * DETERMINISM: the table builders draw from the game's rand(), which the
+ * simulation shares, so what they draw and in what order is kept exactly as
+ * the original's, quirks included. */
 
-#include <strings.h>
 #include <string.h>
-#include <atomic>
 #include <stdint.h>
 #include "generators.h"
-#include "sysdev.h"
 #include "gametime.h"
 #include "crtrand.h"
 #include <new>
-#include "logger.h"
 #include <math.h>
 #include <stdlib.h>
 #include "binio.h"
@@ -25,81 +20,7 @@
 #include <algorithm>
 #include <iterator>
 
-/* Stores a float's bit pattern, as the emit tables keep their values. */
-static inline void set_bits(float *dst, uint32_t bits)
-{
-    memcpy(dst, &bits, sizeof(bits));
-}
-
-
-#define SIM_LOG_FIRST 8
-
-/* ─── Shared ring/colour helpers ─── */
-
-/* Unlinks an expired node and appends it at the free end.  Re-seeds
- * pRingCurrent when emission had stalled with the ring empty, so it can resume
- * once free space returns. */
-static void retire_node(RingBuffer *ring, ParticleNode *node)
-{
-    if (node->pNext == NULL) {
-        ring->pRingCurrent = node;
-        return;
-    }
-    node->pNext->pPrev = node->pPrev;
-    if (node->pPrev == NULL)
-        ring->pRingHead = node->pNext;
-    else
-        node->pPrev->pNext = node->pNext;
-
-    ring->pRingTail->pNext = node;
-    node->pNext = NULL;
-    node->pPrev = ring->pRingTail;
-    ring->pRingTail = node;
-
-    if (ring->pRingCurrent == NULL)
-        ring->pRingCurrent = node;
-}
-
-/* One colour channel moved by at most step toward target.  uint32_t arithmetic
- * throughout, so a step larger than the true distance is clamped before the
- * subtraction, avoiding unsigned wraparound. */
-static uint32_t fade_channel(uint32_t cur, uint32_t target, uint32_t step)
-{
-    if (cur == target)
-        return cur;
-    if (target < cur)
-        return (step < cur - target) ? cur - step : target;
-    return (step < target - cur) ? cur + step : target;
-}
-
-/* PRESERVED: the "increase" branch for the red channel gates and increments
- * the ALPHA byte instead of red.  While step is smaller than target[0]-alpha
- * it leaves red exactly where it was and only bumps alpha; once that threshold
- * is cleared, red jumps straight to the target instead of stepping gradually.
- * Both environment ticks share this exactly. */
-static uint32_t fade_diffuse(uint32_t diffuse, const uint32_t target[3], uint32_t step)
-{
-    uint32_t blue  = diffuse & 0xff;
-    uint32_t green = (diffuse >> 8) & 0xff;
-    uint32_t red   = (diffuse >> 16) & 0xff;
-    uint32_t alpha = diffuse >> 24;
-
-    uint32_t out_red = red;
-    if (red != target[0]) {
-        out_red = target[0];
-        if (target[0] < red) {
-            if (step < red - target[0])
-                out_red = red - step;
-        } else if (step < target[0] - alpha) {
-            alpha  += step;
-            out_red = red;
-        }
-    }
-    green = fade_channel(green, target[1], step);
-    blue  = fade_channel(blue,  target[2], step);
-
-    return ((alpha * 0x100 + out_red) * 0x100 + green) * 0x100 + blue;
-}
+/* ─── Fading ─── */
 
 /* Fade step for this tick: accumulate, truncate toward zero, suppress when it
  * does not clear the threshold, then subtract what was consumed. */
@@ -113,406 +34,123 @@ static uint32_t fade_step(float *accum, float rate, uint32_t threshold, float dt
     return step;
 }
 
-/* ─── GravityEnvironment tick ─── */
-
-void GravityEnvironment::gravityTick(float dt)
+/* The fade steps of every tick since the last take, which the device applies
+ * as one (it stops at the target either way). */
+static void take_fade(ParticleField &out, uint32_t rgb, float *pending)
 {
-    RingBuffer *ring = pRing_;
-    if (ring->pRingCurrent == ring->pRingHead)
-        return;
-
-    float gx = flGravity_[0];
-    float gy = flGravity_[1];
-    float gz = flGravity_[2];
-
-    uint32_t step = fade_step(&flFadeAccum_, flFadeRate_,
-                           dwFadeThreshold_, dt);
-
-    ring = pRing_;
-    ParticleNode *node = ring->pRingHead;
-    if (node == ring->pRingCurrent)
-        return;
-
-    do {
-        ParticleNode *next;
-        bool retire;
-
-        node->flLife -= dt;
-
-        if (node->flLife >= 0.0f) {
-            node->flVel[0] += gx * dt;
-            node->flVel[1] += gy * dt;
-            node->flVel[2] += gz * dt;
-            node->flX += node->flVel[0] * dt;
-            node->flY += node->flVel[1] * dt;
-            node->flZ += node->flVel[2] * dt;
-
-            if (step != 0)
-                node->dwDiffuse = fade_diffuse(node->dwDiffuse, dwTargetRGB_, step);
-
-            const float pos[3] = { node->flX, node->flY, node->flZ };
-            retire = false;
-            for (int a = 0; a < 3; a++)
-                if (dwClipEnable_[a] != 0 &&
-                    (pos[a] > flClipMax_[a] || pos[a] < flClipMin_[a]))
-                    retire = true;
-        } else {
-            retire = true;
-        }
-
-        next = node->pNext;
-        if (retire) {
-            retire_node(pRing_, node);
-            if (next == NULL)
-                return;
-        }
-        node = next;
-    } while (node != pRing_->pRingCurrent);
+    out.fadeRGB = rgb;
+    out.fadeStep = std::min(*pending, 255.0f);
+    *pending = 0.0f;
 }
 
-/* ─── MagnetEnvironment tick ─── */
-
-/* Per-axis "has arrived" test, in branch form rather than fabsf(d) <= half —
- * the two differ if a half-extent is ever negative. */
-static bool within_extent(float d, float half)
+static Vec3 vec3_of(const float v[3])
 {
-    return (d <= 0.0f) ? (-half <= d) : (d <= half);
+    return { v[0], v[1], v[2] };
 }
 
-void MagnetEnvironment::magnetTick(float dt)
+/* ─── The environments ─── */
+
+void GravityEnvironment::tick(float dt)
 {
-    RingBuffer *ring = pRing_;
-    if (ring->pRingCurrent == ring->pRingHead)
-        return;
-
-
-    uint32_t step = fade_step(&flFadeAccum_, flFadeRate_,
-                           dwFadeThreshold_, dt);
-
-    ring = pRing_;
-    ParticleNode *node = ring->pRingHead;
-    if (node == ring->pRingCurrent)
-        return;
-
-    do {
-        ParticleNode *next;
-        bool retire = false;
-
-        node->flLife -= dt;
-
-        if (node->flLife >= 0.0f) {
-            float d[3] = { flCentre_[0] - node->flX,
-                           flCentre_[1] - node->flY,
-                           flCentre_[2] - node->flZ };
-
-            if (within_extent(d[0], flHalfExtent_[0]) &&
-                within_extent(d[1], flHalfExtent_[1]) &&
-                within_extent(d[2], flHalfExtent_[2])) {
-                retire = true;  // arrived at the magnet
-            } else {
-                // Unguarded division: a zero-length d has already matched the
-                // extent test above and been retired, so this can't divide by
-                // zero.
-                float len = sqrtf(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
-                node->flVel[0] += (d[0] / len) * flForce_[0] * dt;
-                node->flVel[1] += (d[1] / len) * flForce_[1] * dt;
-                node->flVel[2] += (d[2] / len) * flForce_[2] * dt;
-                node->flX += node->flVel[0] * dt;
-                node->flY += node->flVel[1] * dt;
-                node->flZ += node->flVel[2] * dt;
-
-                if (step != 0)
-                    node->dwDiffuse = fade_diffuse(node->dwDiffuse,
-                                                   dwTargetRGB_, step);
-            }
-        } else {
-            retire = true;
-        }
-
-        next = node->pNext;
-        if (retire) {
-            retire_node(pRing_, node);
-            if (next == NULL)
-                return;
-        }
-        node = next;
-    } while (node != pRing_->pRingCurrent);
+    flFadePending_ += (float)fade_step(&flFadeAccum_, flFadeRate_, dwFadeThreshold_, dt);
 }
 
-/* ─── StdGenerator emit ─── */
-
-/* PRESERVED: wraps by subtracting off the pre-increment value rather than by
- * modulo — the two only differ once an index is driven out of range (e.g. the
- * step-3 index maps 497/498/499 to 0/1/2 via old-(limit-step), not old%limit).
- */
-static uint32_t wrap_index(uint32_t old, uint32_t step, uint32_t limit)
+void GravityEnvironment::takeField(ParticleField &out)
 {
-    uint32_t next = old + step;
-    return (next > limit - 1) ? old - (limit - step) : next;
+    out.kind = ParticleFieldKind::Gravity;
+    out.accel = vec3_of(flGravity_);
+    for (int a = 0; a < 3; a++)
+        out.clip[a] = dwClipEnable_[a] != 0;
+    out.clipMin = vec3_of(flClipMin_);
+    out.clipMax = vec3_of(flClipMax_);
+    take_fade(out, dwTargetRGB_, &flFadePending_);
 }
 
-/* Life/prob indices use a different idiom: bump while below the last entry,
- * otherwise snap to 0. */
-static uint32_t bump_index(uint32_t cur, uint32_t count)
+void MagnetEnvironment::tick(float dt)
 {
-    return (cur < count - 1) ? cur + 1 : 0;
+    flFadePending_ += (float)fade_step(&flFadeAccum_, flFadeRate_, dwFadeThreshold_, dt);
 }
 
-/* Shared by StdGenerator and XStdGenerator: XStd's emit is Std's with a
- * constant bias added to the sampled position and velocity, so both go through
- * here.  pos_off / vel_off are NULL for a plain StdGenerator. */
-void StdGenerator::stdEmit(float dt,
-                     const float *pos_off, const float *vel_off)
+void MagnetEnvironment::takeField(ParticleField &out)
+{
+    out.kind = ParticleFieldKind::Magnet;
+    out.centre = vec3_of(flCentre_);
+    out.force = vec3_of(flForce_);
+    out.halfExtent = vec3_of(flHalfExtent_);
+    take_fade(out, dwTargetRGB_, &flFadePending_);
+}
+
+/* ─── TableGenerator emission ─── */
+
+/* dt's share of the emission rate: whole particles, with the fraction carried
+ * into the next tick.  Their table cursors step on as they would have one
+ * particle at a time. */
+void TableGenerator::tick(float dt)
 {
     if (dwEnabled_ == 0)
         return;
-    RingBuffer *ring = pRing_;
-    if (ring->pRingCurrent == NULL)
-        return;
-
     float acc = dt * flDtScale_ + flAccumulator_;
     flAccumulator_ = acc;
     if (!(acc >= 0.0f))
         return;
-
     int count = (int)acc;  // truncates toward zero
     flAccumulator_ = acc - (float)count;
     if (count <= 0)
         return;
 
-    for (int emitted = 0; ; ) {
-        ParticleNode *node = ring->pRingCurrent;
-        const float *pos = &flPosTable_[dwPosIdx_ * 3];
-        const float *vel = &flVelTable_[dwVelIdx_ * 3];
-
-        node->flLife = pLifeTable_[dwLifeIdx_];
-        node->flX = pos[0] + (pos_off ? pos_off[0] : 0.0f);
-        node->flY = pos[1] + (pos_off ? pos_off[1] : 0.0f);
-        node->flZ = pos[2] + (pos_off ? pos_off[2] : 0.0f);
-        node->flVel[0] = vel[0] + (vel_off ? vel_off[0] : 0.0f);
-        node->flVel[1] = vel[1] + (vel_off ? vel_off[1] : 0.0f);
-        node->flVel[2] = vel[2] + (vel_off ? vel_off[2] : 0.0f);
-        node->dwDiffuse = pEmitProb_[dwProbIdx_];
-
-        dwPosIdx_  = wrap_index(dwPosIdx_, 1, 500);
-        dwVelIdx_  = wrap_index(dwVelIdx_, 3, 500);
-        dwLifeIdx_ = bump_index(dwLifeIdx_, 100);
-        dwProbIdx_ = bump_index(dwProbIdx_, 200);
-
-        // Claim the node: advance the free-list cursor past it.
-        pRing_->pRingCurrent = node->pNext;
-        ring = pRing_;
-        if (ring->pRingCurrent == NULL)
-            return;  // ring full — stop early
-        if (count <= ++emitted)
-            return;
+    if (pendingCount_ == 0) {
+        pendingCursor_[0] = dwPosIdx_;
+        pendingCursor_[1] = dwVelIdx_;
+        pendingCursor_[2] = dwLifeIdx_;
+        pendingCursor_[3] = dwProbIdx_;
     }
+    // More than the slots hold is lost anyway.
+    pendingCount_ = std::min<uint32_t>(pendingCount_ + (uint32_t)count, 1u << 20);
+    dwPosIdx_  = (dwPosIdx_ + (uint32_t)count) % POS_COUNT;
+    dwVelIdx_  = (uint32_t)((dwVelIdx_ + 3ull * (uint32_t)count) % VEL_COUNT);
+    dwLifeIdx_ = (dwLifeIdx_ + (uint32_t)count) % LIFE_COUNT;
+    dwProbIdx_ = (dwProbIdx_ + (uint32_t)count) % COLOUR_COUNT;
 }
 
-/* ─── CylinderGenerator emit ─── */
-
-/* (v,1) x M as a row vector, with the w-divide skipped when w is exactly 0.0f.
- * M is row-major: out[c] = sum_r M[r][c] * v[r]. */
-static void transform_point_row(float out[3], const float v[3], const float m[16])
+void TableGenerator::takeEmit(ParticleEmit &out)
 {
-    float o[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
-    float in[4] = { v[0], v[1], v[2], 1.0f };
-    for (int c = 0; c < 4; c++)
-        for (int r = 0; r < 4; r++)
-            o[c] += m[r * 4 + c] * in[r];
-    // PRESERVED: the w-divide is skipped only when w is exactly 0.0f, not
-    // merely small — an epsilon guard here would change results whenever w
-    // rounds close to zero without being it.
-    if (o[3] != 0.0f) {
-        o[0] /= o[3]; o[1] /= o[3]; o[2] /= o[3];
-    }
-    out[0] = o[0]; out[1] = o[1]; out[2] = o[2];
+    out.count = pendingCount_;
+    out.pos = pendingCursor_[0];
+    out.vel = pendingCursor_[1];
+    out.life = pendingCursor_[2];
+    out.colour = pendingCursor_[3];
+    out.velStride = 3;
+    placement(out);
+    pendingCount_ = 0;
 }
 
-void CylinderGenerator::cylinderEmit(float dt)
+bool TableGenerator::tables(ParticleTables &out) const
 {
-    if (dwEnabled_ == 0)
-        return;
-    RingBuffer *ring = pRing_;
-    if (ring->pRingCurrent == NULL)
-        return;
-
-    float acc = dt * flDtScale_ + flAccumulator_;
-    flAccumulator_ = acc;
-    if (!(acc >= 0.0f))
-        return;
-
-    int count = (int)acc;
-    flAccumulator_ = acc - (float)count;
-    if (count <= 0)
-        return;
-
-    for (int emitted = 0; ; ) {
-        ParticleNode *node = ring->pRingCurrent;
-        const float *pos = &flPosTable_[dwPosIdx_ * 3];
-        const float *vel = &flVelTable_[dwVelIdx_ * 3];
-
-        node->flLife = pLifeTable_[dwLifeIdx_];
-
-        // Sample -> scale -> transform -> offset.
-        float p[3] = { pos[0] * flScale_,
-                       pos[1] * flScale_,
-                       pos[2] * flScale_ };
-        float t[3];
-        transform_point_row(t, p, flMatrix_);
-        node->flX = t[0] + flOrigin_[0];
-        node->flY = t[1] + flOrigin_[1];
-        node->flZ = t[2] + flOrigin_[2];
-
-        // Velocity is NOT run through the matrix.
-        node->flVel[0] = vel[0];
-        node->flVel[1] = vel[1];
-        node->flVel[2] = vel[2];
-        node->dwDiffuse = pEmitProb_[dwProbIdx_];
-
-        dwPosIdx_  = wrap_index(dwPosIdx_, 1, 500);
-        dwVelIdx_  = wrap_index(dwVelIdx_, 3, 500);
-        dwLifeIdx_ = bump_index(dwLifeIdx_, 100);
-        dwProbIdx_ = bump_index(dwProbIdx_, 200);
-
-        pRing_->pRingCurrent = node->pNext;
-        ring = pRing_;
-        if (ring->pRingCurrent == NULL)
-            return;
-        if (count <= ++emitted)
-            return;
-    }
+    out.pos = flPosTable_;      out.posCount = POS_COUNT;
+    out.vel = flVelTable_;      out.velCount = VEL_COUNT;
+    out.life = pLifeTable_;     out.lifeCount = LIFE_COUNT;
+    out.colour = pEmitProb_;    out.colourCount = COLOUR_COUNT;
+    return true;
 }
 
-/* ─── One definition per class ─────────────────────────────────────────────
- *
- * Each of these is the single implementation of that class's tick, logging
- * included; every caller reaches it through the virtual tick(). */
-
-#define SIM_LOG_ONCE(counter) \
-    static std::atomic<long> counter = 0; \
-    if (++counter <= SIM_LOG_FIRST)
-
-static uint32_t count_live(const RingBuffer *ring)
+void StdGenerator::placement(ParticleEmit &out) const
 {
-    uint32_t live = 0;
-    for (ParticleNode *n = ring->pRingHead; n && n != ring->pRingCurrent; n = n->pNext)
-        live++;
-    return live;
+    (void)out;  // as sampled
 }
 
-static uint32_t count_free(const RingBuffer *ring)
+void XStdGenerator::placement(ParticleEmit &out) const
 {
-    uint32_t free_nodes = 0;
-    for (ParticleNode *n = ring->pRingCurrent; n; n = n->pNext)
-        free_nodes++;
-    return free_nodes;
+    out.posOffset = vec3_of(flPosOffset_);
+    out.velOffset = vec3_of(flVelOffset_);
 }
 
-/* KAROO_SIM_STATS=N logs each environment's ring occupancy — live and free
- * counts, plus the life range and how many live nodes have already expired —
- * every N ticks, keyed by object address so several systems in one scene stay
- * distinguishable.  Off unless the variable is set. */
-static uint32_t stats_interval(void)
+/* Sample -> scale -> transform -> offset; velocity is NOT run through the
+ * matrix. */
+void CylinderGenerator::placement(ParticleEmit &out) const
 {
-    static std::atomic<long> cached = -1;
-    if (cached < 0) {
-        char buf[16];
-        long v = 0;
-        if (sysdev::getEnv("KAROO_SIM_STATS", buf, sizeof(buf)))
-            v = (long)strtol(buf, NULL, 10);
-        if (v < 0)
-            v = 0;
-        cached.exchange(v);
-        if (v > 0)
-            g_logger.write("sim: stats every %ld ticks\n", v);
-    }
-    return (uint32_t)cached;
-}
-
-static void stats_tick(const char *what, void *self, const RingBuffer *ring, std::atomic<long> *counter, float dt)
-{
-    uint32_t every = stats_interval();
-    if (every == 0)
-        return;
-    long n = ++*counter;
-    if ((uint32_t)n % every)
-        return;
-    // Also report how many of the live nodes are already expired (flLife < 0).
-    // A healthy ring retires those the same tick they expire, so this should
-    // hover near zero; a live region full of expired nodes means retirement
-    // has stopped and the ring can never recycle.
-    uint32_t expired = 0, oldest_seen = 0;
-    float minlife = 0.0f, maxlife = 0.0f;
-    bool first = true;
-    for (ParticleNode *nd = ring->pRingHead; nd && nd != ring->pRingCurrent; nd = nd->pNext) {
-        if (nd->flLife < 0.0f)
-            expired++;
-        if (first || nd->flLife < minlife) minlife = nd->flLife;
-        if (first || nd->flLife > maxlife) maxlife = nd->flLife;
-        first = false;
-        if (++oldest_seen > 4096) break;  // cycle guard
-    }
-    g_logger.write("stats: %s this=%p tick=%ld dt=%.9f live=%lu free=%lu ring=%lu expired=%lu "
-              "life=[%f..%f] head=%p cur=%p tail=%p\n",
-              what, self, n, dt, count_live(ring), count_free(ring), ring->dwRingCount,
-              expired, minlife, maxlife,
-              ring->pRingHead, ring->pRingCurrent, ring->pRingTail);
-}
-
-void GravityEnvironment::tick(float dt)
-{
-    SIM_LOG_ONCE(calls)
-        g_logger.write("sim: GravityTick this=%p dt=%f live=%lu ring=%lu\n",
-                  this, dt, count_live(pRing_),
-                  pRing_->dwRingCount);
-    static std::atomic<long> ticks = 0;
-    stats_tick("gravity", this, pRing_, &ticks, dt);
-    gravityTick(dt);
-}
-
-void MagnetEnvironment::tick(float dt)
-{
-    SIM_LOG_ONCE(calls)
-        g_logger.write("sim: MagnetTick this=%p dt=%f live=%lu ring=%lu centre=%f,%f,%f\n",
-                  this, dt, count_live(pRing_),
-                  pRing_->dwRingCount,
-                  flCentre_[0], flCentre_[1], flCentre_[2]);
-    static std::atomic<long> ticks = 0;
-    stats_tick("magnet", this, pRing_, &ticks, dt);
-    magnetTick(dt);
-}
-
-void StdGenerator::tick(float dt)
-{
-    SIM_LOG_ONCE(calls)
-        g_logger.write("sim: StdEmit this=%p dt=%f enabled=%lu accum=%f free=%lu ring=%lu\n",
-                  this, dt, dwEnabled_, flAccumulator_,
-                  count_free(pRing_), pRing_->dwRingCount);
-    stdEmit(dt, NULL, NULL);
-}
-
-void XStdGenerator::tick(float dt)
-{
-    SIM_LOG_ONCE(calls)
-        g_logger.write("sim: XStdEmit this=%p dt=%f enabled=%lu posoff=%f,%f,%f "
-                  "veloff=%f,%f,%f ring=%lu\n",
-                  this, dt, dwEnabled_,
-                  flPosOffset_[0], flPosOffset_[1], flPosOffset_[2],
-                  flVelOffset_[0], flVelOffset_[1], flVelOffset_[2],
-                  pRing_->dwRingCount);
-    stdEmit(dt, flPosOffset_, flVelOffset_);
-}
-
-void CylinderGenerator::tick(float dt)
-{
-    SIM_LOG_ONCE(calls)
-        g_logger.write("sim: CylinderEmit this=%p dt=%f enabled=%lu accum=%f "
-                  "origin=%f,%f,%f scale=%f ring=%lu\n",
-                  this, dt, dwEnabled_, flAccumulator_,
-                  flOrigin_[0], flOrigin_[1], flOrigin_[2],
-                  flScale_, pRing_->dwRingCount);
-    cylinderEmit(dt);
+    out.posScale = flScale_;
+    std::copy(std::begin(flMatrix_), std::end(flMatrix_), out.posMatrix.m);
+    out.posOffset = vec3_of(flOrigin_);
 }
 
 /* One read of `size` bytes; on a short read this leaves whatever was already
@@ -522,15 +160,11 @@ static bool read1(void *dst, unsigned size, std::istream &in)
     return readBytes(in, dst, size);
 }
 
-/* Stores flDirection/flMagnitude as given, and flGravity =
+/* flGravity =
  * normalise(direction) * magnitude, or direction itself when it is exactly
  * zero. */
 void GravityEnvironment::gravitySetVector(const float dir[3], float mag)
 {
-    flDirection_[0] = dir[0];
-    flDirection_[1] = dir[1];
-    flDirection_[2] = dir[2];
-    flMagnitude_ = mag;
     if (dir[0] == 0.0f && dir[1] == 0.0f && dir[2] == 0.0f) {
         flGravity_[0] = dir[0];
         flGravity_[1] = dir[1];
@@ -544,16 +178,6 @@ void GravityEnvironment::gravitySetVector(const float dir[3], float mag)
     flGravity_[0] = q[0] * mag;
     flGravity_[1] = q[1] * mag;
     flGravity_[2] = q[2] * mag;
-}
-
-void GravityEnvironment::gravitySetColour(uint32_t argb, float fade)
-{
-    dwTargetARGB_   = argb;
-    dwTargetA_      = argb >> 24;
-    dwTargetRGB_[0] = (argb >> 16) & 0xff;
-    dwTargetRGB_[2] = argb & 0xff;
-    dwTargetRGB_[1] = (argb >> 8) & 0xff;
-    flFadeRate_     = fade;
 }
 
 /* Leaves flFadeAccum as constructed — unlike MagnetEnvironment::Load, which
@@ -573,10 +197,8 @@ int GravityEnvironment::load(std::istream &in)
     if (!read1(flClipMax_, 12, in))       return false;
     if (!read1(flClipMin_, 12, in))       return false;
     gravitySetVector(dir, mag);
-    gravitySetColour(argb, fade);
-    SIM_LOG_ONCE(calls)
-        g_logger.write("sim: GravityLoad this=%p gravity=%f,%f,%f argb=%08lX\n", this,
-                  flGravity_[0], flGravity_[1], flGravity_[2], argb);
+    dwTargetRGB_ = argb & 0xFFFFFF;
+    flFadeRate_ = fade;
     return true;
 }
 
@@ -589,14 +211,11 @@ int MagnetEnvironment::load(std::istream &in)
     // checked.
     if (!read1(flForce_, 12, in))         return false;
     if (!read1(flCentre_, 12, in))        return false;
-    if (!read1(&flRange_, 4, in))         return false;
+    float range;  // serialised, unused
+    if (!read1(&range, 4, in))            return false;
     if (!read1(&flFadeRate_, 4, in))      return false;
     if (!read1(&dwFadeThreshold_, 4, in)) return false;
     flFadeAccum_ = 0.0f;
-    SIM_LOG_ONCE(calls)
-        g_logger.write("sim: MagnetLoad this=%p force=%f,%f,%f centre=%f,%f,%f\n", this,
-                  flForce_[0], flForce_[1], flForce_[2],
-                  flCentre_[0], flCentre_[1], flCentre_[2]);
     return true;
 }
 
@@ -607,8 +226,7 @@ int Environment::envSameName(const Environment *src) const
     return strcmp(src->pName_, pName_) == 0;
 }
 
-/* Copies every field past the base (pName and pRing keep the
- * destination's) in one memcpy; safe because src can never alias dst. */
+/* Copies every field. */
 int GravityEnvironment::copyFrom(const Environment *src)
 {
     if (!envSameName(src))
@@ -625,19 +243,10 @@ int MagnetEnvironment::copyFrom(const Environment *src)
     return true;
 }
 
-/* Refuses (and leaves pRing alone) when handed a NULL ring. */
-int Environment::attachRing(RingBuffer *ring)
-{
-    if (ring == NULL)
-        return false;
-    pRing_ = ring;
-    return true;
-}
-
 /* Static type-name strings; pName points at them, never owned or freed here.
  */
 
-Environment::Environment() : pName_((char *)"Environment"), pRing_(NULL)
+Environment::Environment() : pName_((char *)"Environment")
 {
 }
 
@@ -789,14 +398,6 @@ int Generator::copyFrom(const Generator *src)
     return true;
 }
 
-int Generator::attachRing(RingBuffer *ring)
-{
-    if (ring == NULL)
-        return false;
-    pRing_ = ring;
-    return true;
-}
-
 /* DETERMINISM: reseeds from the clock, then draws (colour, weight) pairs by
  * rand() until all 200 slots are filled, skipping zero-weight pairs — the draw
  * order feeds the emitted particle colours.  An empty or missing source table
@@ -835,12 +436,6 @@ static void type_table_clone(std::vector<uint32_t> *table, uint32_t *pcount, uin
     }
 }
 
-void StdGenerator::stdCloneTypeTable(const uint32_t *src, uint32_t count)
-{
-    type_table_clone(&typeTable_, &dwTypeTableCount_, pEmitProb_,
-                     src, count);
-}
-
 static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint32_t *emit_prob, std::istream &in)
 {
     uint32_t count;
@@ -851,12 +446,6 @@ static int type_table_load(std::vector<uint32_t> *ptable, uint32_t *pcount, uint
         return false;
     type_table_clone(ptable, pcount, emit_prob, pairs.data(), count);
     return true;
-}
-
-int StdGenerator::stdLoadTypeTable(std::istream &in)
-{
-    return type_table_load(&typeTable_, &dwTypeTableCount_,
-                           pEmitProb_, in);
 }
 
 /* Interleave three 500-sample columns into flPosTable (x, y, z per entry). */
@@ -958,7 +547,9 @@ int StdGenerator::copyFrom(const Generator *gsrc)
         return false;
     const StdGenerator *src = static_cast<const StdGenerator *>(gsrc);
     *this = *src;
-    this->stdCloneTypeTable(src->typeTable_.data(), src->dwTypeTableCount_);
+    pendingCount_ = 0;
+    type_table_clone(&typeTable_, &dwTypeTableCount_, pEmitProb_,
+                     src->typeTable_.data(), src->dwTypeTableCount_);
     return true;
 }
 
@@ -985,7 +576,7 @@ int StdGenerator::load(std::istream &in)
     stdBuildVelocity(flVelMin_, flVelMax_,
                        flLifeMin_, flLifeMax_);
     stdBuildRate(flEmitRateMin_, flEmitRateMax_);
-    return stdLoadTypeTable(in);
+    return type_table_load(&typeTable_, &dwTypeTableCount_, pEmitProb_, in);
 }
 
 /* PRESERVED: copies flPosOffset but not flVelOffset — a copied generator keeps
@@ -1069,90 +660,6 @@ void XStdGenerator::setSpeed(float mag)
                 z = flVelOffset_[2];
     double len = sqrt(x * x + y * y + z * z);
     xstdStoreScaled(x, y, z, len, mag);
-}
-
-/* ─── PointGenerator / BoxGenerator emit ─── */
-
-/* DETERMINISM: dt*rate accumulated in double, stored back as a float, then
- * truncated toward zero for the emit count; only the truncated fraction
- * carries forward. */
-static int dead_gen_claim(float *acc, float rate, float dt)
-{
-    double total = (double)dt * rate + *acc;
-    *acc = (float)total;
-    if (!(total >= 0.0))
-        return 0;
-    int n = (int)total;
-    *acc = (float)(total - (double)n);
-    return n;
-}
-
-/* No dwEnabled check, unlike StdGenerator. */
-void PointGenerator::tick(float dt)
-{
-    RingBuffer *ring = pRing_;
-    if (ring->pRingCurrent == NULL)
-        return;
-    int n = dead_gen_claim(&flAccumulator_, flEmitRate_, dt);
-    if (n <= 0)
-        return;
-    const uint32_t *life = this->dwLifeTable_;
-    for (int i = 0; ; ) {
-        ParticleNode *node = ring->pRingCurrent;
-        set_bits(&node->flLife, life[dwLifeIdx_]);
-        std::copy_n(flEmitPos_, 3, &node->flX);
-        node->dwDiffuse = dwDiffuse_;
-        for (int a = 0; a < 3; a++)
-            node->flVel[a] = flVelTable_[dwVelIdx_[a]] + flVelBias_[a];
-        uint32_t i0 = dwVelIdx_[0] + 1, i1 = dwVelIdx_[1] + 2,
-              i2 = dwVelIdx_[2] + 3;
-        dwVelIdx_[0] = (i0 >= 1000) ? 1000 - i0 : i0;  // wraps at 1000, not 999 or 998, like the next two indices
-        dwVelIdx_[1] = (i1 >= 999)  ? 1000 - i1 : i1;
-        dwVelIdx_[2] = (i2 >= 998)  ? 1000 - i2 : i2;
-        dwLifeIdx_ = (dwLifeIdx_ > 100) ? 0 : dwLifeIdx_ + 1;  // runs 0..101 — two entries past the 100-entry table
-        ring->pRingCurrent = node->pNext;
-        if (ring->pRingCurrent == NULL)
-            return;
-        if (++i >= n)
-            return;
-    }
-}
-
-/* Position and colour are raw table copies; velocity is table plus bias.  Both
- * index triples wrap by 500 - i past 499. */
-void BoxGenerator::tick(float dt)
-{
-    RingBuffer *ring = pRing_;
-    if (ring->pRingCurrent == NULL)
-        return;
-    int n = dead_gen_claim(&flAccumulator_, flEmitRate_, dt);
-    if (n <= 0)
-        return;
-    for (int i = 0; ; ) {
-        ParticleNode *node = ring->pRingCurrent;
-        set_bits(&node->flLife, dwLifeTable_[dwLifeIdx_]);
-        set_bits(&node->flX, dwPosX_[dwPosIdx_[0]]);
-        set_bits(&node->flY, dwPosY_[dwPosIdx_[1]]);
-        set_bits(&node->flZ, dwPosZ_[dwPosIdx_[2]]);
-        node->dwDiffuse = dwDiffuse_[dwDiffuseIdx_];
-        for (int a = 0; a < 3; a++)
-            node->flVel[a] = flVelTable_[dwVelIdx_[a]] + flVelBias_[a];
-        for (int a = 0; a < 3; a++) {
-            uint32_t p = dwPosIdx_[a] + (uint32_t)(a + 1);
-            dwPosIdx_[a] = (p > 499) ? 500 - p : p;
-        }
-        for (int a = 0; a < 3; a++) {
-            uint32_t v = dwVelIdx_[a] + (uint32_t)(a + 1);
-            dwVelIdx_[a] = (v > 499) ? 500 - v : v;
-        }
-        dwLifeIdx_ = (dwLifeIdx_ < 99) ? dwLifeIdx_ + 1 : 0;
-        dwDiffuseIdx_ = (dwDiffuseIdx_ < 199) ? dwDiffuseIdx_ + 1 : 0;
-        ring->pRingCurrent = node->pNext;
-        if (ring->pRingCurrent == NULL)
-            return;
-        if (++i >= n)
-            return;
-    }
 }
 
 static double vec3_sqlen(const float *v)
@@ -1245,6 +752,7 @@ int CylinderGenerator::copyFrom(const Generator *gsrc)
         return false;
     const CylinderGenerator *src = static_cast<const CylinderGenerator *>(gsrc);
     *this = *src;
+    pendingCount_ = 0;
     type_table_clone(&this->typeTable_, &this->dwTypeTableCount_, this->pEmitProb_,
                      src->typeTable_.data(), src->dwTypeTableCount_);
     return true;
@@ -1275,24 +783,8 @@ int CylinderGenerator::load(std::istream &in)
 }
 
 Generator::Generator()
-    : pName_((char *)"Generator"), dwEnabled_(1), pRing_(NULL)
+    : pName_((char *)"Generator"), dwEnabled_(1)
 {
-}
-
-/* PRESERVED: only the accumulator and diffuse colour are initialised — the
- * position, velocity and life tables are left uninitialised, and nothing in
- * this file ever fills them. */
-PointGenerator::PointGenerator()
-{
-    pName_ = (char *)"PointGenerator";
-    flAccumulator_ = 0.0f;
-    dwDiffuse_ = 0xFFFFFFFF;
-}
-
-/* PRESERVED: nothing past the base class is initialised. */
-BoxGenerator::BoxGenerator()
-{
-    pName_ = (char *)"BoxGenerator";
 }
 
 StdGenerator::StdGenerator()
@@ -1300,14 +792,6 @@ StdGenerator::StdGenerator()
     pName_ = (char *)"StdGenerator";
     for (int i = 0; i < 200; i++)
         pEmitProb_[i] = 0xFFFFFFFF;
-}
-
-StdGenerator::~StdGenerator()
-{
-}
-
-CylinderGenerator::~CylinderGenerator()
-{
 }
 
 XStdGenerator::XStdGenerator()
@@ -1349,8 +833,6 @@ static Generator *gen_new()
 Generator *Generator::create(const char *name)
 {
     if (strcmp(name, "Generator") == 0)         return gen_new<Generator>();
-    if (strcmp(name, "PointGenerator") == 0)    return gen_new<PointGenerator>();
-    if (strcmp(name, "BoxGenerator") == 0)      return gen_new<BoxGenerator>();
     if (strcmp(name, "StdGenerator") == 0)      return gen_new<StdGenerator>();
     if (strcmp(name, "XStdGenerator") == 0)     return gen_new<XStdGenerator>();
     if (strcmp(name, "CylinderGenerator") == 0) return gen_new<CylinderGenerator>();

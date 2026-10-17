@@ -101,6 +101,18 @@ struct GLTexture : DeviceTexture {
     PixelFormat format;   // what the game's pixels were converted to first
 };
 
+/* Two buffers of slots, each slot three vec4s: position and life, velocity
+ * and shape index, colour (0..255).  A step reads one and writes the other by
+ * transform feedback; `current` is the one last written. */
+struct GLParticleBuffer : ParticleBuffer {
+    ~GLParticleBuffer() override;
+    uint32_t count = 0;
+    GLuint   buffers[2] = { 0, 0 };  // 0 when headless
+    int      current = 0;
+    GLuint   tables = 0;             // RGBA32F rows: pos, vel, life, colour
+    int      tableCounts[4] = { 0, 0, 0, 0 };
+};
+
 struct GLVertexBuffer : VertexBuffer {
     ~GLVertexBuffer() override;
     VertexFormat format;
@@ -174,6 +186,10 @@ public:
     bool DrawBuffer(Prim prim, const VertexBuffer *vb, uint32_t first,
         uint32_t count, uint32_t flags) override;
     void LogState(const char *tag) override;
+    ParticleBuffer *CreateParticleBuffer(uint32_t count, const uint32_t *shapes) override;
+    void SetParticleTables(ParticleBuffer *pb, const ParticleTables &t) override;
+    void StepParticles(ParticleBuffer *pb, const ParticleStep &step) override;
+    bool DrawParticles(const ParticleBuffer *pb, const ParticleLook &look) override;
 
     /* The backend's own objects. */
     struct Native;
@@ -202,6 +218,12 @@ struct GLRenderDevice::Native {
     GLuint indexStream = 0;            // the same for DrawIndexed's indices
     size_t indexStreamSize = 0, indexStreamUsed = 0;
 
+    // The particle programs (particles.cpp); 0 if they did not build.
+    GLuint particleSim = 0, particleDraw = 0;
+    GLuint particleSimVao = 0, particleDrawVao = 0;
+    GLuint particleShapes = 0;          // DrawParticles' corners, RGBA32F
+    uint32_t particleShapeRows = 0;
+
     unsigned  presented = 0;           // frames shown so far
     uint32_t  dirty = GLDirty::All;
     Mat4      normalMatrix = PipelineState::identity();
@@ -222,6 +244,19 @@ void gl_set_window(windev::Window *window);
 /* The program's source, built into a linked program (0 and a message in
  * `error` if it fails). */
 GLuint gl_build_program(char *error, size_t errorSize);
+
+/* The particle programs: the step, by transform feedback, and the draw.
+ * False, with a message in `error`, if either did not build. */
+bool gl_build_particle_programs(GLuint *sim, GLuint *draw, char *error, size_t errorSize);
+void gl_create_particle_objects(GLRenderDevice::Native *n);
+void gl_release_particle_objects(GLRenderDevice::Native *n);
+
+/* renderdevice.cpp's: whether draws are skipped (KAROO_RENDER_FX=nodraw), and
+ * the state, uniforms and fixed-function equivalents a draw of `format`
+ * needs, brought up to date. */
+bool gl_fx_nodraw();
+void gl_prepare_draw(GLRenderDevice::Native *n, const PipelineState &st, float aspect,
+                     VertexFormat format, uint32_t flags);
 
 /* The pixel layout of a texture format and of the display's. */
 PixelFormat gl_texture_format(unsigned depth, bool alpha);
