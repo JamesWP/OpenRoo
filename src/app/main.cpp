@@ -280,9 +280,11 @@ int Main_WinMain(const char *lpCmdLine)
         return 1;
     }
 
-    // The game's keys: the keyboard, or a replay in its place; a recording
-    // sees what the game is given.
+    // The game's keys: the keyboard and a gamepad, or a replay in their
+    // place; a recording sees what the game is given.
     input::addSource(&inputdev::keyboard());
+    if (!d3d->headless())
+        input::addSource(&inputdev::gamepad());
     input::addSource(replay_source());
     input::addObserver(record_observer());
     Input_Setup(game, &s_progCtrl);
