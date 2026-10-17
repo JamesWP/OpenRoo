@@ -7,6 +7,7 @@ add_library(gl OBJECT
     drawtrace.cpp
     glapi.cpp
     particles.cpp
+    shards.cpp
     pixelconvert.cpp
     renderdevice.cpp
     shaders.cpp)

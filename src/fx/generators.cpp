@@ -1,8 +1,7 @@
 /* Every Generator and Environment virtual: the per-tick bookkeeping each
  * hands the device (the particles themselves are simulated and drawn from
  * their distributions there; see particletypes.h), Load, CopyFrom and the
- * constructors; and the Gaussian sampler ExplodeDebris fills its table
- * with, from the effects' own random numbers (fxrand.h). */
+ * constructors. */
 
 #include <string.h>
 #include <stdint.h>
@@ -290,26 +289,6 @@ static inline bool zero_or_nan(float v) { return !(v < 0.0f || v > 0.0f); }
 
 static const float TINY_LENGTH = 1.1920928955078125e-07f;
 
-/* n samples of a normal distribution about mu whose VARIANCE (not standard
- * deviation) is `spread`, cut off at about 2.45 standard deviations: what the
- * effect files were tuned against.  A spread that is not positive gives mu. */
-static void gauss_fill(float *out, int n, float mu, float spread)
-{
-    if (!(spread > 0.0f)) {
-        std::fill(out, out + n, mu);
-        return;
-    }
-    const float sd = sqrtf(spread), cut = 2.45f * sd;
-    std::normal_distribution<float> normal(mu, sd);
-    for (int i = 0; i < n; i++) {
-        float v;
-        do
-            v = normal(fx_engine());
-        while (fabsf(v - mu) > cut);
-        out[i] = v;
-    }
-}
-
 /* Gates on matching type name, then copies only dwEnabled. */
 int Generator::copyFrom(const Generator *src)
 {
@@ -566,17 +545,6 @@ Generator *Generator::create(const char *name)
     return NULL;
 }
 
-/* ─── The Gaussian sampler's one caller outside this file's own generators ───
- *
- * ExplodeDebris fills a 30-entry table from it at construction (mu=2.0,
- * sigma=1.0); theme.cpp fills one the same way from parsed config.  Only that
- * table and its read cursor are touched here. */
-static void fill_gaussian_field(ExplodeDebris *self, float mu, float sigma)
-{
-    gauss_fill(self->samples(), 30, mu, sigma);
-    self->setCursor(0);
-}
-
 /* ─── Cloning ─── */
 
 /* The factory by class name, then CopyFrom; on refusal the new object is
@@ -601,10 +569,3 @@ Environment * Environment::clone() const
     return clone_by_name(Environment::create(pName_), this);
 }
 
-/* Called directly by explodedebris.cpp and theme.cpp — see
- * fill_gaussian_field. */
-  void 
-Gen_FillGaussianField(ExplodeDebris *self, float mu, float sigma)
-{
-    fill_gaussian_field(self, mu, sigma);
-}

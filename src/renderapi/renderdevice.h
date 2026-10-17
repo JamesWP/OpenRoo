@@ -28,6 +28,7 @@
 #include <vector>
 #include "rendertypes.h"
 #include "particletypes.h"
+#include "shardtypes.h"
 
 struct Image;
 namespace windev { class Window; }
@@ -280,6 +281,23 @@ public:
 
     /* NULL is ignored.  Needs no device, like DestroyVertexBuffer. */
     static void DestroyParticleBuffer(ParticleBuffer *pb) { delete pb; }
+
+    // ── Shattered meshes (shardtypes.h) ──
+
+    /* `count` vertices of `format` (Normal2 only), a list of triangles, copied
+     * to the device to be shattered.  NULL if the device could not make it
+     * or count is not a whole number of triangles; a headless device makes
+     * one that holds nothing. */
+    virtual ShardBuffer *CreateShardBuffer(VertexFormat format, const void *verts,
+                                           uint32_t count) = 0;
+
+    /* Draws sb's shards as `burst` has them, through the current world, with
+     * the current state as DrawBuffer would draw Normal2 vertices with
+     * NoLight, but two-sided. */
+    virtual bool DrawShards(const ShardBuffer *sb, const ShardBurst &burst) = 0;
+
+    /* NULL is ignored.  Needs no device, like DestroyVertexBuffer. */
+    static void DestroyShardBuffer(ShardBuffer *sb) { delete sb; }
 
     /* Logs the device's current render, texture-stage and light state
      * (diagnostics). */

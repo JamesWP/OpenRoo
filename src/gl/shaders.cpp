@@ -207,6 +207,7 @@ static GLuint link(GLuint vs, GLuint fs, const char *const *varyings, int nVaryi
     gl.Uniform1i(gl.GetUniformLocation(p, "uTex"), 0);
     gl.Uniform1i(gl.GetUniformLocation(p, "uSlots"), 1);
     gl.Uniform1i(gl.GetUniformLocation(p, "uShapes"), 2);
+    gl.Uniform1i(gl.GetUniformLocation(p, "uShards"), 1);
     return p;
 }
 
@@ -499,4 +500,129 @@ bool gl_build_particle_programs(GLuint *sim, GLuint *draw, char *error, size_t e
         *sim = 0;
     }
     return *sim != 0;
+}
+
+/* ── Shattered meshes ──
+ *
+ * One vertex per mesh vertex, with no attributes: vertex i reads itself and
+ * the other two corners of its triangle (i / 3) from the ShardBuffer's
+ * texture, and everything else about its shard is drawn from a hash of the
+ * triangle and the burst's seed, in a fixed order -- so a shard is the same
+ * shard at every time it is drawn.  A gone shard's vertices are put outside
+ * the clip volume.  The main program's fragment shader finishes it, as it
+ * does a Normal2 vertex drawn with NoLight: white, no specular. */
+static const char *kShardDraw = R"GLSL(
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+
+uniform sampler2D uShards;   // two texels a vertex: position and U, normal and V
+uniform int   uRowVertices;
+uniform vec3  uOrigin;
+uniform vec2  uSpeed;        // mean, variance
+uniform float uSpin;
+uniform vec2  uDrop;         // seconds the last shard can last (0: forever), shrink
+uniform int   uSeed;
+uniform float uTime;
+
+out vec4  vColor;
+out vec3  vSpecular;
+out vec2  vUV;
+out float vFogDepth;
+
+uint hash(uint v)
+{
+    uint s = v * 747796405u + 2891336453u;
+    uint w = ((s >> ((s >> 28u) + 4u)) ^ s) * 277803737u;
+    return (w >> 22u) ^ w;
+}
+
+uint g_rng;
+
+float uniform01()
+{
+    g_rng = hash(g_rng);
+    return float(g_rng >> 8u) * (1.0 / 16777216.0);
+}
+
+float gauss(float mean, float variance)
+{
+    if (!(variance > 0.0))
+        return mean;
+    float z = 0.0;
+    for (int i = 0; i < 8; i++) {
+        float r = sqrt(-2.0 * log(1.0 - uniform01()));
+        z = r * cos(6.2831853 * uniform01());
+        if (abs(z) <= 2.45)
+            break;
+    }
+    return mean + clamp(z, -2.45, 2.45) * sqrt(variance);
+}
+
+vec3 unitVector()
+{
+    float z = uniform01() * 2.0 - 1.0;
+    float a = 6.2831853 * uniform01();
+    float r = sqrt(max(1.0 - z * z, 0.0));
+    return vec3(r * cos(a), r * sin(a), z);
+}
+
+vec4 shardTexel(int vertex, int which)
+{
+    return texelFetch(uShards, ivec2((vertex % uRowVertices) * 2 + which,
+                                     vertex / uRowVertices), 0);
+}
+
+void main()
+{
+    int tri = gl_VertexID / 3;
+    vec4 me = shardTexel(gl_VertexID, 0);
+    float v = shardTexel(gl_VertexID, 1).w;
+    vec3 centre = (shardTexel(tri * 3, 0).xyz + shardTexel(tri * 3 + 1, 0).xyz
+                   + shardTexel(tri * 3 + 2, 0).xyz) / 3.0;
+
+    g_rng = hash(uint(tri) ^ hash(uint(uSeed)));
+    float speed = gauss(uSpeed.x, uSpeed.y);
+    vec3 axis = unitVector();
+    float angle = uSpin * (uniform01() * 2.0 - 1.0) * uTime;
+    float lasts = uniform01() * uDrop.x;
+    vec3 stray = unitVector();
+
+    vColor = vec4(1.0);
+    vSpecular = vec3(0.0);
+    vUV = vec2(me.w, v) * uUV.xy + uUV.zw;
+    vFogDepth = 0.0;
+
+    float scale = 1.0;
+    if (uDrop.x > 0.0) {
+        float left = lasts - uTime;
+        if (left <= 0.0) {
+            gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+            return;
+        }
+        if (uDrop.y > 0.0)
+            scale = min(left / uDrop.y, 1.0);
+    }
+
+    // Out from the origin through the centroid; one on the origin strays.
+    vec3 out_ = centre - uOrigin;
+    out_ = dot(out_, out_) > 1e-12 ? normalize(out_) : stray;
+    vec3 c = (me.xyz - centre) * scale;
+    vec3 turned = c * cos(angle) + cross(axis, c) * sin(angle)
+                + axis * dot(axis, c) * (1.0 - cos(angle));
+    vec3 pos = centre + out_ * speed * uTime + turned;
+
+    vec4 view = uView * (uWorld * vec4(pos, 1.0));
+    gl_Position = uProj * view;
+    gl_Position.z = gl_Position.z * 2.0 - gl_Position.w;
+    gl_Position.xy += uTarget.xy * gl_Position.w;
+    vFogDepth = view.z;
+}
+)GLSL";
+
+GLuint gl_build_shard_program(char *error, size_t errorSize)
+{
+    GLuint vs = compile(GL_VERTEX_SHADER, kShardDraw, error, errorSize);
+    GLuint fs = vs ? compile(GL_FRAGMENT_SHADER, kFragment, error, errorSize) : 0;
+    return link(vs, fs, NULL, 0, error, errorSize);
 }

@@ -799,7 +799,10 @@ void Foe::draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const
     switch (pass) {
     case draw::Pass::Opaque:
         if (dying) {
-            draw::fireEffects(f, look, deathNumber_ > deathsDrawn);
+            const bool fire = deathNumber_ > deathsDrawn;
+            draw::fireEffects(f, look, fire);
+            if (fire)
+                draw::explode(f, look);
         }
         draw::objects(f, look, &in);
         break;

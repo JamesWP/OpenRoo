@@ -120,6 +120,18 @@ struct GLParticleBuffer : ParticleBuffer {
     uint32_t shapeCount = 0;
 };
 
+/* Vertices to a row of a GLShardBuffer's texture. */
+static const unsigned SHARD_ROW_VERTICES = 512;
+
+/* A mesh frame's triangles as a texture, two texels a vertex -- position and
+ * U, normal and V -- SHARD_ROW_VERTICES vertices to a row, for DrawShards'
+ * vertex shader to read its triangle's three corners from. */
+struct GLShardBuffer : ShardBuffer {
+    ~GLShardBuffer() override;
+    uint32_t count = 0;    // vertices
+    GLuint   texture = 0;  // RGBA32F; 0 when headless
+};
+
 struct GLVertexBuffer : VertexBuffer {
     ~GLVertexBuffer() override;
     VertexFormat format;
@@ -199,6 +211,9 @@ public:
     void StepParticles(ParticleBuffer *pb, const ParticleStep &step) override;
     bool DrawParticles(const ParticleBuffer *pb, const ParticleLook &look,
         const ParticleInstance *instances, uint32_t count) override;
+    ShardBuffer *CreateShardBuffer(VertexFormat format, const void *verts,
+                                   uint32_t count) override;
+    bool DrawShards(const ShardBuffer *sb, const ShardBurst &burst) override;
 
     /* The backend's own objects. */
     struct Native;
@@ -231,6 +246,9 @@ struct GLRenderDevice::Native {
     GLuint particleSim = 0, particleDraw = 0;
     GLuint particleSimVao = 0, particleDrawVao = 0;
     GLuint particleInstances = 0;       // DrawParticles' ParticleInstances
+    // The shattered-mesh program and its vertex array (shards.cpp), which has
+    // no attributes: the vertex shader reads the ShardBuffer's texture.
+    GLuint shardDraw = 0, shardVao = 0;
 
     unsigned  presented = 0;           // frames shown so far
     uint32_t  dirty = GLDirty::All;
@@ -258,6 +276,12 @@ GLuint gl_build_program(char *error, size_t errorSize);
 bool gl_build_particle_programs(GLuint *sim, GLuint *draw, char *error, size_t errorSize);
 void gl_create_particle_objects(GLRenderDevice::Native *n);
 void gl_release_particle_objects(GLRenderDevice::Native *n);
+
+/* The shattered-mesh program: 0, with a message in `error`, if it did not
+ * build. */
+GLuint gl_build_shard_program(char *error, size_t errorSize);
+void gl_create_shard_objects(GLRenderDevice::Native *n);
+void gl_release_shard_objects(GLRenderDevice::Native *n);
 
 /* renderdevice.cpp's: whether draws are skipped (KAROO_RENDER_FX=nodraw), and
  * the state, uniforms and fixed-function equivalents a draw of `format`
