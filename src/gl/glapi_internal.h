@@ -12,8 +12,8 @@
 #ifndef OPENROO_GL_BACKEND
 #error "Only the gl group's own sources may include this header; use glrenderdevice.h"
 #endif
-/* The Khronos header, vendored under khronos/ so every platform builds
- * against the same one; no prototypes, only the PFNGL...PROC types. */
+/* The Khronos header (cmake/FetchGLES.cmake); no prototypes, only the
+ * PFNGL...PROC types. */
 #define GL_GLES_PROTOTYPES 0
 #include <GLES3/gl32.h>
 
