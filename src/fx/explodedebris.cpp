@@ -14,6 +14,9 @@ namespace {
 
 const float kSpin = 6.0f;     // the fastest a shard turns, radians a second
 const float kShrink = 0.15f;  // seconds a shard takes to shrink away
+/* The themes' speeds scaled: at theirs the shards end about three times the
+ * model's size, as they did in the game, which reads as far too big. */
+const float kSpread = 0.4f;
 
 }  // namespace
 
@@ -37,8 +40,8 @@ void ExplodeDebris::setup(AnimatedMesh *mesh, float speedMean, float speedVarian
     release();
     mesh_ = mesh;
     vertexCount_ = (int)mesh->vertexCount();
-    speedMean_ = speedMean;
-    speedVariance_ = speedVariance;
+    speedMean_ = speedMean * kSpread;
+    speedVariance_ = speedVariance * kSpread * kSpread;
     dropRate_ = (float)vertexCount_ * dropScale / 300.0f;
 }
 
