@@ -101,6 +101,59 @@ int living_foe(int look)
     }
 }
 
+/* What a look stands on: the floor plate, or nothing for a look that is a
+ * tile itself; the destruct field's dust rises from a destruct field. */
+int ground_of(int look)
+{
+    switch (look) {
+    case THEME_OBJ_EXIT: case THEME_OBJ_STICKY: case THEME_OBJ_FALLING:
+    case THEME_OBJ_JUMP_PAD: case THEME_OBJ_SLIDE: case THEME_OBJ_STAIRS:
+    case THEME_OBJ_TELEPORTER: case THEME_OBJ_SWITCH: case THEME_OBJ_ICE:
+    case THEME_OBJ_BOMBABLE:
+        return -1;
+    case THEME_OBJ_FALLING_DUST:
+        return THEME_OBJ_FALLING;
+    default:
+        return THEME_OBJ_FLOOR;
+    }
+}
+
+/* A Lit vertex: x, y, z, 0, diffuse, 0, u, v. */
+struct WallVertex { uint32_t d[8]; };
+
+uint32_t fbits(float f) { uint32_t d; memcpy(&d, &f, 4); return d; }
+
+WallVertex wall_vertex(float x, float y, float z, uint32_t diffuse, float u, float v)
+{
+    return { { fbits(x), fbits(y), fbits(z), 0, diffuse, 0, fbits(u), fbits(v) } };
+}
+
+/* The four wall faces round the tile at c, `depth` deep, shaded and wound as
+ * LevelPlacements::buildWalls has them. */
+void wrap_tile(Vec3 c, float depth, std::vector<WallVertex> *out)
+{
+    const float H = 0.5f, T = 1.0f - depth;
+    const Vec3 ends[4][2] = {
+        { { c.x - H, c.y, c.z + H }, { c.x + H, c.y, c.z + H } },
+        { { c.x - H, c.y, c.z - H }, { c.x + H, c.y, c.z - H } },
+        { { c.x - H, c.y, c.z + H }, { c.x - H, c.y, c.z - H } },
+        { { c.x + H, c.y, c.z + H }, { c.x + H, c.y, c.z - H } },
+    };
+    for (int li = 0; li < 4; ++li) {
+        const uint32_t shade = (li == 0 || li == 3) ? 0xff404040 : 0xffb0b0b0;
+        const bool flip = li == 0 || li == 3;
+        const Vec3 s = ends[li][0], e = ends[li][1];
+        const WallVertex S  = wall_vertex(s.x, s.y, s.z, shade, 0.0f, T);
+        const WallVertex E  = wall_vertex(e.x, e.y, e.z, shade, 1.0f, T);
+        const WallVertex S_ = wall_vertex(s.x, s.y - depth, s.z, shade, 0.0f, 1.0f);
+        const WallVertex E_ = wall_vertex(e.x, e.y - depth, e.z, shade, 1.0f, 1.0f);
+        if (flip)
+            out->insert(out->end(), { E, S, E_, S, S_, E_ });
+        else
+            out->insert(out->end(), { S, E, E_, S_, S, E_ });
+    }
+}
+
 /* The projection the game draws with (render/renderstate.cpp). */
 Mat4 projection()
 {
@@ -138,7 +191,11 @@ bool to_screen(const Mat4 &view, const Mat4 &proj, Vec3 p, float w, float h,
 class Gallery {
 public:
     explicit Gallery(Renderer *r) : r_(r), dev_(r->device) {}
-    ~Gallery() { theme_block_.release(&textures_, &models_); }
+    ~Gallery()
+    {
+        RenderDevice::DestroyVertexBuffer(wallVb_);
+        theme_block_.release(&textures_, &models_);
+    }
 
     void start(int theme)
     {
@@ -160,6 +217,16 @@ public:
         g_logger.write("gallery: %s, %u looks with particles or debris\n", kThemes[theme_],
                        (unsigned)looks_.size());
         started_ = now_;
+
+        std::vector<WallVertex> walls;
+        for (size_t i = 0; i < looks_.size(); i++)
+            wrap_tile(place(i), theme_block_.sideHeight(), &walls);
+        RenderDevice::DestroyVertexBuffer(wallVb_);
+        wallVb_ = nullptr;
+        wallVertices_ = (unsigned)walls.size();
+        if (!walls.empty())
+            wallVb_ = dev_->CreateVertexBuffer(VertexFormat::Lit, wallVertices_,
+                                               BufferUsage::Static, walls.data());
     }
 
     void frame()
@@ -214,8 +281,11 @@ public:
                 at[i].conditions = draw::COND_DEAD;
 
         draw::beginPass(f, draw::Pass::Opaque);
+        draw::fieldBuffer(f, THEME_OBJ_WALL, wallVb_, wallVertices_);
         for (size_t i = 0; i < looks_.size(); i++) {
-            draw::objects(f, THEME_OBJ_FLOOR, &at[i]);
+            const int ground = ground_of(looks_[i]);
+            if (ground >= 0)
+                draw::objects(f, (ThemeObjectType)ground, &at[i]);
             if (play_of(looks_[i]) != Play::Burst && play_of(looks_[i]) != Play::Trail)
                 draw::objects(f, (ThemeObjectType)looks_[i], &at[i]);
         }
@@ -257,7 +327,7 @@ public:
     }
 
 private:
-    /* The looks stand in a square grid, a floor tile each. */
+    /* The looks stand in a square grid, a walled tile each. */
     unsigned columns() const
     {
         return std::max(1u, (unsigned)ceil(sqrt((double)looks_.size())));
@@ -341,6 +411,8 @@ private:
     ThemeAssetBlock theme_block_;  // its own: the level's stays loaded
     TextureManager  textures_;
     ModelManager    models_;
+    VertexBuffer   *wallVb_ = nullptr;  // the walls round every look's tile
+    unsigned        wallVertices_ = 0;
     unsigned char held_[KEY_COUNT] = {};
 };
 
