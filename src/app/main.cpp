@@ -50,6 +50,7 @@
 #include "levelselect.h"
 #include "botrun.h"
 #include "particlegallery.h"
+#include "dbg.h"
 
 
 /* The render state (renderer.h).  app owns it and passes it down; nothing
@@ -97,8 +98,11 @@ static void idle(Game *game, videodev::Player &movie)
     // Cleared when the movie finishes or is skipped (a headless one, at once).
     if (movie.playing())
         present_movie_frame(movie, s_renderer.device);
-    else
-        Core_RunFrame(game, &s_renderer, &s_menuArt, &s_progCtrl);
+    else {
+        dbg::frameBegin();
+        if (!ParticleGallery_Frame(&s_renderer))
+            Core_RunFrame(game, &s_renderer, &s_menuArt, &s_progCtrl);
+    }
 }
 
 /* The window's events: surfaces and the intro movie on focus changes, and the
@@ -297,14 +301,7 @@ int Main_WinMain(const char *lpCmdLine)
         windev::quit(1);
     Menu_BuildMenuGeometry(&s_menuArt, s_renderer.device, kGameDir);
 
-    if (ParticleGallery_Requested() && !d3d->headless()) {
-        const int code = ParticleGallery_Run(&s_renderer);
-        s_renderer.themeBlock.release(&s_renderer.textures, &s_renderer.models);
-        s_renderer.device = NULL;
-        delete_game(Game::instance());
-        device.reset();
-        return code;
-    }
+    const bool gallery = ParticleGallery_StartFromEnv(&s_renderer);
 
     // KAROO_START_LEVEL: straight into a fresh game at that level, past the
     // menus, as the bot harness runs one level at a time.
@@ -327,7 +324,9 @@ int Main_WinMain(const char *lpCmdLine)
     // depend on it.
     const bool show = !d3d->headless() && !record_replaying() && !bot::active();
     const std::string path = std::string(kGameDir) + "/video/INTRO.AVI";
-    if (movie.load(sysdev::nativePath(path.c_str()).c_str(), show))
+    if (gallery)
+        g_logger.write("MAIN: no intro, the particle gallery is open\n");
+    else if (movie.load(sysdev::nativePath(path.c_str()).c_str(), show))
         movie.play();
     else
         g_logger.logMessage(3, "MAIN: Couldn't load %s .", path.c_str());
@@ -337,6 +336,7 @@ int Main_WinMain(const char *lpCmdLine)
 
     prof::initSlowFrames();
     const int exitCode = windev::runMessageLoop([game, &movie] { idle(game, movie); });
+    ParticleGallery_Shutdown();
     prof::dumpSlowFrames();
     debugui::shutdown(*d3d);
 

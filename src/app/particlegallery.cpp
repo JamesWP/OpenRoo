@@ -16,6 +16,9 @@
 #include "sysdev.h"
 #include "themedraw.h"
 #include "windev.h"
+#include "clock.h"
+#include "dbg.h"
+#include <memory>
 
 using namespace input;
 
@@ -115,6 +118,7 @@ bool to_screen(const Mat4 &view, const Mat4 &proj, Vec3 p, float w, float h,
 class Gallery {
 public:
     explicit Gallery(Renderer *r) : r_(r), dev_(r->device) {}
+    ~Gallery() { theme_block_.release(&textures_, &models_); }
 
     void start(int theme)
     {
@@ -122,11 +126,11 @@ public:
         char path[0x100];
         snprintf(path, sizeof(path), "themes\\%s.thm", kThemes[theme_]);
         std::vector<ThemeSoundLine> sounds;
-        if (!r_->themeBlock.load(dev_, &r_->textures, &r_->models, path, sounds))
+        if (!theme_block_.load(dev_, &textures_, &models_, path, sounds))
             g_logger.write("gallery: could not load %s\n", path);
         looks_.clear();
         for (int look = 0; look < THEME_OBJ_COUNT; look++)
-            if (has_particles(r_->themeBlock, look))
+            if (has_particles(theme_block_, look))
                 looks_.push_back(look);
         g_logger.write("gallery: %s, %u looks with particles\n", kThemes[theme_],
                        (unsigned)looks_.size());
@@ -165,7 +169,7 @@ public:
 
         draw::Frame f;
         f.dev = dev_;
-        f.theme = &r_->themeBlock;
+        f.theme = &theme_block_;
         f.shadow = &r_->texShadow;
         f.eye = eye;
         f.target = centre;
@@ -176,6 +180,9 @@ public:
         std::vector<draw::Instance> at(looks_.size());
         for (size_t i = 0; i < looks_.size(); i++)
             at[i].pos = place(i);
+        for (size_t i = 0; i < looks_.size(); i++)
+            if (looks_[i] == THEME_OBJ_EXIT)
+                at[i].conditions = draw::COND_ACTIVE;  // open: it glows and emits
 
         draw::beginPass(f, draw::Pass::Opaque);
         for (size_t i = 0; i < looks_.size(); i++) {
@@ -257,7 +264,7 @@ private:
         inputdev::keyboard().sample(k);
         auto pressed = [&](int key) { return (k[key] & 0x80) && !(held_[key] & 0x80); };
         if (pressed(KEY_ESCAPE))
-            windev::quit(0);
+            closing_ = true;
         if (pressed(KEY_RIGHT))
             start(theme_ + 1);
         if (pressed(KEY_LEFT))
@@ -271,6 +278,25 @@ private:
         memcpy(held_, k, sizeof(held_));
     }
 
+public:
+    /* The debug UI's controls, in the gallery's own section. */
+    void panel()
+    {
+        for (int i = 0; i < kThemeCount; i++) {
+            if (i)
+                ImGui::SameLine();
+            if (ImGui::RadioButton(kThemes[i], theme_ == i) && theme_ != i)
+                start(i);
+        }
+        ImGui::Checkbox("pause orbit", &paused_);
+        ImGui::SliderFloat("zoom", &zoom_, 0.3f, 3.0f);
+        if (ImGui::Button("back to the game"))
+            closing_ = true;
+    }
+
+    bool closing() const { return closing_; }
+
+private:
     Renderer     *r_;
     RenderDevice *dev_;
     int           theme_ = 0;
@@ -280,24 +306,65 @@ private:
     double        orbit_ = 0.0;
     float         zoom_ = 1.0f;
     bool          paused_ = false;
+    bool          closing_ = false;
+    ThemeAssetBlock theme_block_;  // its own: the level's stays loaded
+    TextureManager  textures_;
+    ModelManager    models_;
     unsigned char held_[KEY_COUNT] = {};
 };
 
-}  // namespace
+std::unique_ptr<Gallery> s_gallery;
+bool s_fromEnv = false;
 
-bool ParticleGallery_Requested()
+int theme_named(const std::string &name)
 {
-    return !sysdev::getEnv("KAROO_PARTICLE_GALLERY").empty();
+    for (int i = 0; i < kThemeCount; i++)
+        if (strcasecmp(name.c_str(), kThemes[i]) == 0)
+            return i;
+    return 0;
 }
 
-int ParticleGallery_Run(Renderer *renderer)
+}  // namespace
+
+bool ParticleGallery_StartFromEnv(Renderer *renderer)
 {
     const std::string want = sysdev::getEnv("KAROO_PARTICLE_GALLERY");
-    int first = 0;
-    for (int i = 0; i < kThemeCount; i++)
-        if (strcasecmp(want.c_str(), kThemes[i]) == 0)
-            first = i;
-    Gallery gallery(renderer);
-    gallery.start(first);
-    return windev::runMessageLoop([&gallery] { gallery.frame(); });
+    if (want.empty() || renderer->device->headless())
+        return false;
+    s_fromEnv = true;
+    s_gallery.reset(new Gallery(renderer));
+    s_gallery->start(theme_named(want));
+    return true;
+}
+
+bool ParticleGallery_Frame(Renderer *renderer)
+{
+    if (dbg::active()) {
+        dbg::Section s("Particle gallery");
+        if (s) {
+            if (s_gallery)
+                s_gallery->panel();
+            else if (ImGui::Button("open the particle gallery")) {
+                s_gallery.reset(new Gallery(renderer));
+                s_gallery->start(0);
+            }
+        }
+    }
+    if (s_gallery && s_gallery->closing()) {
+        s_gallery.reset();
+        if (s_fromEnv)
+            windev::quit(0);
+        // The game's clock ran on while the gallery showed; don't make it
+        // catch up in one tick.
+        renderer->lastTickMs = clock_advance() * 1000.0;
+    }
+    if (!s_gallery)
+        return false;
+    s_gallery->frame();
+    return true;
+}
+
+void ParticleGallery_Shutdown()
+{
+    s_gallery.reset();
 }

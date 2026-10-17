@@ -8,14 +8,24 @@
  *   KAROO_PARTICLE_GALLERY=1        start at the first theme
  *   KAROO_PARTICLE_GALLERY=Space    start at that theme
  *
+ * or from the debug UI's "Particle gallery" section, over a running game.
  * Left/Right change theme, Up/Down zoom, Space pauses the orbit, Escape
- * quits. */
+ * goes back to the game.  The level's own theme stays loaded: the gallery
+ * has its own. */
 #pragma once
 
 struct Renderer;
 
-/* Whether the gallery was asked for. */
-bool ParticleGallery_Requested();
+/* Opens the gallery if KAROO_PARTICLE_GALLERY asks for it; Escape then quits
+ * the game rather than going back to it.  False if not asked for (or
+ * headless). */
+bool ParticleGallery_StartFromEnv(Renderer *renderer);
 
-/* Runs the gallery until it is quit; the exit code. */
-int ParticleGallery_Run(Renderer *renderer);
+/* Inside the debug UI's frame, before the game's: the gallery's section of
+ * the debug UI, whose button opens it over the game, and then, while it is
+ * open, its frame in place of the game's.  False when the game should run
+ * its frame. */
+bool ParticleGallery_Frame(Renderer *renderer);
+
+/* Before the device goes. */
+void ParticleGallery_Shutdown();

@@ -3,7 +3,6 @@
 #include <math.h>
 #include "frame.h"
 #include "prof.h"
-#include "dbg.h"
 #include "renderdevice.h"
 #include "game.h"
 #include "levelentry.h"
@@ -95,7 +94,6 @@ static void update_listener(Game *g)
 
 void Core_RunFrame(Game *g, Renderer *renderer, const MenuArt *art, ProgableControl *progCtrl)
 {
-    dbg::frameBegin();
     PROF_SCOPE("frame");
     FrameTime t;
     if (Core_UpdateFrame(g, renderer, progCtrl, &t))

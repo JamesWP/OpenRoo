@@ -294,6 +294,11 @@ A test scene, not a level (`src/app/particlegallery.cpp`): one theme at a
 time, every look with a particle system on a floor tile of its own, labelled
 with its theme-file keyword and drawn through the same theme draws a level
 uses. Bursts and dying effects fire again every few seconds and the speed
-trail runs in a circle. Left/Right change theme, Up/Down zoom, Space stops the
-camera's orbit, Escape quits. Use it to check a change to the particles by eye;
-`KAROO_SCREENSHOT` works here too.
+trail runs in a circle; the exit is shown open. Left/Right change theme,
+Up/Down zoom, Space stops the camera's orbit, Escape quits.
+
+It also opens over a running game from the debug UI (F10): the "Particle
+gallery" section's button opens it, and the same section then picks the
+theme, the zoom and the orbit. Escape or "back to the game" returns to the
+level, which waited where it was. Use it to check a change to the particles
+by eye; `KAROO_SCREENSHOT` works here too.

@@ -15,8 +15,8 @@ class Renderer;
 struct MenuArt;
 class ProgableControl;
 
-/* The whole frame, inside the debug UI's frame and the profiler's "frame"
- * scope. */
+/* The whole frame, inside the profiler's "frame" scope.  The caller opens
+ * the debug UI's frame first (dbg::frameBegin), so it can add to it too. */
 void Core_RunFrame(Game *g, Renderer *renderer, const MenuArt *art, ProgableControl *progCtrl);
 
 /* The update half.  False when the frame draws nothing: it prepared a level
