@@ -49,6 +49,86 @@ input::KeySource &keyboard()
     return k;
 }
 
+namespace {
+/* The gamepad's buttons, as the keys the default bindings
+ * (sequencer/inputsetup.cpp) and the menus read.  SDL's buttons are
+ * positional: EAST is the right-hand face button (A on the RG35XX and on a
+ * Nintendo pad), SOUTH the bottom one. */
+struct ButtonKey { SDL_GamepadButton button; int key; };
+const ButtonKey kButtonKeys[] = {
+    { SDL_GAMEPAD_BUTTON_DPAD_UP,        input::KEY_UP },
+    { SDL_GAMEPAD_BUTTON_DPAD_DOWN,      input::KEY_DOWN },
+    { SDL_GAMEPAD_BUTTON_DPAD_LEFT,      input::KEY_LEFT },
+    { SDL_GAMEPAD_BUTTON_DPAD_RIGHT,     input::KEY_RIGHT },
+    { SDL_GAMEPAD_BUTTON_EAST,           input::KEY_RETURN },    // confirm
+    { SDL_GAMEPAD_BUTTON_SOUTH,          input::KEY_B },         // bomb
+    { SDL_GAMEPAD_BUTTON_NORTH,          input::KEY_PAGEUP },    // tilt up
+    { SDL_GAMEPAD_BUTTON_WEST,           input::KEY_PAGEDOWN },  // tilt down
+    { SDL_GAMEPAD_BUTTON_LEFT_SHOULDER,  input::KEY_X },         // rotate left
+    { SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER, input::KEY_C },         // rotate right
+    { SDL_GAMEPAD_BUTTON_BACK,           input::KEY_TAB },       // overview
+    { SDL_GAMEPAD_BUTTON_START,          input::KEY_ESCAPE },    // pause, back
+    { SDL_GAMEPAD_BUTTON_GUIDE,          input::KEY_DELETE },    // harakiri
+};
+/* The triggers (on the RG35XX, digital: 0 or full). */
+struct AxisKey { SDL_GamepadAxis axis; int key; };
+const AxisKey kAxisKeys[] = {
+    { SDL_GAMEPAD_AXIS_LEFT_TRIGGER,  input::KEY_Z },  // zoom out
+    { SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, input::KEY_A },  // zoom in
+};
+const Sint16 kTriggerDown = 16384;
+
+class Gamepad : public input::KeySource {
+public:
+    void sample(unsigned char keys[input::KEY_COUNT]) override
+    {
+        if (!open()) return;
+        for (const ButtonKey &b : kButtonKeys)
+            if (SDL_GetGamepadButton(pad_, b.button)) keys[b.key] = 0x80;
+        for (const AxisKey &a : kAxisKeys)
+            if (SDL_GetGamepadAxis(pad_, a.axis) >= kTriggerDown) keys[a.key] = 0x80;
+    }
+
+private:
+    /* The first gamepad, opened on first use and again after it is
+     * unplugged.  The events that update its state are pumped by windev. */
+    bool open()
+    {
+        if (pad_ && SDL_GamepadConnected(pad_)) return true;
+        if (pad_) {
+            SDL_CloseGamepad(pad_);
+            pad_ = NULL;
+        }
+        if (!inited_) {
+            inited_ = true;
+            if (!SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
+                ID_LOG("inputdev: no gamepad support: %s\n", SDL_GetError());
+                return false;
+            }
+            ok_ = true;
+        }
+        if (!ok_ || !SDL_HasGamepad()) return false;
+        int count = 0;
+        SDL_JoystickID *ids = SDL_GetGamepads(&count);
+        if (ids && count > 0) {
+            pad_ = SDL_OpenGamepad(ids[0]);
+            if (pad_) ID_LOG("inputdev: gamepad '%s'\n", SDL_GetGamepadName(pad_));
+        }
+        SDL_free(ids);
+        return pad_ != NULL;
+    }
+
+    SDL_Gamepad *pad_ = NULL;
+    bool inited_ = false, ok_ = false;
+};
+}  // namespace
+
+input::KeySource &gamepad()
+{
+    static Gamepad g;
+    return g;
+}
+
 int keyFromName(const char *name)
 {
     // SDL_GetScancodeFromName ignores case.

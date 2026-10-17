@@ -1,0 +1,15 @@
+; Open'Roo settings for the RG35XX Plus, installed by mux_launch.sh when the
+; app directory has no openroo.ini: the display's only mode (640x480) and the
+; cheaper effects, for the Mali-G31.
+[video]
+adapter =
+mode = 0
+shadows = 1
+reflection = 0
+highlights = 1
+particles = 1
+
+[audio]
+sound3d = 1
+music = 1
+effects_volume = 10
