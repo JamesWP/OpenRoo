@@ -4,5 +4,5 @@ add_library(fx OBJECT
     particles.cpp)
 target_include_directories(fx PUBLIC .)
 target_link_libraries(fx
-    PUBLIC  gfx renderapi
-    PRIVATE sysdev log base)
+    PUBLIC  gfx
+    PRIVATE sysdev log base renderapi)

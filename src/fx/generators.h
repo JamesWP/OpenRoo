@@ -11,7 +11,8 @@
 #include <istream>
 #include <stddef.h>
 #include "particles.h"
-#include "particletypes.h"
+struct ParticleEmit;
+struct ParticleField;
  
 #include "explodedebris.h"
 
@@ -35,7 +36,7 @@ public:
     virtual void tick(float dt) { (void)dt; }
     /* What has been emitted since the last call, and the distributions it
      * is drawn from; out.count is 0 for nothing.  Starts the count again. */
-    virtual void takeEmit(ParticleEmit &out) { out.count = 0; }
+    virtual void takeEmit(ParticleEmit &out);
     virtual int load(std::istream &in) { (void)in; return 1; }
     virtual void setPosition(float x, float y, float z)  { (void)x; (void)y; (void)z; }
     virtual void setVelocity(float x, float y, float z, float mag)
@@ -69,7 +70,7 @@ public:
     /* Counts dt's fade; takeField hands it over. */
     virtual void tick(float dt) { (void)dt; }
     /* The field, and the fade since the last call, which starts again. */
-    virtual void takeField(ParticleField &out) { out.kind = ParticleFieldKind::None; }
+    virtual void takeField(ParticleField &out);
     virtual int load(std::istream &in) { (void)in; return 1; }
 
     const char *name() const   { return pName_; }
@@ -152,7 +153,7 @@ protected:
     bool loadColours(std::istream &in);
 
     float     rate_ = {};
-    Vec3      dirMean_ = {}, dirVariance_ = {};
+    float     dirMean_[3] = {}, dirVariance_[3] = {};
     float     speedMean_ = {}, speedVariance_ = {};
     float     lifeMean_ = {}, lifeVariance_ = {};
     std::vector<uint32_t> colours_;  // (0xAARRGGBB, weight) pairs
@@ -174,8 +175,8 @@ protected:
     void placement(ParticleEmit &out) const override;
 
     uint32_t  emitMode_ = {};     // 0: about a point, 1: in a box
-    Vec3      boxMax_ = {}, boxMin_ = {};
-    Vec3      posMean_ = {}, posVariance_ = {};
+    float     boxMax_[3] = {}, boxMin_[3] = {};
+    float     posMean_[3] = {}, posVariance_[3] = {};
 };
 
 /* XStdGenerator: StdGenerator plus a constant offset added to every new

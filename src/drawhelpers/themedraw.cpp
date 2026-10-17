@@ -8,6 +8,7 @@
  * left to right: scale, then rotation, then translation. */
 #include <math.h>
 #include "themedraw.h"
+#include "particletypes.h"
 #include <vector>
 #include "renderdevice.h"
 #include "texture.h"

@@ -7,7 +7,10 @@
 #include <stddef.h>
 class RenderDevice;
 
-#include "particletypes.h"
+struct ParticleBuffer;
+struct ParticleInstance;
+struct ParticleLook;
+struct ParticleShape;
 
 /* ParticleSystem hierarchy: a fixed number of particle slots on the device,
  * the generator that emits into them and the environment that moves, fades
@@ -59,8 +62,9 @@ public:
     /* Face only: the quad's direction, and a transform of its corners. */
     virtual void  setVector(float, float, float) {}
     virtual void  transformCorners(float *) {}
-    /* What transformCorners has made of the corners since setVector. */
-    virtual Mat4  cornerTransform() const;
+    /* What transformCorners has made of the corners since setVector: a
+     * row-major 4x4, row vectors. */
+    virtual void  cornerTransform(float out[16]) const;
 
     Generator *getGenerator(const char *name);
     void enableRenderNode();
@@ -110,7 +114,7 @@ public:
 
     void  setVector(float x, float y, float z) override;
     void  transformCorners(float *matrix) override;
-    Mat4  cornerTransform() const override;
+    void  cornerTransform(float out[16]) const override;
 
 protected:
     int  copyFrom(const ParticleSystem *src) override;
@@ -119,8 +123,8 @@ protected:
 
 private:
     static const float FACE_UV[6][2];
-    Vec3            facing_ = { 0, 0, 1 };
-    Mat4            corners_ = { { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 } };
+    float           facing_[3] = { 0, 0, 1 };
+    float           corners_[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 };
     float           flScale_;
 };
 
@@ -129,6 +133,7 @@ private:
 class XFaceParticleSystem : public ParticleSystem {
 public:
     XFaceParticleSystem();
+    ~XFaceParticleSystem() override;
 
 protected:
     void  release(int flags) override;
@@ -141,7 +146,7 @@ private:
     int buildCorners();
 
     static const float XFACE_UV[6][2];
-    std::vector<ParticleShape> shapes_;  // dwCornerTableCount of them
+    std::unique_ptr<ParticleShape[]> shapes_;  // dwCornerTableCount of them
     uint32_t             dwCornerTableCount_;
     float             ranges[8];
 };
