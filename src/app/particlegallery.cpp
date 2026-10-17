@@ -118,6 +118,18 @@ int ground_of(int look)
     }
 }
 
+/* Whether the game walls the tile a look stands on (levelplacements.cpp's
+ * solid()): the stair, slide and destruct field have none. */
+bool walled(int look)
+{
+    switch (ground_of(look) < 0 ? look : ground_of(look)) {
+    case THEME_OBJ_STAIRS: case THEME_OBJ_SLIDE: case THEME_OBJ_FALLING:
+        return false;
+    default:
+        return true;
+    }
+}
+
 /* A Lit vertex: x, y, z, 0, diffuse, 0, u, v. */
 struct WallVertex { uint32_t d[8]; };
 
@@ -220,7 +232,8 @@ public:
 
         std::vector<WallVertex> walls;
         for (size_t i = 0; i < looks_.size(); i++)
-            wrap_tile(place(i), theme_block_.sideHeight(), &walls);
+            if (walled(looks_[i]))
+                wrap_tile(place(i), theme_block_.sideHeight(), &walls);
         RenderDevice::DestroyVertexBuffer(wallVb_);
         wallVb_ = nullptr;
         wallVertices_ = (unsigned)walls.size();
@@ -411,7 +424,7 @@ private:
     ThemeAssetBlock theme_block_;  // its own: the level's stays loaded
     TextureManager  textures_;
     ModelManager    models_;
-    VertexBuffer   *wallVb_ = nullptr;  // the walls round every look's tile
+    VertexBuffer   *wallVb_ = nullptr;  // the walls round the walled looks' tiles
     unsigned        wallVertices_ = 0;
     unsigned char held_[KEY_COUNT] = {};
 };
