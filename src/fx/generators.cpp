@@ -3,15 +3,12 @@
  * particletypes.h), Load, CopyFrom, the constructors, and the table builders
  * Load and CopyFrom run.
  *
- * DETERMINISM: the table builders draw from the game's rand(), which the
- * simulation shares, so what they draw and in what order is kept exactly as
- * the original's, quirks included. */
+ * The tables draw from the effects' own random numbers (fxrand.h). */
 
 #include <string.h>
 #include <stdint.h>
 #include "generators.h"
-#include "gametime.h"
-#include "crtrand.h"
+#include "fxrand.h"
 #include <new>
 #include <math.h>
 #include <stdlib.h>
@@ -279,114 +276,33 @@ Environment *Environment::create(const char *name)
  */
 static inline bool zero_or_nan(float v) { return !(v < 0.0f || v > 0.0f); }
 
-/* Float constants: each is the float nearest its written value. */
-static const float RAND_SCALE  = 1.0f / 32767.0f;
-static const float GAUSS_STEP  = 0.001f;
-static const float GAUSS_PI    = 3.14159265358979f;
 static const float TINY_LENGTH = 1.1920928955078125e-07f;
 
-/* PRESERVED: divides by 2*sigma, not 2*sigma^2 as a normalised Gaussian would
- * — every consumer only uses this as relative histogram weight, so the missing
- * square is absorbed by gauss_fill's later scaling.
- *
- * Every intermediate here is double, with float rounding only at the points
- * noted below (gauss_bucket, and the drawn samples), not extended x87
- * precision. */
-static double gauss_pdf(float x, float mu, float sigma)
+/* n samples of a normal distribution about mu whose VARIANCE (not standard
+ * deviation) is `spread`, cut off at about 2.45 standard deviations: what the
+ * effect files were tuned against.  A spread that is not positive gives mu. */
+static void gauss_fill(float *out, int n, float mu, float spread)
 {
-    if (zero_or_nan(sigma))
-        return (!(x < mu || x > mu)) ? 1.0 : 0.0;
-    double d = (double)x - mu;
-    double q = (d * d) / ((double)sigma + sigma);
-    double root = sqrt((double)GAUSS_PI + GAUSS_PI);
-    return exp(-q) * (1.0 / (root * sigma));
+    if (!(spread > 0.0f)) {
+        std::fill(out, out + n, mu);
+        return;
+    }
+    const float sd = sqrtf(spread), cut = 2.45f * sd;
+    std::normal_distribution<float> normal(mu, sd);
+    for (int i = 0; i < n; i++) {
+        float v;
+        do
+            v = normal(fx_engine());
+        while (fabsf(v - mu) > cut);
+        out[i] = v;
+    }
 }
 
-/* pdf * scale, rounded to nearest via floor(x + 0.5); the outer cast is then a
- * no-op. */
-static int gauss_bucket(float x, float mu, float sigma, float scale)
-{
-    double v = (double)(gauss_pdf(x, mu, sigma) * scale + 0.5);
-    return (int)floor(v);
-}
-
-/* DETERMINISM: reseeds via srand(rand()) before drawing, then draws n samples
- * by rand(), in order — replays depend on this exact call sequence.
- *
- * PRESERVED: assumes the bucket at the centre (mu) is exactly 10; the first
- * loop hard-codes that count rather than computing it, and the second loop
- * mirrors the first's shape to fill exactly `total` entries only if that
- * assumption holds. */
-static void gauss_fill(float *out, int n, float mu, float sigma, float step)
-{
-    if (!(step > 0.0f))
-        step = 0.1f;
-    float scale = (float)(10.0 / gauss_pdf(mu, mu, sigma));
-
-    float x = mu;
-    int total = 0, k = 10;
-    do {
-        x = (float)((double)x + step);
-        total += k;
-        k = gauss_bucket(x, mu, sigma, scale);
-    } while (k > 0);
-    total = total * 2 - 10;
-
-    float *table = new float[total];
-    int filled = 0;
-    int k0 = gauss_bucket(mu, mu, sigma, scale);
-    if (k0 > 0) {
-        for (int i = 0; i < k0; i++)
-            table[i] = mu;
-        filled = k0;
-    }
-    x = mu;
-    while (filled < total) {
-        x = (float)((double)x + step);
-        int kk = gauss_bucket(x, mu, sigma, scale);
-        if (kk > 0) {
-            float mirror = (float)(((double)mu + mu) - x);
-            for (; kk; kk--) {
-                table[filled++] = x;
-                table[filled++] = mirror;
-            }
-        }
-    }
-
-    CRT_RAND_SEED = crt_rand();
-    if (n > 0) {
-        float span = (float)((double)total - 1.0f);
-        for (; n; n--) {
-            int r = (int)crt_rand();
-            int idx = (int)((double)r * span * RAND_SCALE + 0.5f);
-            *out++ = table[idx];
-        }
-    }
-    delete[] table;
-}
-
-/* One-shot: only the very first call this process makes reseeds from the
- * clock; every call after that (and after, every call at all) reseeds via
- * srand(rand()). */
-static volatile uint8_t g_uniformSeedPending = 1;
-
-/* DETERMINISM: n samples uniform on [a, b], centred on the midpoint.  See
- * g_uniformSeedPending above for the seeding order this depends on. */
+/* n samples uniform between a and b. */
 static void uniform_fill(float *out, int n, float a, float b)
 {
-    float mid = (float)(((double)a + b) * 0.5f);
-    float span = (float)((double)b - a);
-    if (!(span >= 0.0f))
-        span = (float)((double)span * -1.0f);
-    if (g_uniformSeedPending) {
-        CRT_RAND_SEED = (unsigned)hooks_GameTime(NULL);
-        g_uniformSeedPending = 0;
-    }
-    CRT_RAND_SEED = crt_rand();
-    for (; n > 0; n--) {
-        int r = (int)crt_rand();
-        *out++ = (float)((((double)r - 16383.5) * span * RAND_SCALE) + mid);
-    }
+    for (int i = 0; i < n; i++)
+        out[i] = fx_uniform(a, b);
 }
 
 /* Gates on matching type name, then copies only dwEnabled. */
@@ -398,10 +314,9 @@ int Generator::copyFrom(const Generator *src)
     return true;
 }
 
-/* DETERMINISM: reseeds from the clock, then draws (colour, weight) pairs by
- * rand() until all 200 slots are filled, skipping zero-weight pairs — the draw
- * order feeds the emitted particle colours.  An empty or missing source table
- * instead fills pEmitProb with all -1. */
+/* Copies the (colour, weight) pairs, and fills the 200 colours emission
+ * cycles through from them; white for an empty table, or one of no
+ * weight. */
 static void type_table_clone(std::vector<uint32_t> *table, uint32_t *pcount, uint32_t *emit_prob,
                              const uint32_t *src, uint32_t count)
 {
@@ -417,22 +332,23 @@ static void type_table_clone(std::vector<uint32_t> *table, uint32_t *pcount, uin
         return;
     }
 
-    CRT_RAND_SEED = (unsigned)hooks_GameTime(NULL);
-    float span = (float)((double)(unsigned long long)count - 1.0f);
+    // Pick an entry with weight at random, and take its colour weight times,
+    // until the table is full.
+    bool weighted = false;
+    for (uint32_t i = 0; i < count; i++)
+        weighted = weighted || src[i * 2 + 1] != 0;
+    if (!weighted) {
+        std::fill(emit_prob, emit_prob + 200, 0xFFFFFFFF);
+        return;
+    }
     int out = 0;
-    for (;;) {
-        int idx;
-        do {
-            int r = (int)crt_rand();
-            idx = (int)((double)r * span * RAND_SCALE + 0.5f);
-        } while (src[idx * 2 + 1] == 0);
-        uint32_t j = 0;
-        do {
+    while (out < 200) {
+        uint32_t idx;
+        do
+            idx = fx_index(count);
+        while (src[idx * 2 + 1] == 0);
+        for (uint32_t j = 0; j < src[idx * 2 + 1] && out < 200; j++)
             emit_prob[out++] = src[idx * 2];
-            if (out >= 200)
-                return;
-            j++;
-        } while (j < src[idx * 2 + 1]);
     }
 }
 
@@ -467,7 +383,7 @@ void StdGenerator::stdBuildSphere(const float *mn, const float *mx)
     dwEmitMode_ = 0;
     float *col[3] = { new float[500], new float[500], new float[500] };
     for (int i = 0; i < 3; i++)
-        gauss_fill(col[i], 500, a[i], b[i], (float)((double)b[i] * GAUSS_STEP));
+        gauss_fill(col[i], 500, a[i], b[i]);
     stdInterleavePos(col[0], col[1], col[2]);
     for (int i = 0; i < 3; i++)
         delete[] col[i];
@@ -494,8 +410,8 @@ static void build_velocity_table(float *table, const float *a, const float *b,
 {
     float *col[4] = { new float[500], new float[500], new float[500], new float[500] };
     for (int i = 0; i < 3; i++)
-        gauss_fill(col[i], 500, a[i], b[i], (float)((double)b[i] * GAUSS_STEP));
-    gauss_fill(col[3], 500, lmin, lmax, (float)((double)lmax * GAUSS_STEP));
+        gauss_fill(col[i], 500, a[i], b[i]);
+    gauss_fill(col[3], 500, lmin, lmax);
 
     for (int k = 0; k < 500; k++) {
         float *v = &table[k * 3];
@@ -532,15 +448,13 @@ void StdGenerator::stdBuildVelocity(const float *vmin, const float *vmax,
 
 void StdGenerator::stdBuildRate(float lo, float hi)
 {
-    float step = (float)((double)hi * GAUSS_STEP);
     flEmitRateMin_ = lo;
     flEmitRateMax_ = hi;
-    gauss_fill(pLifeTable_, 100, lo, hi, step);
+    gauss_fill(pLifeTable_, 100, lo, hi);
 }
 
 /* Copies every field but the type table, which is cloned instead — cloning
- * redraws pEmitProb from a fresh seed, so a copy's colours differ from its
- * source's. */
+ * redraws the colours, so a copy's differ from its source's. */
 int StdGenerator::copyFrom(const Generator *gsrc)
 {
     if (!Generator::copyFrom(gsrc))
@@ -740,10 +654,9 @@ void CylinderGenerator::cylBuildVelocity(const float *vmin, const float *vmax,
  * own fields. */
 void CylinderGenerator::cylBuildRate(float lo, float hi)
 {
-    float step = (float)((double)hi * GAUSS_STEP);
     flEmitRateMin_ = lo;
     flEmitRateMax_ = hi;
-    gauss_fill(pLifeTable_, 100, lo, hi, step);
+    gauss_fill(pLifeTable_, 100, lo, hi);
 }
 
 int CylinderGenerator::copyFrom(const Generator *gsrc)
@@ -799,9 +712,7 @@ XStdGenerator::XStdGenerator()
     pName_ = (char *)"XStdGenerator";
 }
 
-/* DETERMINISM: builds the position table from 500 angles drawn uniformly by
- * uniform_fill, so constructing a CylinderGenerator consumes rand() calls; its
- * order relative to other construction matters for replays.
+/* The position table is the unit circle, at 500 random angles.
  *
  * PRESERVED: calls SetDirection(0,1,0) to set flDirection, then immediately
  * overwrites the matrix it built with plain identity — so flDirection reads
@@ -846,7 +757,7 @@ Generator *Generator::create(const char *name)
  * table and its read cursor are touched here. */
 static void fill_gaussian_field(ExplodeDebris *self, float mu, float sigma)
 {
-    gauss_fill(self->samples(), 30, mu, sigma, 0.01f);
+    gauss_fill(self->samples(), 30, mu, sigma);
     self->setCursor(0);
 }
 
