@@ -100,7 +100,7 @@ void main()
         }
     }
     gl_Position.xy += uTarget.xy * gl_Position.w;
-    gl_PointSize = 1.0;
+    gl_PointSize = 1.0;  // ES needs it; core ignores it (its default is 1)
 
     vColor = color;
     vSpecular = specular;
@@ -147,7 +147,10 @@ void main()
 
 static GLuint compile(GLenum type, const char *body, char *error, size_t errorSize)
 {
-    const char *sources[3] = { "#version 320 es\nprecision highp float;\nprecision highp int;\n", kBlocks, body };
+    const char *version = gl_flavour == GLFlavour::ES32
+        ? "#version 320 es\nprecision highp float;\nprecision highp int;\n"
+        : "#version 330 core\n";
+    const char *sources[3] = { version, kBlocks, body };
     GLuint s = gl.CreateShader(type);
     gl.ShaderSource(s, 3, sources, NULL);
     gl.CompileShader(s);

@@ -1,5 +1,5 @@
 # The only group that may include OpenGL headers: the rendering backend,
-# OpenGL ES 3.2.  The context itself comes from windev; the Khronos headers
+# OpenGL ES 3.2, or 3.3 core without it.  The context itself comes from windev; the Khronos headers
 # from cmake/FetchGLES.cmake.
 add_library(gl OBJECT
     createdevice.cpp

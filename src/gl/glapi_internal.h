@@ -1,4 +1,5 @@
-/* The OpenGL ES entry points the backend uses: an OpenGL ES 3.2 subset, loaded
+/* The OpenGL entry points the backend uses: the subset common to OpenGL ES 3.2
+ * and desktop OpenGL 3.3 core, loaded
  * by name through the window (windev::Window::glProcAddress) once the context
  * exists, so nothing links against the system's OpenGL library.  Only the
  * gl group includes this.
@@ -23,7 +24,7 @@ namespace windev { class Window; }
     X(Enable, ENABLE) X(Disable, DISABLE) X(GetString, GETSTRING) \
     X(GetIntegerv, GETINTEGERV) X(GetError, GETERROR) \
     X(Viewport, VIEWPORT) X(Clear, CLEAR) X(ClearColor, CLEARCOLOR) \
-    X(ClearDepthf, CLEARDEPTHF) X(ClearStencil, CLEARSTENCIL) \
+    X(ClearStencil, CLEARSTENCIL) \
     X(ColorMask, COLORMASK) X(DepthMask, DEPTHMASK) X(DepthFunc, DEPTHFUNC) \
     X(StencilFunc, STENCILFUNC) X(StencilOp, STENCILOP) X(StencilMask, STENCILMASK) \
     X(BlendFunc, BLENDFUNC) X(CullFace, CULLFACE) X(FrontFace, FRONTFACE) \
@@ -69,6 +70,12 @@ struct GLApi {
     GL_FUNCTIONS(X)
 #undef X
 };
+
+/* Which kind of context the functions came from: OpenGL ES 3.2 (preferred)
+ * or, where the driver has no ES, desktop OpenGL 3.3 core.  Only the
+ * shader's #version line differs between them. */
+enum class GLFlavour { ES32, Core33 };
+extern GLFlavour gl_flavour;
 
 /* The functions, valid after gl_load. */
 extern GLApi gl;
