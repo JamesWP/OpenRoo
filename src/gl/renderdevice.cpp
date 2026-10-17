@@ -821,7 +821,12 @@ static void submit(GLRenderDevice::Native *n, const PipelineState &st, float asp
 }
 
 /* Writes `bytes` to the stream buffer, which is orphaned and started again
- * when it is full; `offset` is where they landed. */
+ * when it is full; `offset` is where they landed.
+ *
+ * Only ever appended to between orphanings, so the write cannot touch what a
+ * queued draw still reads: it is mapped unsynchronised.  glBufferSubData
+ * here would make a tiled GPU's driver (Mali) copy the whole buffer on every
+ * draw the frame has queued from it -- two seconds a frame on the RG35XX. */
 static bool stream_write(GLenum target, GLuint buffer, size_t size, size_t *used,
                          const void *data, size_t bytes, size_t *offset)
 {
@@ -833,7 +838,13 @@ static bool stream_write(GLenum target, GLuint buffer, size_t size, size_t *used
         gl.BufferData(target, (GLsizeiptr)size, NULL, GL_STREAM_DRAW);
         at = 0;
     }
-    gl.BufferSubData(target, (GLintptr)at, (GLsizeiptr)bytes, data);
+    void *p = gl.MapBufferRange(target, (GLintptr)at, (GLsizeiptr)bytes,
+                                GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT
+                                | GL_MAP_UNSYNCHRONIZED_BIT);
+    if (!p)
+        return false;
+    memcpy(p, data, bytes);
+    gl.UnmapBuffer(target);
     *used = at + bytes;
     *offset = at;
     return true;
