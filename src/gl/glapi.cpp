@@ -2,6 +2,7 @@
 #include "windev.h"
 
 GLApi gl;
+GLFlavour gl_flavour = GLFlavour::ES32;
 
 bool gl_load(const windev::Window &window, const char **missing)
 {

@@ -119,7 +119,6 @@ static bool create_objects(GLRenderDevice::Native *n, char *error, size_t errorS
     gl.Disable(GL_DITHER);
     gl.FrontFace(GL_CCW);
     gl.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    gl.ClearDepthf(1.0f);
     gl.ClearStencil(0);
     gl.StencilMask(0xFF);
     gl.DepthFunc(GL_LEQUAL);
@@ -175,16 +174,23 @@ bool GLRenderDevice::Create(windev::Window *window, const AdapterId *adapter, in
     if (mode_ == NULL)
         return false;
 
-    const windev::GLContextConfig want = { 3, 2, 24, 8 };
-    if (!window->createGLContext(want)) {
-        strcpy(lastError_, "Could not create an OpenGL ES 3.2 context.");
+    // OpenGL ES 3.2 first; desktop OpenGL 3.3 core where the driver has no ES
+    // (macOS, many Windows drivers without ANGLE).
+    const windev::GLContextConfig es = { 3, 2, 24, 8, true };
+    const windev::GLContextConfig core = { 3, 3, 24, 8, false };
+    if (window->createGLContext(es)) {
+        gl_flavour = GLFlavour::ES32;
+    } else if (window->createGLContext(core)) {
+        gl_flavour = GLFlavour::Core33;
+    } else {
+        strcpy(lastError_, "Could not create an OpenGL ES 3.2 or OpenGL 3.3 context.");
         mode_ = NULL;
         return false;
     }
     gl_set_window(window);
     const char *missing = NULL;
     if (!gl_load(*window, &missing)) {
-        snprintf(lastError_, sizeof(lastError_), "OpenGL ES lacks %s.", missing);
+        snprintf(lastError_, sizeof(lastError_), "OpenGL lacks %s.", missing);
         window->destroyGLContext();
         mode_ = NULL;
         return false;
