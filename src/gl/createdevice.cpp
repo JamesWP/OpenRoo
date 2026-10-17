@@ -199,6 +199,7 @@ bool GLRenderDevice::Create(windev::Window *window, const AdapterId *adapter, in
         mode_ = NULL;
         return false;
     }
+    gl_create_particle_objects(n);
     n->active  = true;
     n->stencil = true;
 

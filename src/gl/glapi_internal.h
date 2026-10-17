@@ -51,6 +51,13 @@ namespace windev { class Window; }
     X(Uniform1i, UNIFORM1I) \
     X(GetUniformBlockIndex, GETUNIFORMBLOCKINDEX) \
     X(UniformBlockBinding, UNIFORMBLOCKBINDING) \
+    X(Uniform1f, UNIFORM1F) X(Uniform2fv, UNIFORM2FV) X(Uniform3fv, UNIFORM3FV) \
+    X(Uniform4iv, UNIFORM4IV) X(UniformMatrix4fv, UNIFORMMATRIX4FV) \
+    X(TransformFeedbackVaryings, TRANSFORMFEEDBACKVARYINGS) \
+    X(BeginTransformFeedback, BEGINTRANSFORMFEEDBACK) \
+    X(EndTransformFeedback, ENDTRANSFORMFEEDBACK) \
+    X(VertexAttribDivisor, VERTEXATTRIBDIVISOR) \
+    X(DrawArraysInstanced, DRAWARRAYSINSTANCED) \
     X(Scissor, SCISSOR) X(DrawArrays, DRAWARRAYS) X(DrawElements, DRAWELEMENTS)
 
 struct GLApi {

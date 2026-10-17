@@ -5,6 +5,7 @@ add_library(gl OBJECT
     devicetexture.cpp
     drawtrace.cpp
     glapi.cpp
+    particles.cpp
     pixelconvert.cpp
     renderdevice.cpp
     shaders.cpp)

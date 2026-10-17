@@ -163,17 +163,22 @@ static GLuint compile(GLenum type, const char *body, char *error, size_t errorSi
     return s;
 }
 
-GLuint gl_build_program(char *error, size_t errorSize)
+/* Links vs and fs (which it deletes) into a program, capturing `varyings`
+ * interleaved by transform feedback if there are any.  The program has its
+ * uniform blocks bound and its samplers on their units. */
+static GLuint link(GLuint vs, GLuint fs, const char *const *varyings, int nVaryings,
+                   char *error, size_t errorSize)
 {
-    GLuint vs = compile(GL_VERTEX_SHADER, kVertex, error, errorSize);
-    GLuint fs = vs ? compile(GL_FRAGMENT_SHADER, kFragment, error, errorSize) : 0;
     if (!vs || !fs) {
         if (vs) gl.DeleteShader(vs);
+        if (fs) gl.DeleteShader(fs);
         return 0;
     }
     GLuint p = gl.CreateProgram();
     gl.AttachShader(p, vs);
     gl.AttachShader(p, fs);
+    if (nVaryings)
+        gl.TransformFeedbackVaryings(p, nVaryings, varyings, GL_INTERLEAVED_ATTRIBS);
     gl.LinkProgram(p);
     gl.DeleteShader(vs);
     gl.DeleteShader(fs);
@@ -186,9 +191,191 @@ GLuint gl_build_program(char *error, size_t errorSize)
         gl.DeleteProgram(p);
         return 0;
     }
-    gl.UniformBlockBinding(p, gl.GetUniformBlockIndex(p, "Scene"), 0);
-    gl.UniformBlockBinding(p, gl.GetUniformBlockIndex(p, "Draw"), 1);
+    // A program that uses neither block (the particle step) has it
+    // optimised away.
+    const char *blocks[2] = { "Scene", "Draw" };
+    for (GLuint b = 0; b < 2; b++) {
+        const GLuint index = gl.GetUniformBlockIndex(p, blocks[b]);
+        if (index != GL_INVALID_INDEX)
+            gl.UniformBlockBinding(p, index, b);
+    }
     gl.UseProgram(p);
     gl.Uniform1i(gl.GetUniformLocation(p, "uTex"), 0);
+    gl.Uniform1i(gl.GetUniformLocation(p, "uTables"), 1);
+    gl.Uniform1i(gl.GetUniformLocation(p, "uShapes"), 1);
     return p;
+}
+
+GLuint gl_build_program(char *error, size_t errorSize)
+{
+    GLuint vs = compile(GL_VERTEX_SHADER, kVertex, error, errorSize);
+    GLuint fs = vs ? compile(GL_FRAGMENT_SHADER, kFragment, error, errorSize) : 0;
+    return link(vs, fs, NULL, 0, error, errorSize);
+}
+
+/* ── Particles ──
+ *
+ * Both stay inside what OpenGL ES 3.0 has as well: transform feedback,
+ * texelFetch, gl_VertexID, instancing and integer uniforms, with no
+ * extension.  Each slot is three vec4s (see GLParticleBuffer): position and
+ * life (dead below zero), velocity and shape index, and colour in 0..255.
+ *
+ * The step runs one vertex per slot with the rasteriser off, and writes the
+ * slot's next state.  A slot in this step's emission range that is dead takes
+ * a new particle from the tables; then every live slot ages, moves through
+ * the field, dies or fades. */
+static const char *kParticleStep = R"GLSL(
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+
+layout(location = 0) in vec4 aPosLife;
+layout(location = 1) in vec4 aVel;
+layout(location = 2) in vec4 aColor;
+
+out vec4 oPosLife;
+out vec4 oVel;
+out vec4 oColor;
+
+uniform sampler2D uTables;  // rows: pos, vel, life, colour
+uniform ivec4 uCounts;      // the four tables' lengths
+uniform ivec4 uCursor;      // where the first new particle reads each
+uniform ivec4 uEmit;        // count, first slot, slots, velocity stride
+uniform float uDt;
+uniform float uPosScale;
+uniform mat4  uPosMatrix;
+uniform vec3  uPosOffset;
+uniform vec3  uVelOffset;
+uniform int   uField;       // 0 none, 1 gravity, 2 magnet
+uniform vec3  uAccel;
+uniform vec3  uClipOn;
+uniform vec3  uClipMin;
+uniform vec3  uClipMax;
+uniform vec3  uCentre;
+uniform vec3  uForce;
+uniform vec3  uHalfExtent;
+uniform vec3  uFadeRGB;
+uniform float uFadeStep;
+
+vec4 table(int row, int cursor, int k, int stride, int count)
+{
+    return texelFetch(uTables, ivec2((cursor + k * stride) % count, row), 0);
+}
+
+void main()
+{
+    vec4 pl = aPosLife;
+    vec3 vel = aVel.xyz;
+    vec4 col = aColor;
+
+    int k = gl_VertexID - uEmit.y;
+    if (k < 0)
+        k += uEmit.z;
+    if (k < uEmit.x && pl.w < 0.0) {
+        vec4 p = uPosMatrix * vec4(table(0, uCursor.x, k, 1, uCounts.x).xyz * uPosScale, 1.0);
+        if (p.w != 0.0)
+            p.xyz /= p.w;
+        pl = vec4(p.xyz + uPosOffset, table(2, uCursor.z, k, 1, uCounts.z).x);
+        vel = table(1, uCursor.y, k, uEmit.w, uCounts.y).xyz + uVelOffset;
+        col = table(3, uCursor.w, k, 1, uCounts.w);
+    }
+
+    if (uField != 0 && pl.w >= 0.0) {
+        pl.w -= uDt;
+        bool dies = pl.w < 0.0;
+        if (!dies && uField == 1) {
+            vel += uAccel * uDt;
+            pl.xyz += vel * uDt;
+            for (int a = 0; a < 3; a++)
+                if (uClipOn[a] > 0.5 && (pl[a] > uClipMax[a] || pl[a] < uClipMin[a]))
+                    dies = true;
+        } else if (!dies) {
+            vec3 d = uCentre - pl.xyz;
+            if (all(lessThanEqual(abs(d), uHalfExtent))) {
+                dies = true;  // it has reached the magnet
+            } else {
+                vel += normalize(d) * uForce * uDt;
+                pl.xyz += vel * uDt;
+            }
+        }
+        if (dies) {
+            pl.w = -1.0;
+        } else if (uFadeStep > 0.0) {
+            vec3 c = col.rgb;
+            col.rgb = mix(max(c - uFadeStep, uFadeRGB), min(c + uFadeStep, uFadeRGB),
+                          vec3(lessThan(c, uFadeRGB)));
+        }
+    }
+
+    oPosLife = pl;
+    oVel = vec4(vel, aVel.w);
+    oColor = col;
+}
+)GLSL";
+
+/* OpenGL ES links no program without one, though nothing reaches it. */
+static const char *kParticleStepFragment = R"GLSL(
+precision mediump float;
+out vec4 oColor;
+void main() { oColor = vec4(0.0); }
+)GLSL";
+
+/* The draw: one instance per slot, six vertices each, which the main
+ * program's fragment shader finishes as it does the Lit vertices the
+ * particles were once drawn as.  A dead slot's vertices are put outside the
+ * clip volume. */
+static const char *kParticleDraw = R"GLSL(
+precision highp float;
+precision highp int;
+precision highp sampler2D;
+
+layout(location = 0) in vec4 aPosLife;
+layout(location = 1) in vec4 aVel;      // .w: the slot's shape
+layout(location = 2) in vec4 aColor;
+
+uniform sampler2D uShapes;   // six corners per row
+uniform int  uShapeCount;
+uniform int  uPerParticle;
+uniform vec2 uCornerUV[6];
+
+out vec4  vColor;
+out vec3  vSpecular;
+out vec2  vUV;
+out float vFogDepth;
+
+void main()
+{
+    vColor = aColor / 255.0;
+    vSpecular = vec3(0.0);
+    vUV = uCornerUV[gl_VertexID] * uUV.xy + uUV.zw;
+    vFogDepth = 0.0;
+    if (aPosLife.w < 0.0) {
+        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
+        return;
+    }
+    int shape = uPerParticle != 0 ? clamp(int(aVel.w), 0, uShapeCount - 1) : 0;
+    vec3 corner = texelFetch(uShapes, ivec2(gl_VertexID, shape), 0).xyz;
+    vec4 view = uView * (uWorld * vec4(aPosLife.xyz + corner, 1.0));
+    gl_Position = uProj * view;
+    gl_Position.z = gl_Position.z * 2.0 - gl_Position.w;
+    gl_Position.xy += uTarget.xy * gl_Position.w;
+    vFogDepth = view.z;
+}
+)GLSL";
+
+bool gl_build_particle_programs(GLuint *sim, GLuint *draw, char *error, size_t errorSize)
+{
+    static const char *const varyings[3] = { "oPosLife", "oVel", "oColor" };
+    *sim = link(compile(GL_VERTEX_SHADER, kParticleStep, error, errorSize),
+                compile(GL_FRAGMENT_SHADER, kParticleStepFragment, error, errorSize),
+                varyings, 3, error, errorSize);
+    *draw = *sim ? link(compile(GL_VERTEX_SHADER, kParticleDraw, error, errorSize),
+                        compile(GL_FRAGMENT_SHADER, kFragment, error, errorSize),
+                        NULL, 0, error, errorSize)
+                 : 0;
+    if (!*draw && *sim) {
+        gl.DeleteProgram(*sim);
+        *sim = 0;
+    }
+    return *sim != 0;
 }

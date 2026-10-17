@@ -1,8 +1,8 @@
-/* Particle generators and environments: the emitters that fill a particle
- * system's ring with new particles, and the fields that age and retire them
- * once they are in it.  A Generator subclass overrides tick/load/copyFrom;
- * an Environment subclass overrides the same four for ageing, fading and
- * killing particles already in the ring. */
+/* Particle generators and environments: the emitters that put new particles
+ * into a particle system's slots, and the fields that move, age and retire
+ * them once they are there.  The particles are on the device
+ * (particletypes.h); these keep the parameters and the CPU's bookkeeping, and
+ * hand each step's share over as a ParticleEmit and a ParticleField. */
 
 #pragma once
 
@@ -11,17 +11,17 @@
 #include <istream>
 #include <stddef.h>
 #include "particles.h"
+#include "particletypes.h"
  
 #include "explodedebris.h"
 
 /* Base of every emitter.  pName identifies the concrete class for Load
- * and for copyFrom's type check, and dwEnabled gates whether tick runs at all.
- * pRing is the particle system's ring buffer, shared with the paired
- * Environment. */
+ * and for copyFrom's type check, and dwEnabled gates whether it emits at
+ * all. */
 class Generator {
 public:
     /* The factory: the named class allocated and constructed, or NULL for a
-     * name none of the six generator classes has. */
+     * name none of the generator classes has. */
     static Generator *create(const char *name);
     /* A new instance of this class, copied with copyFrom; NULL on failure. */
     Generator *clone() const;
@@ -31,8 +31,13 @@ public:
 
     /* Gates on a matching type name; a subclass copies its own fields too. */
     virtual int copyFrom(const Generator *src);
-    /* Emits into the ring. */
+    /* Counts what dt's emission is; takeEmit hands it over. */
     virtual void tick(float dt) { (void)dt; }
+    /* What has been emitted since the last call, and where it samples the
+     * tables; out.count is 0 for nothing.  Starts the count again. */
+    virtual void takeEmit(ParticleEmit &out) { out.count = 0; }
+    /* The tables emission samples, or false for none. */
+    virtual bool tables(ParticleTables &out) const { (void)out; return false; }
     virtual int load(std::istream &in) { (void)in; return 1; }
     virtual void setPosition(float x, float y, float z)  { (void)x; (void)y; (void)z; }
     virtual void setVelocity(float x, float y, float z, float mag)
@@ -40,23 +45,18 @@ public:
     virtual void setDirection(float x, float y, float z) { (void)x; (void)y; (void)z; }
     virtual void setSpeed(float mag) { (void)mag; }
 
-    /* Refuses (and leaves pRing alone) a NULL ring. */
-    int attachRing(RingBuffer *ring);
-
     const char *name() const            { return pName_; }
     uint32_t       enabled() const         { return dwEnabled_; }
     void        setEnabled(uint32_t e)     { dwEnabled_ = e; }
 
 protected:
     char       *pName_;
-    uint32_t       dwEnabled_;  // zero disables tick for this generator
-    RingBuffer *pRing_;
+    uint32_t       dwEnabled_;  // zero stops this generator emitting
 };
 
- 
-/* Base of every environment.  Same role as Generator for the fields it has;
- * there is no enable flag here, so an environment can only be turned off by
- * detaching or not ticking it. */
+/* Base of every environment: what acts on the particles once emitted.
+ * There is no enable flag here.  The base class itself is a field that does
+ * nothing: its particles never age. */
 class Environment {
 public:
     /* The factory, for the three environment class names. */
@@ -68,11 +68,11 @@ public:
 
     /* The base copyFrom only gates on type name. */
     virtual int copyFrom(const Environment *src) { return envSameName(src); }
+    /* Counts dt's fade; takeField hands it over. */
     virtual void tick(float dt) { (void)dt; }
+    /* The field, and the fade since the last call, which starts again. */
+    virtual void takeField(ParticleField &out) { out.kind = ParticleFieldKind::None; }
     virtual int load(std::istream &in) { (void)in; return 1; }
-
-    /* Refuses (and leaves pRing alone) a NULL ring. */
-    int attachRing(RingBuffer *ring);
 
     const char *name() const   { return pName_; }
 
@@ -80,7 +80,6 @@ protected:
     int envSameName(const Environment *src) const;
 
     char       *pName_;
-    RingBuffer *pRing_;
 };
 
 /* GravityEnvironment: a per-second gravity vector applied to live particles,
@@ -91,31 +90,25 @@ public:
 
     int copyFrom(const Environment *src) override;
     void tick(float dt) override;
+    void takeField(ParticleField &out) override;
     int load(std::istream &in) override;
 
 private:
-    void gravityTick(float dt);
     void gravitySetVector(const float dir[3], float mag);
-    void gravitySetColour(uint32_t argb, float fade);
 
-    float       flDirection_[3] = {};
-    float       flMagnitude_ = {};
     float       flGravity_[3] = {};
-    uint32_t       dwTargetARGB_ = {};
-    uint32_t       dwTargetA_ = {};  // never read
-    uint32_t       dwTargetRGB_[3] = {};
+    uint32_t       dwTargetRGB_ = {};  // 0x00RRGGBB
     float       flFadeRate_ = {};
     uint32_t       dwFadeThreshold_ = 10;  // a fade step below this is not applied
     uint32_t       dwClipEnable_[3] = {};
     float       flClipMax_[3] = {};
     float       flClipMin_[3] = {};
     float       flFadeAccum_ = {};
-
- 
+    float       flFadePending_ = {};  // fade steps ticked, not yet taken
 };
 
 /* MagnetEnvironment: pulls live particles toward flCentre and retires any that
- * arrive within flHalfExtent of it, with the same colour-fade skeleton as
+ * arrive within flHalfExtent of it, with the same colour fade as
  * GravityEnvironment. */
 class MagnetEnvironment : public Environment {
 public:
@@ -123,51 +116,74 @@ public:
 
     int copyFrom(const Environment *src) override;
     void tick(float dt) override;
+    void takeField(ParticleField &out) override;
     int load(std::istream &in) override;
 
 private:
-    void magnetTick(float dt);
-
     float       flCentre_[3] = {};
     float       flForce_[3] = {};
     float       flHalfExtent_[3] = {};
-    float       flRange_ = {};    // serialised, unread by Tick
-    uint32_t       dwField34_ = {};  // serialised, unread by Tick
-    uint32_t       dwTargetRGB_[3] = {};
+    uint32_t       dwTargetRGB_ = {};  // never loaded: black, unless copied
     float       flFadeRate_ = {};
     uint32_t       dwFadeThreshold_ = 10;
     float       flFadeAccum_ = {};
-
- 
+    float       flFadePending_ = {};
 };
 
-/* StdGenerator: the default emitter, used by most shipping effects.  Emit
- * never samples a distribution at runtime; Load fills the four tables below
- * once, by sampling with rand(), and Tick/emit only ever indexes them by the
- * four cursors at the end of the struct. */
-class StdGenerator : public Generator {
+/* What StdGenerator and CylinderGenerator share: emission never samples a
+ * distribution at runtime.  Load fills the four tables once, by sampling with
+ * rand(), and the device reads them from cursors that step by one per
+ * particle (three for velocity) and wrap. */
+class TableGenerator : public Generator {
+public:
+    void tick(float dt) override;
+    void takeEmit(ParticleEmit &out) override;
+    bool tables(ParticleTables &out) const override;
+
+protected:
+    /* Where a new particle's position and velocity go from the tables'. */
+    virtual void placement(ParticleEmit &out) const = 0;
+
+    static constexpr uint32_t POS_COUNT = 500, VEL_COUNT = 500, LIFE_COUNT = 100,
+                              COLOUR_COUNT = 200;
+
+    float     flDtScale_ = {};  // particles per second
+    std::vector<uint32_t> typeTable_;  // dwTypeTableCount_ (colour, weight) pairs
+    uint32_t     dwTypeTableCount_ = {};
+    float     flPosTable_[POS_COUNT * 3] = {};  // (x, y, z) samples
+    float     flVelTable_[VEL_COUNT * 3] = {};
+    float     pLifeTable_[LIFE_COUNT] = {};
+    uint32_t     pEmitProb_[COLOUR_COUNT] = {};  // colours
+    float     flAccumulator_ = {};
+    uint32_t     dwPosIdx_ = {};
+    uint32_t     dwVelIdx_ = {};
+    uint32_t     dwLifeIdx_ = {};
+    uint32_t     dwProbIdx_ = {};
+    /* Emitted since the last takeEmit, and the cursors the first read. */
+    uint32_t     pendingCount_ = 0;
+    uint32_t     pendingCursor_[4] = {};
+};
+
+/* StdGenerator: the default emitter, used by most shipping effects.  Its
+ * positions are sampled from a sphere or a box. */
+class StdGenerator : public TableGenerator {
 public:
     StdGenerator();
-    ~StdGenerator() override;
 
     int copyFrom(const Generator *src) override;
-    void tick(float dt) override;
     int load(std::istream &in) override;
 
 protected:
-    void stdEmit(float dt, const float *pos_off, const float *vel_off);
-    void stdCloneTypeTable(const uint32_t *src, uint32_t count);
-    int stdLoadTypeTable(std::istream &in);
-    void stdInterleavePos(const float *x, const float *y, const float *z);
+    void placement(ParticleEmit &out) const override;
     void stdBuildSphere(const float *mn, const float *mx);
     void stdBuildBox(const float *mn, const float *mx);
     void stdBuildVelocity(const float *vmin, const float *vmax, float lmin,
                           float lmax);
     void stdBuildRate(float lo, float hi);
+    void stdInterleavePos(const float *x, const float *y, const float *z);
 
-    float     flDtScale_ = {};
     uint32_t     dwEmitMode_ = {};   // selects which of the Sph/Box parameter pairs below Load samples from
-    float     flSphMin_[3] = {};  // consumed only by Load, to build the tables; emit never reads these
+    float     flSphMin_[3] = {};  // consumed only by Load, to build the tables
     float     flSphMax_[3] = {};
     float     flBoxMin_[3] = {};
     float     flBoxMax_[3] = {};
@@ -177,63 +193,47 @@ protected:
     float     flLifeMax_ = {};
     float     flEmitRateMin_ = {};
     float     flEmitRateMax_ = {};
-    std::vector<uint32_t> typeTable_;  // dwTypeTableCount_ (colour, weight) pairs
-    uint32_t     dwTypeTableCount_ = {};
-    float     flPosTable_[1500] = {};  // 500 samples of (x, y, z), read as node position
-    float     flVelTable_[1500] = {};  // 500 samples of (x, y, z), read as node velocity
-    float     pLifeTable_[100] = {};
-    uint32_t     pEmitProb_[200] = {};
-    uint32_t     dwCtr0_ = {};
-    float     flAccumulator_ = {};
-    uint32_t     dwPosIdx_ = {};  // steps by 1, wraps at 500
-    uint32_t     dwVelIdx_ = {};
-    uint32_t     dwLifeIdx_ = {};
-    uint32_t     dwProbIdx_ = {};
-
-private:
- 
 };
 
 /* XStdGenerator: StdGenerator plus a constant offset added to every sampled
- * position and velocity, used for thruster and flame effects.  Every field and
- * cursor through StdGenerator is inherited unchanged; only emit differs. */
+ * position and velocity, used for thruster and flame effects. */
 class XStdGenerator : public StdGenerator {
 public:
     XStdGenerator();
 
     int copyFrom(const Generator *src) override;
-    void tick(float dt) override;
     int load(std::istream &in) override;
     void setPosition(float x, float y, float z) override;
     void setVelocity(float x, float y, float z, float mag) override;
     void setDirection(float x, float y, float z) override;
     void setSpeed(float mag) override;
 
+protected:
+    void placement(ParticleEmit &out) const override;
+
 private:
     void xstdStoreScaled(double x, double y, double z, double len, double mag);
 
     float        flPosOffset_[3] = {};
     float        flVelOffset_[3] = {};
-
- 
 };
 
-/* CylinderGenerator: samples position and velocity like StdGenerator, then
- * scales the position, carries it through flMatrix and offsets it by flOrigin.
- * Velocity is taken from its table unscaled and untransformed. */
-class CylinderGenerator : public Generator {
+/* CylinderGenerator: samples a unit circle, then scales the position,
+ * carries it through flMatrix and offsets it by flOrigin.  Velocity is taken
+ * from its table unscaled and untransformed. */
+class CylinderGenerator : public TableGenerator {
 public:
     CylinderGenerator();
-    ~CylinderGenerator() override;
 
     int copyFrom(const Generator *src) override;
-    void tick(float dt) override;
     int load(std::istream &in) override;
     void setPosition(float x, float y, float z) override;
     void setDirection(float x, float y, float z) override;
 
+protected:
+    void placement(ParticleEmit &out) const override;
+
 private:
-    void cylinderEmit(float dt);
     void cylBuildVelocity(const float *vmin, const float *vmax, float lmin,
                           float lmax);
     void cylBuildRate(float lo, float hi);
@@ -248,75 +248,8 @@ private:
     float     flLifeMax_ = {};
     float     flEmitRateMin_ = {};
     float     flEmitRateMax_ = {};
-    float     flDtScale_ = {};
-    std::vector<uint32_t> typeTable_;  // dwTypeTableCount_ (colour, weight) pairs
-    uint32_t     dwTypeTableCount_ = {};
-    float     flAccumulator_ = {};
-    float     flPosTable_[1500] = {};
-    float     flVelTable_[1500] = {};
-    float     pLifeTable_[100] = {};
-    uint32_t     pEmitProb_[200] = {};
-    uint32_t     dwPosIdx_ = {};
-    uint32_t     dwVelIdx_ = {};
-    uint32_t     dwLifeIdx_ = {};
-    uint32_t     dwProbIdx_ = {};
-
- 
 };
 
-/* PointGenerator: emits every particle at a fixed position and colour; not
- * used by any shipping effect, so its tables are only ever whatever the
- * constructor leaves them as. */
-class PointGenerator : public Generator {
-public:
-    PointGenerator();
-
-    void tick(float dt) override;
-
-private:
-
-    float     flEmitPos_[3];
-    float     flVelBias_[3];
-    float     flEmitRate_;
-    uint8_t      opaque2c_[0x0c];
-    uint32_t     dwDiffuse_;  // constructor sets this to 0xFFFFFFFF
-    float     flAccumulator_;
-    uint8_t      opaque40_[0x04];
-    float     flVelTable_[1000];
-    uint32_t     dwLifeTable_[100];
-    uint32_t     dwVelIdx_[3];
-    uint32_t     dwLifeIdx_;  // runs past dwLifeTable's declared length before wrapping
-
- 
-};
-
-/* BoxGenerator: like PointGenerator, not used by any shipping effect and never
- * filled by a Load. */
-class BoxGenerator : public Generator {
-public:
-    BoxGenerator();
-
-    void tick(float dt) override;
-
-private:
-
-    uint8_t      opaque10_[0x18];
-    float     flVelBias_[3];
-    float     flEmitRate_;
-    float     flAccumulator_;
-    uint32_t     dwPosX_[500];
-    uint32_t     dwPosY_[500];
-    uint32_t     dwPosZ_[500];
-    float     flVelTable_[500];
-    uint32_t     dwLifeTable_[100];
-    uint32_t     dwDiffuse_[200];
-    uint32_t     dwPosIdx_[3];
-    uint32_t     dwVelIdx_[3];
-    uint32_t     dwLifeIdx_;
-    uint32_t     dwDiffuseIdx_;
-
- 
-};
 /* Gen_FillGaussianField writes into an ExplodeDebris (explodedebris.h); its
  * layout and the offsets this relies on are asserted there. */
   void  

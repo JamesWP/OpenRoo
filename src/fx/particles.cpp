@@ -1,12 +1,12 @@
-/* ParticleSystem: the fill/draw/render methods, the tick, the Face corner
- * geometry, the ring, and every class's lifecycle and serialisation
- * (particles.h).
+/* ParticleSystem: the slots, the tick and render that drive the device's
+ * simulation (particletypes.h), the Face and XFace corner geometry, and every
+ * class's lifecycle and serialisation (particles.h).
  *
- * Fill writes only xyz + diffuse into the scratch vertex buffer; psize,
- * specular and u/v stay as the allocators left them. */
+ * DETERMINISM: loading and cloning draw from the game's rand(), which the
+ * simulation shares (the slots' shapes, XFace's corner table, and the
+ * generators' tables in generators.cpp), so those draws are kept exactly as
+ * the original made them, redundant ones included. */
 
-#include <strings.h>
-#include <atomic>
 #include <stdint.h>
 #include "particles.h"
 #include "sysdev.h"
@@ -25,140 +25,51 @@
 #include <memory>
 #include <iterator>
 
-#define PARTICLE_FVF       VertexFormat::Lit  // XYZ|PSIZE|DIFFUSE|SPECULAR|TEX1, 0x20 stride
-#define PARTICLE_LOG_FIRST 8
-
-uint32_t ParticleNode::colour() const
-{
-    return dwDiffuse;
-}
-
-/* Per-class state so one busy class can't hide the others: the first
- * PARTICLE_LOG_FIRST draws are logged, and so is the first draw that actually
- * carries vertices (an empty ring draws with verts=0). */
-struct DrawLogState { std::atomic<long> calls; std::atomic<long> nonempty; };
-
-static void log_draw(DrawLogState *st, const char *name, const void *self,
-                     RenderDevice *dev, uint32_t count, bool ok)
-{
-    bool report = ++st->calls <= PARTICLE_LOG_FIRST;
-    if (count > 0 && st->nonempty.exchange(1) == 0)
-        report = true;
-    if (report)
-        g_logger.write("particle: %s this=%p dev=%p verts=%lu -> ok=%d\n",
-                  name, self, dev, count, ok);
-}
-
-/* ─── Fill ─────────────────────────────────────────────────────────────────
- *
- * All three fills walk the live region of the ring the generator emits into
- * and the environment retires from.  `emit` writes the vertices for one node
- * and returns how many it wrote. */
-template <typename EmitFn> uint32_t ParticleSystem::fillRing(EmitFn emit)
-{
-    uint32_t n = 0;
-    if (ring_.pRingHead != ring_.pRingCurrent) {
-        ParticleNode *node = ring_.pRingHead;
-        do {
-            n += emit(node, n);
-            node = node->pNext;
-        } while (node != ring_.pRingCurrent);
-    }
-    return n;
-}
-
-void PointParticleSystem::fill()
-{
-    dwVertexCount_ = fillRing([this](const ParticleNode *node, uint32_t n) -> uint32_t {
-            ParticleVertex *v = &pVerts_[n];
-            v->flX = node->flX;
-            v->flY = node->flY;
-            v->flZ = node->flZ;
-            v->dwDiffuse = node->colour();
-            return 1;
-        });
-}
-
-/* Face (baked corners) and XFace (per-particle corner-table entry): six
- * vertices = node position + the six xyz corner offsets. */
-static void emit_face(ParticleVertex *v, const ParticleNode *node,
-                      const float *corners )  // 18 floats
-{
-    uint32_t colour = node->colour();
-    for (int c = 0; c < 6; c++, v++, corners += 3) {
-        v->flX = node->flX + corners[0];
-        v->flY = node->flY + corners[1];
-        v->flZ = node->flZ + corners[2];
-        v->dwDiffuse = colour;
-    }
-}
-
-void FaceParticleSystem::fill()
-{
-    dwVertexCount_ = fillRing([this](const ParticleNode *node, uint32_t n) -> uint32_t {
-            emit_face(&pVerts_[n], node, &flCorner_[0][0]);
-            return 6;
-        });
-}
-
-void XFaceParticleSystem::fill()
-{
-    dwVertexCount_ = fillRing([this](const ParticleNode *node, uint32_t n) -> uint32_t {
-            emit_face(&pVerts_[n], node,
-                      &pCornerTable_[node->dwShapeIndex].flCorner[0][0]);
-            return 6;
-        });
-}
-
-/* ─── Draw ─────────────────────────────────────────────────────────────────
+/* ─── Tick and render ──────────────────────────────────────────────────────
  */
-const VertexBuffer *ParticleSystem::uploadVerts(RenderDevice *dev)
+void ParticleSystem::tick(float dt)
 {
-    if (!vb_ && dwVertexCapacity_ > 0)
-        vb_ = dev->CreateVertexBuffer(PARTICLE_FVF, dwVertexCapacity_, BufferUsage::Dynamic);
-    if (vb_ && dwVertexCount_ > 0)
-        dev->UpdateVertexBuffer(vb_, 0, pVerts_.get(), dwVertexCount_);
-    return vb_;
+    if (pGenerator_)
+        pGenerator_->tick(dt);
+    if (pEnvironment_)
+        pEnvironment_->tick(dt);
+    pendingDt_ += dt;
 }
 
-uint32_t PointParticleSystem::draw(RenderDevice *dev)
+/* The buffer is made, and the generator's tables sent, at the first render:
+ * the device is only to be had here.  The step is everything ticked since the
+ * last render, and runs only once however many times the system is drawn. */
+void ParticleSystem::render(RenderDevice *dev)
 {
-    static DrawLogState st;
-    bool ok = dev->DrawBuffer(Prim::PointList, uploadVerts(dev), 0, dwVertexCount_);
-    log_draw(&st, "PointDraw", this, dev, dwVertexCount_, ok);
-    return dwVertexCount_;
-}
+    if (slots_.count == 0)
+        return;
+    if (!buffer_) {
+        buffer_ = dev->CreateParticleBuffer(slots_.count, slots_.shapes.data());
+        if (!buffer_)
+            return;
+        ParticleTables t;
+        if (pGenerator_ && pGenerator_->tables(t))
+            dev->SetParticleTables(buffer_, t);
+        nextSlot_ = 0;
+    }
 
-uint32_t FaceParticleSystem::draw(RenderDevice *dev)
-{
-    static DrawLogState st;
-    bool ok = dev->DrawBuffer(Prim::TriangleList, uploadVerts(dev), 0, dwVertexCount_);
-    log_draw(&st, "FaceDraw", this, dev, dwVertexCount_, ok);
-    return dwVertexCount_ / 6;
-}
+    ParticleStep step;
+    step.dt = pendingDt_;
+    if (pGenerator_)
+        pGenerator_->takeEmit(step.emit);
+    if (pEnvironment_)
+        pEnvironment_->takeField(step.field);
+    if (step.dt > 0.0f || step.emit.count > 0) {
+        step.emit.count = std::min(step.emit.count, slots_.count);
+        step.emit.firstSlot = nextSlot_;
+        nextSlot_ = (nextSlot_ + step.emit.count) % slots_.count;
+        dev->StepParticles(buffer_, step);
+    }
+    pendingDt_ = 0.0f;
 
-/* Two passes, one per face winding: save the cull mode, draw with CullMode::CCW, draw
- * again with CullMode::CW, restore.  That makes an XFace billboard two-sided: a
- * particle whose corner table has rotated past edge-on is still drawn. */
-uint32_t XFaceParticleSystem::draw(RenderDevice *dev)
-{
-    const RasterState saved = dev->raster();
-    const VertexBuffer *vb = uploadVerts(dev);
-    dev->SetRaster(RasterState{ CullMode::CCW });
-    dev->DrawBuffer(Prim::TriangleList, vb, 0, dwVertexCount_);
-    dev->SetRaster(RasterState{ CullMode::CW });
-    bool ok = dev->DrawBuffer(Prim::TriangleList, vb, 0, dwVertexCount_);
-    dev->SetRaster(saved);
-    static DrawLogState st;
-    log_draw(&st, "XFaceDraw", this, dev, dwVertexCount_, ok);
-    return dwVertexCount_ / 6;
-}
-
-/* Fill the vertex buffer, then draw it. */
-uint32_t ParticleSystem::render(RenderDevice *dev)
-{
-    fill();
-    return draw(dev);
+    ParticleLook l;
+    look(l);
+    dev->DrawParticles(buffer_, l);
 }
 
 /* ─── Tick and Face corner transform ───────────────────────────────────────
@@ -221,24 +132,8 @@ static void mat_rot_z(PMat4 m, float a)
 /* A rotation angle is baked into the corners once it exceeds this. */
 #define ROT_STEP_THRESHOLD 0.01
 
-void ParticleSystem::tick(float dt)
-{
-    static std::atomic<long> once = 0;
-    if (once.exchange(1) == 0)
-        g_logger.write("particle: BaseTick active (this=%p dt=%f gen=%p env=%p)\n",
-                  this, dt, pGenerator_, pEnvironment_);
-    if (pGenerator_)
-        pGenerator_->tick(dt);
-    if (pEnvironment_)
-        pEnvironment_->tick(dt);
-}
-
 void XFaceParticleSystem::tick(float dt)
 {
-    static std::atomic<long> once = 0;
-    if (once.exchange(1) == 0)
-        g_logger.write("particle: XFaceTick active (this=%p entries=%lu)\n",
-                  this, dwCornerTableCount_);
     if (pCornerTable_) {
         for (uint32_t i = 0; i < dwCornerTableCount_; i++) {
             XFaceCornerEntry *e = &pCornerTable_[i];
@@ -287,10 +182,6 @@ static float vec_len(const float v[3])
  * / 3-4-5 with 3=2, 4=1, 5=1+2, all shifted by -(1+2)/2). */
 void FaceParticleSystem::setVector(float x, float y, float z)
 {
-    static std::atomic<long> once = 0;
-    if (once.exchange(1) == 0)
-        g_logger.write("particle: FaceSetVector active (this=%p dir=%f,%f,%f)\n",
-                  this, x, y, z);
     float basis[3] = { 1.0f, 0.0f, 0.0f };
     if (x == 1.0f && y == 0.0f && z == 0.0f) {
         basis[0] = 0.0f; basis[1] = 1.0f;
@@ -325,17 +216,12 @@ void FaceParticleSystem::setVector(float x, float y, float z)
 /* Carry the six baked corners through a matrix. */
 void FaceParticleSystem::transformCorners(float *matrix)
 {
-    static std::atomic<long> once = 0;
-    if (once.exchange(1) == 0)
-        g_logger.write("particle: FaceTransformCorners active (this=%p)\n", this);
     for (int c = 0; c < 6; c++)
         transform_point(flCorner_[c], matrix);
 }
 
-/* ─── The ring and the ParticleSystem lifecycle ────────────────────────────
- *
- * The virtuals that make, copy, resize, load and destroy a system, plus
- * the RingBuffer they all work on. */
+/* ─── The slots and the ParticleSystem lifecycle ───────────────────────────
+ */
 static bool ps_read(void *dst, unsigned size, std::istream &in)
 {
     return readBytes(in, dst, size);
@@ -344,77 +230,51 @@ static bool ps_read(void *dst, unsigned size, std::istream &in)
 /* Sampling constant shared with the generators: 1/32767. */
 static const float PS_RAND_SCALE = 1.0f / 32767.0f;
 
-/* ─── RingBuffer ───────────────────────────────────────────────────────────
- */
-/* Free the node block.  PRESERVED: pRingTail is not cleared; the other four
- * fields are. */
-void RingBuffer::release()
+void ParticleSlots::release()
 {
-    ringNodes.reset();
-    dwRingCount  = 0;
-    pRingHead    = NULL;
-    pRingCurrent = NULL;
+    shapes.clear();
+    count = 0;
 }
 
-/* Give every node but the last a random shape index in [0, shapes-1].
- * DETERMINISM: rand() is reseeded from the game clock on every call, and the
- * last node is skipped (the loop bound is dwRingCount - 1). */
-void RingBuffer::assignShapes(uint32_t shapes)
+/* DETERMINISM: rand() is reseeded from the game clock on every call, and the
+ * last slot is skipped (the loop bound is count - 1).  With shapes 0 the
+ * indices come out meaningless, but are drawn all the same. */
+void ParticleSlots::assignShapes(uint32_t nShapes)
 {
     CRT_RAND_SEED = (unsigned)hooks_GameTime(NULL);
-    if (dwRingCount - 1 == 0)
+    if (count - 1 == 0)
         return;
-    float span = (float)(int)(shapes - 1);
-    for (uint32_t i = 0; i < dwRingCount - 1; i++) {
+    float span = (float)(int)(nShapes - 1);
+    for (uint32_t i = 0; i < count - 1; i++) {
         int r = (int)crt_rand();
-        ringNodes[i].dwShapeIndex =
-            (uint32_t)(int)((double)r * span * PS_RAND_SCALE + 0.5);
+        shapes[i] = (uint32_t)(int)((double)r * span * PS_RAND_SCALE + 0.5);
     }
 }
 
-/* (Re)allocate `count` nodes and thread them into one doubly-linked list: head
- * and current at the front, tail at the last node, both ends NULL.  Fewer than
- * two nodes is refused. */
-int RingBuffer::alloc(uint32_t count, uint32_t shapes)
+int ParticleSlots::alloc(uint32_t n, uint32_t nShapes)
 {
     release();
-    if (count < 2)
+    if (n < 2)
         return false;
-    dwRingCount = count;
-    ringNodes.reset(new ParticleNode[count]());
-    ParticleNode *base = ringNodes.get();
-    pRingTail    = base + (count - 1);
-    pRingHead    = base;
-    pRingCurrent = base;
-    base[0].pPrev = NULL;
-    base[0].pNext = &base[1];
-    for (uint32_t i = 1; i + 1 < count; i++) {
-        base[i].pPrev = &base[i - 1];
-        base[i].pNext = &base[i + 1];
-    }
-    base[count - 1].pPrev = &base[count - 2];
-    base[count - 1].pNext = NULL;
-
-    assignShapes(shapes);
+    count = n;
+    shapes.assign(n, 0);
+    assignShapes(nShapes);
     return true;
 }
 
 /* ─── ParticleSystem, the base class ───────────────────────────────────────
  */
 ParticleSystem::ParticleSystem()
-    : pName_((char *)"ParticleSystem"), pGenerator_(NULL), pEnvironment_(NULL),
-      dwVertexCount_(0)
+    : pName_("ParticleSystem"), pGenerator_(NULL), pEnvironment_(NULL)
 {
 }
 
 /* The release is the base's own, not a subclass's override. */
 ParticleSystem::~ParticleSystem()
 {
-    release(1);
-    ring_.release();
+    ParticleSystem::release(1);
 }
 
-/* Release both sub-objects, the vertex buffer and the ring. */
 void ParticleSystem::release(int flags)
 {
     if (flags) {
@@ -423,28 +283,20 @@ void ParticleSystem::release(int flags)
     }
     pGenerator_ = NULL;
     pEnvironment_ = NULL;
-    pVerts_.reset();
-    RenderDevice::DestroyVertexBuffer(vb_);
-    vb_ = nullptr;
-    dwVertexCapacity_ = 0;
-    ring_.release();
+    RenderDevice::DestroyParticleBuffer(buffer_);
+    buffer_ = nullptr;
+    pendingDt_ = 0.0f;
+    slots_.release();
 }
 
 int ParticleSystem::setCapacity(uint32_t count)
 {
-    return ring_.alloc(count, 0) != 0;
-}
-
-/* Free, then allocate again (RingBuffer::alloc frees as well). */
-int ParticleSystem::resize(uint32_t count)
-{
-    ring_.release();
-    return ring_.alloc(count, 0);
+    return slots_.alloc(count, 0) != 0;
 }
 
 int ParticleSystem::setGenerator(Generator *gen)
 {
-    if (gen == NULL || !gen->attachRing(&ring_))
+    if (gen == NULL)
         return false;
     delete pGenerator_;
     pGenerator_ = gen;
@@ -453,23 +305,23 @@ int ParticleSystem::setGenerator(Generator *gen)
 
 int ParticleSystem::setEnvironment(Environment *env)
 {
-    if (env == NULL || !env->attachRing(&ring_))
+    if (env == NULL)
         return false;
     delete pEnvironment_;
     pEnvironment_ = env;
     return true;
 }
 
-/* Releases self (virtually, so a subclass frees its vertex buffer too),
- * refuses a source of a different class, re-makes the ring at the source's
- * size, then clones the generator and the environment and attaches each.
- * Every failure releases again. */
+/* Releases self (virtually, so a subclass frees its own too), refuses a
+ * source of a different class, re-makes the slots at the source's count,
+ * then clones the generator and the environment.  Every failure releases
+ * again. */
 int ParticleSystem::copyFrom(const ParticleSystem *src)
 {
     release(1);
     if (strcmp(src->pName_, pName_) != 0)
         return false;
-    if (!ring_.alloc(src->ring_.dwRingCount, 0))
+    if (!slots_.alloc(src->slots_.count, 0))
         return false;
 
     if (src->pGenerator_) {
@@ -533,9 +385,9 @@ static int ps_load_sub_object(std::istream &in, T **out,
     return true;
 }
 
-/* Release, re-make the ring at the stored size, then load and attach each
- * sub-object.  The ring is sized directly rather than through setCapacity, so
- * a subclass's override does not run here. */
+/* Release, re-make the slots at the stored count, then load and attach each
+ * sub-object.  The slots are made directly rather than through setCapacity,
+ * so a subclass's override does not run here. */
 int ParticleSystem::load(std::istream &in)
 {
     release(1);
@@ -545,7 +397,7 @@ int ParticleSystem::load(std::istream &in)
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle count could not be read");
         return false;
     }
-    if (!ring_.alloc(count, 0)) {
+    if (!slots_.alloc(count, 0)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle list could not be created");
         return false;
     }
@@ -566,7 +418,7 @@ int ParticleSystem::load(std::istream &in)
     return true;
 }
 
-/* ─── Point, Face and XFace lifecycles ─────────────────────────────────────
+/* ─── Face and XFace lifecycles ────────────────────────────────────────────
  *
  * Face and XFace use different texture corner orders:
  *   Face : (0,0) (1,0) (0,1) (0,1) (1,0) (1,1)
@@ -574,72 +426,38 @@ int ParticleSystem::load(std::istream &in)
 const float FaceParticleSystem::FACE_UV[6][2]   = { {0,0}, {1,0}, {0,1}, {0,1}, {1,0}, {1,1} };
 const float XFaceParticleSystem::XFACE_UV[6][2] = { {0,0}, {1,1}, {0,1}, {1,0}, {1,1}, {0,0} };
 
-int ParticleSystem::allocVerts(unsigned perNode, const float (*uv)[2])
+void FaceParticleSystem::look(ParticleLook &out) const
 {
-    RenderDevice::DestroyVertexBuffer(vb_);
-    vb_ = nullptr;
-    dwVertexCapacity_ = ring_.dwRingCount * perNode;
-    pVerts_.reset(new ParticleVertex[dwVertexCapacity_]());
-    if (uv)
-        for (uint32_t i = 0; i < ring_.dwRingCount; i++)
-            for (unsigned c = 0; c < perNode; c++) {
-                pVerts_[i * perNode + c].flU = uv[c][0];
-                pVerts_[i * perNode + c].flV = uv[c][1];
-            }
-    return true;
+    out.shapes = &flCorner_;
+    out.shapeCount = 1;
+    std::copy(&FACE_UV[0][0], &FACE_UV[0][0] + 12, &out.uv[0][0]);
 }
 
-/* The corner-table entries and the vertex buffer go with the system; the base
- * release drops the rest. */
+/* Two-sided: the original drew every quad twice, culling each winding in
+ * turn, so a corner entry rotated past edge-on still shows. */
+void XFaceParticleSystem::look(ParticleLook &out) const
+{
+    static_assert(offsetof(XFaceCornerEntry, flCorner) == 0, "corners first");
+    out.shapes = reinterpret_cast<const float (*)[6][3]>(pCornerTable_.get());
+    out.shapeCount = pCornerTable_ ? dwCornerTableCount_ : 0;
+    out.perParticleShape = true;
+    std::copy(&XFACE_UV[0][0], &XFACE_UV[0][0] + 12, &out.uv[0][0]);
+}
+
 void XFaceParticleSystem::release(int flags)
 {
     pCornerTable_.reset();
     ParticleSystem::release(flags);
 }
 
-XFaceParticleSystem::~XFaceParticleSystem()
-{
-}
-
-/* Size the ring, then rebuild the vertex buffer.  Both return the second
- * step's result. */
-int PointParticleSystem::setCapacity(uint32_t count)
-{
-    return ParticleSystem::setCapacity(count) && allocVerts(1);
-}
-
-int PointParticleSystem::resize(uint32_t count)
-{
-    return ParticleSystem::resize(count) && allocVerts(1);
-}
-
-/* Releases virtually first, and the base copyFrom releases again. */
-int PointParticleSystem::copyFrom(const ParticleSystem *src)
-{
-    release(1);
-    return ParticleSystem::copyFrom(src) && allocVerts(1);
-}
-
-int PointParticleSystem::load(std::istream &in)
-{
-    if (!ParticleSystem::load(in))
-        return false;
-    if (!allocVerts(1)) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading PointParticleSystem failed, because the vertex array could not be created");
-        return false;
-    }
-    return true;
-}
-
-/* Release virtually, size the ring, reset the scale to 1 and rebuild the
- * corners. */
+/* Release virtually, size the slots and reset the scale to 1. */
 int FaceParticleSystem::setCapacity(uint32_t count)
 {
     release(1);
     if (!ParticleSystem::setCapacity(count))
         return false;
     flScale_ = 1.0f;
-    return allocVerts();
+    return true;
 }
 
 /* The scale comes from the source. */
@@ -649,12 +467,7 @@ int FaceParticleSystem::copyFrom(const ParticleSystem *src)
     if (!ParticleSystem::copyFrom(src))
         return false;
     flScale_ = static_cast<const FaceParticleSystem *>(src)->flScale_;
-    return allocVerts();
-}
-
-int FaceParticleSystem::resize(uint32_t count)
-{
-    return ParticleSystem::resize(count) && allocVerts();
+    return true;
 }
 
 int FaceParticleSystem::load(std::istream &in)
@@ -663,10 +476,6 @@ int FaceParticleSystem::load(std::istream &in)
         return false;
     if (!ps_read(&flScale_, 4, in)) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading FaceParticleSystem failed, because the face size could not be read");
-        return false;
-    }
-    if (!allocVerts()) {
-        g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading ParticleSystem failed, because the vertex array could not be created");
         return false;
     }
     return true;
@@ -766,42 +575,25 @@ int XFaceParticleSystem::buildCorners()
 int XFaceParticleSystem::setCapacity(uint32_t count)
 {
     ParticleSystem::setCapacity(count);
-    ring_.assignShapes(dwCornerTableCount_);
-    if (!buildCorners() || !allocVerts()) {
+    slots_.assignShapes(dwCornerTableCount_);
+    if (!buildCorners()) {
         release(1);
         return false;
     }
     return true;
 }
 
-/* No virtual release first, unlike Point and Face. */
+/* PRESERVED: dwCornerTableCount is not copied, so a clone has the one corner
+ * entry the constructor leaves it -- and draws rand() for that many. */
 int XFaceParticleSystem::copyFrom(const ParticleSystem *src)
 {
     if (!ParticleSystem::copyFrom(src))
         return false;
     std::copy(std::begin(static_cast<const XFaceParticleSystem *>(src)->ranges),
               std::end(static_cast<const XFaceParticleSystem *>(src)->ranges), ranges);
-    ring_.assignShapes(dwCornerTableCount_);
+    slots_.assignShapes(dwCornerTableCount_);
     if (!buildCorners()) {
         ParticleSystem::release(1);
-        return false;
-    }
-    if (!allocVerts()) {
-        release(1);
-        return false;
-    }
-    return true;
-}
-
-/* Vertices before corners here; the other two do corners first. */
-int XFaceParticleSystem::resize(uint32_t count)
-{
-    if (!ParticleSystem::resize(count))
-        return false;
-    pCornerTable_.reset();
-    ring_.assignShapes(dwCornerTableCount_);
-    if (!allocVerts() || !buildCorners()) {
-        release(1);
         return false;
     }
     return true;
@@ -812,7 +604,7 @@ int XFaceParticleSystem::load(std::istream &in)
     if (!ParticleSystem::load(in))
         return false;
     if (ps_read(&dwCornerTableCount_, 4, in) && ps_read(ranges, sizeof(ranges), in))
-        return setCapacity(ring_.dwRingCount);
+        return setCapacity(slots_.count);
     release(1);
     g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading XFaceParticleSystem failed, because the attributes could not be read");
     return false;
@@ -821,8 +613,7 @@ int XFaceParticleSystem::load(std::istream &in)
 /* ─── The non-virtual interface ────────────────────────────────────────────
  *
  * The raw Generator, optionally gated on its class name.  NULL both when there
- * is no generator and when the name differs.  PRESERVED: no caller checks
- * before dereferencing. */
+ * is no generator and when the name differs. */
 Generator * ParticleSystem::getGenerator(const char *name)
 {
     Generator *gen = pGenerator_;
@@ -846,17 +637,10 @@ void ParticleSystem::disableRenderNode()             { setRenderNode(0); }
 
 /* ─── Construction and the factory ─────────────────────────────────────────
  *
- * The type-name strings; pName points at them as the constructors leave it. */
-PointParticleSystem::PointParticleSystem()
-{
-    pName_ = (char *)"PointParticleSystem";
-}
-
-/* The six corners start zeroed. */
+ * The six corners start zeroed. */
 FaceParticleSystem::FaceParticleSystem() : flScale_(1.0f)
 {
-    pName_ = (char *)"FaceParticleSystem";
-    std::fill(&flCorner_[0][0], &flCorner_[0][0] + 18, 0.0f);
+    pName_ = "FaceParticleSystem";
 }
 
 /* One corner entry by default, sizes 1.0, every other range 0. */
@@ -864,16 +648,14 @@ XFaceParticleSystem::XFaceParticleSystem()
     : dwCornerTableCount_(1),
       ranges{ 1.0f, 1.0f }  // size min/max; lifetime, speed and rotation are 0
 {
-    pName_ = (char *)"XFaceParticleSystem";
+    pName_ = "XFaceParticleSystem";
 }
 
-/* The four names and sizes (0x28 / 0x30 / 0x7a / 0x96); NULL for an unknown
- * name. */
+/* NULL for an unknown name.  The original's base ParticleSystem and its
+ * PointParticleSystem are not among them: no shipping effect is either. */
 ParticleSystem *
 ParticleSystem::create(const char *name)
 {
-    if (strcmp(name, "ParticleSystem") == 0)       return new (std::nothrow) ParticleSystem;
-    if (strcmp(name, "PointParticleSystem") == 0)  return new (std::nothrow) PointParticleSystem;
     if (strcmp(name, "FaceParticleSystem") == 0)   return new (std::nothrow) FaceParticleSystem;
     if (strcmp(name, "XFaceParticleSystem") == 0)  return new (std::nothrow) XFaceParticleSystem;
     return NULL;
