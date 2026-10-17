@@ -34,6 +34,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(FetchSDL)
 include(FetchFFmpeg)  # the intro movie's decoder
 include(FetchImGui)   # the debug UI
+include(FetchGLES)    # the OpenGL ES headers for src/gl
 
 # Warnings are errors for our own groups only; set after the fetched
 # dependencies are added so it does not reach them.
