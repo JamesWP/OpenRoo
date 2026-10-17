@@ -18,6 +18,7 @@
 #include <fstream>
 #include "binio.h"
 #include "renderdevice.h"
+#include "particletypes.h"
 #include <algorithm>
 #include <memory>
 #include <iterator>
@@ -36,7 +37,8 @@ void ParticleSystem::tick(float dt)
 
 void ParticleSystem::render(RenderDevice *dev)
 {
-    const ParticleInstance one = { dev->world(), cornerTransform() };
+    ParticleInstance one = { dev->world(), {} };
+    cornerTransform(one.corners.m);
     render(dev, &one, 1);
 }
 
@@ -75,9 +77,10 @@ void ParticleSystem::render(RenderDevice *dev, const ParticleInstance *instances
     dev->DrawParticles(buffer_, l, instances, count);
 }
 
-Mat4 ParticleSystem::cornerTransform() const
+void ParticleSystem::cornerTransform(float out[16]) const
 {
-    return { { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 } };
+    static const float IDENTITY[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 };
+    std::copy(IDENTITY, IDENTITY + 16, out);
 }
 
 /* ─── Matrices ─────────────────────────────────────────────────────────────
@@ -138,19 +141,21 @@ static void vec_cross(float o[3], const float a[3], const float b[3])
  * the corner transform (particletypes.h). */
 void FaceParticleSystem::setVector(float x, float y, float z)
 {
-    facing_ = { x, y, z };
-    mat_identity(corners_.m);
+    facing_[0] = x;
+    facing_[1] = y;
+    facing_[2] = z;
+    mat_identity(corners_);
 }
 
 /* Composes: a second transform applies after the first. */
 void FaceParticleSystem::transformCorners(float *matrix)
 {
-    mat_mul(corners_.m, corners_.m, matrix);
+    mat_mul(corners_, corners_, matrix);
 }
 
-Mat4 FaceParticleSystem::cornerTransform() const
+void FaceParticleSystem::cornerTransform(float out[16]) const
 {
-    return corners_;
+    std::copy(corners_, corners_ + 16, out);
 }
 
 /* ─── The slots and the ParticleSystem lifecycle ───────────────────────────
@@ -342,7 +347,7 @@ const float XFaceParticleSystem::XFACE_UV[6][2] = { {0,0}, {1,1}, {0,1}, {1,0}, 
 
 void FaceParticleSystem::look(ParticleLook &out) const
 {
-    out.facing = facing_;
+    out.facing = { facing_[0], facing_[1], facing_[2] };
     out.size = flScale_;
     std::copy(&FACE_UV[0][0], &FACE_UV[0][0] + 12, &out.uv[0][0]);
 }
@@ -358,12 +363,12 @@ void XFaceParticleSystem::look(ParticleLook &out) const
 
 void XFaceParticleSystem::uploadShapes(RenderDevice *dev)
 {
-    dev->SetParticleShapes(buffer_, shapes_.data(), (uint32_t)shapes_.size());
+    dev->SetParticleShapes(buffer_, shapes_.get(), shapes_ ? dwCornerTableCount_ : 0);
 }
 
 void XFaceParticleSystem::release(int flags)
 {
-    shapes_.clear();
+    shapes_.reset();
     ParticleSystem::release(flags);
 }
 
@@ -400,7 +405,7 @@ static const float SHAPE_TURNS_PER_SECOND = 60.0f;
 int XFaceParticleSystem::buildCorners()
 {
     const uint32_t count = dwCornerTableCount_;
-    shapes_.assign(count, ParticleShape());
+    shapes_.reset(new ParticleShape[count]);
     const float *p = this->ranges;
     const float size_min = p[0], size_max = p[1];
     const float step = (size_max - size_min) / (float)count;
@@ -508,6 +513,8 @@ FaceParticleSystem::FaceParticleSystem() : flScale_(1.0f)
 }
 
 /* One corner entry by default, sizes 1.0, every other range 0. */
+XFaceParticleSystem::~XFaceParticleSystem() = default;
+
 XFaceParticleSystem::XFaceParticleSystem()
     : dwCornerTableCount_(1),
       ranges{ 1.0f, 1.0f }  // size min/max; lifetime, speed and rotation are 0

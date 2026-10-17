@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "generators.h"
+#include "particletypes.h"
 #include "fxrand.h"
 #include "logger.h"
 #include <new>
@@ -46,6 +47,17 @@ static Vec3 vec3_of(const float v[3])
 }
 
 /* ─── The environments ─── */
+
+/* The bases: a generator that emits nothing, a field that does nothing. */
+void Generator::takeEmit(ParticleEmit &out)
+{
+    out.count = 0;
+}
+
+void Environment::takeField(ParticleField &out)
+{
+    out.kind = ParticleFieldKind::None;
+}
 
 void GravityEnvironment::tick(float dt)
 {
@@ -108,8 +120,8 @@ void EmitterGenerator::takeEmit(ParticleEmit &out)
     pendingCount_ = 0;
     out.seed = seed_;
     seed_ = seed_ * 1664525u + 1013904223u;
-    out.dirMean = dirMean_;
-    out.dirVariance = dirVariance_;
+    out.dirMean = vec3_of(dirMean_);
+    out.dirVariance = vec3_of(dirVariance_);
     out.speedMean = speedMean_;
     out.speedVariance = speedVariance_;
     out.lifeMean = lifeMean_;
@@ -126,12 +138,12 @@ void StdGenerator::placement(ParticleEmit &out) const
 {
     if (emitMode_ == 1) {
         out.spawn = ParticleSpawn::Box;
-        out.posA = boxMin_;
-        out.posB = boxMax_;
+        out.posA = vec3_of(boxMin_);
+        out.posB = vec3_of(boxMax_);
     } else {
         out.spawn = ParticleSpawn::Gauss;
-        out.posA = posMean_;
-        out.posB = posVariance_;
+        out.posA = vec3_of(posMean_);
+        out.posB = vec3_of(posVariance_);
     }
 }
 
@@ -311,12 +323,10 @@ int Generator::copyFrom(const Generator *src)
  * EmitterGenerator). */
 bool EmitterGenerator::loadMotion(std::istream &in)
 {
-    float dirMean[3], dirVariance[3], v[4];
-    if (!read1(dirMean, 12, in) || !read1(dirVariance, 12, in) || !read1(v, 16, in)
+    float v[4];
+    if (!read1(dirMean_, 12, in) || !read1(dirVariance_, 12, in) || !read1(v, 16, in)
         || !read1(&rate_, 4, in))
         return false;
-    dirMean_ = vec3_of(dirMean);
-    dirVariance_ = vec3_of(dirVariance);
     speedMean_ = v[0];
     speedVariance_ = v[1];
     lifeMean_ = v[2];
@@ -351,13 +361,9 @@ int StdGenerator::copyFrom(const Generator *gsrc)
 
 int StdGenerator::load(std::istream &in)
 {
-    float box[6], pos[6];
-    if (!read1(&emitMode_, 4, in) || !read1(box, 24, in) || !read1(pos, 24, in))
+    if (!read1(&emitMode_, 4, in) || !read1(boxMax_, 12, in) || !read1(boxMin_, 12, in)
+        || !read1(posMean_, 12, in) || !read1(posVariance_, 12, in))
         return false;
-    boxMax_ = vec3_of(box);
-    boxMin_ = vec3_of(box + 3);
-    posMean_ = vec3_of(pos);
-    posVariance_ = vec3_of(pos + 3);
     return loadMotion(in) && loadColours(in);
 }
 
