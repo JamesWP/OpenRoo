@@ -664,13 +664,13 @@ unsigned int MovableEntity::updateMovement()
             stepU_ = 0;
             stepV_ = 0;
             if (sliding_ != 0)
-                field_141 = 0xff;
+                field_141 = -1;
             if (moveDir_ > 0x14)
                 moveDir_ = moveDir_ - 0x14;  // PRESERVED: subtraction, not a modulo; relies on moveDir_ staying under 0x28
-            if (moveDir_ == 1) stepV_ = 0xff;
+            if (moveDir_ == 1) stepV_ = -1;
             if (moveDir_ == 2) stepU_ = 1;
             if (moveDir_ == 3) stepV_ = 1;
-            if (moveDir_ == 4) stepU_ = 0xff;
+            if (moveDir_ == 4) stepU_ = -1;
 
             Tile          *here    = CUR;
             unsigned char  h_here  = here->height();
@@ -760,7 +760,7 @@ unsigned int MovableEntity::updateMovement()
                     if (((signed char)anim_) == 0)
                         anim_ = (unsigned char)
                             ((-(Sim_CheckTileIsStairs(k_here) != 0) & 2U) + 0x17);
-                    field_141  = 0xff;
+                    field_141  = -1;
                     field_12e = 2;
                 }
                 if (h_dest == h_here) {

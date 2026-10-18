@@ -6,7 +6,7 @@
 class World;
 class Session;
 class ScriptPlayer;
-class Renderer;
+struct Renderer;
 class ThemeAssetBlock;
 class RenderDevice;
 class TextRenderer;

@@ -15,7 +15,6 @@ bool Cell::operator==(const Cell &o) const
 
 namespace {
 
-void appendf(std::string &out, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 void appendf(std::string &out, const char *fmt, ...)
 {
     char buf[512];

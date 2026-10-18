@@ -1,15 +1,25 @@
 cmake_minimum_required(VERSION 3.20)
 
-# The platform to build for: -DOPENROO_PLATFORM=linux (the default; native),
-# -DOPENROO_PLATFORM=windows (cross-compiled with MinGW-w64, run under
-# Wine/Proton) or -DOPENROO_PLATFORM=rg35xx (the Anbernic RG35XX Plus handheld,
-# cross-compiled with the SDK from github.com/JamesWP/rg35xx-plus-sdk; point
-# -DRG35XX_SDK=<dir> at the unpacked SDK, or at that repo's output/host).
-set(OPENROO_PLATFORM "linux" CACHE STRING "linux, windows or rg35xx")
+# The platform to build for: -DOPENROO_PLATFORM=linux (the default on Linux;
+# native), -DOPENROO_PLATFORM=windows (the default on Windows; native, with MSVC
+# and the dependencies from vcpkg -- see the `windows` preset in
+# CMakePresets.json) or -DOPENROO_PLATFORM=rg35xx (the Anbernic RG35XX Plus
+# handheld, cross-compiled with the SDK from github.com/JamesWP/rg35xx-plus-sdk;
+# point -DRG35XX_SDK=<dir> at the unpacked SDK, or at that repo's output/host).
+if(CMAKE_HOST_WIN32)
+    set(platform_default windows)
+else()
+    set(platform_default linux)
+endif()
+set(OPENROO_PLATFORM "${platform_default}" CACHE STRING "linux, windows or rg35xx")
 set_property(CACHE OPENROO_PLATFORM PROPERTY STRINGS linux windows rg35xx)
 if(OPENROO_PLATFORM STREQUAL "windows")
-    if(NOT CMAKE_TOOLCHAIN_FILE)
-        set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/mingw.cmake")
+    if(NOT CMAKE_HOST_WIN32)
+        message(FATAL_ERROR "OPENROO_PLATFORM=windows builds on Windows (see README.md); it is not cross-compiled")
+    endif()
+elseif(OPENROO_PLATFORM STREQUAL "linux")
+    if(CMAKE_HOST_WIN32)
+        message(FATAL_ERROR "OPENROO_PLATFORM=linux builds on Linux (or WSL)")
     endif()
 elseif(OPENROO_PLATFORM STREQUAL "rg35xx")
     set(RG35XX_SDK "$ENV{RG35XX_SDK}" CACHE PATH "The RG35XX Plus SDK (holding share/buildroot/toolchainfile.cmake)")
@@ -20,7 +30,7 @@ elseif(OPENROO_PLATFORM STREQUAL "rg35xx")
         endif()
         set(CMAKE_TOOLCHAIN_FILE "${RG35XX_SDK}/share/buildroot/toolchainfile.cmake")
     endif()
-elseif(NOT OPENROO_PLATFORM STREQUAL "linux")
+else()
     message(FATAL_ERROR "OPENROO_PLATFORM must be linux, windows or rg35xx, not '${OPENROO_PLATFORM}'")
 endif()
 
@@ -43,6 +53,7 @@ endif()
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
+set(CMAKE_CXX_STANDARD 17)  # inline variables: GCC defaults to it, MSVC does not
 set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
@@ -60,7 +71,15 @@ include(FetchGLES)    # the OpenGL ES headers for src/gl
 
 # Warnings are errors for our own groups only; set after the fetched
 # dependencies are added so it does not reach them.
-add_compile_options(-Wall -Wextra -Werror)
+if(MSVC)
+    # /utf-8: sources are UTF-8.  vcpkg's toolchain copies the SDL and FFmpeg
+    # DLLs next to the executable.
+    add_compile_options(/W3 /WX /utf-8 /permissive- /Zc:__cplusplus)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS NOMINMAX WIN32_LEAN_AND_MEAN)
+    include_directories(BEFORE cmake/msvc)  # the POSIX <strings.h>
+else()
+    add_compile_options(-Wall -Wextra -Werror)
+endif()
 
 # One directory under src/ is one group.  Each group declares the groups it
 # depends on with target_link_libraries in its own CMakeLists.txt; their include
@@ -80,13 +99,6 @@ set_target_properties(OpenRoo PROPERTIES OUTPUT_NAME OpenRoo)
 target_include_directories(OpenRoo PRIVATE src/app)
 target_link_libraries(OpenRoo PRIVATE
     app audio audiodev base camera script session fx sequencer drawhelpers game gfx math screens core dbg debugui entities gl input inputapi inputdev level render sim bot botapi botmodel botmotor botplan bottactics botexec soundapi testing ui videodev windev sysdev log prof imgui)
-if(WIN32)
-    target_link_libraries(OpenRoo PRIVATE -static-libgcc -static-libstdc++ -static)
-    # The SDL and FFmpeg DLLs next to the executable (launch.sh copies them into run/).
-    add_custom_command(TARGET OpenRoo POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different ${SDL_RUNTIME_DLLS} ${FFMPEG_RUNTIME_DLLS} $<TARGET_FILE_DIR:OpenRoo>)
-endif()
-
 if(OPENROO_PLATFORM STREQUAL "rg35xx")
     # The SDK's SDL3 (with the device's video driver) ships in lib/ beside the
     # executable.  DT_RPATH, not DT_RUNPATH, so it wins over whatever

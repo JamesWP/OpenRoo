@@ -2,13 +2,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-DEBUG=0
 SKIP_LAUNCHER=0
 AUTO_EXIT_SECS=0
 HEADLESS=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --debug)    DEBUG=1 ;;
     # Auto-dismiss the launcher dialog so the run needs nobody at the keyboard.
     # This is NOT headless — the game still opens a window and renders. The
     # dialog is the only place the video mode is chosen, so a run that skips it
@@ -30,9 +28,8 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-# The platform is whatever build/ was configured for (the CMake option
-# OPENROO_PLATFORM, linux unless told otherwise at configure time): a Linux
-# build runs directly, a Windows build runs under Proton.
+# build/ must be a Linux build (the CMake option OPENROO_PLATFORM); the Windows
+# build runs with launch.ps1.
 BUILD_DIR=${BUILD_DIR:-build}
 # Bring the build up to date first; a failed build does not launch a stale exe.
 # OPENROO_SKIP_BUILD=1 launches what is already built: a caller that starts many
@@ -45,8 +42,8 @@ fi
 [[ -f "$BUILD_DIR/CMakeCache.txt" ]] || { echo "ERROR: $BUILD_DIR is not configured" >&2; exit 1; }
 PLATFORM=$(sed -n 's/^OPENROO_PLATFORM:[A-Z]*=//p' "$BUILD_DIR/CMakeCache.txt")
 case "$PLATFORM" in
-  linux)   NATIVE=1; EXE=OpenRoo ;;
-  windows) NATIVE=0; EXE=OpenRoo.exe ;;
+  linux)  EXE=OpenRoo ;;
+  windows) echo "ERROR: $BUILD_DIR is a Windows build; run launch.ps1 from PowerShell" >&2; exit 1 ;;
   rg35xx)  echo "ERROR: $BUILD_DIR is an rg35xx build; it runs on the device (see README.md)" >&2; exit 1 ;;
   *) echo "ERROR: $BUILD_DIR has no OPENROO_PLATFORM (got '$PLATFORM'); reconfigure it" >&2; exit 1 ;;
 esac
@@ -80,7 +77,6 @@ for _entry in game/*; do
   [[ -L "run/$_name" ]] || ln -s "../game/$_name" "run/$_name"
 done
 cp -p "$BUILD_DIR/$EXE" run/
-(( NATIVE )) || cp -p "$BUILD_DIR"/*.dll run/
 
 # openroo.ini is ours, not the game's, and holds the settings and the key
 # bindings.  Without it the game runs on its built-in defaults; install the
@@ -102,7 +98,6 @@ roll_log karoo_hooks.log
 # shell — or a long-running agent session — started before that keeps the old
 # XAUTHORITY path in its environment, and every launch then dies with
 #   Invalid MIT-MAGIC-COOKIE-1 key
-#   err:winediag:nodrv_CreateWindow ... "The explorer process failed to start."
 # and the game exits having rendered zero frames.  That looks exactly like a
 # crash in whatever was last changed, which is an expensive misdiagnosis.
 #
@@ -147,8 +142,8 @@ FORWARD_ENV=()
 # switches especially — the replay clock is virtual, so nothing in the game
 # paces itself against wall time, but presentation still blocks on the display
 # refresh, which pinned a run at ~60 fps and made a 4150-frame replay take 70 s
-# of wall clock.  DDFLIP_NOVSYNC through ddraw does not lift it; the wait is
-# below Wine, in the GL/Vulkan present.  These are the driver-side switches
+# of wall clock.  The wait is
+# in the GL/Vulkan present.  These are the driver-side switches
 # (Mesa GL, Mesa Vulkan WSI, NVIDIA GL), and unset really does mean untouched
 # now — passing them as empty strings is NOT the same thing.
 for _name in XAUTHORITY DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR \
@@ -172,72 +167,16 @@ for _name in $(compgen -v); do
   esac
 done
 
-if (( NATIVE )); then
-  RUN_PREFIX=(
-    env -i
-    HOME="$HOME" USER="$USER"
-    DISPLAY="${DISPLAY:-}"
-    PATH="$PATH"
-    KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
-    KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"
-    KAROO_HEADLESS="$HEADLESS"
-    "${FORWARD_ENV[@]}"
-  )
-  (( DEBUG )) && { echo "ERROR: --debug needs Proton's winedbg; not available on a Linux build" >&2; exit 1; }
-  # OPENROO_WRAPPER: a command to run the game under, e.g. "valgrind --error-exitcode=9".
-  # shellcheck disable=SC2206
-  exec "${RUN_PREFIX[@]}" ${OPENROO_WRAPPER:-} "./$EXE"
-fi
-
-PROTON_DIR="$HOME/.steam/root/steamapps/common/Proton - Experimental"
-PROTON_RUN=(
+RUN_PREFIX=(
   env -i
   HOME="$HOME" USER="$USER"
   DISPLAY="${DISPLAY:-}"
   PATH="$PATH"
-  STEAM_COMPAT_DATA_PATH="$HOME/.proton/Karoo.exe"
-  STEAM_COMPAT_CLIENT_INSTALL_PATH="$HOME/.steam/root"
-  PROTON_LOG_DIR="$(pwd)"
-  SteamGameId=123456 SteamAppId=123456
-  # Script-controlled; these are always set, so the DLL can rely on them.
   KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
   KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"
   KAROO_HEADLESS="$HEADLESS"
   "${FORWARD_ENV[@]}"
-  "$PROTON_DIR/proton" run
 )
-
-if (( DEBUG )); then
-  roll_log debug.log
-  [[ -f ../debug.gdb ]] || { echo "ERROR: debug.gdb missing"; exit 1; }
-  command -v gdb >/dev/null || { echo "ERROR: gdb not installed (apt install gdb)"; exit 1; }
-
-  PORT="${WINEDBG_PORT:-9999}"
-
-  cleanup() {
-    [[ -n "${WINEDBG_PID:-}" ]] && kill "$WINEDBG_PID" 2>/dev/null || true
-    "${PROTON_RUN[@]}" wineserver -k 2>/dev/null || true
-  }
-  trap cleanup EXIT
-
-  "${PROTON_RUN[@]}" winedbg --gdb --no-start --port "$PORT" "$EXE" &
-  WINEDBG_PID=$!
-
-  # Wait for the gdb stub's listening socket. IMPORTANT: probe PASSIVELY with ss
-  # — winedbg's gdb proxy accepts the first TCP connection as *the* gdb client,
-  # so a /dev/tcp readiness probe would steal the slot and make the real gdb
-  # handshake time out.
-  echo "Waiting for winedbg gdb stub on port $PORT (pid $WINEDBG_PID)..."
-  for _ in $(seq 1 100); do
-    if ss -ltnH "sport = :$PORT" 2>/dev/null | grep -q .; then break; fi
-    kill -0 "$WINEDBG_PID" 2>/dev/null || { echo "ERROR: winedbg exited before opening port $PORT" >&2; exit 1; }
-    sleep 0.2
-  done
-
-  echo "Attaching gdb (probes log to ./debug.log)..."
-  gdb -q -x ../debug.gdb
-  cleanup
-  exit 0
-fi
-
-exec "${PROTON_RUN[@]}" "$EXE"
+# OPENROO_WRAPPER: a command to run the game under, e.g. "valgrind --error-exitcode=9".
+# shellcheck disable=SC2206
+exec "${RUN_PREFIX[@]}" ${OPENROO_WRAPPER:-} "./$EXE"

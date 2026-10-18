@@ -16,7 +16,7 @@ python3 tools/replaytest.py --no-headless  # open a window, render every frame f
 
 With `KAROO_HEADLESS=1`, `GLRenderDevice::Create` (`src/gl/createdevice.cpp`)
 creates no OpenGL context at all, and the game's one window is created
-message-only so Wine needs no display driver for it. Nothing appears on
+message-only, so no display is needed for it. Nothing appears on
 screen, nothing takes focus, no desktop mode is switched, and the run works
 with `DISPLAY` unset entirely.
 
@@ -58,10 +58,6 @@ frame on screen. It needs a display. It is the only way to exercise the draw
 path: `bombstart-crash` guards the CRASH.md fault, a bad pointer that faulted
 *inside* a strided draw, and only a `--no-headless` run hands the driver a
 pointer at all. `tools/drawtrace.py` uses it too.
-
-Turning Wine's tracing off (`WINEDEBUG=-all`) was measured as well: worth 1-2%,
-inside the noise, and it would silently break `grep -c c000001d steam-123456.log`,
-the project's primary evidence that no call site was missed. Not worth it.
 
 Exit code 0 means every selected recording behaved exactly as `manifest.json`
 says it should. Non-zero means one did not, and the output names the field.
@@ -214,11 +210,11 @@ context that does not belong in a JSON field.
 ### Running the whole suite
 
 Recordings run back to back, and the second launch will wedge — hanging before
-the DLL writes a single log line — if the previous run's `OpenRoo.exe` and
-`wineserver` have not finished shutting down. The harness polls for that between
+the DLL writes a single log line — if the previous run's `OpenRoo`
+process has not finished shutting down. The harness polls for that between
 runs. If you ever see a run produce an empty `karoo_hooks.log` and no end-state dump,
 that is this, not a replay failure: the recording will pass on its own. Clear it
-with `pkill -f OpenRoo.exe; pkill -f wineserver`.
+with `pkill -f OpenRoo`.
 
 **The suite runs unthrottled.** A replay is on the virtual clock, so nothing in
 the game paces itself against wall time — but presentation still blocked on the
@@ -226,13 +222,11 @@ display refresh, pinning every run at the monitor's rate (600 frames per 10.05 s
 wall = 59.7 fps) and making a replay cost about as long as it took to play.
 `replaytest.py` therefore launches with vsync disabled at the driver
 (`VSYNC_OFF` in the harness: `vblank_mode`, `MESA_VK_WSI_PRESENT_MODE`,
-`__GL_SYNC_TO_VBLANK` — all three, so the backend wined3d picked does not have
+`__GL_SYNC_TO_VBLANK` — all three, so the driver in use does not have
 to be detected). Frames then run at roughly 230 fps and the two-recording suite
 takes **35 s instead of 102 s**.
 
-The wait is below Wine: passing `DDFLIP_NOVSYNC` through the ddraw proxy was
-tried first and changed nothing.  The backend is OpenGL now, and not every
-driver honours those switches, so the harness also sets
+Not every driver honours those switches, so the harness also sets
 `KAROO_NOVSYNC=1`, which makes the device present immediately (swap interval 0),
 whatever the driver does. The game has no vsync option of its own.
 

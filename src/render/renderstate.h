@@ -1,7 +1,7 @@
 /* renderstate.h -- the fixed render state (renderstate.cpp). */
 #pragma once
 
-class Renderer;
+struct Renderer;
 class World;
 class CameraPose;
 

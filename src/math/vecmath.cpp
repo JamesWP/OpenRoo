@@ -239,7 +239,7 @@ void Math_BuildBillboardQuad(Vec3 *out, float dx, float dy, float dz, float scal
 {
     Vec3 up = { 1.0f, 0.0f, 0.0f };
     if (dx == 1.0f && dy == 0.0f && dz == 0.0f)
-        up = (Vec3){ 0.0f, 1.0f, 0.0f };
+        up = Vec3{ 0.0f, 1.0f, 0.0f };
 
     Vec3 d = { dx, dy, dz };
     double len = sqrt(Math_Vec3SqLen(&d));
@@ -252,15 +252,15 @@ void Math_BuildBillboardQuad(Vec3 *out, float dx, float dy, float dz, float scal
     u->x = (float)((double)n.y * r->z - (double)n.z * r->y);
     u->y = (float)((double)n.z * r->x - (double)n.x * r->z);
     u->z = (float)((double)n.x * r->y - (double)n.y * r->x);
-    out[0] = (Vec3){ 0.0f, 0.0f, 0.0f };
+    out[0] = Vec3{ 0.0f, 0.0f, 0.0f };
 
     Vec3 t;
     Math_Vec3Div(&t, r, (float)sqrt(Math_Vec3SqLen(r)));
-    *r = (Vec3){ t.x * scale, t.y * scale, t.z * scale };
+    *r = Vec3{ t.x * scale, t.y * scale, t.z * scale };
     Math_Vec3Div(&t, u, (float)sqrt(Math_Vec3SqLen(u)));
-    *u = (Vec3){ t.x * scale, t.y * scale, t.z * scale };
+    *u = Vec3{ t.x * scale, t.y * scale, t.z * scale };
 
-    out[3] = (Vec3){ r->x + u->x, r->y + u->y, r->z + u->z };
+    out[3] = Vec3{ r->x + u->x, r->y + u->y, r->z + u->z };
     Vec3 c = { out[3].x * 0.5f, out[3].y * 0.5f, out[3].z * 0.5f };
     for (int i = 0; i < 4; i++)
         v3_sub_inplace(&out[i], &c);

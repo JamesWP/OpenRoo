@@ -3,7 +3,7 @@
 #pragma once
 
 class Game;
-class Renderer;
+struct Renderer;
 struct MenuArt;
 class ProgableControl;
 

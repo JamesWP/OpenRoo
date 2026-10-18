@@ -8,7 +8,7 @@ add_library(windev OBJECT
     "${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp"
     "${CMAKE_BINARY_DIR}/generated/launcher/launcher_assets.cpp")
 target_include_directories(windev PUBLIC .)
-set_source_files_properties("${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp" PROPERTIES COMPILE_OPTIONS -w)
+set_source_files_properties("${IMGUI_DIR}/backends/imgui_impl_sdl3.cpp" PROPERTIES COMPILE_OPTIONS "$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>")
 
 # launcher_assets.cpp and launcher_layout.h: the sliced bitmaps and icon.
 set(LAUNCHER_DIR "${CMAKE_BINARY_DIR}/generated/launcher")

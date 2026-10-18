@@ -1,5 +1,6 @@
 #include "route.h"
 #include <algorithm>
+#include <bitset>
 #include <limits>
 
 namespace bot {
@@ -39,7 +40,7 @@ std::vector<int> exact(const std::vector<std::vector<double>> &dist, int n, int 
     size_t bestMask = 0;
     int bestLast = -1;
     for (size_t m = 1; m < full; m++) {
-        const int pop = __builtin_popcountll(m);
+        const int pop = (int)std::bitset<64>(m).count();
         if (pop > k)
             continue;
         for (int i = 0; i < n; i++) {

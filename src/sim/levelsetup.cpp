@@ -62,11 +62,19 @@
 #include "gametime.h"
 
 
+#ifdef _MSC_VER
+typedef unsigned int   u32_ua;  // x86 reads unaligned
+typedef int            i32_ua;
+typedef unsigned short u16_ua;
+typedef float          f32_ua;
+typedef double         f64_ua;
+#else
 typedef unsigned int   __attribute__((aligned(1))) u32_ua;
 typedef int            __attribute__((aligned(1))) i32_ua;
 typedef unsigned short __attribute__((aligned(1))) u16_ua;
 typedef float          __attribute__((aligned(1))) f32_ua;
 typedef double         __attribute__((aligned(1))) f64_ua;
+#endif
 
 #define B(g, off)    (*((unsigned char *)(g) + (off)))
 #define SB(g, off)   (*(signed char *)((unsigned char *)(g) + (off)))

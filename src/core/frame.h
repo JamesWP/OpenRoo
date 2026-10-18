@@ -11,7 +11,7 @@
 #include "drawframe.h"
 
 class Game;
-class Renderer;
+struct Renderer;
 struct MenuArt;
 class ProgableControl;
 

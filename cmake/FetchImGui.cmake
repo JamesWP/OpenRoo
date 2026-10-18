@@ -55,4 +55,4 @@ add_library(imgui STATIC
     "${IMGUI_DIR}/imgui_demo.cpp")
 target_include_directories(imgui PUBLIC "${IMGUI_DIR}")
 target_compile_definitions(imgui PUBLIC IMGUI_DISABLE_WIN32_FUNCTIONS)
-target_compile_options(imgui PRIVATE -w)
+target_compile_options(imgui PRIVATE "$<IF:$<CXX_COMPILER_ID:MSVC>,/w,-w>")

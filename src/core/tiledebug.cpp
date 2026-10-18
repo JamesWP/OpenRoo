@@ -178,7 +178,7 @@ static void draw_slides(const dbg::MapView &m, const LevelMap *map)
     ImDrawList *dl = m.dl;
     const unsigned cols = m.cols, rows = m.rows;
     const float cell = m.cell;
-    auto centre = [&](float u, float v) { return m.centre(u, v); };
+    auto centre = [&](int u, int v) { return m.centre((float)u, (float)v); };
     auto dirAt = [&](int u, int v) -> int {
         if (u < 0 || v < 0 || u >= (int)cols || v >= (int)rows)
             return 0;
