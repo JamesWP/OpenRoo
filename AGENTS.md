@@ -1,4 +1,4 @@
-The build uses cmake; the full build process (native Linux and Windows/mingw) is documented in README.md. Install the toolchain it lists if you dont already have it.
+The build uses cmake; the full build process (native Linux, and native Windows with MSVC + vcpkg from PowerShell) is documented in README.md. Install the toolchain it lists if you dont already have it.
 
 To test you should build with cmake (see README.md) to check things compile. and then consider running a smoke test consisting of one of the pre recorded gameplay sessions. e.g. using `python3 tools/replaytest.py bombstart-crash`. Test using the whole suite (omit session name) only when completing a body of work since it takes a few minutes.
 
