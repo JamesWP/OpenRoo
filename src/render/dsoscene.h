@@ -1,7 +1,7 @@
 /* dsoscene.h -- the scene-object passes (dsoscene.cpp). */
 #pragma once
 #include <stdint.h>
-class Renderer;
+struct Renderer;
 class RenderDevice;
 class Scene;
 /* The level's scene objects, seen from the camera eye, at clock now (ms). */

@@ -143,7 +143,7 @@ def check_header(entry, cfg, rec_path):
 # than SECONDS_MARGIN (2x) the expected time; this is not a benchmark.
 #
 # Exceeding it is reported as STUCK, distinct from FAIL, because the usual cause
-# is the environment (a surviving wineserver, a stale Karoo.exe) rather than the
+# is the environment (a stale OpenRoo process) rather than the
 # change under test.  KAROO_STUCK_SECONDS sets the floor for tiny recordings and
 # KAROO_STUCK_SCALE multiplies the whole budget for a slower machine.
 STUCK_SECONDS = int(os.environ.get("KAROO_STUCK_SECONDS", "10"))
@@ -166,10 +166,9 @@ def wait_for_quiet(timeout=60):
     """Wait for a previous run's game process to actually be gone.
 
     Running two recordings back to back wedged the second launch: it hung
-    before our DLL wrote a single log line, because the previous run's
-    Karoo.exe / wineserver had not finished shutting down and the new launch
-    sat waiting on the prefix.  Each recording passes on its own, so this is a
-    harness problem, not a replay one.  Poll rather than sleeping a fixed
+    before the game wrote a single log line, because the previous run's
+    process had not finished shutting down.  Each recording passes on its own,
+    so this is a harness problem, not a replay one.  Poll rather than sleeping a fixed
     amount, so the common case (already quiet) costs nothing.
     """
     import time
@@ -180,15 +179,9 @@ def wait_for_quiet(timeout=60):
         r = subprocess.run(["pgrep", "-x", r"OpenRoo(\.exe)?"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if r.returncode != 0:          # nothing matched
-            # Only a Proton run has a wineserver to finish shutting down
-            # behind the game; a native run has nothing to wait for.
-            if subprocess.run(["pgrep", "-x", "wineserver"],
-                              stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL).returncode == 0:
-                time.sleep(2)
             return True
         time.sleep(1)
-    print("  ! a previous Karoo.exe is still running after %ds — the launch "
+    print("  ! a previous OpenRoo is still running after %ds — the launch "
           "below may wedge" % timeout)
     return False
 
@@ -201,10 +194,9 @@ def wait_for_quiet(timeout=60):
 # pinned every run at the monitor's rate (measured: 600 frames per 10.05 s wall
 # = 59.7 fps) and made a replay cost about as long as it took to play.
 #
-# The wait is below Wine — passing DDFLIP_NOVSYNC through the ddraw proxy was
-# tried and changed nothing — so these are the driver-side switches: Mesa GL,
+# The wait is in the driver, so these are the driver-side switches: Mesa GL,
 # Mesa's Vulkan WSI, and the NVIDIA GL equivalent.  Setting all three covers
-# whichever backend wined3d picked without having to detect it.
+# whichever backend is in use without having to detect it.
 #
 # This changes when a finished frame reaches the screen, not what is in it:
 # every frame is still rendered and presented, the clock is virtual, and nothing
@@ -243,10 +235,6 @@ def apply_turbo(env):
 #
 # --no-headless renders every frame for real on a real device, for the tools
 # (drawtrace.py, texdump.py) that need draws to reach it.
-#
-# Turning Wine's tracing off (WINEDEBUG=-all) was measured too: 1-2%, inside
-# the noise, and it would silently break `grep -c c000001d steam-123456.log`,
-# the project's evidence that no call site was missed.  Not worth it.
 HEADLESS_ENV = {
     "KAROO_RENDER_FX":  "nodraw",
     "KAROO_FLIP_FX": "noblt",
@@ -295,7 +283,7 @@ def launch(entry, cfg, rec_path, dump_path,
     started = time.perf_counter()
 
     # start_new_session so the whole tree gets signalled: killing the bash
-    # child alone would leave Proton/Wine running and the next recording would
+    # child alone would leave the game running and the next recording would
     # then fail for the wrong reason.
     proc = subprocess.Popen(cmd, cwd=REPO, env=env,
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -313,7 +301,7 @@ def launch(entry, cfg, rec_path, dump_path,
           "time); killing the run.\n"
           "         That is over twice the expected time for %d frames.\n"
           "         Suspect the environment first: a surviving\n"
-          "         wineserver or a stale Karoo.exe from an earlier run wedges\n"
+          "         OpenRoo from an earlier run wedges\n"
           "         the next launch (see GAMETICK_PLAN.md standing hazards).\n"
           "         Set KAROO_STUCK_SCALE if this machine is genuinely slower."
           % (budget, auto_exit, frames))

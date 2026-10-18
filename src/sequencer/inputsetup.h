@@ -3,7 +3,7 @@
  * in the ProgableControl (progctrl.h) that app owns and passes in. */
 
 #pragma once
-struct Game;
+class Game;
 class ProgableControl;
 
 /* progCtrl is the app's ProgableControl, which the actions are registered on. */

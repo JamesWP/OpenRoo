@@ -4,6 +4,6 @@
 #pragma once
 
 class Game;
-class Renderer;
+struct Renderer;
 
 void LevelEntry_PrepareAssets(Game *g, Renderer *renderer);

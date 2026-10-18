@@ -1,9 +1,9 @@
 # Open'Roo
 
 A reimplementation of **Ka'roo**, a 1990s Windows 3D puzzle-platform game,
-written from scratch in C++. It builds natively for Linux (`OpenRoo`) and
-cross-compiles to Windows (`OpenRoo.exe`, which also runs on Linux under
-Proton/Wine).  The platform is a configure option, `OPENROO_PLATFORM` (default `linux`); all
+written from scratch in C++.  It builds natively for Linux (`OpenRoo`) and
+for Windows (`OpenRoo.exe`, with MSVC).  The platform is a configure option,
+`OPENROO_PLATFORM` (default: the host's); all
 platform-specific code lives in the `*dev` libraries under `src/` (`windev`,
 `sysdev`, `audiodev`, `inputdev`, `videodev`, `gl`), one header each with a
 `_windows` and a `_linux` source file behind it.
@@ -14,7 +14,7 @@ sounds and the original executable's resources from it.
 
 ## build deps
 
-The application needs SDL3 and FFMPEG. Optionally for building the game for windows (which is cross compiled from linux) youll need additional cross compilation toolchain and if you want to test that on linux, Proton.
+The application needs SDL3 and FFMPEG.  On Linux they come from the system; on Windows from vcpkg.
 
 ### For Ubuntu *26+*
 
@@ -30,14 +30,17 @@ $ sudo apt-get install build-essential git make pkg-config cmake ninja-build gno
 ```
 </details>
 
-### For the windows build (from linux)
+### For Windows
 
-In addition to the compiler package below you will also need to install steam's "Proton - Experimental"
+Build natively, from PowerShell.  You need Visual Studio 2022 (the "Desktop
+development with C++" workload), CMake, Python 3 and [vcpkg](https://vcpkg.io).
+The dependencies (SDL3, SDL3_mixer, FFmpeg) are listed in `vcpkg.json` and are
+built by the first configure, which takes a while.
 
-```bash
-$ sudo apt-get install mingw-w64
+```powershell
+git clone https://github.com/microsoft/vcpkg C:\vcpkg; C:\vcpkg\bootstrap-vcpkg.bat   # once
+$env:VCPKG_ROOT = "C:\vcpkg"
 ```
-
 
 ## Build and run
 
@@ -47,12 +50,16 @@ cmake -S . -B build                               # once; native Linux; uses sys
 cmake --build build -j                            # build/OpenRoo
 bash launch.sh                                    # run it (in run/)
 bash launch.sh --headless --auto-exit 30          # no display at all
-
-cmake -S . -B build -DOPENROO_PLATFORM=windows    # instead: the Windows build (build/OpenRoo.exe)
 ```
 
-`launch.sh` runs whichever platform `build/` was configured for (Windows
-builds under Proton).
+On Windows, from PowerShell:
+
+```powershell
+python tools/import_assets.py --from KaRoo.zip    # once
+cmake --preset windows                            # once; vcpkg builds the dependencies
+cmake --build build --preset windows              # build/RelWithDebInfo/OpenRoo.exe
+.\launch.ps1                                      # run it (in run\); -Headless, -AutoExit 30
+```
 
 The game file defaults to `JJ`; name another on the command line.
 
@@ -95,6 +102,8 @@ The controls (any SDL gamepad on the other platforms too):
 ```bash
 python3 tools/replaytest.py --headless   # recorded inputs, asserted end state
 ```
+
+The harness runs the Linux build; it does not yet drive the Windows one.
 
 See `docs/TESTING.md`. How the code is organised: `docs/DESIGN.md`.
 

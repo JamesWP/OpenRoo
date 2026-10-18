@@ -20,7 +20,11 @@
 #include "player.h"
 
 
+#ifdef _MSC_VER
+typedef unsigned int u32_ua;  // x86 reads unaligned
+#else
 typedef unsigned int __attribute__((aligned(1))) u32_ua;
+#endif
 
 static int s_diag           = 0;
 static int s_init           = 0;

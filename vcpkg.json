@@ -1,0 +1,14 @@
+{
+  "name": "openroo",
+  "version": "0.1.0",
+  "description": "Dependencies of the Windows build (see README.md); the Linux build uses the system's.",
+  "dependencies": [
+    "sdl3",
+    "sdl3-mixer",
+    {
+      "name": "ffmpeg",
+      "default-features": false,
+      "features": ["avcodec", "avformat", "swresample", "swscale"]
+    }
+  ]
+}

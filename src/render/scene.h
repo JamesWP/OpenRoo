@@ -12,7 +12,7 @@
 #include "ani.h"
 
 class RenderDevice;
-struct ParticleSystem;
+class ParticleSystem;
 class ExtraObjects;
 
 struct SceneObject {

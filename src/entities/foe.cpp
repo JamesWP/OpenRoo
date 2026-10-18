@@ -124,7 +124,7 @@ Foe::Foe()
     fallStartH_ = 0;
     fallStart_ = 0.0;
     turnKind_ = 0;
-    field_12e = 0.0;
+    field_12e = 0;
     animDuration_ = 0.0;
     animStart_ = 0.0;
     stepU_ = stepV_ = 0;

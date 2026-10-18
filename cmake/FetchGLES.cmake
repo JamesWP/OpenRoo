@@ -4,7 +4,7 @@
 #   include(FetchGLES)
 #
 # The system's copy is used when it has one (libgles-dev on Debian/Ubuntu);
-# otherwise -- e.g. for the mingw build -- the three headers are downloaded
+# otherwise -- e.g. on Windows -- the three headers are downloaded
 # at configure time into ${CMAKE_BINARY_DIR}/_deps, pinned to registry
 # commits and checked by SHA-256.  -DGLES_INCLUDE_DIR=<dir> picks a directory
 # holding GLES3/ and KHR/ instead.
