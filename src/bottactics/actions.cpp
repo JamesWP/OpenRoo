@@ -9,6 +9,7 @@ const Action &blastAction();
 const Action &ambushAction();
 const Action &releaseAction();
 const Action &awaitAction();
+const Action &baitAction();
 const Action &switchAction();
 const Action &gliderAction();
 const Action &glideAction();
@@ -16,7 +17,7 @@ const Action &glideAction();
 const std::vector<const Action *> &actions()
 {
     static const std::vector<const Action *> all{&collectAction(), &exitAction(), &bombsAction(),
-                                                 &blastAction(), &releaseAction(), &awaitAction(), &ambushAction(), &switchAction(),
+                                                 &blastAction(), &releaseAction(), &awaitAction(), &baitAction(), &ambushAction(), &switchAction(),
                                                  &gliderAction(), &glideAction()};
     return all;
 }

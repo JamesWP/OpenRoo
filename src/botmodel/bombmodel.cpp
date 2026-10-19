@@ -8,7 +8,6 @@ namespace bot {
 
 namespace {
 
-const double FUSE_MS = 2000.0;   // bomb.cpp
 const double CLEAR_MS = 2400.0;
 const double STEP_MS = 200.0;    // its one step
 /* The drops dropSpells tries: over a carrier's whole cycle (a lift's or a

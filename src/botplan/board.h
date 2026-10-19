@@ -165,6 +165,12 @@ public:
      * reach of a block at its height. */
     const std::vector<Site> &sites(Changes s) const;
 
+    /* Every cell, in the world s, a thrower's bomb would spend some block of
+     * that world on, with the player standing there as bait: a thrower that
+     * bombs the player can walk next to it, and its bomb, dropped there
+     * facing the player, rolls onto it.  Facing 0. */
+    const std::vector<Site> &baits(Changes s) const;
+
     /* The blocks, each spent alone, that let a follower out to catchers. */
     const std::vector<Release> &releases() const;
     /* The catchers a follower can reach now: it will bomb them. */
@@ -191,6 +197,7 @@ private:
     mutable std::map<std::tuple<Changes, Place, int, Taken, unsigned, long>, GemRoute> timed_;
     mutable std::map<std::pair<int, int>, bool> after_;
     mutable std::map<Changes, std::vector<Site>> sites_;
+    mutable std::map<Changes, std::vector<Site>> baits_;
     mutable std::map<std::tuple<Changes, int, int>, int> reach_;
     mutable std::map<std::tuple<Changes, Place, bool>, Changes> way_;
     mutable std::vector<Release> releases_;

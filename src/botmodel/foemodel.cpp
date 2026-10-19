@@ -696,6 +696,33 @@ bool FoeModel::reaches(size_t i, int u, int v)
     return firstStep(foes_[i], u, v, 0x96, &nu, &nv);
 }
 
+std::vector<char> FoeModel::walkable(size_t i) const
+{
+    static const int SU[4] = {0, 1, 0, -1}, SV[4] = {-1, 0, 1, 0};
+    const int W = view_->extentU;
+    std::vector<char> seen((size_t)W * view_->extentV, 0);
+    const Foe &f = foes_[i];
+    if (!view_->inside(f.u, f.v))
+        return seen;
+    std::vector<Step> open{{f.u, f.v}};
+    seen[(size_t)f.v * W + f.u] = 1;
+    while (!open.empty()) {
+        const Step a = open.back();
+        open.pop_back();
+        for (int d = 0; d < 4; d++) {
+            const int u = a.u + SU[d], v = a.v + SV[d];
+            // The search runs from the target back: a step from a to b is
+            // tested as one from b to a.
+            if (!view_->inside(u, v) || seen[(size_t)v * W + u] || !passable(u, v, f.mode) ||
+                !stepLegal(u, v, a.u, a.v))
+                continue;
+            seen[(size_t)v * W + u] = 1;
+            open.push_back({u, v});
+        }
+    }
+    return seen;
+}
+
 bool FoeModel::bombsCatchers(size_t i) const
 {
     return foes_[i].kind == THROWER && foes_[i].type == FOE_FOLLOWER;

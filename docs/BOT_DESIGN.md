@@ -96,6 +96,9 @@ schedule, any blasts and a cost, and is checked by the danger check.
 `choose` is the loop between planner and tactics: check the cheapest plan's
 first step, rule it out or cost it in fact, and plan again until the
 cheapest plan starts with a checked step.
+A block can be spent without a bomb of the player's: a thrower that bombs
+the player is baited to it, the player standing where its bomb would land,
+and the foe model says when the bomb drops, so the walk away can be timed.
 
 ### 3.6 Motor
 
