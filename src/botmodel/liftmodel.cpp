@@ -128,6 +128,11 @@ const LiftView *liftAt(const BotView &view, int u, int v)
     return nullptr;
 }
 
+double liftCycleMs(const LiftView &lift)
+{
+    return 2 * (HEIGHT_MS * (lift.top - lift.base) + DWELL_MS);
+}
+
 int liftHeightAt(const BotView &view, const LiftView &l, double atMs)
 {
     const std::vector<Park> parks = parkSpells(view, l, atMs + 10000.0);

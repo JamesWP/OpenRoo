@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "danger.h"
 #include "action.h"
+#include "liftmodel.h"
 #include "walk.h"
 
 namespace bot {
@@ -39,6 +40,15 @@ bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally)
 }  // namespace
 
 namespace {
+
+/* How long a wait on the cell must stay safe: on a lift, which carries the
+ * player off to whatever waits at its other end, a whole cycle of it
+ * (liftmodel.h). */
+double lingerOn(const BotView &v, Step c, double linger)
+{
+    const LiftView *lift = liftAt(v, c.u, c.v);
+    return lift ? std::max(linger, liftCycleMs(*lift)) : linger;
+}
 
 /* How long the player is busy yet: the move under way, and the fall into
  * the cell it is stepping to, if that is lower than the player is. */
@@ -121,6 +131,7 @@ bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *t
         Option o;
         if (!walkTo(s, s.from, c, 0, 0, o))
             continue;
+        o.lingerMs = lingerOn(s.view, c, o.lingerMs);
         o.cost = whole - soFar;
         char buf[96];
         snprintf(buf, sizeof(buf), "approach (%d,%d) towards (%d,%d)", c.u, c.v, goal.u, goal.v);
@@ -148,6 +159,8 @@ bool evade(Situation &s, const Board &board, Option *out, Tally *tally)
             to.push_back({cells[i].second, 0});
     std::vector<Option> options;
     offerWalks(s, to, "evade to", false, options);
+    for (Option &o : options)
+        o.lingerMs = lingerOn(view, o.schedule.back().cell, o.lingerMs);
     return pick(s, options, out, tally);
 }
 
