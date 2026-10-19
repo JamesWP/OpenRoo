@@ -143,14 +143,18 @@ public:
     Taken gemBit(Step gem) const;
     /* The gems the quota needs from the map: those the carriers cannot give. */
     int   fromMap() const { return gemsNeeded_ > carriers_ ? gemsNeeded_ - carriers_ : 0; }
-    /* Whether, standing on that gem as things are, the rest of the quota (the
-     * carriers' gems aside) and the exit can still be had: a gem that drops
-     * the player where it cannot is a trap. */
+    /* Whether, standing on that gem, the rest of the quota (the carriers'
+     * gems aside) and the exit can still be had, as things are or with the
+     * blocks spent if bombs may spend them (spendable): a gem that drops the
+     * player where it cannot is a trap. */
     bool canFinishAfter(Step gem) const;
-    /* Whether, standing on that cell as things are, the quota (the carriers'
-     * gems aside) and the exit can be had; where glides may be had, any
-     * cell, the walk alone being no measure. */
+    /* Whether, standing on that cell, the quota (the carriers' gems aside)
+     * and the exit can be had, as canFinishAfter; where glides may be had,
+     * any cell, the walk alone being no measure. */
     bool canFinishFrom(Step cell) const;
+    /* The blocks that may yet be spent: every one if the player holds bombs,
+     * a bomb pickup is about or a thrower may be baited (baits); else none. */
+    Changes spendable() const;
 
     /* The changes the world s lacks that stand in the way: on the quickest
      * way from a place through the quota's gems to the exit in the most open
@@ -202,6 +206,8 @@ private:
     mutable std::map<std::tuple<Changes, Place, bool>, Changes> way_;
     mutable std::vector<Release> releases_;
     mutable bool releasesFound_ = false;
+    mutable Changes spendable_ = 0;
+    mutable bool    spendableFound_ = false;
     mutable int  hunted_ = 0;
 };
 
