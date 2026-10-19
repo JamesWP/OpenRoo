@@ -85,10 +85,13 @@ std::vector<std::pair<Step, double>> targets(const Situation &s, const Plan &pla
 {
     auto timeTo = [&](Step c) { return s.from.cost(c.u, c.v); };
     std::vector<std::pair<Step, double>> out{{planned, plan.cost - timeTo(planned)}};
+    // Against the clock, no other that would make the plan too late.
+    const double left = traps ? traps->timeLeft(0) : -1;
+    auto inTime = [&](Step c) { return left < 0 || timeTo(c) + plan.ms <= std::max(left, plan.ms); };
     std::vector<std::pair<double, Step>> near;
     for (const Step &c : others)
         if ((c.u != planned.u || c.v != planned.v) && timeTo(c) >= 0 &&
-            (!traps || traps->canFinishAfter(c)))
+            (!traps || (traps->canFinishAfter(c) && inTime(c))))
             near.push_back({timeTo(c), c});
     std::sort(near.begin(), near.end(),
               [](const auto &a, const auto &b) { return a.first < b.first; });
