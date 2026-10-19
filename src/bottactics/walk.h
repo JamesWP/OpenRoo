@@ -20,9 +20,10 @@ void offerWalks(const Situation &s, const std::vector<std::pair<Step, double>> &
                 const char *what, bool waits, std::vector<Option> &out);
 
 /* Targets for offerWalks: the planned one first, costed with the rest of
- * plan after it, then the nearest others (not traps, if traps is given:
- * cells the quota and the exit cannot be had after), costed with the whole
- * plan still to do. */
+ * plan after it, then the nearest others (if traps is given, not traps:
+ * cells the quota and the exit cannot be had after; nor, against the clock,
+ * those that would make the plan too late), costed with the whole plan
+ * still to do. */
 std::vector<std::pair<Step, double>> targets(const Situation &s, const Plan &plan, Step planned,
                                              const std::vector<Step> &others,
                                              const Board *traps = nullptr);
