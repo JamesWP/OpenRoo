@@ -331,14 +331,30 @@ bool Board::glidesToBe() const
     return false;
 }
 
+Changes Board::spendable() const
+{
+    if (!spendableFound_) {
+        spendableFound_ = true;
+        bool bombs = live_.player.bombs > 0;
+        for (const Pickup &p : pickups_)
+            bombs = bombs || p.kind == Pickup::Bombs;
+        spendable_ = bombs || !baits(0).empty() ? allBlocks() : 0;
+    }
+    return spendable_;
+}
+
 bool Board::canFinishFrom(Step cell) const
 {
     if (glidesToBe())
         return true;  // a glide may lead on: no cell is known to be a trap
     const Place at{cell.u, cell.v, worlds_->pointFacing()};
-    if (fromMap() <= 0)
-        return time(0, at, exit()) >= 0;
-    return gemRoute(0, at, fromMap()).found;
+    for (const Changes s : {(Changes)0, spendable()}) {
+        if (fromMap() <= 0 ? time(s, at, exit()) >= 0 : gemRoute(s, at, fromMap()).found)
+            return true;
+        if (!spendable())
+            break;
+    }
+    return false;
 }
 
 bool Board::canFinishAfter(Step gem) const
@@ -350,13 +366,17 @@ bool Board::canFinishAfter(Step gem) const
     if (it != after_.end())
         return it->second;
     const int need = fromMap() - 1;
-    GemRoute r;
     const Place at{gem.u, gem.v, worlds_->pointFacing()};
-    if (need <= 0)
-        r.found = worlds_->get(0).from(at.u, at.v, at.facing).cost(exit().u, exit().v) >= 0;
-    else
-        r = routeFrom(0, at, gemBit(gem), need, true);
-    return after_[key] = r.found;
+    bool found = false;
+    for (const Changes s : {(Changes)0, spendable()}) {
+        if (need <= 0)
+            found = worlds_->get(s).from(at.u, at.v, at.facing).cost(exit().u, exit().v) >= 0;
+        else
+            found = routeFrom(s, at, gemBit(gem), need, true).found;
+        if (found || !spendable())
+            break;
+    }
+    return after_[key] = found;
 }
 
 const std::vector<Site> &Board::sites(Changes s) const

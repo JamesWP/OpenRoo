@@ -2,8 +2,8 @@
  * the facts make: on the route on to the exit if there is one (against the
  * clock, one in time, by way of the time bonuses it needs); else (the exit
  * shut, for a later step to open, or out of walking reach) the quota alone,
- * or, where glides may be had, those to be had here, up to the quota (to
- * glide on, glide.cpp).  By the route optimiser's route (board.h), ending at
+ * or those to be had here, up to the quota (to glide on, glide.cpp, or to
+ * have before a later step opens the way to the rest).  By the route optimiser's route (board.h), ending at
  * its last gem.  Done as a walk to the route's next gem (or time bonus), or
  * another of the nearest gems (costed with the whole route still to do). */
 #include "action.h"
@@ -51,9 +51,11 @@ public:
             return;
         }
         // No way on to the exit from here: the quota for another step to go
-        // on from, or what this part of the level gives, to glide on.
+        // on from, or what this part of the level gives, to glide on or to
+        // have before a block on the way to the rest is spent.
         const GemRoute &g = board.gather(f.changes, f.at, f.taken, f.gemsNeeded);
-        if (!g.found || ((int)g.gems.size() < f.gemsNeeded && !board.glidesToBe()))
+        const bool partial = board.glidesToBe() || (board.spendable() & ~f.changes) != 0;
+        if (!g.found || g.gems.empty() || ((int)g.gems.size() < f.gemsNeeded && !partial))
             return;
         Successor n{f, {}};
         n.facts.gemsNeeded -= (int)g.gems.size();
