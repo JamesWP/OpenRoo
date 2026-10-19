@@ -2,6 +2,7 @@
 #include <string>
 #include <stdlib.h>
 #include "fallingmodel.h"
+#include "liftmodel.h"
 
 namespace bot {
 
@@ -15,16 +16,17 @@ int chebyshev(Step a, Step b)
     return du > dv ? du : dv;
 }
 
-}  // namespace
-
-Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
-                 double lingerMs, const std::vector<Blast> &extra)
+/* checkPlan; with reach, passing within a thrower's reach is a hit too, as
+ * soon as it is (foeMeets). */
+Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
+             double lingerMs, const std::vector<Blast> &extra, bool reach)
 {
     Danger d;
     if (plan.empty())
         return d;
     const double start = view.now;
-    const double end   = start + plan.back().t + lingerMs;
+    const double arrives = start + plan.back().t;
+    const double end     = arrives + lingerMs;
     auto entryAt = [&](double clock) {
         const Timed *at = &plan.front();
         for (const Timed &m : plan)
@@ -70,6 +72,13 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
         }
     }
 
+    // The player's height on a cell at a clock: on a lift, the lift's.
+    auto heightAt = [&](Step at, double clock) {
+        const int h = view.cell(at.u, at.v).height;
+        const LiftView *lift = liftAt(view, at.u, at.v);
+        const int riding = lift ? liftHeightAt(view, *lift, clock - start) : -1;
+        return riding >= 0 ? riding : h;
+    };
     // The player's cell through a blast's live time.
     auto blasted = [&](const Blast &b) {
         if (b.lost)
@@ -77,7 +86,7 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
         for (double t = b.from; t < b.until; t += view.tickMs > 0 ? view.tickMs : 400) {
             const Timed e = entryAt(t);
             const Step at = e.cell;
-            if (!e.aloft && view.inside(at.u, at.v) && b.kills(at.u, at.v, view.cell(at.u, at.v).height, t)) {
+            if (!e.aloft && view.inside(at.u, at.v) && b.kills(at.u, at.v, heightAt(at, t), t)) {
                 d.hit = true;
                 d.t   = t - start;
                 d.why = "bomb";
@@ -114,11 +123,18 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
                 ((f.u == p.u && f.v == p.v) ||
                  (f.u == playerBefore.u && f.v == playerBefore.v &&
                   before[sim.foeId(i)].u == p.u && before[sim.foeId(i)].v == p.v));
-            const bool thrown = sim.throwsAtPlayer(i) && chebyshev(f, p) <= 1;
-            if ((caught || thrown) && !e.aloft) {
+            // Within a thrower's reach is no harm in passing, which its bombs
+            // judge, but no place to stop.
+            const bool thrown = (reach || sim.now() >= arrives) && sim.throwsAtPlayer(i) &&
+                                chebyshev(f, p) <= 1;
+            // A thrower stands in the way: the step into its cell is not
+            // taken (movableentity.cpp), and the plan goes wrong.
+            const bool blocked = !catcher && f.u == p.u && f.v == p.v &&
+                                 (p.u != playerBefore.u || p.v != playerBefore.v);
+            if ((caught || thrown || blocked) && !e.aloft) {
                 d.hit = true;
                 d.t   = sim.now() - start;
-                d.why = caught ? "catcher" : "thrower";
+                d.why = caught ? "catcher" : thrown ? "thrower" : "blocked";
                 return d;
             }
             before[sim.foeId(i)] = f;
@@ -140,10 +156,18 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
     return d;
 }
 
+}  // namespace
+
+Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
+                 double lingerMs, const std::vector<Blast> &extra)
+{
+    return check(sim, view, plan, lingerMs, extra, false);
+}
+
 double foeMeets(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
                 double horizonMs)
 {
-    const Danger d = checkPlan(sim, view, plan, horizonMs);
+    const Danger d = check(sim, view, plan, horizonMs, {}, true);
     const std::string why = d.why;
     return d.hit && (why == "catcher" || why == "thrower") ? d.t : -1;
 }
