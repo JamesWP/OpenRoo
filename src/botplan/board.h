@@ -59,9 +59,10 @@ struct Release {
 /* The way to collect the quota from a place and go on to the exit. */
 struct GemRoute {
     bool              found = false;
-    std::vector<Step> gems;        // in visiting order
+    std::vector<Step> gems;        // in visiting order (and the time bonuses, if timed)
     double            toLast = 0;  // ms, to the last gem
     double            toExit = 0;  // ms, from the last gem to the exit
+    unsigned          bonuses = 0; // timed: the time bonuses on the way, by Board::timeBonuses
 };
 
 class Board {
@@ -84,6 +85,15 @@ public:
     bool glidesToBe() const;
     /* The pickups, on the map and hidden. */
     const std::vector<Pickup> &pickups() const { return pickups_; }
+    /* The time bonuses, on the map and hidden (their kind unused), apart
+     * from pickups(): no plan but one against the clock goes for them. */
+    const std::vector<Pickup> &timeBonuses() const { return timeBonuses_; }
+    /* Whether a time bonus is on the cell, to take now. */
+    bool timeBonus(Step c) const;
+    /* The ms of play left with the time bonuses taken (a bit each, by their
+     * place in timeBonuses()), as the plans' times count it: less a margin
+     * for their error.  < 0 if the level has no time limit. */
+    double timeLeft(unsigned bonuses) const;
     /* Whether the pickup is there to take once the blocks in s are spent. */
     static bool available(const Pickup &p, Changes s) { return p.block < 0 || (s >> p.block & 1); }
 
@@ -118,6 +128,12 @@ public:
     /* The way to collect need of the gems on the map not taken (the quota, by
      * default) and go on to the exit. */
     const GemRoute &gemRoute(Changes s, Place from, int need = -1, Taken taken = 0) const;
+    /* The same against the clock (route.h, planTimedRoute), left ms of play
+     * left at from and the bonuses taken already: the gems (need of them, 0
+     * for none) and the time bonuses it takes to have them and the exit in
+     * time, with the bonuses on the way.  Not found if it cannot be done. */
+    const GemRoute &timedRoute(Changes s, Place from, int need, Taken taken, unsigned bonuses,
+                               double left) const;
     /* The way to collect every gem that can be reached and is not taken, up
      * to most, ending at the last (toExit 0): what one part of the level
      * gives before a glide to another. */
@@ -168,9 +184,11 @@ private:
     int            gemsNeeded_ = 0;
     int            carriers_ = 0;
     std::vector<Pickup> pickups_;
+    std::vector<Pickup> timeBonuses_;
     std::vector<std::pair<Step, int>> switches_;
     mutable std::map<Changes, std::vector<Step>> gems_;
     mutable std::map<std::tuple<Changes, Place, int, Taken>, GemRoute> routes_;
+    mutable std::map<std::tuple<Changes, Place, int, Taken, unsigned, long>, GemRoute> timed_;
     mutable std::map<std::pair<int, int>, bool> after_;
     mutable std::map<Changes, std::vector<Site>> sites_;
     mutable std::map<std::tuple<Changes, int, int>, int> reach_;

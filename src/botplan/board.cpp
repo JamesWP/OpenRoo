@@ -1,5 +1,6 @@
 #include "board.h"
 #include <algorithm>
+#include <cmath>
 #include <set>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +11,18 @@
 #include "tile.h"
 
 namespace bot {
+
+namespace {
+
+/* What a time bonus adds to the time limit (player.cpp). */
+const double TIME_BONUS_MS = 5000;
+/* How far short the plans' times can run of the real ones, a fraction: the
+ * walks are timed leg by leg, so a falling tile crossed again before it is
+ * back, for one, is not counted (up to 0.2 short on the levels without foes
+ * or bombs).  Against the clock, the times are counted this much longer. */
+const double ESTIMATE_SLACK = 0.15;
+
+}  // namespace
 
 Board::Board(const BotView &live, Worlds &worlds) : live_(live), worlds_(&worlds)
 {
@@ -33,6 +46,15 @@ Board::Board(const BotView &live, Worlds &worlds) : live_(live), worlds_(&worlds
             pickups_.push_back({b, (int)i, k});
     }
     for (int v = 0; v < live.extentV; v++)
+        for (int u = 0; u < live.extentU; u++)
+            if (live.cell(u, v).contents == CONTENTS_TIME_BONUS)
+                timeBonuses_.push_back({{u, v}, -1});
+    for (size_t i = 0; i < worlds.blockCount(); i++) {
+        const Step b = worlds.block(i);
+        if (live.cell(b.u, b.v).hidden == CONTENTS_TIME_BONUS)
+            timeBonuses_.push_back({b, (int)i});
+    }
+    for (int v = 0; v < live.extentV; v++)
         for (int u = 0; u < live.extentU; u++) {
             const int i = switched({u, v});
             if (i >= 0)
@@ -43,6 +65,22 @@ Board::Board(const BotView &live, Worlds &worlds) : live_(live), worlds_(&worlds
 bool Board::carrier(const FoeView &foe)
 {
     return foe.drops == CONTENTS_CRYSTAL && !foe.dying;
+}
+
+double Board::timeLeft(unsigned bonuses) const
+{
+    if (live_.timeLimitS <= 0)
+        return -1;
+    int taken = 0;
+    for (size_t i = 0; i < timeBonuses_.size() && i < 32; i++)
+        taken += bonuses >> i & 1;
+    return (live_.timeLimitS * 1000.0 - live_.timeElapsedMs + TIME_BONUS_MS * taken) /
+           (1 + ESTIMATE_SLACK);
+}
+
+bool Board::timeBonus(Step c) const
+{
+    return live_.cell(c.u, c.v).contents == CONTENTS_TIME_BONUS;
 }
 
 Changes Board::allBlocks() const
@@ -211,6 +249,66 @@ const GemRoute &Board::gemRoute(Changes s, Place from, int need, Taken taken) co
     if (it != routes_.end())
         return it->second;
     return routes_[key] = routeFrom(s, from, taken, need, true);
+}
+
+const GemRoute &Board::timedRoute(Changes s, Place from, int need, Taken taken,
+                                  unsigned bonuses, double left) const
+{
+    from.facing = facingOf(from);
+    const auto key = std::make_tuple(s, from, need, taken, bonuses, std::lround(left));
+    auto it = timed_.find(key);
+    if (it != timed_.end())
+        return it->second;
+    GemRoute &r = timed_[key];
+    const Terrain &w = worlds_->get(s);
+    const Paths &start = w.from(from.u, from.v, from.facing);
+    std::vector<Step> gems, bonusCells;
+    std::vector<int> bonusIndex;
+    for (size_t i = 0; i < timeBonuses_.size() && i < 32; i++) {
+        const Step c = timeBonuses_[i].cell;
+        if (!(bonuses >> i & 1) && available(timeBonuses_[i], s) && start.cost(c.u, c.v) >= 0) {
+            bonusCells.push_back(c);
+            bonusIndex.push_back((int)i);
+        }
+    }
+    for (const Step &g : this->gems(s))
+        if (start.cost(g.u, g.v) >= 0 && !(taken & gemBit(g)))
+            gems.push_back(g);
+    if ((int)(gems.size() + bonusCells.size()) > TIMED_MAX) {
+        // Too many for the exact search: the gems the route without the
+        // clock would take.
+        const GemRoute &plain = gemRoute(s, from, need, taken);
+        if (!plain.found)
+            return r;
+        gems = plain.gems;
+    }
+    const int n = (int)gems.size(), m = n + (int)bonusCells.size();
+    auto at = [&](int i) { return i < n ? gems[i] : bonusCells[i - n]; };
+    // 0 the start, 1..n the gems, n + 1..m the bonuses, m + 1 the exit.
+    std::vector<std::vector<double>> dist(m + 2, std::vector<double>(m + 2, -1));
+    const Step ex = exit();
+    for (int i = 0; i < m + 1; i++) {
+        const Paths &row = i == 0 ? start : w.from(at(i - 1).u, at(i - 1).v, worlds_->pointFacing());
+        for (int j = 1; j < m + 1; j++)
+            dist[i][j] = i == j ? 0 : row.cost(at(j - 1).u, at(j - 1).v);
+        dist[i][m + 1] = row.cost(ex.u, ex.v);
+    }
+    double cost;
+    const std::vector<int> order = planTimedRoute(dist, n, need, left,
+                                                     TIME_BONUS_MS / (1 + ESTIMATE_SLACK), &cost);
+    if (cost < 0)
+        return r;
+    r.found = true;
+    int last = 0;
+    for (int i : order) {
+        r.gems.push_back(at(i - 1));
+        if (i > n)
+            r.bonuses |= 1u << bonusIndex[i - 1 - n];
+        last = i;
+    }
+    r.toExit = dist[last][m + 1];
+    r.toLast = cost - r.toExit;
+    return r;
 }
 
 const GemRoute &Board::gather(Changes s, Place from, Taken taken, int most) const

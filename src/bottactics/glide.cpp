@@ -69,7 +69,7 @@ class GlideAction : public Action {
 public:
     const char *name() const override { return "glide"; }
 
-    void expand(const Facts &f, const Board &board, const PlanOptions &,
+    void expand(const Facts &f, double, const Board &board, const PlanOptions &,
                 std::vector<Successor> &out) const override
     {
         if (f.glides <= 0)

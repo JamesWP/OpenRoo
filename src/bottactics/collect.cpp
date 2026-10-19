@@ -1,10 +1,11 @@
 /* Collect: with gems needed, the gems still needed from the map in the world
- * the facts make: on the route on to the exit if there is one; else (the exit
+ * the facts make: on the route on to the exit if there is one (against the
+ * clock, one in time, by way of the time bonuses it needs); else (the exit
  * shut, for a later step to open, or out of walking reach) the quota alone,
  * or, where glides may be had, those to be had here, up to the quota (to
  * glide on, glide.cpp).  By the route optimiser's route (board.h), ending at
- * its last gem.  Done as a walk to the route's next gem, or another of the
- * nearest gems (costed with the whole route still to do). */
+ * its last gem.  Done as a walk to the route's next gem (or time bonus), or
+ * another of the nearest gems (costed with the whole route still to do). */
 #include "action.h"
 #include "walk.h"
 
@@ -26,11 +27,22 @@ class CollectAction : public Action {
 public:
     const char *name() const override { return "collect"; }
 
-    void expand(const Facts &f, const Board &board, const PlanOptions &,
+    void expand(const Facts &f, double left, const Board &board, const PlanOptions &options,
                 std::vector<Successor> &out) const override
     {
         if (f.gemsNeeded <= 0)
             return;
+        if (options.timed) {
+            const GemRoute &r =
+                board.timedRoute(f.changes, f.at, f.gemsNeeded, f.taken, f.bonuses, left);
+            if (r.found) {
+                Successor n{f, {}};
+                n.facts.gemsNeeded = 0;
+                n.facts.bonuses |= r.bonuses;
+                out.push_back(along(n, r));
+                return;
+            }
+        }
         const GemRoute &r = board.gemRoute(f.changes, f.at, f.gemsNeeded, f.taken);
         if (r.found) {
             Successor n{f, {}};
@@ -53,8 +65,9 @@ public:
     void offer(Situation &s, const Board &board, const Plan &plan,
                std::vector<Option> &out) const override
     {
-        offerWalks(s, targets(s, plan, plan.steps.front().heads, board.gems(0), &board),
-                   "gem", true, out);
+        const Step heads = plan.steps.front().heads;
+        offerWalks(s, targets(s, plan, heads, board.gems(0), &board),
+                   board.timeBonus(heads) ? "time" : "gem", true, out);
     }
 };
 

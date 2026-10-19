@@ -11,6 +11,7 @@ namespace {
 struct Node {
     Facts    facts;
     double   g = 0;
+    double   ms = 0;     // time, of g
     int      parent = -1;
     PlanStep step;
 };
@@ -40,7 +41,7 @@ public:
 
     Plan run(const Facts &start)
     {
-        push(start, 0, -1, PlanStep());
+        push(start, 0, 0, -1, PlanStep());
         Plan plan;
         while (!open_.empty() && plan.nodes < options_.maxNodes) {
             const auto [f, g, at] = open_.top();
@@ -52,6 +53,7 @@ public:
             if (reached(node.facts)) {
                 plan.found = true;
                 plan.cost  = node.g;
+                plan.ms    = node.ms;
                 for (int i = at; nodes_[i].parent >= 0; i = nodes_[i].parent)
                     plan.steps.insert(plan.steps.begin(), nodes_[i].step);
                 return plan;
@@ -100,7 +102,7 @@ private:
         return board_.time(board_.everything(), f.at, board_.exit());
     }
 
-    void push(const Facts &f, double g, int parent, const PlanStep &step)
+    void push(const Facts &f, double g, double ms, int parent, const PlanStep &step)
     {
         auto it = best_.find(f);
         if (it != best_.end() && it->second <= g)
@@ -108,8 +110,10 @@ private:
         const double h = heuristic(f);
         if (h < 0)
             return;  // the goal cannot be reached from here
+        if (options_.timed && ms + h > board_.timeLeft(~0u))
+            return;  // not in time, with every time bonus
         best_[f] = g;
-        nodes_.push_back({f, g, parent, step});
+        nodes_.push_back({f, g, ms, parent, step});
         // Ties go to the node pushed first, so the search is the same each run.
         open_.push({g + h, g, (int)nodes_.size() - 1});
     }
@@ -121,18 +125,23 @@ private:
             return;  // too late for any step
         const Facts f = node.facts;
         const double g = node.g;
+        const double ms = node.ms;
         const bool root = node.parent < 0;
+        const double left = options_.timed ? board_.timeLeft(f.bonuses) - ms : -1;
         std::vector<PlanAction::Successor> next;
         for (size_t i = 0; i < actions_.size(); i++) {
             next.clear();
-            actions_[i]->expand(f, board_, options_, next);
+            actions_[i]->expand(f, left, board_, options_, next);
             for (PlanAction::Successor &n : next) {
                 if (root && !known((int)i, n.step))
                     continue;
                 n.step.action = (int)i;
                 n.step.name   = actions_[i]->name();
                 n.step.risk   = f.foes * n.step.ms / 1000.0;
-                push(n.facts, g + n.step.ms + options_.mu * n.step.risk, at, n.step);
+                if (options_.timed && ms + n.step.ms > board_.timeLeft(n.facts.bonuses))
+                    continue;  // out of time
+                push(n.facts, g + n.step.ms + options_.mu * n.step.risk, ms + n.step.ms, at,
+                     n.step);
             }
         }
     }
@@ -195,7 +204,14 @@ std::string Plan::describe() const
 Plan planGoal(const Board &board, const std::vector<const PlanAction *> &actions,
               const PlanOptions &options)
 {
-    return Search(board, actions, options).run();
+    const Plan plan = Search(board, actions, options).run();
+    const double left = board.timeLeft(0);
+    if (!plan.found || options.goal != FINISH || options.timed || left < 0 || plan.ms <= left)
+        return plan;
+    PlanOptions timed = options;
+    timed.timed = true;
+    const Plan inTime = Search(board, actions, timed).run();
+    return inTime.found ? inTime : plan;
 }
 
 }  // namespace bot

@@ -168,8 +168,8 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
                 view.now, p.u, p.v, p.h, p.facing, p.gems, p.bombs, (int)view.foes.size(), midway);
         for (size_t i = 0; i < goals.size(); i++)
             printTo(log_, "%s%s", i ? ", " : "", goalName(goals[i].kind));
-        printTo(log_, "\",\"goal\":\"%s\",\"plan\":\"%s\",\"nodes\":%d,\"taken_from\":\"%s\"",
-                goalName(goal_), first.describe().c_str(), first.nodes, planned.c_str());
+        printTo(log_, "\",\"goal\":\"%s\",\"plan\":\"%s\",\"plan_ms\":%.0f,\"nodes\":%d,\"taken_from\":\"%s\"",
+                goalName(goal_), first.describe().c_str(), first.ms, first.nodes, planned.c_str());
         for (size_t i = 0; i < tally.size(); i++)
             printTo(log_, ",\"%s\":[%d,%d]",
                     i == APPROACH ? "approach" : i == EVADE ? "evade" : actions()[i]->name(),

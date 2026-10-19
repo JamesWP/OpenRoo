@@ -19,7 +19,7 @@ class SwitchAction : public Action {
 public:
     const char *name() const override { return "switch"; }
 
-    void expand(const Facts &f, const Board &board, const PlanOptions &,
+    void expand(const Facts &f, double, const Board &board, const PlanOptions &,
                 std::vector<Successor> &out) const override
     {
         const Changes wanted = board.inTheWay(f.changes, f.at, false);

@@ -34,7 +34,7 @@ public:
 
     /* The cheapest site for each set of blocks it would spend, the cheapest
      * few sets. */
-    void expand(const Facts &f, const Board &board, const PlanOptions &options,
+    void expand(const Facts &f, double, const Board &board, const PlanOptions &options,
                 std::vector<Successor> &out) const override
     {
         if (f.bombs <= 0 || (f.changes & board.allBlocks()) == board.allBlocks())

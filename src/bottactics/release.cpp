@@ -19,7 +19,7 @@ public:
     const char *name() const override { return "release"; }
 
     /* The cheapest site for each release. */
-    void expand(const Facts &f, const Board &board, const PlanOptions &,
+    void expand(const Facts &f, double, const Board &board, const PlanOptions &,
                 std::vector<Successor> &out) const override
     {
         if (f.bombs <= 0 || f.foes <= f.carriers)
