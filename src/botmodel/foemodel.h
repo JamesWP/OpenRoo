@@ -28,9 +28,10 @@
  * it is at rest or has just set off (Foe::step, Foe::dropBomb).  A follower's
  * target is a catcher, so its bombs kill foes.
  *
- * What it leaves out: the lifts, platforms, bridges and falling tiles do not
- * move, the idle animation's longer moves, and the target of a switch runner
- * (the view does not carry the switch cells), which is taken to be the player
+ * What it leaves out: the platforms, bridges and falling tiles do not move
+ * (a lift moves only for a foe stepping onto it: none rides one), the idle
+ * animation's longer moves, and the target of a switch runner (the view
+ * does not carry the switch cells), which is taken to be the player
  * (foetype.h).  botrun.h's foe log measures how often it is right against the
  * game (tools/bot/foecheck.py). */
 #pragma once
@@ -105,6 +106,8 @@ private:
 
     /* The cell's height and kind, beyond the grid a wall. */
     const Cell &cell(int u, int v) const;
+    /* The cell's height at the model's clock: a lift's where it has got to. */
+    int heightNow(int u, int v) const;
     int  occ(int u, int v) const;
     void setOcc(int u, int v, int o);
 

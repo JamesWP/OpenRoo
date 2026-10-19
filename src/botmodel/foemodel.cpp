@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include "foetype.h"
+#include "liftmodel.h"
 #include "tile.h"
 
 namespace bot {
@@ -41,6 +42,14 @@ bool forward_or_back(int d, int facing) { return d == facing || d == opposite(fa
 const Cell &FoeModel::cell(int u, int v) const
 {
     return view_->inside(u, v) ? view_->cell(u, v) : wall_;
+}
+
+int FoeModel::heightNow(int u, int v) const
+{
+    const Cell &c = cell(u, v);
+    const LiftView *lift = c.kind == TILE_LIFT ? liftAt(*view_, u, v) : nullptr;
+    const int h = lift ? liftHeightAt(*view_, *lift, clock_ - view_->now) : -1;
+    return h >= 0 ? h : c.height;
 }
 
 int FoeModel::occ(int u, int v) const
@@ -506,7 +515,7 @@ int FoeModel::chaseMove(const Foe &f, int tu, int tv, int speed)
     const Cell &step = cell(nu, nv), &here = cell(f.u, f.v);
     if (step.kind == TILE_EMPTY || here.kind == TILE_JUMP_PAD)
         return 0;
-    if (step.kind == TILE_LIFT && step.height != f.h)
+    if (step.kind == TILE_LIFT && heightNow(nu, nv) != f.h)
         return 0;
     if (here.kind == TILE_LIFT && step.height != f.h)
         return 0;

@@ -47,6 +47,9 @@ const LiftView *liftAt(const BotView &view, int u, int v);
  * height it has passed).  -1 beyond the model's reach. */
 int liftHeightAt(const BotView &view, const LiftView &lift, double atMs);
 
+/* A whole cycle of the lift's, ms: up, parked, down and parked. */
+double liftCycleMs(const LiftView &lift);
+
 /* The spells the lift parks within the next horizonMs of the view's clock, in
  * order. */
 std::vector<Park> parkSpells(const BotView &view, const LiftView &lift, double horizonMs);
