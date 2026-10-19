@@ -80,6 +80,10 @@ public:
     /* Whether foe i's search finds a way to (u, v) as the foes stand, at the
      * budget its type chases with (a follower's, a catcher). */
     bool reaches(size_t i, int u, int v);
+    /* The cells foe i could walk to as the terrain stands, however far: by
+     * the search's own step rules, without its budget.  One a cell, row by
+     * row. */
+    std::vector<char> walkable(size_t i) const;
     /* Whether foe i is a thrower that follows the catchers (foetype.h). */
     bool bombsCatchers(size_t i) const;
     /* Whether foe i is a thrower that bombs the player when beside it: not

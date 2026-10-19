@@ -21,6 +21,9 @@
 
 namespace bot {
 
+/* From the drop to the blast (bomb.cpp). */
+const double FUSE_MS = 2000.0;
+
 struct Blast {
     Step   cell{0, 0};
     int    h = 0;

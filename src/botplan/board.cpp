@@ -408,6 +408,65 @@ const std::vector<Site> &Board::sites(Changes s) const
     return sites_[s] = out;
 }
 
+const std::vector<Site> &Board::baits(Changes s) const
+{
+    auto it = baits_.find(s);
+    if (it != baits_.end())
+        return it->second;
+    std::vector<Site> &out = baits_[s];
+    const BotView &view = worlds_->get(s).view();
+    std::vector<size_t> open;
+    for (size_t i = 0; i < worlds_->blockCount(); i++)
+        if (!(s & ((Changes)1 << i)))
+            open.push_back(i);
+    if (open.empty())
+        return out;
+    // Where the throwers can go, all together.
+    FoeModel sim;
+    sim.load(view);
+    std::vector<char> walk;
+    for (size_t i = 0; i < sim.foeCount(); i++) {
+        if (!sim.throwsAtPlayer(i))
+            continue;
+        const std::vector<char> w = sim.walkable(i);
+        if (walk.empty())
+            walk = w;
+        for (size_t c = 0; c < w.size(); c++)
+            walk[c] |= w[c];
+    }
+    if (walk.empty())
+        return out;
+    std::set<std::pair<int, int>> seen;
+    for (const size_t i : open) {
+        const Step b = worlds_->block(i);
+        for (int dv = -1; dv <= 1; dv++)
+            for (int du = -1; du <= 1; du++) {
+                const Step p{b.u + du, b.v + dv};
+                if (!view.inside(p.u, p.v) || !seen.insert({p.u, p.v}).second)
+                    continue;
+                const Cell &c = view.cell(p.u, p.v);
+                if (c.height == 0 || c.kind == TILE_IMPASSABLE || c.kind == TILE_EMPTY ||
+                    (c.kind == TILE_BOMBABLE && !c.busy))
+                    continue;
+                // The thrower beside it, facing the player on it.
+                Changes hits = 0;
+                for (int f = DIR_MIN; f <= DIR_MAX; f++) {
+                    const Step n{p.u - DIR_DU[f], p.v - DIR_DV[f]};
+                    if (!view.inside(n.u, n.v) || !walk[(size_t)n.v * view.extentU + n.u])
+                        continue;
+                    const Blast blast =
+                        predictBomb(view, n.u, n.v, view.cell(n.u, n.v).height, f, view.now);
+                    for (const size_t j : open)
+                        if (spends(view, blast, worlds_->block(j)))
+                            hits |= (Changes)1 << j;
+                }
+                if (hits)
+                    out.push_back({{p.u, p.v, 0}, hits});
+            }
+    }
+    return out;
+}
+
 std::string Board::noRoute() const
 {
     const Step ex = exit();
