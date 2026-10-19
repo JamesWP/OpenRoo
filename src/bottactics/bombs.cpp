@@ -16,7 +16,7 @@ class BombsAction : public Action {
 public:
     const char *name() const override { return "bombs"; }
 
-    void expand(const Facts &f, const Board &board, const PlanOptions &,
+    void expand(const Facts &f, double, const Board &board, const PlanOptions &,
                 std::vector<Successor> &out) const override
     {
         if (f.bombs != 0 || (f.foes == 0 && (f.changes & board.allBlocks()) == board.allBlocks()))

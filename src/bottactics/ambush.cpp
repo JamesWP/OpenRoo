@@ -38,7 +38,7 @@ class AmbushAction : public Action {
 public:
     const char *name() const override { return "ambush"; }
 
-    void expand(const Facts &f, const Board &board, const PlanOptions &,
+    void expand(const Facts &f, double, const Board &board, const PlanOptions &,
                 std::vector<Successor> &out) const override
     {
         // A follower to let out bombs the catchers for one bomb (release.cpp).

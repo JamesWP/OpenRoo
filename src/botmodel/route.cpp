@@ -241,6 +241,67 @@ std::vector<int> heuristic(const std::vector<std::vector<double>> &dist, int n, 
 
 }  // namespace
 
+std::vector<int> planTimedRoute(const std::vector<std::vector<double>> &dist, int n, int k,
+                                double left, double bonusMs, double *cost)
+{
+    const int m = (int)dist.size() - 2, end = m + 1;
+    *cost = -1;
+    if (k > n || m > TIMED_MAX)
+        return {};
+    const size_t full = (size_t)1 << m, gemMask = ((size_t)1 << n) - 1;
+    // dp: the earliest arrival at the last point, having visited the set.
+    std::vector<double> dp(full * m, INF);
+    std::vector<signed char> from(full * m, -1);
+    for (int i = 0; i < m; i++)
+        if (d_of(dist, 0, i + 1) <= left)
+            dp[((size_t)1 << i) * m + i] = d_of(dist, 0, i + 1);
+    double best = k == 0 && d_of(dist, 0, end) <= left ? d_of(dist, 0, end) : INF;
+    size_t bestMask = 0;
+    int bestLast = -1;
+    for (size_t s = 1; s < full; s++) {
+        const int gems    = (int)std::bitset<64>(s & gemMask).count();
+        const int bonuses = (int)std::bitset<64>(s >> n).count();
+        if (gems > k)
+            continue;
+        const double by = left + bonusMs * bonuses;   // the deadline, from here on
+        for (int i = 0; i < m; i++) {
+            const double c = dp[s * m + i];
+            if (c == INF)
+                continue;
+            if (gems == k) {
+                const double total = c + d_of(dist, i + 1, end);
+                if (total <= by && total < best) {
+                    best = total;
+                    bestMask = s;
+                    bestLast = i;
+                }
+            }
+            for (int j = gems == k ? n : 0; j < m; j++) {
+                if (s & ((size_t)1 << j))
+                    continue;
+                const size_t s2 = s | ((size_t)1 << j);
+                const double c2 = c + d_of(dist, i + 1, j + 1);
+                if (c2 <= by && c2 < dp[s2 * m + j]) {
+                    dp[s2 * m + j]   = c2;
+                    from[s2 * m + j] = (signed char)i;
+                }
+            }
+        }
+    }
+    if (best == INF)
+        return {};
+    *cost = best;
+    std::vector<int> order;
+    for (size_t s = bestMask; bestLast >= 0;) {
+        order.push_back(bestLast + 1);
+        const int prev = from[s * m + bestLast];
+        s &= ~((size_t)1 << bestLast);
+        bestLast = prev;
+    }
+    std::reverse(order.begin(), order.end());
+    return order;
+}
+
 std::vector<int> planRoute(const std::vector<std::vector<double>> &dist, int k, double *cost)
 {
     const int n = (int)dist.size() - 2;

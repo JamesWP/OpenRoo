@@ -66,7 +66,8 @@ tick.  It serialises to JSON for traces and offline replays.
 What happens if the player does X: the nav graph (where a move ends and
 what it costs, with tank controls, ice, slides, lifts and falls), the glide
 model (where a paraglider can bring the player down), the route
-optimiser (which k of the n gems, in what order), and the predictors for
+optimiser (which k of the n gems, in what order, and against the clock
+which time bonuses on the way), and the predictors for
 foes, falling tiles and bombs.  The foe predictor steps the foes' own chase
 search, since their routes are not stable.  The danger check runs a
 player schedule against all of them.
@@ -82,6 +83,10 @@ the player soon.  Goals are relevant on sensed facts, not on plans.
 GOAP: A* over a small fact set (place, blocks spent and bridges switched,
 gems needed and gathered, bombs, glides, foes, pickups) to a goal, by the
 actions it is given.  Cost is time, plus an optional weight on risk.
+A plan that would run out the clock is planned again against it: each step
+must end in time, its times counted with a margin for their error, and the
+routes may take the time bonuses that buy what they need.  If no plan is in
+time even so, the first one stands.
 
 ### 3.5 Actions and tactics
 

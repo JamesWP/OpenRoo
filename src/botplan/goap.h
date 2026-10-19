@@ -53,13 +53,14 @@ struct Facts {
     int      foes = 0;
     int      carriers = 0;   // of the foes, those that leave a gem
     unsigned pickups = 0;    // a bit per board pickup taken (the first 32)
+    unsigned bonuses = 0;    // a bit per board time bonus taken (the first 32)
     bool     unused = false; // bombs taken that the plan has not used yet
     bool     atExit = false;
 
     auto key() const
     {
         return std::make_tuple(at.u, at.v, at.facing, changes, gemsNeeded, taken, bombs, glides, foes, carriers, pickups,
-                               unused, atExit);
+                               bonuses, unused, atExit);
     }
     bool operator<(const Facts &o) const { return key() < o.key(); }
 };
@@ -76,7 +77,9 @@ struct PlanStep {
 struct PlanOptions;
 
 /* An action as the planner sees it: from a state, the states it leads to,
- * each with the step that gets there (its ms an estimate). */
+ * each with the step that gets there (its ms an estimate).  left is the ms of
+ * play left at the state, in a plan against the clock (PlanOptions::timed);
+ * else < 0. */
 class PlanAction {
 public:
     struct Successor {
@@ -86,7 +89,7 @@ public:
 
     virtual ~PlanAction() = default;
     virtual const char *name() const = 0;
-    virtual void expand(const Facts &f, const Board &board, const PlanOptions &options,
+    virtual void expand(const Facts &f, double left, const Board &board, const PlanOptions &options,
                         std::vector<Successor> &out) const = 0;
 };
 
@@ -94,6 +97,7 @@ struct Plan {
     bool   found = false;
     std::vector<PlanStep> steps;
     double cost = 0;    // the whole plan's time + mu * risk
+    double ms = 0;      // its time
     int    nodes = 0;   // expanded
 
     /* "Collect, Exit", for the log. */
@@ -112,12 +116,19 @@ struct PlanOptions {
         double ms;
     };
     std::vector<Known> root;
+    /* Against the clock: every step ends within the time left as it then
+     * stands (Board::timeLeft), and time bonuses may be taken to have more.
+     * planGoal sets it itself when the plan it finds without is too slow. */
+    bool     timed = false;
     int      maxNodes = 4000;
     size_t   maxWorlds = 512;                // what-if terrains built, besides the base
 };
 
 /* The cheapest plan to options.goal by the actions (each expanded in their
- * order: ties go to the earlier). */
+ * order: ties go to the earlier).  A plan to finish that would take longer
+ * than the time left is planned again against the clock (PlanOptions::timed);
+ * if no plan is in time either, the one found is the answer, on the chance
+ * its estimates are long. */
 Plan planGoal(const Board &board, const std::vector<const PlanAction *> &actions,
               const PlanOptions &options);
 

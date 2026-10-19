@@ -27,7 +27,7 @@ class AwaitAction : public Action {
 public:
     const char *name() const override { return "await"; }
 
-    void expand(const Facts &f, const Board &board, const PlanOptions &,
+    void expand(const Facts &f, double, const Board &board, const PlanOptions &,
                 std::vector<Successor> &out) const override
     {
         if (board.hunted() <= 0 || f.foes <= f.carriers)
