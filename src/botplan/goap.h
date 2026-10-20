@@ -20,7 +20,8 @@
  * only add.  Its budget is in nodes expanded and
  * worlds built, never time, so it is deterministic.
  *
- * A step's cost is time + mu * risk (section 3.4).  Its risk is the time it
+ * A step's cost is time + mu * risk (section 3.4), and any penalty the
+ * action gives it.  Its risk is the time it
  * spends among live foes, in foe-seconds; mu is in ms a foe-second.  At mu 0
  * (the default) the planner weighs time alone and leaves the foes to the
  * tactical layer.
@@ -73,6 +74,7 @@ struct PlanStep {
     Step       heads{-1, -1};      // where the player first heads for, if anywhere
     double     ms = 0;             // its time
     double     risk = 0;           // foe-seconds
+    double     penalty = 0;        // ms of cost besides its time
 };
 
 struct PlanOptions;

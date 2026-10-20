@@ -4,7 +4,8 @@
  * on the way somewhere new), or retracted, if it is not in the way (to pass
  * over a switch).  Not the switch the player stands on (it
  * works only when stepped onto), nor a bridge on the move (the game ignores
- * the switch then).  Done as a walk to the planned switch and a wait there. */
+ * the switch then).  A bridge that lets catchers in to the player costs
+ * more than its time.  Done as a walk to the planned switch and a wait there. */
 #include <stdio.h>
 #include "action.h"
 #include "walk.h"
@@ -15,6 +16,9 @@ namespace {
 
 /* The wait past the move's end, for the last deck cell to be stamped. */
 const double SETTLE_MS = 100;
+/* What letting a catcher in to the player costs: more than a way round a
+ * switch, less than a bridge the level needs. */
+const double LET_IN_MS = 5000;
 
 class SwitchAction : public Action {
 public:
@@ -46,6 +50,7 @@ public:
             n.step.end   = n.facts.at;
             n.step.heads = cell;
             n.step.ms    = t + b.moveMs() + SETTLE_MS;
+            n.step.penalty = LET_IN_MS * board.letsIn(next, cell, f.changes, f.at);
             out.push_back(n);
         }
     }
