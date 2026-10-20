@@ -214,6 +214,17 @@ int Board::reach(Changes s, Step from) const
     return reach_[key] = n;
 }
 
+bool Board::opens(Changes next, Step cell, Changes s, Place from) const
+{
+    const Paths &there = worlds_->get(next).from(cell.u, cell.v, worlds_->pointFacing());
+    const Paths &here  = worlds_->get(s).from(from.u, from.v, facingOf(from));
+    for (int v = 0; v < live_.extentV; v++)
+        for (int u = 0; u < live_.extentU; u++)
+            if (there.cost(u, v) >= 0 && here.cost(u, v) < 0)
+                return true;
+    return false;
+}
+
 Taken Board::gemBit(Step gem) const
 {
     const std::vector<Step> &all = gems(everything());

@@ -121,7 +121,7 @@ struct PlanOptions {
      * stands (Board::timeLeft), and time bonuses may be taken to have more.
      * planGoal sets it itself when the plan it finds without is too slow. */
     bool     timed = false;
-    int      maxNodes = 4000;
+    int      maxNodes = 8000;
     size_t   maxWorlds = 512;                // what-if terrains built, besides the base
 };
 

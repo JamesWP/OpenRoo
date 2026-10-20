@@ -1,7 +1,8 @@
 /* Switch(k): a bridge switched, by coming to rest on a switch of its slot,
  * and waited for until its move is done (terrain.h): extended, where that
- * leads somewhere new from the switch, or retracted, if it is not in the way
- * (to pass over a switch).  Not the switch the player stands on (it
+ * leads somewhere new from the switch or the switch itself does (passed over
+ * on the way somewhere new), or retracted, if it is not in the way (to pass
+ * over a switch).  Not the switch the player stands on (it
  * works only when stepped onto), nor a bridge on the move (the game ignores
  * the switch then).  Done as a walk to the planned switch and a wait there. */
 #include <stdio.h>
@@ -34,8 +35,10 @@ public:
             const double t = board.time(f.changes, f.at, cell);
             if (t < 0)
                 continue;
-            // Extending a bridge is worth it only if it leads somewhere new.
-            if (!board.extended(f.changes, k) && board.reach(next, cell) <= board.reach(f.changes, cell))
+            // Extending a bridge is worth it only if it leads somewhere new,
+            // or the switch does, passed over (one of a row of switches).
+            if (!board.extended(f.changes, k) && board.reach(next, cell) <= board.reach(f.changes, cell) &&
+                !board.opens(next, cell, f.changes, f.at))
                 continue;
             Successor n{f, {}};
             n.facts.changes = next;
