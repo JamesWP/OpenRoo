@@ -99,6 +99,11 @@ public:
         bool   byFoe;
     };
     const std::vector<Switched> &switched() const { return switched_; }
+    /* Whether the cell is a bridge's deck the model has cleared since load(). */
+    bool cleared(int u, int v) const
+    {
+        return ownGrid_ && view_->inside(u, v) && cleared_[(size_t)v * view_->extentU + u];
+    }
 
     /* Ticks the foes until the clock reaches untilMs, the player standing on
      * playerAt(t) at each tick's clock t. */

@@ -11,8 +11,9 @@
  * step into its cell, which goes against the plan, and standing within its
  * reach at the plan's end, where it will drop bomb after bomb, is a hit.
  * So is still standing on a falling tile when it falls, 1.5 s after it was
- * stepped on (or armed already).  On a lift the player's height is the
- * lift's. */
+ * stepped on (or armed already), or on a bridge's deck when it goes (the
+ * foe model has a foe work its switch).  On a lift the player's height is
+ * the lift's. */
 #pragma once
 
 #include <vector>
