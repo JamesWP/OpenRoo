@@ -78,9 +78,12 @@ unsigned Motor::act(const BotView &view)
 
     // The player's cell is where it stands, or where its step is going.  A
     // forced move (ice, a slide, a teleporter) may carry it several cells on.
-    // Carried along a platform's ride (a leg of cells in a line), it is on
-    // the leg, bound for its end.
+    // Carried along a platform's ride (a leg of cells in a line, on its
+    // track), it is on the leg, bound for its end.
+    const bool track = view.cell(p.u, p.v).track;
     auto onLeg = [&](Step a, Step b) {
+        if (!track)
+            return false;
         if (a.u == b.u && a.u == p.u)
             return std::abs(b.v - a.v) > 1 && (p.v - a.v) * (p.v - b.v) < 0;
         if (a.v == b.v && a.v == p.v)

@@ -105,6 +105,7 @@ private:
         int    u, v, h, facing;
         int    kind, type, mode;   // the search's mode: the type, a chaser's for a facing type
         int    homeU, homeV;
+        int    lastU = 0, lastV = 0;   // the last target the chase found a way to
         int    moveDir = 0;        // 1..4 a step, 11..14 a turn, 0 at rest
         int    fromU = 0, fromV = 0;
         double animStart = 0, animMs = 0, stepEnd = -1e9, stepMs = 500;
@@ -114,6 +115,8 @@ private:
         double lastDrop = 0;       // a thrower's last bomb
         bool   dropPending = false;
         bool   riding = false;     // on a platform, carried where it goes
+        int    tele = 0;           // a teleporter's hold: 1 before the jump, 2 after, since teleAt
+        double teleAt = 0;
     };
 
     /* The cell's height and kind, beyond the grid a wall. */
@@ -148,6 +151,10 @@ private:
     bool farthestFree(int u0, int v0, int *pu, int *pv) const;
     /* Foe::chase's direction into the turn table, and its post-checks. */
     int  chaseMove(const Foe &f, int tu, int tv, int speed);
+    /* What the terrain under a foe at rest does to its move (movableentity.cpp):
+     * a sticky pad holds it, a slide carries it on (*sliding), a teleporter
+     * holds it and sends it on, ice keeps it going the way it went. */
+    int  terrain(Foe &f, int move, bool *sliding);
     /* The movement integrator's start of a move; false if refused.  A slide
      * moves at its own pace. */
     bool startMove(Foe &f, int move, bool sliding);

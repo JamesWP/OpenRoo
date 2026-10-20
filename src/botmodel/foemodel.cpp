@@ -16,6 +16,7 @@ const double STEP_GRACE_MS   = 20.0;   // a step this soon after the last starts
 const int    CATCHER = 2, THROWER = 3;
 const double SLIDE_MS        = 150.0;  // movableentity.cpp
 const double STICKY_MS       = 3000.0;
+const double TELEPORT_MS     = 500.0;  // a teleporter's hold, before the jump and after
 const unsigned DROP_EVERY_MS = 2000;   // foe.cpp's Foe::step
 const double DROP_LATE_MS    = 50.0;   // Foe::dropBomb: this soon into a move it still drops
 const double FALL_MS         = 1500.0; // fallingtile.cpp: armed to fallen
@@ -152,9 +153,15 @@ void FoeModel::load(const BotView &view)
         f.mode = fv.type > FOE_FACING_BASE ? FOE_CHASER : fv.type;
         f.homeU = fv.homeU;
         f.homeV = fv.homeV;
+        f.lastU = fv.lastU;
+        f.lastV = fv.lastV;
         f.stepMs = fv.kind == THROWER ? THROWER_STEP_MS : CATCHER_STEP_MS;
         f.lastDrop    = fv.lastDrop;
         f.dropPending = fv.dropPending;
+        f.stuckSince  = fv.stuckSince;
+        f.lastMoveDir = fv.lastMoveDir;
+        f.tele        = fv.teleport;
+        f.teleAt      = fv.teleportAt;
         if (fv.moving) {
             f.moveDir   = fv.moveDir;
             f.animStart = fv.animStart;
@@ -678,6 +685,59 @@ void FoeModel::dropBomb(Foe &f)
     f.dropPending = false;
 }
 
+int FoeModel::terrain(Foe &f, int move, bool *sliding)
+{
+    if (!view_->inside(f.u, f.v) || f.h != cell(f.u, f.v).height)
+        return move;
+    const Cell &here = cell(f.u, f.v);
+    const size_t at = (size_t)f.v * view_->extentU + f.u;
+    if (here.kind == TILE_STICKY && !spent_[at]) {
+        if (f.stuckSince == 0)
+            f.stuckSince = clock_;
+        if (clock_ - f.stuckSince <= STICKY_MS) {
+            move = 0;
+        } else {
+            f.stuckSince = 0;
+            spent_[at] = 1;
+        }
+    } else {
+        f.stuckSince = 0;
+    }
+    if (here.kind == TILE_SLIDE) {
+        f.facing = here.slideDir;
+        *sliding = true;
+        return here.slideDir;
+    }
+    if (here.kind == TILE_TELEPORTER) {
+        // Held, sent to the pad's other end, held again, then on the way it
+        // last went.
+        move = 0;
+        if (f.tele == 1 && clock_ - f.teleAt >= TELEPORT_MS) {
+            f.tele   = 2;
+            f.teleAt = clock_;
+            if (occ(f.u, f.v) == f.kind)
+                setOcc(f.u, f.v, 0);
+            const int du = here.teleU, dv = here.teleV;
+            f.u = du;
+            f.v = dv;
+            f.h = cell(du, dv).height;
+            setOcc(du, dv, f.kind);
+        }
+        if (f.tele == 0) {
+            f.tele   = 1;
+            f.teleAt = clock_;
+        }
+        if (f.tele == 2 && clock_ - f.teleAt >= TELEPORT_MS) {
+            f.tele = 0;
+            move = f.lastMoveDir;
+        }
+        return move;
+    }
+    if (here.kind == TILE_ICE && f.lastMoveDir != 0)
+        return f.lastMoveDir;
+    return move;
+}
+
 void FoeModel::stepFoe(Foe &f, int tu, int tv, int speed)
 {
     if (f.moveDir != 0) {
@@ -692,6 +752,11 @@ void FoeModel::stepFoe(Foe &f, int tu, int tv, int speed)
                 f.facing = f.moveDir - 10;
             }
             f.moveDir = 0;
+            // The same pass sees to the terrain it has come to rest on.
+            bool sliding = false;
+            const int forced = terrain(f, 0, &sliding);
+            if (forced != 0)
+                startMove(f, forced, sliding);
         }
         return;
     }
@@ -699,33 +764,17 @@ void FoeModel::stepFoe(Foe &f, int tu, int tv, int speed)
     if (f.type == FOE_GEM_THIEF && view_->inside(f.u, f.v) && f.h == cell(f.u, f.v).height)
         gem_[(size_t)f.v * view_->extentU + f.u] = 0;
     int move = chaseMove(f, tu, tv, speed);
+    if (move != 0) {
+        f.lastU = tu;
+        f.lastV = tv;
+    } else if (f.type == FOE_RETURNER) {
+        // No way to its target: back to the last it had a way to (Foe::step).
+        move = chaseMove(f, f.lastU, f.lastV, speed);
+    }
     if (f.held)
         move = 0;
-    // The terrain under a foe at rest overrides its choice.
     bool sliding = false;
-    if (view_->inside(f.u, f.v) && f.h == cell(f.u, f.v).height) {
-        const Cell &here = cell(f.u, f.v);
-        const size_t at = (size_t)f.v * view_->extentU + f.u;
-        if (here.kind == TILE_STICKY && !spent_[at]) {
-            if (f.stuckSince == 0)
-                f.stuckSince = clock_;
-            if (clock_ - f.stuckSince <= STICKY_MS) {
-                move = 0;
-            } else {
-                f.stuckSince = 0;
-                spent_[at] = 1;
-            }
-        } else {
-            f.stuckSince = 0;
-        }
-        if (here.kind == TILE_SLIDE) {
-            f.facing = here.slideDir;
-            move = here.slideDir;
-            sliding = true;
-        } else if (here.kind == TILE_ICE && f.lastMoveDir != 0) {
-            move = f.lastMoveDir;
-        }
-    }
+    move = terrain(f, move, &sliding);
     if (move != 0)
         startMove(f, move, sliding);
 }

@@ -76,6 +76,9 @@ public:
     FoeKind foeKind() const { return (FoeKind)kind_; }
     bool    isCatcher() const { return foeKind() == FoeKind::Catcher; }
     bool    isThrower() const { return foeKind() == FoeKind::Thrower; }
+    // The last cell its chase found a way to.
+    unsigned char lastTargetU() const { return targetU_; }
+    unsigned char lastTargetV() const { return targetV_; }
 
     // Set by the timed spawners: 7 (an extra life) every 15th kill, else 1.
     void setDropContents(unsigned char c)  { dropContents_ = c; }

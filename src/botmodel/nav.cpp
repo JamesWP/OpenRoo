@@ -579,11 +579,13 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
         } else if (b.kind == TILE_ICE) {
             // on, the way the step went
         } else if (b.kind == TILE_TELEPORTER && w.inside(b.teleU, b.teleV)) {
-            t += 2 * TELEPORT_MS;
+            // A hold on the pad, the jump, and a hold on the pad it lands on
+            // before going on (movableentity.cpp).
             cu = b.teleU;
             cv = b.teleV;
             ch = w.cell(cu, cv).height;
-            out.at.push_back(t);
+            out.at.push_back(t + TELEPORT_MS);
+            t += 2 * TELEPORT_MS;
             out.cells.push_back({cu, cv});
         } else if (b.kind == TILE_JUMP_PAD) {
             t += jumpMs(b.jumpTop - b.height, w.tickMs);
