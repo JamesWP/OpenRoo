@@ -9,6 +9,10 @@ namespace bot {
 namespace {
 
 const double FALL_MARGIN_MS = 100.0;  // off it this long before it goes
+/* A bomb a foe drops is predicted to go off within about this much of when
+ * the foe model says: its drop hangs on the foe's steps and the player's,
+ * which run a little late. */
+const double DROP_MARGIN_MS = 250.0;
 
 int chebyshev(Step a, Step b)
 {
@@ -144,9 +148,12 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
             break;  // no tick step: nothing moves
     }
     // A bomb a foe dropped meanwhile (at a catcher, say) may catch the player.
-    for (const Blast &b : sim.dropped())
+    for (Blast b : sim.dropped()) {
+        b.from -= DROP_MARGIN_MS;
+        b.until += DROP_MARGIN_MS;
         if (blasted(b))
             return d;
+    }
     d.killed = sim.killed();
     for (const FoeModel::Kill &k : sim.kills())
         if (k.byAdded)
