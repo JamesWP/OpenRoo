@@ -29,6 +29,7 @@ void fill_mover(Mover &m, const E &e)
     m.stepEnd = e.stepEnd();
     m.stuckSince = e.stuckSince();
     m.lastMoveDir = e.lastMoveDir();
+    m.riding = e.ridingPlatform();
 }
 
 }  // namespace

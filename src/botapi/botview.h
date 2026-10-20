@@ -61,6 +61,7 @@ struct Mover {
     double stepEnd = 0;    // clock ms the last step or turn ended
     double stuckSince = 0; // clock ms a sticky pad caught it, 0 if not held
     int    lastMoveDir = 0; // the last step's direction (not a turn's): ice and a teleporter carry it on
+    bool   riding = false;  // attached to a platform, carried where it goes
 };
 
 struct PlayerView : Mover {
