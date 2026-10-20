@@ -104,7 +104,9 @@ unsigned Motor::act(const BotView &view)
         return 0;
     }
 
-    unsigned acts = toward(p.facing, d);
+    // Turning, it faces where the turn goes once it ends, when a key held
+    // now is taken.
+    unsigned acts = toward(p.turning ? p.moveDir - 10 : p.facing, d);
     if (p.falling && !p.gliding) {
         // Nothing to press in the air, but under a glider.  One about to
         // open takes the key held as it falls on the tick it opens; until
