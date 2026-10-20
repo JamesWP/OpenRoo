@@ -40,8 +40,9 @@ struct Outcome {
     enum Kind { Blocked, Rest, Death };
     Kind   kind = Blocked;
     int    u = 0, v = 0, facing = 0;  // where it comes to rest
-    double ms = 0;                    // until then
+    double ms = 0;                    // until the next move can start: the landing of a drop in it
     std::vector<Step> cells;          // the cells it passes, the last where it rests
+    std::vector<double> at;           // when the step into each of them starts, ms from the move's
     const char *why = "";             // what blocked or killed it
 };
 
@@ -81,14 +82,15 @@ public:
     /* Whether the cell is one a lift or a platform carries: open only while
      * it is parked there. */
     static bool moving(const Cell &c);
-    /* The time, after the step, to land a drop of that many heights (measured,
-     * tools/bot/calibrate.py: 283 ms for one or two, 433 for three); 0 for no
-     * fall.  A move's time (step, step) leaves it out: the routes of a whole
-     * level are estimates and the drops do not change which is quickest by much;
-     * the timing of a script (a bomb's) adds it, fallsAlong. */
-    static double fallMs(int drop);
-    /* The time the drops along a walk of these cells take to land. */
-    double fallsAlong(const std::vector<Step> &cells) const;
+    /* The time, after the step, until the next move can start, when the
+     * step drops that many heights; 0 for no fall.  By the game's free fall
+     * (movableentity.cpp), tick by tick: the height falls 3 t + 5.405 t^2
+     * in t s, the fall ends on the tick after it reaches the floor, and a
+     * key pressed then moves the player on the tick after that (26 ticks
+     * for a drop of two).  A move's time (step, stepAt) has it in. */
+    static double fallMs(int drop, double tickMs);
+    /* Whether a step from a onto b falls, rather than walks down stairs. */
+    static bool falls(const Cell &a, const Cell &b);
     Outcome turn(int u, int v, int f, int delta) const;
     /* The falling tile on c is armed atMs from the view's clock, by a walk
      * planned to go over it: it is gone while it is fallen (fallingmodel.h).
@@ -187,6 +189,9 @@ public:
      * open world (worlds.h), not ways to be walked. */
     Paths(const NavModel &nav, int u, int v, int facing, double startMs = 0,
           bool throughSwitches = false, const GlideSource *glides = nullptr);
+
+    /* When the routes set off, ms from the view's clock. */
+    double startMs() const { return startMs_; }
 
     /* The least time from the start to come to rest on (u, v), any facing;
      * < 0 if never. */

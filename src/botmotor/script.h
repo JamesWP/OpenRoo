@@ -6,7 +6,8 @@
  *   Turn  to a facing, the shorter way;
  *   Drop  a bomb, once the last one's 2 s are up;
  *   Walk  a path with the motor (motor.h);
- *   Wait  until the clock reaches a time;
+ *   Wait  until a time: what follows takes effect then (its key pressed
+ *         on the tick before);
  *   StepOff  a platform the player rides, from path[0] to path[1] beside the
  *         track: forward or back held until it is taken, failed if not by
  *         untilMs.  The game takes it only within 0.15 of a cell past a cell;

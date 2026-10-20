@@ -64,8 +64,28 @@ double busy(const BotView &v)
     // Stairs (kinds 5 to 8) are no drop.
     const Cell &to = v.cell(p.u, p.v);
     if (!(to.kind >= 5 && to.kind <= 8))
-        ms += NavModel::fallMs(p.h - to.height);
+        ms += NavModel::fallMs(p.h - to.height, v.tickMs);
     return ms;
+}
+
+/* The game's grace after a move (player.cpp's stepGrace_): a move taken
+ * within it starts, on the clock, where the last one ended. */
+const double STEP_GRACE_MS = 20.0;
+
+/* When a walk set off now starts its first move, ms from now: once the move
+ * under way is done, a key pressed in it being kept for then; from rest, on
+ * the next tick, a key pressed on this one being taken on the next, or
+ * where the last move ended if that is within the grace of it
+ * (movableentity.cpp). */
+double firstMove(const BotView &v, double busyMs)
+{
+    const PlayerView &p = v.player;
+    if (p.moving || p.falling)
+        return busyMs;
+    const double taken = v.tickMs, ended = p.animStart + p.animMs - v.now;
+    const double since = taken - ended;
+    // Not before now, which the routes take as no start (Paths).
+    return since > 0 && since < STEP_GRACE_MS ? std::max(0.0, ended) : taken;
 }
 
 }  // namespace
@@ -73,7 +93,7 @@ double busy(const BotView &v)
 Situation::Situation(const BotView &v, FoeModel &m, bool around)
     : view(v), nav(around ? aroundThrowers(v, busy(v), THROWER_NEAR_MS) : NavModel(v)),
       busyMs(busy(v)),
-      from(nav, v.player.u, v.player.v, v.player.facing, busyMs), foes(m)
+      from(nav, v.player.u, v.player.v, v.player.facing, firstMove(v, busyMs)), foes(m)
 {
 }
 
@@ -133,7 +153,7 @@ bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *t
         if (soFar <= 0 || (c.u == goal.u && c.v == goal.v) || !board.canFinishFrom(c))
             continue;  // the start, a cell passed only by a forced move, the goal itself, a trap
         Option o;
-        if (!walkTo(s, s.from, c, 0, 0, o))
+        if (!walkTo(s, s.from, c, 0, o))
             continue;
         o.lingerMs = lingerOn(s.view, c, o.lingerMs);
         o.cost = whole - soFar;

@@ -60,11 +60,11 @@ public:
         for (const auto &[walkMs, at] : cells) {
             Option o;
             if (walkMs > 0) {
-                if (!walkTo(s, s.from, at, 0, s.busyMs, o))
+                if (!walkTo(s, s.from, at, 0, o))
                     continue;
             } else {
                 o.schedule.push_back({0, at});
-                o.cost = s.busyMs;
+                o.cost = s.from.startMs();
             }
             const double until = o.cost + WAIT_MS;
             o.script.push_back({ScriptStep::Wait, 0, {}, view.now + until});

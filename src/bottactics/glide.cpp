@@ -97,7 +97,7 @@ public:
         const Way &way = it->second;
         const Step launch{way.launch.u, way.launch.v};
         Option o;
-        if (!walkTo(s, s.from, launch, 0, 0, o))
+        if (!walkTo(s, s.from, launch, 0, o))
             return;
         const int arrives = Motor::facingAfter(s.view.player.facing, s.from.cellsTo(launch.u, launch.v));
         const int turns = (way.launch.facing - arrives + 4) % 4;

@@ -1,6 +1,7 @@
 #include "walk.h"
 #include <stdio.h>
 #include <algorithm>
+#include <cmath>
 
 namespace bot {
 
@@ -17,9 +18,9 @@ const double STEP_OFF_MS = 110;
 
 }  // namespace
 
-bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, double startMs,
-            Option &o)
+bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Option &o)
 {
+    const double startMs = paths.startMs();
     std::vector<Timed> plan = paths.scheduleTo(target.u, target.v);
     if (plan.empty())
         return false;
@@ -27,6 +28,9 @@ bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, do
     // the whole route against them.
     if (wait > 0 && s.nav.timed())
         return false;
+    // A wait ends on a tick: the player moves on one.
+    if (wait > 0 && s.view.tickMs > 0)
+        wait = std::ceil((startMs + wait) / s.view.tickMs - 1e-6) * s.view.tickMs - startMs;
     o.schedule.clear();
     o.schedule.push_back({0, plan.front().cell});
     for (const Timed &m : plan)
@@ -67,7 +71,7 @@ void offerWalks(const Situation &s, const std::vector<std::pair<Step, double>> &
             break;
         for (const auto &[t, after] : targets) {
             Option o;
-            if (!walkTo(s, s.from, t, wait, 0, o))
+            if (!walkTo(s, s.from, t, wait, o))
                 continue;
             o.cost += after;
             char buf[96];

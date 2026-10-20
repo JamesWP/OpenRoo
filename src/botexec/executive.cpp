@@ -39,6 +39,17 @@ std::string kills_json(const Option &o)
     return "[" + out + "]";
 }
 
+/* The option's schedule, as JSON: each cell with when it is entered, on
+ * the game's clock (tools/bot/schedulecheck.py). */
+std::string schedule_json(const Option &o, double now)
+{
+    std::string out;
+    for (const Timed &m : o.schedule)
+        out += (out.empty() ? "" : ",") + std::string("[") + std::to_string(now + m.t) + "," +
+               std::to_string(m.cell.u) + "," + std::to_string(m.cell.v) + "]";
+    return "[" + out + "]";
+}
+
 std::string quoted(const std::string &s)
 {
     std::string out;
@@ -203,6 +214,7 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
         printTo(log_, ",\"cut_off\":[%s],\"cut_off_pickups\":[%s],\"exit_cut\":%d", cut.c_str(),
                 cutPickups.c_str(), board.time(board.everything(), board.start(), board.exit()) < 0);
         printTo(log_, ",\"predicted_kills\":%s", kills_json(chosen_).c_str());
+        printTo(log_, ",\"schedule\":%s", schedule_json(chosen_, view.now).c_str());
         printTo(log_, ",\"chose\":\"%s\"}\n", quoted(note_).c_str());
     }
     return true;
