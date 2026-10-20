@@ -67,7 +67,7 @@ public:
     void  setDying(int n)                    { dying_ = n; }
     void  setAnim(unsigned char b)          { anim_ = b; }
     void  setOnLift(int n)                    { onLift_ = n; }
-    void  setFieldD3(int n)                    { field_d3 = n; }
+    void  setOnSwitch(int n)                   { onSwitch_ = n; }
     // The switch the player is standing on; 0xff means none.
     unsigned char switchSlot() const           { return switchSlot_; }
     void  setSwitchSlot(unsigned char s)       { switchSlot_ = s; }

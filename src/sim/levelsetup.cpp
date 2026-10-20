@@ -554,7 +554,7 @@ next_row:
     self->world()->player()->setEffectAActive(0);
     self->world()->player()->setEffectCActive(0);
     self->world()->player()->setSwitchSlot(0xff);
-    self->world()->player()->setFieldD3(0);
+    self->world()->player()->setOnSwitch(0);
     self->world()->player()->setOnLift(0);
     self->world()->player()->setBombDropRequest(0);
     self->world()->player()->setCompletionNumerator(0);

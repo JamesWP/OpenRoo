@@ -30,6 +30,7 @@ void fill_mover(Mover &m, const E &e)
     m.stuckSince = e.stuckSince();
     m.lastMoveDir = e.lastMoveDir();
     m.riding = e.ridingPlatform();
+    m.onSwitch = e.onSwitch();
 }
 
 }  // namespace
@@ -90,6 +91,7 @@ BotView capture(const Game &game)
     view.player.speedUpEnds  = pl->effectAActive() ? pl->effectAStart() + 10000.0 : 0;  // K_EFFECT_MS
     view.player.slowDownEnds = pl->effectCActive() ? pl->effectCStart() + 10000.0 : 0;
     view.player.moveState  = pl->moveState();
+    view.player.switchSlot = pl->switchSlot() == 0xff ? -1 : pl->switchSlot();
     view.player.freezeUntil = pl->freezeActive() ? pl->freezeStart() + 5000.0 : 0;  // K_FREEZE_MS
     view.player.bombReadyAt = pl->lastBombDrop() + 2000.0;
 
@@ -107,6 +109,8 @@ BotView capture(const Game &game)
         fv.drops = f.dropContents();
         fv.lastDrop    = f.lastContact();
         fv.dropPending = f.bombDropRequest() != 0;
+        fv.turned      = f.turnKind() != 0;
+        fv.switchSlot  = f.switchSlot() == 0xff ? -1 : f.switchSlot();
         view.foes.push_back(fv);
     }
     for (const FallingTile &ft : w->fallings()) {

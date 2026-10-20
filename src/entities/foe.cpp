@@ -75,7 +75,7 @@ Foe::Foe()
     glides_         = 0;
     launched_        = 0;
     gliding_         = 0;
-    field_d3         = 0;
+    onSwitch_        = 0;
     onLift_         = 0;
     pool_9f_         = 0;
     sound_ab_        = 0;
@@ -504,7 +504,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
     pathfinder_->setTarget(targetU, targetV);
 
     if (type_ == FOE_SWITCH_RUNNER)
-        pathfinder_->setMode((field_d3 != 0) ? 0 : 2);
+        pathfinder_->setMode((onSwitch_ != 0) ? 0 : 2);
 
     if (moveDir_ != 0)
         return pendingMove_;
@@ -627,7 +627,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
         if (Sim_FindNearestListedObjectTile(ctx.switches, *ctx.switchMax, ctx.map, &tu, &tv, 7) != 0) {
             chaseSpeed_ = 100;
             chase(tu, tv, 100);
-            if (field_d3 == 0 && pendingMove_ == 0 && turnKind_ == 0) {
+            if (onSwitch_ == 0 && pendingMove_ == 0 && turnKind_ == 0) {
                 tu = playerU;
                 tv = playerV;
                 chaseSpeed_ = 0x32;

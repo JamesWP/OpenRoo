@@ -278,10 +278,10 @@ unsigned int MovableEntity::updateMovement()
 
         Tile *t = CUR;
         if ((signed char)t->objectMarker() == TILE_SWITCH && (unsigned)t->height() == (unsigned)(int)GH &&
-            ((signed char)kind_) != 9 && field_d3 == 0) {
+            ((signed char)kind_) != 9 && onSwitch_ == 0) {
             switchSlot_ = t->field1f3();
             snd_at(sound_cb_, (float)(int)GU, (float)(int)GH, -(float)(int)GV, 0);
-            field_d3 = 1;
+            onSwitch_ = 1;
         }
 
         t = CUR;
@@ -695,8 +695,8 @@ unsigned int MovableEntity::updateMovement()
                         moveDir_ = 0;
                 }
             }
-            if (field_d3 != 0 && facing_or_reverse(((unsigned)moveDir_), facing_))
-                field_d3 = 0;
+            if (onSwitch_ != 0 && facing_or_reverse(((unsigned)moveDir_), facing_))
+                onSwitch_ = 0;
 
             if (k_dest == 0x10 && k_here == 0x10) {
                 anim_ = 4;
