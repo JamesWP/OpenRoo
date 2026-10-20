@@ -41,11 +41,19 @@
  * The falling tiles fall and come back as the game has them, armed by the
  * player and the foes, and a foe on one when it falls falls with it.
  *
- * What it leaves out: the bridges do not move, the idle animation's longer
- * moves, and the target of a switch runner (the view
- * does not carry the switch cells), which is taken to be the player
- * (foetype.h).  botrun.h's foe log measures how often it is right against the
- * game (tools/bot/foecheck.py). */
+ * The switches work as the game has them (playtick.cpp): whoever comes to rest
+ * on one, at its height, works it once (not again before a step forward or
+ * back), the player first in a tick, then each foe before its own tick.  A
+ * bridge on the move ignores its switch, and the switch waits until it is
+ * done.  A bridge stamps or clears a deck cell every 100 ms (bridgeobject.cpp)
+ * and its switches stand raised (busy) while it extends or is extended.  A
+ * switch runner makes for the nearest raised switch within 7 of it (in the
+ * game's list order, tilequery.cpp), its search keeping off the switches not
+ * raised unless it stands on one.  The player works a switch a step's time
+ * after stepping onto it.
+ *
+ * What it leaves out: the idle animation's longer moves.  botrun.h's foe log
+ * measures how often it is right against the game (tools/bot/foecheck.py). */
 #pragma once
 
 #include <functional>
@@ -82,6 +90,15 @@ public:
     int  killed() const;
     /* The blasts of the bombs the foes dropped since load(). */
     const std::vector<Blast> &dropped() const { return dropped_; }
+    /* A bridge set going since load(): when (the model's clock), which (its
+     * index in the view's bridges), and whether a foe worked the switch (or
+     * the player). */
+    struct Switched {
+        double ms;
+        size_t bridge;
+        bool   byFoe;
+    };
+    const std::vector<Switched> &switched() const { return switched_; }
 
     /* Ticks the foes until the clock reaches untilMs, the player standing on
      * playerAt(t) at each tick's clock t. */
@@ -127,7 +144,32 @@ private:
         bool   riding = false;     // on a platform, carried where it goes
         int    tele = 0;           // a teleporter's hold: 1 before the jump, 2 after, since teleAt
         double teleAt = 0;
+        bool   onSwitch = false;   // has worked the switch it stands on
+        int    switchSlot = -1;    // the switch worked, not yet acted on
+        bool   turned = false;     // its chase has found a way (FoeView::turned)
+        double fallsUntil = -1;    // falling into the void, gone then (model clock)
     };
+
+    /* A bridge as it moves (bridgeobject.cpp): phase 0 extends next, 1
+     * retracts next. */
+    struct Bridge {
+        int    slot;
+        std::vector<Step> deck;
+        int    height;
+        bool   armed;
+        int    phase;
+        double phaseStart;
+    };
+    /* The bridges' ticks: each moving one stamps or clears a deck cell. */
+    void tickBridges();
+    /* Works switch slot: sets its bridge going if it is not on the move
+     * already (false then, and the switch waits). */
+    bool workSwitch(int slot, bool byFoe);
+    /* A mover at rest on (u, v) at height h works the switch there, once. */
+    static bool onSwitch(const Cell &c, int h, bool *worked, int *slot);
+    /* tilequery.cpp's Sim_FindNearestListedObjectTile: the nearest raised
+     * switch within 7 of (u0, v0), not (u0, v0) itself. */
+    bool nearestSwitch(int u0, int v0, int *pu, int *pv) const;
 
     /* The cell's height and kind, beyond the grid a wall. */
     const Cell &cell(int u, int v) const;
@@ -186,6 +228,17 @@ private:
         bool   respawns, armed, gone, goneAtLoad;
         double armedAt;
     };
+    std::vector<Bridge> bridges_;
+    std::vector<std::vector<Step>> switchCells_;  // by slot, in grid order
+    std::vector<Switched> switched_;
+    // The cells, as the bridges change them, when the level has any.
+    std::vector<Cell> grid_;
+    bool   ownGrid_ = false;
+    std::vector<char> cleared_;     // a deck cell the model has cleared
+    bool   bridgesMoved_ = false;   // a deck cell changed since the load
+    bool   playerOnSwitch_ = false;
+    int    playerSwitch_ = -1;      // the switch the player worked, not yet acted on
+    double playerRestAt_ = 0;       // when the player's step onto its cell ends
     std::vector<Fall> falls_;
     std::vector<int>  fallAt_;         // a cell's index in falls_, or -1
     int               fallsChanged_ = 0;  // tiles gone or back since the load

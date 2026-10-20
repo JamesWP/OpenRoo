@@ -51,6 +51,7 @@ public:
     int   onStairOrSlide() const               { return onStairOrSlide_; }
     // The step phase, which pose() turns into a 0..1 fraction.
     unsigned char turnKind() const             { return turnKind_; }
+    bool  onSwitch() const                     { return onSwitch_ != 0; }
     double animDuration() const                { return animDuration_; }
     double animStart() const                   { return animStart_; }
     double stepEnd() const                     { return stepEnd_; }
@@ -208,7 +209,7 @@ protected:
     SoundVoice *sound_c7_;
     SoundVoice *sound_cb_;
     SoundVoice *sound_cf_;
-    int                 field_d3{};
+    int                 onSwitch_{};    // Has stood on a switch and worked it; cleared by the next step forward or back.
     unsigned char       switchSlot_{};  // The switch stepped on and not yet acted on; 0xff for none.
     int                 field_d8{};
     double              lastContact_{};      // Foe: the clock of its last contact.

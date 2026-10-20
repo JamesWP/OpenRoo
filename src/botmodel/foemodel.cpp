@@ -42,7 +42,83 @@ bool forward_or_back(int d, int facing) { return d == facing || d == opposite(fa
 
 const Cell &FoeModel::cell(int u, int v) const
 {
-    return view_->inside(u, v) ? view_->cell(u, v) : wall_;
+    if (!view_->inside(u, v))
+        return wall_;
+    return ownGrid_ ? grid_[(size_t)v * view_->extentU + u] : view_->cell(u, v);
+}
+
+void FoeModel::tickBridges()
+{
+    for (Bridge &b : bridges_) {
+        if (!b.armed)
+            continue;
+        const double elapsed = clock_ - b.phaseStart;
+        const int span = (int)b.deck.size();
+        if (!(span * 100.0 > elapsed)) {
+            b.armed = false;
+            b.phase ^= 1;
+            continue;
+        }
+        // The cell the moving end is over: stamped going out, cleared coming back.
+        const int k = (int)(elapsed / 100.0);
+        const int i = b.phase == 0 ? k : span - 1 - k;
+        if (i < 0 || i >= span)
+            continue;
+        Cell &c = grid_[(size_t)b.deck[(size_t)i].v * view_->extentU + b.deck[(size_t)i].u];
+        c.kind   = b.phase == 0 ? TILE_BRIDGE_DECK : TILE_EMPTY;
+        c.height = b.phase == 0 ? (unsigned char)b.height : 0;
+        c.busy   = b.phase == 0;
+        cleared_[(size_t)b.deck[(size_t)i].v * view_->extentU + b.deck[(size_t)i].u] = b.phase != 0;
+        bridgesMoved_ = true;
+    }
+}
+
+bool FoeModel::workSwitch(int slot, bool byFoe)
+{
+    for (size_t i = 0; i < bridges_.size(); i++) {
+        Bridge &b = bridges_[i];
+        if (b.slot != slot)
+            continue;
+        if (b.armed)
+            return false;
+        // The switches stand raised while it goes out (playtick.cpp).
+        if ((size_t)slot < switchCells_.size())
+            for (const Step &c : switchCells_[(size_t)slot])
+                grid_[(size_t)c.v * view_->extentU + c.u].busy = b.phase == 0;
+        b.armed = true;
+        b.phaseStart = clock_;
+        switched_.push_back({clock_, i, byFoe});
+        bridgesMoved_ = true;
+        return true;
+    }
+    return false;
+}
+
+bool FoeModel::onSwitch(const Cell &c, int h, bool *worked, int *slot)
+{
+    if (*worked || c.kind != TILE_SWITCH || c.param == 0 || c.height != h)
+        return false;
+    *worked = true;
+    *slot = c.param - 1;
+    return true;
+}
+
+bool FoeModel::nearestSwitch(int u0, int v0, int *pu, int *pv) const
+{
+    int best = 7;
+    for (const std::vector<Step> &list : switchCells_)
+        for (const Step &c : list) {
+            if (!cell(c.u, c.v).busy)
+                continue;
+            const int du = u0 - c.u, dv = v0 - c.v;
+            const int d = (int)sqrt((double)(du * du + dv * dv));
+            if (d != 0 && d < best) {
+                best = d;
+                *pu = c.u;
+                *pv = c.v;
+            }
+        }
+    return best < 7;
 }
 
 int FoeModel::heightNow(int u, int v) const
@@ -135,6 +211,9 @@ void FoeModel::load(const BotView &view)
     byCaller_.assign(blasts_.size(), 0);
     player_ = {view.player.u, view.player.v};
     playerOcc_ = view.player.protection ? 3 : 4;
+    playerOnSwitch_ = view.player.onSwitch;
+    playerSwitch_   = view.player.switchSlot;
+    playerRestAt_   = view.player.moving ? view.player.animStart + view.player.animMs : view.now;
     playerLeft_ = {-1, -1};
     const PlayerView &p = view.player;
     if (p.moving && p.moveDir >= 1 && p.moveDir <= 4) {
@@ -173,12 +252,49 @@ void FoeModel::load(const BotView &view)
             if (fv.moveDir >= 1 && fv.moveDir <= 4) {
                 f.fromU = fv.u - DIR_DU[fv.moveDir];
                 f.fromV = fv.v - DIR_DV[fv.moveDir];
+                // The game has the step's direction once it ends; the model
+                // from its start.
+                f.lastMoveDir = fv.moveDir;
             }
         } else {
             f.stepEnd = fv.stepEnd;
         }
         f.riding = fv.riding;
+        f.onSwitch   = fv.onSwitch;
+        f.switchSlot = fv.switchSlot;
+        f.turned     = fv.turned;
+        // Falling into the void: gone 100 heights below the floor, the
+        // height fallen so far, 3 t + 5.405 t^2, still to add to the drop.
+        if (fv.falling && !fv.launched && !fv.gliding && view.inside(fv.u, fv.v) &&
+            view.cell(fv.u, fv.v).kind == TILE_EMPTY && !view.cell(fv.u, fv.v).track) {
+            const double e = std::max(0.0, (view.now - fv.launchedAt) / 1000.0);
+            const double drop = fv.h + 100.0 + 3 * e + 5.405 * e * e;
+            f.fallsUntil = fv.launchedAt + 1000.0 * (-3.0 + sqrt(9.0 + 4 * 5.405 * drop)) / (2 * 5.405);
+            f.h = -1;
+        }
         foes_.push_back(f);
+    }
+    switched_.clear();
+    bridgesMoved_ = false;
+    bridges_.clear();
+    switchCells_.clear();
+    ownGrid_ = !view.bridges.empty();
+    if (ownGrid_) {
+        grid_ = view.cells;
+        cleared_.assign(view.cells.size(), 0);
+        for (const BridgeView &b : view.bridges)
+            bridges_.push_back({b.slot, b.deck, b.height, b.moving,
+                                b.moving ? (b.extended ? 0 : 1) : (b.extended ? 1 : 0), b.phaseStart});
+        // The game's switch lists: by slot, each in grid order (levelsetup.cpp).
+        for (int v = 0; v < view.extentV; v++)
+            for (int u = 0; u < view.extentU; u++) {
+                const Cell &c = view.cell(u, v);
+                if (c.kind != TILE_SWITCH || c.param == 0)
+                    continue;
+                if (switchCells_.size() < c.param)
+                    switchCells_.resize(c.param);
+                switchCells_[c.param - 1].push_back({u, v});
+            }
     }
     falls_.clear();
     fallAt_.assign(view.cells.size(), -1);
@@ -285,7 +401,7 @@ bool FoeModel::stepLegal(int uf, int vf, int ut, int vt) const
 bool FoeModel::firstStep(const Foe &f, int tu, int tv, int cap, int *nu, int *nv)
 {
     const int stride = view_->extentU;
-    const bool keep = !sticky_ && fallsChanged_ == 0 && f.mode != FOE_GEM_RUNNER && f.mode != FOE_SWITCH_RUNNER;
+    const bool keep = !sticky_ && fallsChanged_ == 0 && !bridgesMoved_ && f.mode != FOE_GEM_RUNNER && f.mode != FOE_SWITCH_RUNNER;
     const unsigned long long memo =
         ((((unsigned long long)(f.v * stride + f.u) * 65536 + (unsigned)(tv * stride + tu)) * 256 +
           (unsigned)(f.mode & 0xff)) * 1024) + (unsigned)(cap & 0x3ff);
@@ -516,9 +632,25 @@ void FoeModel::target(Foe &f, int *tu, int *tv, int *speed)
         *tv = view_->exitV;
         *speed = 400;
         break;
-    case FOE_SWITCH_RUNNER:  // its switch is not modelled: the player, as when none is near
+    case FOE_SWITCH_RUNNER: {  // the nearest raised switch, else the player
+        int su, sv;
         *speed = 100;
+        if (!nearestSwitch(f.u, f.v, &su, &sv))
+            break;
+        *tu = su;
+        *tv = sv;
+        // Foe::chooseTarget's own chase: the player after all if it finds no
+        // move off a switch and no chase has ever found a way (turnKind_).
+        int nu, nv;
+        const bool found = f.moveDir == 0 && firstStep(f, su, sv, 100, &nu, &nv);
+        f.turned = f.turned || found;
+        if (!f.onSwitch && !found && !f.turned) {
+            *tu = player_.u;
+            *tv = player_.v;
+            *speed = 0x32;
+        }
         break;
+    }
     case FOE_GEM_THIEF: {  // a gem within reach if a way to it is found, else the player
         int gu, gv, nu, nv;
         *speed = 100;
@@ -626,6 +758,7 @@ bool FoeModel::startMove(Foe &f, int move, bool sliding)
     f.animMs    = sliding ? SLIDE_MS : f.stepMs;
     f.moveDir   = move;
     if (real) {
+        f.onSwitch    = false;
         f.riding      = false;
         f.lastMoveDir = move;
         f.fromU = f.u;
@@ -642,6 +775,10 @@ void FoeModel::tickFoe(size_t i)
 {
     Foe &f = foes_[i];
     f.held = clock_ < view_->player.freezeUntil ? 1 : 0;
+    // A switch runner's search keeps off the switches not raised, but for
+    // one standing on a switch (Foe::chase).
+    if (f.type == FOE_SWITCH_RUNNER)
+        f.mode = f.onSwitch ? FOE_CHASER : FOE_SWITCH_RUNNER;
     int tu, tv, speed;
     // A foe standing on a lift rides it (movableentity.cpp: on a lift, at
     // its current height), and one on a platform goes where it does, turning
@@ -757,7 +894,9 @@ void FoeModel::stepFoe(Foe &f, int tu, int tv, int speed)
                 f.facing = f.moveDir - 10;
             }
             f.moveDir = 0;
-            // The same pass sees to the terrain it has come to rest on.
+            // The same pass sees to the terrain it has come to rest on: a
+            // switch, then what moves it on.
+            onSwitch(cell(f.u, f.v), f.h, &f.onSwitch, &f.switchSlot);
             bool sliding = false;
             const int forced = terrain(f, 0, &sliding);
             if (forced != 0)
@@ -772,12 +911,23 @@ void FoeModel::stepFoe(Foe &f, int tu, int tv, int speed)
     if (move != 0) {
         f.lastU = tu;
         f.lastV = tv;
+        f.turned = true;
+    } else if (f.type == FOE_SWITCH_RUNNER && cell(f.u, f.v).kind == TILE_SWITCH && f.lastMoveDir != 0) {
+        // No way on from a switch: back the way it came, by the turn table,
+        // whose reverse ends as a turn to the right (Foe::step).
+        const int back = opposite(f.lastMoveDir);
+        move = back == f.facing ? back
+             : back == right(f.facing) ? right(f.facing) + 10
+             : back == left(f.facing) ? left(f.facing) + 10
+             : right(f.facing) + 10;
     } else if (f.type == FOE_RETURNER) {
         // No way to its target: back to the last it had a way to (Foe::step).
         move = chaseMove(f, f.lastU, f.lastV, speed);
     }
     if (f.held)
         move = 0;
+    // At rest, it works the switch it stands on before it sets off.
+    onSwitch(cell(f.u, f.v), f.h, &f.onSwitch, &f.switchSlot);
     bool sliding = false;
     move = terrain(f, move, &sliding);
     if (move != 0)
@@ -791,6 +941,8 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
     clock_ += view_->tickMs;
     // The level's objects first, as the game ticks them (gametick.cpp).
     tickFalls();
+    if (ownGrid_)
+        tickBridges();
     // The player's step holds the cell it leaves until it ends, and its
     // end comes before the foes (movableentity.cpp).
     auto letGo = [&]() {
@@ -808,9 +960,43 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
         leftUntil_  = clock_ + view_->player.stepMs;
         setOcc(at.u, at.v, playerOcc_);
         player_ = at;
+        playerOnSwitch_ = false;
+        playerRestAt_   = clock_ + view_->player.stepMs;
     }
-    for (size_t i = 0; i < foes_.size(); i++)
+    if (ownGrid_) {
+        if (clock_ >= playerRestAt_ - 1e-6 && view_->inside(player_.u, player_.v))
+            onSwitch(cell(player_.u, player_.v), cell(player_.u, player_.v).height, &playerOnSwitch_,
+                     &playerSwitch_);
+        if (playerSwitch_ >= 0 && workSwitch(playerSwitch_, false))
+            playerSwitch_ = -1;
+    }
+    for (size_t i = 0; i < foes_.size(); i++) {
+        Foe &f = foes_[i];
+        if (f.fallsUntil >= 0)
+            continue;
+        if (f.switchSlot >= 0 && ownGrid_ && workSwitch(f.switchSlot, true))
+            f.switchSlot = -1;
         tickFoe(i);
+    }
+    // A foe on a deck cell a bridge has cleared falls into the void, out of
+    // harm's way, and is gone once it is 100 heights below the floor
+    // (movableentity.cpp, Foe::finishDespawn).
+    for (size_t i = 0; i < foes_.size();) {
+        Foe &f = foes_[i];
+        if (f.fallsUntil < 0 && ownGrid_ && f.moveDir == 0 && view_->inside(f.u, f.v) &&
+            cleared_[(size_t)f.v * view_->extentU + f.u]) {
+            const double drop = f.h + 100.0;
+            f.fallsUntil = clock_ + 1000.0 * (-3.0 + sqrt(9.0 + 4 * 5.405 * drop)) / (2 * 5.405);
+            if (occ(f.u, f.v) == f.kind)
+                setOcc(f.u, f.v, 0);
+            f.h = -1;
+        }
+        if (f.fallsUntil < 0 || clock_ < f.fallsUntil) {
+            ++i;
+            continue;
+        }
+        foes_.erase(foes_.begin() + (long)i);
+    }
     // A foe on a tile that has fallen falls with it.
     for (size_t i = 0; i < foes_.size();) {
         const Foe &f = foes_[i];
