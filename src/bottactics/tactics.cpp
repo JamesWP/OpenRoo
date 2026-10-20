@@ -212,9 +212,12 @@ bool evade(Situation &s, const Board &board, Option *out, Tally *tally)
         }
     std::sort(cells.begin(), cells.end(),
               [](const auto &a, const auto &b) { return a.first < b.first; });
+    // Not into a trap, but where the player is cannot finish either (a foe
+    // may yet open the way, say), the test tells none apart.
+    const bool any = !board.canFinishFrom({view.player.u, view.player.v});
     std::vector<std::pair<Step, double>> to;
     for (size_t i = 0; i < cells.size() && to.size() < EVADES; i++)
-        if (board.canFinishFrom(cells[i].second))
+        if (any || board.canFinishFrom(cells[i].second))
             to.push_back({cells[i].second, 0});
     std::vector<Option> options;
     offerWalks(s, to, "evade to", false, options);
