@@ -109,7 +109,10 @@ the only part that presses keys.
 
 The agent loop.  It decides from rest, and re-selects goals every half
 second while a script runs.  A higher goal breaks the script off, unless
-the option under way is committed (its bomb still to go off).  The rest of
+the option under way is committed (its bomb still to go off).  When no
+plan's first step is safe, it plans again with the routes going round the
+throwers near the player, which the player cannot walk through: the
+quickest way past one is usually safe, as it steps aside, but not always.  The rest of
 the script is re-checked for safety, and the script is stopped if it turns
 unsafe.  Every decision is logged with its reason.
 

@@ -16,9 +16,11 @@
  * rest on one works its bridge (switchedBy), which only a plan that means to
  * may do.
  *
- * Foes are not seen.  Lifts are followed in time (liftmodel.h): a step on or
- * off a lift is allowed only while it is parked, so a move is asked for at a
- * time, and the quickest way waits for the lifts where it must.  A platform
+ * Foes are not seen, but for a cell shut to the routes: a held thrower's,
+ * and those aroundThrowers shuts.  Lifts are followed in time
+ * (liftmodel.h): a step on or off a lift is allowed only while it is
+ * parked, so a move is asked for at a time, and the quickest way waits for
+ * the lifts where it must.  A platform
  * is boarded at an end of its track while parked there, and ridden to the
  * other end or stepped off sideways as it passes a cell between (alightings);
  * an extended bridge's deck is ground.
@@ -27,6 +29,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <vector>
 #include "botview.h"
 #include "liftmodel.h"
@@ -91,6 +94,9 @@ public:
      * planned to go over it: it is gone while it is fallen (fallingmodel.h).
      * The model the routes after that walk are found in. */
     void arm(Step c, double atMs);
+    /* No step goes into c (aroundThrowers). */
+    void shut(Step c) { shut_.insert(c.v * view_->extentU + c.u); }
+    bool anyShut() const { return !shut_.empty(); }
 
     static int opposite(int d) { return d > 2 ? d - 2 : d + 2; }
     static int turned(int d, int delta) { return (d - 1 + delta + 4) % 4 + 1; }
@@ -120,6 +126,7 @@ private:
     std::map<int, Fallen> back_;                // a fallen or armed tile's cell index
     std::map<int, int> partner_;                // a platform's end cell index to its other end's
     std::map<int, std::vector<Alighting>> alight_;  // a platform's end cell index to its passes
+    std::set<int> shut_;                        // cell indices shut()
 };
 
 /* The bridge the switch on (u, v) works, or null if it is no working switch. */
@@ -221,5 +228,12 @@ private:
     std::vector<int>    alightAt_;   // for 6 and 7: the cell index stepped off from
     std::vector<double> departs_;    // when the move into it started
 };
+
+/* The nav model with the throwers' cells shut, the one each is in and,
+ * mid-step, the one it is leaving: the player cannot walk through one
+ * (movableentity.cpp).  Only of those the player, setting off startMs from
+ * the view's clock, could come to within withinMs: a thrower further off
+ * moves on before the player gets there. */
+NavModel aroundThrowers(const BotView &view, double startMs, double withinMs);
 
 }  // namespace bot

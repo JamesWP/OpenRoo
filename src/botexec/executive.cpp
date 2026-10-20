@@ -1,5 +1,6 @@
 #include "executive.h"
 #include <stdlib.h>
+#include <memory>
 #include "binio.h"
 #include "board.h"
 #include "danger.h"
@@ -75,7 +76,7 @@ std::vector<Goal> Executive::goals(const BotView &view)
 
 bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool midway)
 {
-    Situation s(view, foes_);
+    Situation plain(view, foes_);
     worlds_.update(view);
     const Board board(view, worlds_);
 
@@ -90,27 +91,38 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
     GoalKind goal = FINISH;
     bool have = false;
     Plan finish;
-    for (const Goal &goal_wanted : goals) {
-        const GoalKind g = goal_wanted.kind;
-        if (midway && g == goal_)
-            break;  // only a goal above the one under way breaks it off
-        PlanOptions options;
-        options.goal    = g;
-        options.startBy = goal_wanted.by;
-        options.mu      = mu_;
-        Choice c;
-        have = choose(s, board, options, &c, tally);
-        if (g == goals.front().kind)
-            first = c.first;
-        if (g == FINISH)
-            finish = c.first;
-        if (have) {
-            planned = c.taken.describe();
-            chosen  = std::move(c.option);
-            goal    = g;
-            break;
+    auto plan = [&](Situation &s) {
+        for (const Goal &goal_wanted : goals) {
+            const GoalKind g = goal_wanted.kind;
+            if (midway && g == goal_)
+                break;  // only a goal above the one under way breaks it off
+            PlanOptions options;
+            options.goal    = g;
+            options.startBy = goal_wanted.by;
+            options.mu      = mu_;
+            Choice c;
+            have = choose(s, board, options, &c, tally);
+            if (g == goals.front().kind)
+                first = c.first;
+            if (g == FINISH)
+                finish = c.first;
+            if (have) {
+                planned = c.taken.describe();
+                chosen  = std::move(c.option);
+                goal    = g;
+                break;
+            }
         }
+    };
+    plan(plain);
+    // No safe way past a thrower near by: the ways round it.
+    std::unique_ptr<Situation> around;
+    if (!have && !view.foes.empty()) {
+        around = std::make_unique<Situation>(view, foes_, true);
+        if (around->nav.anyShut())
+            plan(*around);
     }
+    Situation &s = have && around ? *around : plain;
     if (midway && !have)
         return false;  // the script under way carries on
 

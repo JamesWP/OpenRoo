@@ -348,7 +348,7 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
             }
         }
         const char *why = bp ? refused(n == 0 ? origin : w.cell(cu, cv), ch, *bp, dir) : "edge";
-        if (!why && parkedFoe(w, nu, nv))
+        if (!why && (parkedFoe(w, nu, nv) || shut_.count(nv * w.extentU + nu)))
             why = "foe";
         if (why) {
             if (n == 0) {
@@ -684,6 +684,29 @@ std::vector<Timed> Paths::scheduleTo(int u, int v) const
             out.push_back({departs_[to] - startMs_ + each * (double)c, o.cells[c]});
     }
     return out;
+}
+
+NavModel aroundThrowers(const BotView &view, double startMs, double withinMs)
+{
+    NavModel nav(view);
+    std::vector<Step> cells;
+    for (const FoeView &f : view.foes) {
+        if (f.kind != 3 || f.dying)
+            continue;
+        cells.push_back({f.u, f.v});
+        if (f.moving && f.moveDir >= 1 && f.moveDir <= 4)
+            cells.push_back({f.u - DIR_DU[f.moveDir], f.v - DIR_DV[f.moveDir]});
+    }
+    if (cells.empty())
+        return nav;
+    const PlayerView &p = view.player;
+    const Paths open(nav, p.u, p.v, p.facing, startMs);
+    for (const Step &c : cells) {
+        const double t = open.cost(c.u, c.v);
+        if (t >= 0 && t <= withinMs)
+            nav.shut(c);
+    }
+    return nav;
 }
 
 }  // namespace bot
