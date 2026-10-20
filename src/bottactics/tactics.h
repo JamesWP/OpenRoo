@@ -28,8 +28,10 @@ namespace bot {
  * quickest routes from the player as it stands, and the foe model the
  * options are checked with. */
 struct Situation {
-    /* The player may be mid-move: its routes start when the move ends. */
-    Situation(const BotView &v, FoeModel &m);
+    /* The player may be mid-move: its routes start when the move ends.
+     * With aroundThrowers, they go round the throwers near the player
+     * (nav.h): for when no way past them is safe. */
+    Situation(const BotView &v, FoeModel &m, bool aroundThrowers = false);
 
     const BotView &view;
     NavModel       nav;

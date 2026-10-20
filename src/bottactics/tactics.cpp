@@ -13,6 +13,9 @@ namespace {
 /* Cells within this many ms are offered to evade to, the nearest EVADES. */
 const double EVADE_MS = 1500;
 const size_t EVADES = 12;
+/* The routes go round a thrower the player could come to within this many
+ * ms: one further off has moved on by then (nav.h). */
+const double THROWER_NEAR_MS = 2000;
 /* The first steps choose checks at most. */
 const int MAX_CHECKS = 8;
 
@@ -67,8 +70,9 @@ double busy(const BotView &v)
 
 }  // namespace
 
-Situation::Situation(const BotView &v, FoeModel &m)
-    : view(v), nav(v), busyMs(busy(v)),
+Situation::Situation(const BotView &v, FoeModel &m, bool around)
+    : view(v), nav(around ? aroundThrowers(v, busy(v), THROWER_NEAR_MS) : NavModel(v)),
+      busyMs(busy(v)),
       from(nav, v.player.u, v.player.v, v.player.facing, busyMs), foes(m)
 {
 }
