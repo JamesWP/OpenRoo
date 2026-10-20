@@ -120,6 +120,9 @@ public:
     /* Whether some cell can be come to rest on from the cell in the world
      * next that cannot be from the place in the world s. */
     bool opens(Changes next, Step cell, Changes s, Place from) const;
+    /* The catchers that can be come to from the cell in the world next and
+     * cannot be from the place in the world s: a bridge lets them in. */
+    int letsIn(Changes next, Step cell, Changes s, Place from) const;
     /* Whether bridge i is extended in the world s. */
     bool extended(Changes s, size_t i) const
     {

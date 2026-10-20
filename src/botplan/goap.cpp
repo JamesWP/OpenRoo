@@ -140,8 +140,8 @@ private:
                 n.step.risk   = f.foes * n.step.ms / 1000.0;
                 if (options_.timed && ms + n.step.ms > board_.timeLeft(n.facts.bonuses))
                     continue;  // out of time
-                push(n.facts, g + n.step.ms + options_.mu * n.step.risk, ms + n.step.ms, at,
-                     n.step);
+                push(n.facts, g + n.step.ms + options_.mu * n.step.risk + n.step.penalty,
+                     ms + n.step.ms, at, n.step);
             }
         }
     }

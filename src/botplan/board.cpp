@@ -225,6 +225,16 @@ bool Board::opens(Changes next, Step cell, Changes s, Place from) const
     return false;
 }
 
+int Board::letsIn(Changes next, Step cell, Changes s, Place from) const
+{
+    const Paths &there = worlds_->get(next).from(cell.u, cell.v, worlds_->pointFacing());
+    const Paths &here  = worlds_->get(s).from(from.u, from.v, facingOf(from));
+    int n = 0;
+    for (const FoeView &f : live_.foes)
+        n += f.kind == 2 && !f.dying && there.cost(f.u, f.v) >= 0 && here.cost(f.u, f.v) < 0;
+    return n;
+}
+
 Taken Board::gemBit(Step gem) const
 {
     const std::vector<Step> &all = gems(everything());
