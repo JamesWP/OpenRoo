@@ -18,14 +18,15 @@ const double SPELL_STEP_MS = 50.0;
 bool stairs(int k) { return k > 4 && k < 9; }
 
 /* A bomb on (u, v) of a platform's track from atMs (from the view's clock):
- * it rides the platform, and blows where the platform has carried it.  False
- * if the platform is not there to ride. */
+ * it rides the platform, and blows where the platform has carried it by the
+ * tick before (the tick it blows on does not move it, bomb.cpp).  False if
+ * the platform is not there to ride. */
 bool ride(const BotView &view, int u, int v, double atMs, double fuseAt, Blast *b)
 {
     const PlatformView *p = platformThrough(view, u, v);
     Step on, blows;
     if (!p || !platformCellAt(view, *p, atMs, &on) || on.u != u || on.v != v ||
-        !platformCellAt(view, *p, fuseAt - view.now, &blows))
+        !platformCellAt(view, *p, fuseAt - view.now - view.tickMs, &blows))
         return false;
     b->cell = blows;
     b->h    = p->height;
@@ -73,7 +74,8 @@ Blast roll(const BotView &view, int u, int v, int h, int facing, double droppedA
             if (at > h)
                 break;          // a face: it stays
             b.cell  = {nu, nv};
-            b.h     = liftHeightAt(view, *lift, droppedAt + FUSE_MS - view.now);
+            // Where it had got to on the tick before it blows (bomb.cpp).
+            b.h     = liftHeightAt(view, *lift, droppedAt + FUSE_MS - view.now - view.tickMs);
             b.lost  = b.h < 0;
             b.from  = droppedAt + FUSE_MS;
             b.until = droppedAt + CLEAR_MS;

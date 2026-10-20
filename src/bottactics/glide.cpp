@@ -99,7 +99,7 @@ public:
         Option o;
         if (!walkTo(s, s.from, launch, 0, o))
             return;
-        const int arrives = s.from.facingAt(launch.u, launch.v);
+        const int arrives = facingAfter(s.view.player.facing, o.script);
         const int turns = (way.launch.facing - arrives + 4) % 4;
         const double off = o.cost + (turns == 3 ? 1 : turns) * s.view.player.stepMs;
         o.script.push_back({ScriptStep::Turn, way.launch.facing, {}, 0});

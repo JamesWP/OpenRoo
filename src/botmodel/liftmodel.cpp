@@ -14,17 +14,18 @@ const double DWELL_MS  = 1500.0;  // a park
 std::vector<Park> parkSpells(const BotView &view, const LiftView &l, double horizonMs)
 {
     std::vector<Park> out;
-    // A move takes its heights and a tick: the lift notices it has arrived on
-    // the tick after.
-    const double move = (l.top - l.base) * HEIGHT_MS + view.tickMs;
+    // A move takes its heights, a park its dwell, each ending on the first
+    // tick past it (liftobject.cpp), which the clock's step of 1/60 s makes
+    // the tick it is due (a 200 ms height is 12 ticks).
+    const double move = (l.top - l.base) * HEIGHT_MS;
     double at = l.phaseStart - view.now;
     int    state = l.state;
     bool   top = l.atTop;
     for (int guard = 0; at < horizonMs && guard < 1000; guard++) {
         if (state == 0) {
-            // Parked from at; it leaves a dwell later (the tick after).
+            // Parked from at; it leaves a dwell later.
             out.push_back({at, at + DWELL_MS, top ? l.top : l.base});
-            at += DWELL_MS + view.tickMs;
+            at += DWELL_MS;
             state = top ? 2 : 1;
         } else {
             at += move;
@@ -39,14 +40,14 @@ void platformSpells(const BotView &view, const PlatformView &p, double horizonMs
                     std::vector<Park> *atOrigin, std::vector<Park> *atLimit)
 {
     const int span = p.limit - (p.alongU ? p.originU : p.originV);
-    const double move = span * HEIGHT_MS + view.tickMs;   // a cell takes as long as a height
+    const double move = span * HEIGHT_MS;   // a cell takes as long as a height (platformobject.cpp)
     double at = p.phaseStart - view.now;
     int    state = p.state;
     bool   limit = p.atLimit;
     for (int guard = 0; at < horizonMs && guard < 1000; guard++) {
         if (state == 0) {
             (limit ? atLimit : atOrigin)->push_back({at, at + DWELL_MS, p.height});
-            at += DWELL_MS + view.tickMs;
+            at += DWELL_MS;
             state = limit ? 2 : 1;
         } else {
             at += move;

@@ -208,7 +208,7 @@ public:
                 if (drawn) {
                     if (!walkTo(s, s.from, lure, 0, going))
                         continue;
-                    facing = s.from.facingAt(lure.u, lure.v);
+                    facing = facingAfter(p.facing, going.script);
                     if (wait > 0) {
                         going.cost += wait;
                         going.script.push_back({ScriptStep::Wait, 0, {}, view.now + going.cost});
@@ -226,7 +226,7 @@ public:
                         going.schedule.insert(going.schedule.end(), leg.schedule.begin() + 1,
                                               leg.schedule.end());
                         going.cost = leg.cost;
-                        facing = on.facingAt(bait.u, bait.v);
+                        facing = facingAfter(p.facing, going.script);
                     }
                     snprintf(buf, sizeof(buf), "bait at (%d,%d), drawn from (%d,%d) after %.0f ms",
                              bait.u, bait.v, lure.u, lure.v, wait);
@@ -237,7 +237,7 @@ public:
                     } else {
                         if (!walkTo(s, s.from, bait, 0, going))
                             continue;
-                        facing = s.from.facingAt(bait.u, bait.v);
+                        facing = facingAfter(p.facing, going.script);
                     }
                     snprintf(buf, sizeof(buf), "bait at (%d,%d)", bait.u, bait.v);
                 }
