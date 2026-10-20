@@ -53,6 +53,7 @@ public:
     unsigned char turnKind() const             { return turnKind_; }
     double animDuration() const                { return animDuration_; }
     double animStart() const                   { return animStart_; }
+    double stepEnd() const                     { return stepEnd_; }
     double stuckSince() const                  { return stuckSince_; }
     bool   launched() const                    { return launched_ != 0; }
     int    teleportPhase() const               { return teleportPhase_; }

@@ -39,6 +39,15 @@
 
 namespace bot {
 
+/* The player's step time under the speed effects (player.cpp), and when
+ * each runs out (ms from the view's clock; never if huge): on the first tick
+ * past its end, and either running out sets the step time back to 200 ms. */
+struct Speed {
+    double stepMs   = 200;
+    double upEnds   = 1e300;
+    double downEnds = 1e300;
+};
+
 struct Outcome {
     enum Kind { Blocked, Rest, Death };
     Kind   kind = Blocked;
@@ -47,6 +56,7 @@ struct Outcome {
     std::vector<Step> cells;          // the cells it passes, the last where it rests
     std::vector<double> at;           // when the step into each of them starts, ms from the move's
     const char *why = "";             // what blocked or killed it
+    Speed speed;                      // the step time after it
 };
 
 class NavModel {
@@ -60,15 +70,23 @@ public:
      * opposite of f is back) or a turn (delta +1 right, -1 left). */
     Outcome step(int u, int v, int f, int d) const;
     /* The same, started atMs from the view's clock: a step on or off a lift
-     * is blocked unless the lift is parked through it. */
-    Outcome stepAt(int u, int v, int f, int d, double atMs) const;
+     * is blocked unless the lift is parked through it.  Under speed, or the
+     * view's if null: each step's time, tick by tick, as the speed effects
+     * have it, with those it picks up. */
+    Outcome stepAt(int u, int v, int f, int d, double atMs, const Speed *speed = nullptr) const;
     /* The earliest start at or after atMs of a step that is not blocked, and
      * its outcome; Blocked if none (a lift never parks, or not within the
      * model's horizon).  *startMs is when it starts. */
-    Outcome stepWhenOpen(int u, int v, int f, int d, double atMs, double *startMs) const;
+    Outcome stepWhenOpen(int u, int v, int f, int d, double atMs, double *startMs,
+                         const Speed *speed = nullptr) const;
     /* Whether anything on the level changes with the clock that the routes
      * must wait for or time: a lift, a platform, a fallen tile coming back. */
     bool timed() const { return !spells_.empty() || !back_.empty(); }
+    /* Whether the step time changes with the clock: a speed effect runs, or
+     * one is to be picked up. */
+    bool speedy() const { return speedy_; }
+    /* The step time as the view has it. */
+    const Speed &speed() const { return speed_; }
     /* Riding a platform: the player who stands on the end cell (u, v) at atMs
      * is carried to the other end and can step off from the next park there.
      * False if no platform ends on the cell; *pu, *pv the other end's cell
@@ -84,7 +102,7 @@ public:
     std::vector<Alighting> alightings(int u, int v, double atMs) const;
     /* A step in direction d, across the track, off the platform standing over
      * (u, v) at atMs, at the platform's height. */
-    Outcome stepOff(int u, int v, int f, int d, double atMs) const;
+    Outcome stepOff(int u, int v, int f, int d, double atMs, const Speed *speed = nullptr) const;
     /* Whether the cell is one a lift or a platform carries: open only while
      * it is parked there. */
     static bool moving(const Cell &c);
@@ -93,8 +111,9 @@ public:
      * (movableentity.cpp), tick by tick: the height falls 3 t + 5.405 t^2
      * in t s, the fall ends on the tick after it reaches the floor, and a
      * key pressed then moves the player on the tick after that (26 ticks
-     * for a drop of two).  A move's time (step, stepAt) has it in. */
-    static double fallMs(int drop, double tickMs);
+     * for a drop of two).  Onto stairs, the fall ends half a height above
+     * them.  A move's time (step, stepAt) has it in. */
+    static double fallMs(int drop, double tickMs, bool stairs = false);
     /* How long after the step onto it a sticky pad lets the player move:
      * the first tick more than 3 s after the one it caught it on
      * (movableentity.cpp). */
@@ -104,9 +123,8 @@ public:
      * v0 t - 4.905 t^2, v0 from the rise, and on the tick after it is at the
      * top the player is there and steps on (movableentity.cpp). */
     static double jumpMs(int rise, double tickMs);
-    /* Whether a step from a onto b falls, rather than walks down stairs. */
-    static bool falls(const Cell &a, const Cell &b);
-    Outcome turn(int u, int v, int f, int delta) const;
+    Outcome turn(int u, int v, int f, int delta, double atMs = 0,
+                 const Speed *speed = nullptr) const;
     /* The falling tile on c is armed atMs from the view's clock, by a walk
      * planned to go over it: it is gone while it is fallen (fallingmodel.h).
      * The model the routes after that walk are found in. */
@@ -125,8 +143,13 @@ private:
      * direction d, and why. */
     const char *refused(const Cell &a, int h, const Cell &b, int d) const;
     /* From a platform that carries the player when fromHeight >= 0. */
-    Outcome stepImpl(int u, int v, int f, int d, bool timed, double atMs,
+    Outcome stepImpl(int u, int v, int f, int d, bool timed, double atMs, const Speed *speed,
                      int fromHeight = -1) const;
+    /* A move started a ms from the view's clock under *speed, taking
+     * fixedMs (a slide's) or else the step time: until the next move can
+     * start, ms from a, and *speed after it, with the pickup on the cell it
+     * goes to (TileContents, 0 for none) taken on the way. */
+    double timeMove(double a, int pickup, double fixedMs, Speed *speed) const;
     /* The height the lift on (u, v) stands parked at through [atMs, atMs +
      * forMs], or -1. */
     int liftHeight(int u, int v, double atMs, double forMs) const;
@@ -145,6 +168,8 @@ private:
     std::map<int, std::vector<Alighting>> alight_;  // a platform's end cell index to its passes
     std::set<int> shut_;                        // cell indices shut()
     std::set<int> oneShot_;                     // the one-shot tiles kept off
+    Speed speed_;                               // the view's
+    bool  speedy_ = false;
 };
 
 /* The bridge the switch on (u, v) works, or null if it is no working switch. */
@@ -255,6 +280,7 @@ private:
                                      // 4 a ride, 5 a glide, 6 forward or 7 back off a platform
     std::vector<int>    alightAt_;   // for 6 and 7: the cell index stepped off from
     std::vector<double> departs_;    // when the move into it started
+    std::vector<Speed>  speed_;      // the step time on coming to rest in it
 };
 
 /* The nav model with the throwers' cells shut, the one each is in and,

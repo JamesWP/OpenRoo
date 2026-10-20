@@ -26,6 +26,7 @@ void fill_mover(Mover &m, const E &e)
     m.moveDir = e.moveDir();
     m.animStart = e.animStart();
     m.animMs = e.animDuration();
+    m.stepEnd = e.stepEnd();
     m.stuckSince = e.stuckSince();
 }
 
@@ -84,6 +85,8 @@ BotView capture(const Game &game)
     view.player.frozenFoes = pl->freezeActive() != 0;
     view.player.protection = pl->protectionActive() != 0;
     view.player.stepMs     = pl->stepDuration();
+    view.player.speedUpEnds  = pl->effectAActive() ? pl->effectAStart() + 10000.0 : 0;  // K_EFFECT_MS
+    view.player.slowDownEnds = pl->effectCActive() ? pl->effectCStart() + 10000.0 : 0;
     view.player.moveState  = pl->moveState();
     view.player.freezeUntil = pl->freezeActive() ? pl->freezeStart() + 5000.0 : 0;  // K_FREEZE_MS
     view.player.bombReadyAt = pl->lastBombDrop() + 2000.0;

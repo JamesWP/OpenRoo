@@ -21,6 +21,14 @@ const double FALL_ACCEL  = 5.405f;  // and its gain, a height a s^2
 const int    MAX_CHAIN   = 400;     // forced steps before a chain is taken to loop
 const double LIFT_HORIZON_MS = 120000.0;  // how far ahead the lifts are followed
 const double LIFT_MARGIN_MS  = 100.0;     // a lift stays parked this long past a step on or off it
+const double STEP_GRACE_MS   = 20.0;      // a move this soon after the last starts where it ended
+const double NORMAL_STEP_MS  = 200.0;     // player.cpp: the step time, and under the speed effects,
+const double FAST_STEP_MS    = 100.0;     // for EFFECT_MS from the tick one is picked up
+const double SLOW_STEP_MS    = 400.0;
+const double EFFECT_MS       = 10000.0;
+/* A pickup is taken on the first tick the step to it is this far done:
+ * centred on the cell, within 0.3 / sqrt(3) of it (player.cpp). */
+const double CENTRED = 1.0 - 0.3 / 1.7320508075688772;
 
 bool stairs(int kind) { return kind >= TILE_STAIRS_1 && kind <= TILE_STAIRS_4; }
 
@@ -36,6 +44,15 @@ bool dynamic(int kind)
 
 NavModel::NavModel(const BotView &view, bool oneShots) : view_(&view)
 {
+    const PlayerView &p = view.player;
+    speed_.stepMs = p.stepMs;
+    if (p.speedUpEnds > 0)
+        speed_.upEnds = p.speedUpEnds - view.now;
+    if (p.slowDownEnds > 0)
+        speed_.downEnds = p.slowDownEnds - view.now;
+    speedy_ = p.speedUpEnds > 0 || p.slowDownEnds > 0;
+    for (const Cell &c : view.cells)
+        speedy_ = speedy_ || c.contents == CONTENTS_SPEED_UP || c.contents == CONTENTS_SPEED_DOWN;
     if (!oneShots) {
         const std::vector<int> runs = keptOffRuns(view);
         for (size_t i = 0; i < runs.size(); i++)
@@ -76,17 +93,18 @@ void NavModel::arm(Step c, double atMs)
     back_[at] = Fallen{back, view_->cell(c.u, c.v).height, from};
 }
 
-double NavModel::fallMs(int drop, double tickMs)
+double NavModel::fallMs(int drop, double tickMs, bool stairs)
 {
     if (drop <= 0 || tickMs <= 0)
         return 0;
     // From a height well clear of zero, so that the game's truncation of it
-    // is the floor; the elapsed ms are whole, as the game takes them.
+    // is the floor; the elapsed ms are whole, as the game takes them.  Stairs
+    // take the faller half a height above their floor.
     const int from = 64, floor = from - drop;
     for (int k = 1;; k++) {
         const double ts = std::floor(k * tickMs + 1e-6) * (double)0.001f;
         const double h  = (-FALL_SPEED - ts * FALL_ACCEL) * ts + from;
-        if ((int)(long long)h + 1 <= floor)
+        if (stairs ? h <= floor + 0.5 : (int)(long long)h + 1 <= floor)
             return (k + 2) * tickMs;
     }
 }
@@ -112,12 +130,6 @@ double NavModel::jumpMs(int rise, double tickMs)
         if ((float)((v0 - ts * GRAVITY_HALF) * ts) >= (float)rise)
             return (k + 1) * tickMs;
     }
-}
-
-bool NavModel::falls(const Cell &a, const Cell &b)
-{
-    return b.height < a.height && !stairs(b.kind) &&
-           (a.height - b.height >= 2 || !stairs(a.kind));
 }
 
 const BridgeView *switchedBy(const BotView &view, int u, int v)
@@ -177,7 +189,7 @@ std::vector<NavModel::Alighting> NavModel::alightings(int u, int v, double atMs)
     return out;
 }
 
-Outcome NavModel::stepOff(int u, int v, int f, int d, double atMs) const
+Outcome NavModel::stepOff(int u, int v, int f, int d, double atMs, const Speed *speed) const
 {
     const PlatformView *p = platformThrough(*view_, u, v);
     if (!p || (p->alongU ? DIR_DU[d] != 0 : DIR_DV[d] != 0)) {
@@ -186,7 +198,7 @@ Outcome NavModel::stepOff(int u, int v, int f, int d, double atMs) const
         out.why = "along the track";
         return out;
     }
-    return stepImpl(u, v, f, d, true, atMs, p->height);
+    return stepImpl(u, v, f, d, true, atMs, speed, p->height);
 }
 
 int NavModel::liftHeight(int u, int v, double atMs, double forMs) const
@@ -335,18 +347,68 @@ unsigned long long navHash(const BotView &view)
 
 Outcome NavModel::step(int u, int v, int f, int d) const
 {
-    return stepImpl(u, v, f, d, false, 0);
+    return stepImpl(u, v, f, d, false, 0, nullptr);
 }
 
-Outcome NavModel::stepAt(int u, int v, int f, int d, double atMs) const
+Outcome NavModel::stepAt(int u, int v, int f, int d, double atMs, const Speed *speed) const
 {
-    return stepImpl(u, v, f, d, true, atMs);
+    return stepImpl(u, v, f, d, true, atMs, speed);
 }
 
-Outcome NavModel::stepWhenOpen(int u, int v, int f, int d, double atMs, double *startMs) const
+double NavModel::timeMove(double a, int pickup, double fixedMs, Speed *speed) const
+{
+    auto expire = [speed](double t) {
+        if (t > speed->upEnds + 1e-6 || t > speed->downEnds + 1e-6)
+            speed->stepMs = NORMAL_STEP_MS;
+        if (t > speed->upEnds + 1e-6)
+            speed->upEnds = 1e300;
+        if (t > speed->downEnds + 1e-6)
+            speed->downEnds = 1e300;
+    };
+    auto take = [speed, pickup](double t) {
+        if (pickup == CONTENTS_SPEED_UP) {
+            speed->stepMs = FAST_STEP_MS;
+            speed->upEnds = t + EFFECT_MS;
+        } else if (pickup == CONTENTS_SPEED_DOWN) {
+            speed->stepMs   = SLOW_STEP_MS;
+            speed->downEnds = t + EFFECT_MS;
+        }
+    };
+    const double tick = view_->tickMs;
+    if (tick <= 0) {
+        const double ms = fixedMs > 0 ? fixedMs : speed->stepMs;
+        take(a + ms);
+        return ms;
+    }
+    // Each tick the step's time is the step time as it was at the end of the
+    // last (movableentity.cpp copies it in every tick), then the pickup is
+    // taken and the effects run out (player.cpp).  It is set off on the
+    // first tick at or after a: a little before, on the end of the last.
+    double t = std::ceil(a / tick - 1e-6) * tick;
+    expire(t);
+    bool taken = pickup == 0;
+    for (int k = 0; k < 10000; k++) {
+        t += tick;
+        const double ms = fixedMs > 0 ? fixedMs : speed->stepMs;
+        const bool ended = t - a >= ms - 1e-6;
+        if (!taken && (ended || (t - a) / ms > CENTRED)) {
+            taken = true;
+            take(t);
+        }
+        expire(t);
+        if (ended) {
+            const double end = a + ms, since = t - end;
+            return (since > 1e-6 && since < STEP_GRACE_MS ? end : t) - a;
+        }
+    }
+    return speed->stepMs;
+}
+
+Outcome NavModel::stepWhenOpen(int u, int v, int f, int d, double atMs, double *startMs,
+                               const Speed *speed) const
 {
     *startMs = atMs;
-    Outcome first = stepAt(u, v, f, d, atMs);
+    Outcome first = stepAt(u, v, f, d, atMs, speed);
     if (first.kind == Outcome::Rest || (spells_.empty() && back_.empty()))
         return first;
     std::vector<double> starts;
@@ -365,7 +427,7 @@ Outcome NavModel::stepWhenOpen(int u, int v, int f, int d, double atMs, double *
     for (const double t : starts) {
         if (onPlatform && liftHeight(u, v, atMs, t - atMs) < 0)
             break;
-        Outcome o = stepAt(u, v, f, d, t);
+        Outcome o = stepAt(u, v, f, d, t, speed);
         if (o.kind == Outcome::Rest) {
             *startMs = t;
             return o;
@@ -375,11 +437,12 @@ Outcome NavModel::stepWhenOpen(int u, int v, int f, int d, double atMs, double *
 }
 
 Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
-                           int fromHeight) const
+                           const Speed *speed, int fromHeight) const
 {
     const BotView &w = *view_;
     Outcome out;
     out.facing = f;
+    out.speed  = speed ? *speed : speed_;
     // A lift is open only at the height it is parked at, when timed.
     const double through = w.player.stepMs + LIFT_MARGIN_MS;
     Cell origin = w.cell(u, v);
@@ -458,7 +521,7 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
         }
         const Cell &b = *bp;
         out.at.push_back(t);
-        t += sliding ? SLIDE_MS : w.player.stepMs;
+        t += timeMove(atMs + t, b.contents, sliding ? SLIDE_MS : 0, &out.speed);
         out.cells.push_back({nu, nv});
         if (stairs(b.kind) && dir != b.kind - 4 && dir != opposite(b.kind - 4) && b.height > ch) {
             // A raised stair is a block two cells tall with open space under
@@ -484,15 +547,25 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
             out.ms   = t;
             return out;
         }
-        if (b.height < ch && b.kind != TILE_JUMP_PAD && (ch - b.height >= 3 || b.height <= 1)) {
+        // A step down onto stairs takes the player a height down
+        // (movableentity.cpp), and it falls from there if they are lower.
+        const bool ontoStairs = stairs(b.kind) && b.height < ch;
+        const int  fallFrom   = ontoStairs ? ch - 1 : ch;
+        if (b.height < fallFrom && b.kind != TILE_JUMP_PAD &&
+            (fallFrom - b.height >= 3 || b.height <= 1)) {
             out.kind = Outcome::Death;
             out.why  = "drop";
             out.ms   = t;
             return out;
         }
-        const Cell &a = n == 0 ? origin : w.cell(cu, cv);
-        if (falls(a, b) && ch > b.height)
-            t += fallMs(ch - b.height, w.tickMs);
+        // Anything lower is a fall, off stairs too (the step keeps the
+        // player's height, movableentity.cpp), but what a slide carries the
+        // player down along the step.
+        const int drop = ch - b.height - (sliding ? 1 : 0);
+        if (ontoStairs)
+            t += fallMs(fallFrom - b.height, w.tickMs, true);
+        else if (drop > 0)
+            t += fallMs(drop, w.tickMs);
         cu = nu;
         cv = nv;
         ch = b.height;
@@ -527,14 +600,15 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
     return out;
 }
 
-Outcome NavModel::turn(int u, int v, int f, int delta) const
+Outcome NavModel::turn(int u, int v, int f, int delta, double atMs, const Speed *speed) const
 {
     Outcome out;
     out.kind   = Outcome::Rest;
     out.u      = u;
     out.v      = v;
     out.facing = turned(f, delta);
-    out.ms     = view_->player.stepMs;
+    out.speed  = speed ? *speed : speed_;
+    out.ms     = timeMove(atMs, 0, 0, &out.speed);
     out.cells.push_back({u, v});
     return out;
 }
@@ -550,6 +624,7 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
     how_.assign(n, -1);
     departs_.assign(n, 0.0);
     alightAt_.assign(n, -1);
+    speed_.assign(n, nav.speed());
 
     using Item = std::pair<double, int>;
     std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open;
@@ -558,7 +633,7 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
     departs_[s] = startMs;
     open.push({startMs, s});
     std::vector<char> done(n, 0);
-    const bool timed = nav.timed();
+    const bool timed = nav.timed() || nav.speedy();
     while (!open.empty()) {
         const auto [c, i] = open.top();
         open.pop();
@@ -573,9 +648,10 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
             double start = c;
             Outcome o;
             if (how >= 2)
-                o = nav.turn(cu, cv, f, how == 2 ? +1 : -1);
+                o = nav.turn(cu, cv, f, how == 2 ? +1 : -1, c, &speed_[i]);
             else if (timed)
-                o = nav.stepWhenOpen(cu, cv, f, how == 0 ? f : NavModel::opposite(f), c, &start);
+                o = nav.stepWhenOpen(cu, cv, f, how == 0 ? f : NavModel::opposite(f), c, &start,
+                                     &speed_[i]);
             else
                 o = nav.step(cu, cv, f, how == 0 ? f : NavModel::opposite(f));
             if (o.kind != Outcome::Rest)
@@ -587,6 +663,7 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
                 parent_[j] = i;
                 how_[j]    = (signed char)how;
                 departs_[j] = start;
+                speed_[j]  = o.speed;
                 open.push({nc, j});
             }
         }
@@ -600,6 +677,7 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
                     parent_[j] = i;
                     how_[j]    = 5;
                     departs_[j] = c;
+                    speed_[j]  = speed_[i];
                     open.push({nc, j});
                 }
             }
@@ -613,6 +691,7 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
                 parent_[j] = i;
                 how_[j]    = 4;
                 departs_[j] = c;
+                speed_[j]  = speed_[i];
                 open.push({arrive, j});
             }
         }
@@ -620,7 +699,8 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
         if (timed)
             for (const NavModel::Alighting &a : nav.alightings(cu, cv, c))
                 for (int how = 0; how < 2; how++) {
-                    const Outcome o = nav.stepOff(a.at.u, a.at.v, f, how == 0 ? f : NavModel::opposite(f), a.ms);
+                    const Outcome o = nav.stepOff(a.at.u, a.at.v, f, how == 0 ? f : NavModel::opposite(f),
+                                                  a.ms, &speed_[i]);
                     if (o.kind != Outcome::Rest)
                         continue;
                     const int j = index(o.u, o.v, o.facing);
@@ -631,6 +711,7 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
                         how_[j]      = (signed char)(6 + how);
                         departs_[j]  = a.ms;
                         alightAt_[j] = a.at.v * eu_ + a.at.u;
+                        speed_[j]    = o.speed;
                         open.push({nc, j});
                     }
                 }
@@ -641,7 +722,8 @@ Outcome Paths::alighted(int from, int to) const
 {
     const int f = from % 4 + 1;
     const int au = alightAt_[to] % eu_, av = alightAt_[to] / eu_;
-    return nav_.stepOff(au, av, f, how_[to] == 6 ? f : NavModel::opposite(f), departs_[to]);
+    return nav_.stepOff(au, av, f, how_[to] == 6 ? f : NavModel::opposite(f), departs_[to],
+                        &speed_[from]);
 }
 
 double Paths::cost(int u, int v) const
@@ -703,7 +785,8 @@ std::vector<Step> Paths::cellsTo(int u, int v) const
             continue;  // a turn passes no cell
         const int f  = from % 4 + 1;
         const int fu = (from / 4) % eu_, fv = (from / 4) / eu_;
-        const Outcome o = nav_.stepAt(fu, fv, f, how == 0 ? f : NavModel::opposite(f), departs_[to]);
+        const Outcome o = nav_.stepAt(fu, fv, f, how == 0 ? f : NavModel::opposite(f), departs_[to],
+                                      &speed_[from]);
         cells.insert(cells.end(), o.cells.begin(), o.cells.end());
     }
     return cells;
@@ -751,7 +834,7 @@ std::vector<Leg> Paths::legsTo(int u, int v) const
             leg.facing = f;
             legs.push_back(leg);
         }
-        const Outcome o = nav_.stepAt(fu, fv, f, dir, departs_[to]);
+        const Outcome o = nav_.stepAt(fu, fv, f, dir, departs_[to], &speed_[from]);
         legs.back().cells.insert(legs.back().cells.end(), o.cells.begin(), o.cells.end());
     }
     return legs;
@@ -783,7 +866,8 @@ std::vector<Timed> Paths::scheduleTo(int u, int v) const
             continue;  // a turn enters no cell
         const int f  = from % 4 + 1;
         const int fu = (from / 4) % eu_, fv = (from / 4) / eu_;
-        const Outcome o = nav_.stepAt(fu, fv, f, how == 0 ? f : NavModel::opposite(f), departs_[to]);
+        const Outcome o = nav_.stepAt(fu, fv, f, how == 0 ? f : NavModel::opposite(f), departs_[to],
+                                      &speed_[from]);
         for (size_t c = 0; c < o.cells.size(); c++)
             out.push_back({departs_[to] - startMs_ + o.at[c], o.cells[c]});
     }

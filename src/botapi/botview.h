@@ -57,7 +57,8 @@ struct Mover {
     /* At rest: neither stepping, turning nor in the air. */
     bool atRest() const { return !moving && !falling; }
     double animStart = 0;  // clock ms the current or last move began
-    double animMs = 0;     // how long that move takes
+    double animMs = 0;     // how long that move takes (at rest, the step time)
+    double stepEnd = 0;    // clock ms the last step or turn ended
     double stuckSince = 0; // clock ms a sticky pad caught it, 0 if not held
 };
 
@@ -66,6 +67,9 @@ struct PlayerView : Mover {
     int  gems = 0;
     bool reversed = false, frozenFoes = false, protection = false;
     double stepMs = 200;
+    // The speed effects (player.cpp), speeding up and slowing down the
+    // steps: each runs out on the first tick past this, clock ms; 0 for none.
+    double speedUpEnds = 0, slowDownEnds = 0;
     int  moveState = 0;     // nonzero once dead
     double freezeUntil = 0; // the foes are held until then (clock ms), if frozen
     double bombReadyAt = 0; // the next bomb can be dropped from then (clock ms)
