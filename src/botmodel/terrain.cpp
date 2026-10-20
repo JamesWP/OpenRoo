@@ -4,7 +4,7 @@
 namespace bot {
 
 Terrain::Terrain(const BotView &view, bool throughSwitches, bool glides)
-    : view_(view), nav_(view_), throughSwitches_(throughSwitches), glides_on_(glides)
+    : view_(view), nav_(view_, throughSwitches), throughSwitches_(throughSwitches), glides_on_(glides)
 {
     // A bridge on its way back is gone already: its deck goes from under
     // whoever is on it (one going out is there as far as it is stamped).

@@ -18,6 +18,8 @@ const double SLIDE_MS        = 150.0;  // movableentity.cpp
 const double STICKY_MS       = 3000.0;
 const unsigned DROP_EVERY_MS = 2000;   // foe.cpp's Foe::step
 const double DROP_LATE_MS    = 50.0;   // Foe::dropBomb: this soon into a move it still drops
+const double FALL_MS         = 1500.0; // fallingtile.cpp: armed to fallen
+const double BACK_MS         = 5000.0; // armed to back
 
 int opposite(int d) { return d > 2 ? d - 2 : d + 2; }
 int right(int d)    { return d % 4 + 1; }
@@ -50,6 +52,53 @@ int FoeModel::heightNow(int u, int v) const
     const LiftView *lift = c.kind == TILE_LIFT ? liftAt(*view_, u, v) : nullptr;
     const int h = lift ? liftHeightAt(*view_, *lift, clock_ - view_->now) : -1;
     return h >= 0 ? h : c.height;
+}
+
+bool FoeModel::empty(int u, int v) const
+{
+    if (!view_->inside(u, v))
+        return false;
+    const int i = fallAt_[(size_t)v * view_->extentU + u];
+    if (i >= 0)
+        return falls_[(size_t)i].gone;
+    const Cell &c = cell(u, v);
+    return c.kind == TILE_EMPTY && !c.track;
+}
+
+void FoeModel::tickFalls()
+{
+    for (Fall &t : falls_) {
+        const bool was = t.gone;
+        if (occ(t.u, t.v) != 0 && !t.armed && !t.gone) {
+            t.armed   = true;
+            t.armedAt = clock_;
+        }
+        if (t.armed && clock_ - t.armedAt >= FALL_MS) {
+            t.armed = false;
+            t.gone  = true;
+        }
+        if (t.gone && t.respawns && clock_ - t.armedAt > BACK_MS)
+            t.gone = false;
+        if (t.gone != was)
+            fallsChanged_ += t.gone == t.goneAtLoad ? -1 : 1;
+    }
+}
+
+double FoeModel::parkedLeft(int u, int v) const
+{
+    const PlatformView *p = platformThrough(*view_, u, v);
+    if (p == nullptr)
+        return -1;
+    const double at = clock_ - view_->now;
+    std::vector<Park> atOrigin, atLimit;
+    platformSpells(*view_, *p, at + 1, &atOrigin, &atLimit);
+    const bool origin = (p->alongU ? u : v) == (p->alongU ? p->originU : p->originV);
+    if (!origin && (p->alongU ? u : v) != p->limit)
+        return -1;
+    for (const Park &k : origin ? atOrigin : atLimit)
+        if (k.from <= at && at <= k.to)
+            return k.to - at;
+    return -1;
 }
 
 int FoeModel::occ(int u, int v) const
@@ -116,8 +165,16 @@ void FoeModel::load(const BotView &view)
             }
         } else {
             f.stepEnd = fv.animStart + fv.animMs;
+            f.riding  = view.cell(fv.u, fv.v).kind == TILE_PLATFORM_TRACK;
         }
         foes_.push_back(f);
+    }
+    falls_.clear();
+    fallAt_.assign(view.cells.size(), -1);
+    fallsChanged_ = 0;
+    for (const FallingView &t : view.fallings) {
+        fallAt_[(size_t)t.v * view.extentU + t.u] = (int)falls_.size();
+        falls_.push_back({t.u, t.v, t.respawns, t.armed, t.fallen, t.fallen, t.armedAt});
     }
     const size_t keys = (size_t)view.extentU * view.extentV;
     if (openAt_.size() != keys) {
@@ -153,7 +210,7 @@ void FoeModel::load(const BotView &view)
 bool FoeModel::passable(int u, int v, int mode) const
 {
     const Cell &c = cell(u, v);
-    if (c.kind == TILE_EMPTY && !c.track)
+    if (empty(u, v))
         return false;
     if (c.kind == TILE_IMPASSABLE)
         return false;
@@ -217,7 +274,7 @@ bool FoeModel::stepLegal(int uf, int vf, int ut, int vt) const
 bool FoeModel::firstStep(const Foe &f, int tu, int tv, int cap, int *nu, int *nv)
 {
     const int stride = view_->extentU;
-    const bool keep = !sticky_ && f.mode != FOE_GEM_RUNNER && f.mode != FOE_SWITCH_RUNNER;
+    const bool keep = !sticky_ && fallsChanged_ == 0 && f.mode != FOE_GEM_RUNNER && f.mode != FOE_SWITCH_RUNNER;
     const unsigned long long memo =
         ((((unsigned long long)(f.v * stride + f.u) * 65536 + (unsigned)(tv * stride + tu)) * 256 +
           (unsigned)(f.mode & 0xff)) * 1024) + (unsigned)(cap & 0x3ff);
@@ -421,7 +478,7 @@ bool FoeModel::farthestFree(int u0, int v0, int *pu, int *pv) const
     int bu = u0, bv = v0;
     for (int v = 0; v < view_->extentV; v++)
         for (int u = 0; u < view_->extentU; u++) {
-            if (cell(u, v).kind == TILE_EMPTY || occ(u, v) != 0)
+            if (empty(u, v) || occ(u, v) != 0)
                 continue;
             const double d = sqrt((double)((v - v0) * (v - v0) + (u - u0) * (u - u0)));
             if (best < d) {
@@ -513,14 +570,16 @@ int FoeModel::chaseMove(const Foe &f, int tu, int tv, int speed)
     if (pm != facing && pm != opposite(facing))
         return pm;  // a turn
     const Cell &step = cell(nu, nv), &here = cell(f.u, f.v);
-    if (step.kind == TILE_EMPTY || here.kind == TILE_JUMP_PAD)
+    // A platform's track is open only where the platform stands parked, long
+    // enough still for the step, and never to a foe on a platform (foe.cpp).
+    if (step.track && (f.riding || parkedLeft(nu, nv) < f.stepMs))
+        return 0;
+    if (empty(nu, nv) || here.kind == TILE_JUMP_PAD)
         return 0;
     if (step.kind == TILE_LIFT && heightNow(nu, nv) != f.h)
         return 0;
     if (here.kind == TILE_LIFT && step.height != f.h)
         return 0;
-    if (step.kind == TILE_PLATFORM_TRACK)
-        return 0;  // a parked platform's timing is not modelled: taken as not there
     return pm;
 }
 
@@ -556,6 +615,7 @@ bool FoeModel::startMove(Foe &f, int move, bool sliding)
     f.animMs    = sliding ? SLIDE_MS : f.stepMs;
     f.moveDir   = move;
     if (real) {
+        f.riding      = false;
         f.lastMoveDir = move;
         f.fromU = f.u;
         f.fromV = f.v;
@@ -572,6 +632,20 @@ void FoeModel::tickFoe(size_t i)
     Foe &f = foes_[i];
     f.held = clock_ < view_->player.freezeUntil ? 1 : 0;
     int tu, tv, speed;
+    // A foe standing on a lift rides it (movableentity.cpp: on a lift, at
+    // its current height), and one on a platform goes where it does.
+    if (f.moveDir == 0 && cell(f.u, f.v).kind == TILE_LIFT)
+        f.h = heightNow(f.u, f.v);
+    Step on;
+    const PlatformView *p = f.riding ? platformThrough(*view_, f.u, f.v) : nullptr;
+    if (f.moveDir == 0 && p && platformCellAt(*view_, *p, clock_ - view_->now, &on) &&
+        (on.u != f.u || on.v != f.v)) {
+        if (occ(f.u, f.v) == f.kind)
+            setOcc(f.u, f.v, 0);
+        f.u = on.u;
+        f.v = on.v;
+        setOcc(f.u, f.v, f.kind);
+    }
     target(f, &tu, &tv, &speed);
     // A thrower with its target beside it asks for a bomb.  As in the game,
     // the time since the last is compared unsigned.
@@ -613,6 +687,7 @@ void FoeModel::stepFoe(Foe &f, int tu, int tv, int speed)
             if (f.moveDir >= 1 && f.moveDir <= 4) {
                 if (occ(f.fromU, f.fromV) == f.kind)
                     setOcc(f.fromU, f.fromV, 0);
+                f.riding = cell(f.u, f.v).track;
             } else {
                 f.facing = f.moveDir - 10;
             }
@@ -660,6 +735,8 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
     if (view_ == nullptr || view_->tickMs <= 0)
         return;
     clock_ += view_->tickMs;
+    // The level's objects first, as the game ticks them (gametick.cpp).
+    tickFalls();
     const Step at = playerAt(clock_);
     if (at.u != player_.u || at.v != player_.v) {
         if (occ(player_.u, player_.v) == playerOcc_)
@@ -669,6 +746,17 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
     }
     for (size_t i = 0; i < foes_.size(); i++)
         tickFoe(i);
+    // A foe on a tile that has fallen falls with it.
+    for (size_t i = 0; i < foes_.size();) {
+        const Foe &f = foes_[i];
+        if (fallAt_.empty() || !empty(f.u, f.v) || fallAt_[(size_t)f.v * view_->extentU + f.u] < 0) {
+            ++i;
+            continue;
+        }
+        if (occ(f.u, f.v) == f.kind)
+            setOcc(f.u, f.v, 0);
+        foes_.erase(foes_.begin() + (long)i);
+    }
     // The blasts: a foe in one dies, and its cell is freed.
     for (size_t i = 0; i < foes_.size();) {
         const Foe &f = foes_[i];

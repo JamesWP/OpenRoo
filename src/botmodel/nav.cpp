@@ -12,8 +12,10 @@ namespace {
 
 const double SLIDE_MS    = 150.0;   // a step along a slide (movableentity.cpp)
 const double TELEPORT_MS = 500.0;   // each of the teleporter's two waits
-const double STICKY_MS   = 3000.0;  // a sticky pad's hold
-const double JUMP_MS     = 500.0;   // a jump pad's arc; not measured yet
+const double STICKY_MS   = 3000.0;  // a sticky pad's hold (movableentity.cpp)
+const double ARC_BIAS    = 7.2f;    // a jump pad's launch (movableentity.cpp)
+const double GRAVITY_TWO = 19.62f;
+const double GRAVITY_HALF = 4.905f;
 const double FALL_SPEED  = 3.0f;    // the free fall (movableentity.cpp): its start, a height a s
 const double FALL_ACCEL  = 5.405f;  // and its gain, a height a s^2
 const int    MAX_CHAIN   = 400;     // forced steps before a chain is taken to loop
@@ -32,8 +34,14 @@ bool dynamic(int kind)
 
 }  // namespace
 
-NavModel::NavModel(const BotView &view) : view_(&view)
+NavModel::NavModel(const BotView &view, bool oneShots) : view_(&view)
 {
+    if (!oneShots) {
+        const std::vector<int> runs = keptOffRuns(view);
+        for (size_t i = 0; i < runs.size(); i++)
+            if (runs[i] >= 0)
+                oneShot_.insert((int)i);
+    }
     for (const LiftView &l : view.lifts)
         spells_[l.v * view.extentU + l.u] = parkSpells(view, l, LIFT_HORIZON_MS);
     for (const FallingView &f : view.fallings)
@@ -80,6 +88,29 @@ double NavModel::fallMs(int drop, double tickMs)
         const double h  = (-FALL_SPEED - ts * FALL_ACCEL) * ts + from;
         if ((int)(long long)h + 1 <= floor)
             return (k + 2) * tickMs;
+    }
+}
+
+double NavModel::stickyMs(double tickMs)
+{
+    if (tickMs <= 0)
+        return STICKY_MS;
+    // Held while the clock is within the hold of the tick it caught the player.
+    int k = 1;
+    while (k * tickMs <= STICKY_MS)
+        k++;
+    return k * tickMs;
+}
+
+double NavModel::jumpMs(int rise, double tickMs)
+{
+    if (tickMs <= 0)
+        return 0;
+    const double v0 = std::sqrt((rise + (double)(float)ARC_BIAS) * GRAVITY_TWO);
+    for (int k = 1;; k++) {
+        const double ts = k * tickMs * (double)0.001f;
+        if ((float)((v0 - ts * GRAVITY_HALF) * ts) >= (float)rise)
+            return (k + 1) * tickMs;
     }
 }
 
@@ -206,18 +237,71 @@ bool parkedFoe(const BotView &view, int u, int v)
     return false;
 }
 
+std::vector<int> keptOffRuns(const BotView &view)
+{
+    // Kept by terrain: the tests walk the level.
+    static std::map<unsigned long long, std::vector<int>> kept;
+    if (view.fallings.empty())
+        return std::vector<int>(view.cells.size(), -1);
+    const unsigned long long key = navHash(view);
+    const auto it = kept.find(key);
+    if (it != kept.end())
+        return it->second;
+    if (kept.size() > 64)
+        kept.clear();
+    std::vector<int> runs = oneShotRuns(view);
+    std::map<int, std::vector<int>> cells;
+    for (size_t i = 0; i < runs.size(); i++)
+        if (runs[i] >= 0)
+            cells[runs[i]].push_back((int)i);
+    for (const auto &[run, in] : cells) {
+        // The ground beside the run.
+        std::set<int> beside;
+        for (const int i : in) {
+            const int u = i % view.extentU, v = i / view.extentU;
+            for (int d = DIR_MIN; d <= DIR_MAX; d++) {
+                const int bu = u + DIR_DU[d], bv = v + DIR_DV[d];
+                if (!view.inside(bu, bv) || runs[(size_t)bv * view.extentU + bu] == run)
+                    continue;
+                const Cell &c = view.cell(bu, bv);
+                if (c.kind != TILE_EMPTY && c.kind != TILE_IMPASSABLE && c.height > 0)
+                    beside.insert(bv * view.extentU + bu);
+            }
+        }
+        // Without it, does each of them still reach every other?
+        NavModel without(view, true);
+        for (const int i : in)
+            without.shut({i % view.extentU, i / view.extentU});
+        bool bridge = false;
+        for (auto a = beside.begin(); a != beside.end() && !bridge; ++a) {
+            const Paths from(without, *a % view.extentU, *a / view.extentU, DIR_MIN);
+            for (const int b : beside)
+                bridge = bridge || (b != *a && from.cost(b % view.extentU, b / view.extentU) < 0);
+        }
+        if (!bridge)
+            for (const int i : in)
+                runs[(size_t)i] = -1;
+    }
+    return kept[key] = runs;
+}
+
 unsigned long long navHash(const BotView &view)
 {
     unsigned long long h = 1469598103934665603ull;
     auto mix = [&h](unsigned x) { h = (h ^ x) * 1099511628211ull; };
     std::vector<char> falls(view.cells.size(), 0);
-    for (const FallingView &f : view.fallings)
-        falls[(size_t)f.v * view.extentU + f.u] = 1;
+    const std::vector<int> runs = oneShotRuns(view);
+    for (const FallingView &f : view.fallings) {
+        const size_t i = (size_t)f.v * view.extentU + f.u;
+        falls[i] = runs[i] >= 0 ? 2 : 1;
+    }
     size_t at = 0;
     for (const Cell &c : view.cells) {
-        // A falling tile stands or has fallen: for the model it comes back.
-        if (falls[at++]) {
-            mix(0xfa11);
+        // A falling tile stands or has fallen: for the model it comes back,
+        // but a one-shot tile, which is kept off until it is armed.
+        const char fall = falls[at++];
+        if (fall) {
+            mix(0xfa10 + fall);
             continue;
         }
         // The cells that carry the lifts and platforms: what stands is that
@@ -363,6 +447,8 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
         const char *why = bp ? refused(n == 0 ? origin : w.cell(cu, cv), ch, *bp, dir) : "edge";
         if (!why && (parkedFoe(w, nu, nv) || shut_.count(nv * w.extentU + nu)))
             why = "foe";
+        if (!why && oneShot_.count(nv * w.extentU + nu))
+            why = "one-shot";
         if (why) {
             if (n == 0) {
                 out.why = why;
@@ -426,11 +512,11 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
             out.at.push_back(t);
             out.cells.push_back({cu, cv});
         } else if (b.kind == TILE_JUMP_PAD) {
-            t += JUMP_MS;
+            t += jumpMs(b.jumpTop - b.height, w.tickMs);
             ch = b.jumpTop;
         } else {
             if (b.kind == TILE_STICKY && !b.busy)
-                t += STICKY_MS;
+                t += stickyMs(w.tickMs);
             break;
         }
     }
@@ -662,6 +748,7 @@ std::vector<Leg> Paths::legsTo(int u, int v) const
         if (departs_[to] > cost_[from] + 1e-6) {
             Leg leg;
             leg.waitUntil = departs_[to];
+            leg.facing = f;
             legs.push_back(leg);
         }
         const Outcome o = nav_.stepAt(fu, fv, f, dir, departs_[to]);

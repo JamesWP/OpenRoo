@@ -472,7 +472,7 @@ Player::Player()
 {
     pool_9f_ = NULL;
     zeroSoundSlots();
-    field_126      = 0.0;
+    stuckSince_      = 0.0;
     stepDuration_  = 200.0;
     field_156      = 1;
     gemsCollected_ = 0;

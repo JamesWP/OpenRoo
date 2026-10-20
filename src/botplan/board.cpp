@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "bombmodel.h"
+#include "fallingmodel.h"
 #include "foemodel.h"
 #include "route.h"
 #include "nav.h"
@@ -348,6 +349,8 @@ bool Board::canFinishFrom(Step cell) const
     if (glidesToBe())
         return true;  // a glide may lead on: no cell is known to be a trap
     const Place at{cell.u, cell.v, worlds_->pointFacing()};
+    if (crossable(spendable(), at, 0))
+        return true;  // and so may a crossing
     for (const Changes s : {(Changes)0, spendable()}) {
         if (fromMap() <= 0 ? time(s, at, exit()) >= 0 : gemRoute(s, at, fromMap()).found)
             return true;
@@ -367,8 +370,10 @@ bool Board::canFinishAfter(Step gem) const
         return it->second;
     const int need = fromMap() - 1;
     const Place at{gem.u, gem.v, worlds_->pointFacing()};
-    bool found = false;
+    bool found = crossable(spendable(), at, 0);  // a crossing may lead on
     for (const Changes s : {(Changes)0, spendable()}) {
+        if (found)
+            break;
         if (need <= 0)
             found = worlds_->get(s).from(at.u, at.v, at.facing).cost(exit().u, exit().v) >= 0;
         else
@@ -485,6 +490,54 @@ const std::vector<Site> &Board::baits(Changes s) const
             }
     }
     return out;
+}
+
+const std::vector<Crossing> &Board::crossings() const
+{
+    if (crossingsFound_)
+        return crossings_;
+    crossingsFound_ = true;
+    const BotView &view = live_;
+    const std::vector<int> runs = keptOffRuns(view);
+    auto runAt = [&](int u, int v) {
+        return view.inside(u, v) ? runs[(size_t)v * view.extentU + u] : -1;
+    };
+    const NavModel over(view, true);
+    for (int v = 0; v < view.extentV; v++)
+        for (int u = 0; u < view.extentU; u++) {
+            if (runAt(u, v) >= 0)
+                continue;
+            // From a cell beside a run, facing it.
+            for (int f = DIR_MIN; f <= DIR_MAX; f++) {
+                const int run = runAt(u + DIR_DU[f], v + DIR_DV[f]);
+                if (run < 0 || run >= 32)
+                    continue;
+                const Paths paths(over, u, v, f);
+                for (int tv = 0; tv < view.extentV; tv++)
+                    for (int tu = 0; tu < view.extentU; tu++) {
+                        const double ms = paths.cost(tu, tv);
+                        if (ms <= 0 || runAt(tu, tv) >= 0)
+                            continue;
+                        // Over the run alone.
+                        const std::vector<Step> cells = paths.cellsTo(tu, tv);
+                        bool alone = cells.size() > 2;
+                        for (size_t i = 1; i + 1 < cells.size() && alone; i++)
+                            alone = runAt(cells[i].u, cells[i].v) == run;
+                        if (alone)
+                            crossings_.push_back({{u, v}, {tu, tv, paths.facingAt(tu, tv)}, ms,
+                                                  1u << run});
+                    }
+            }
+        }
+    return crossings_;
+}
+
+bool Board::crossable(Changes s, Place from, unsigned crossed) const
+{
+    for (const Crossing &c : crossings())
+        if (!(crossed & c.bit) && time(s, from, c.from) >= 0)
+            return true;
+    return false;
 }
 
 std::string Board::noRoute() const

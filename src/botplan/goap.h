@@ -54,13 +54,14 @@ struct Facts {
     int      carriers = 0;   // of the foes, those that leave a gem
     unsigned pickups = 0;    // a bit per board pickup taken (the first 32)
     unsigned bonuses = 0;    // a bit per board time bonus taken (the first 32)
+    unsigned crossed = 0;    // a bit per one-shot run crossed (Board::crossings)
     bool     unused = false; // bombs taken that the plan has not used yet
     bool     atExit = false;
 
     auto key() const
     {
         return std::make_tuple(at.u, at.v, at.facing, changes, gemsNeeded, taken, bombs, glides, foes, carriers, pickups,
-                               bonuses, unused, atExit);
+                               bonuses, crossed, unused, atExit);
     }
     bool operator<(const Facts &o) const { return key() < o.key(); }
 };

@@ -59,7 +59,7 @@ Foe::Foe()
     field_124        = 1;
     moveDir_        = 0;
     pendingMove_     = 0;
-    field_126        = 0.0;
+    stuckSince_        = 0.0;
     sliding_         = 0;
     falling_        = 0;
     platformSlot_        = 0xff;
@@ -73,7 +73,7 @@ Foe::Foe()
     teleportPhase_         = 0;
     field_156        = 0;
     glides_         = 0;
-    field_11a        = 0;
+    launched_        = 0;
     gliding_         = 0;
     field_d3         = 0;
     onLift_         = 0;

@@ -6,6 +6,7 @@ add_library(bottactics OBJECT
     blast.cpp
     bombs.cpp
     collect.cpp
+    cross.cpp
     drops.cpp
     exit.cpp
     glide.cpp

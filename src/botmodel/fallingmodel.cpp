@@ -57,4 +57,49 @@ bool goneAt(const BotView &view, Step c, double atMs)
     return back >= 0 && atMs < back;
 }
 
+std::vector<int> oneShotRuns(const BotView &view)
+{
+    const size_t n = view.cells.size();
+    std::vector<int> run(n, -1);
+    std::vector<char> tile(n, 0), crossing(n, 0);
+    for (const FallingView &f : view.fallings) {
+        const size_t at = (size_t)f.v * view.extentU + f.u;
+        if (f.respawns || f.fallen)
+            continue;
+        tile[at] = 1;
+        crossing[at] = f.armed || (f.u == view.player.u && f.v == view.player.v);
+    }
+    int runs = 0;
+    for (size_t first = 0; first < n; first++) {
+        if (!tile[first] || run[first] >= 0)
+            continue;
+        std::vector<size_t> cells{first};
+        run[first] = runs;
+        bool crossed = false;
+        for (size_t k = 0; k < cells.size(); k++) {
+            const int u = (int)(cells[k] % view.extentU), v = (int)(cells[k] / view.extentU);
+            crossed = crossed || crossing[cells[k]];
+            const int du[] = {1, -1, 0, 0}, dv[] = {0, 0, 1, -1};
+            for (int d = 0; d < 4; d++) {
+                if (!view.inside(u + du[d], v + dv[d]))
+                    continue;
+                const size_t next = (size_t)(v + dv[d]) * view.extentU + u + du[d];
+                if (tile[next] && run[next] < 0) {
+                    run[next] = runs;
+                    cells.push_back(next);
+                }
+            }
+        }
+        if (crossed)
+            for (const size_t c : cells)
+                run[c] = -2;
+        else
+            runs++;
+    }
+    for (int &r : run)
+        if (r == -2)
+            r = -1;
+    return run;
+}
+
 }  // namespace bot

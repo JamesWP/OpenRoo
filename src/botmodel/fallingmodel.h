@@ -2,6 +2,7 @@
  * stands on it, and falls 1.5 s later, taking whoever is on it then with it. */
 #pragma once
 
+#include <vector>
 #include "botview.h"
 
 namespace bot {
@@ -24,5 +25,13 @@ bool goneSpell(const BotView &view, Step c, double armedMs, double *from, double
 /* When the fallen tile on c is back, ms from the view's clock; < 0 if it is
  * not fallen, a huge number if it never returns. */
 double backAt(const BotView &view, Step c);
+
+/* The runs of falling tiles that do not come back, which the walks keep
+ * off (nav.h): crossed, one can cut off what is beyond it for good, and to
+ * the planner crossing one is a step of its own (board.h, crossings).  For
+ * each cell, the run (tiles side by side) its tile is in, numbered from 0;
+ * -1 for any other cell, and for each tile of a run armed or under the
+ * player already, which is being crossed. */
+std::vector<int> oneShotRuns(const BotView &view);
 
 }  // namespace bot
