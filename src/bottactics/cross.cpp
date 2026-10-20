@@ -44,7 +44,7 @@ public:
         if (from.u != view.player.u || from.v != view.player.v) {
             if (!walkTo(s, s.from, from, 0, o))
                 return;
-            facing = s.from.facingAt(from.u, from.v);
+            facing = facingAfter(facing, o.script);
         } else {
             o.schedule.push_back({0, from});
             o.cost = s.from.startMs();

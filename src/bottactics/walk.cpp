@@ -18,6 +18,17 @@ const double STEP_OFF_MS = 110;
 
 }  // namespace
 
+int facingAfter(int facing, const Script &script)
+{
+    for (const ScriptStep &k : script) {
+        if (k.kind == ScriptStep::Turn)
+            facing = k.facing;
+        else if (k.kind == ScriptStep::Walk)
+            facing = Motor::facingAfter(facing, k.path);
+    }
+    return facing;
+}
+
 bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Option &o)
 {
     const double startMs = paths.startMs();

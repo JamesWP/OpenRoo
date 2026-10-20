@@ -182,7 +182,7 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
         if (walkMs > 0) {
             if (!walkTo(s, s.from, site, 0, going))
                 continue;
-            arrives = s.from.facingAt(site.u, site.v);
+            arrives = facingAfter(p.facing, going.script);
         } else {
             going.schedule.push_back({0, site});
             going.cost = s.busyMs;
@@ -237,7 +237,7 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
     // There first, then the turn.
     if (!walkTo(s, s.from, {site.u, site.v}, 0, before))
         return;
-    const int arrives = s.from.facingAt(site.u, site.v);
+    const int arrives = facingAfter(p.facing, before.script);
     const int turns = (site.facing - arrives + 4) % 4;
     const double turnMs = (turns == 3 ? 1 : turns) * p.stepMs;
     before.script.push_back({ScriptStep::Turn, site.facing, {}, 0});

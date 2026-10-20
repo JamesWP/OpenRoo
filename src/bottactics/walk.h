@@ -14,6 +14,11 @@ namespace bot {
  * target is unreachable. */
 bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Option &o);
 
+/* The facing the player has after a script, from facing: each Turn's, and
+ * after each Walk the motor's (Motor::facingAfter), which turns its own way
+ * where the route's turns tie. */
+int facingAfter(int facing, const Script &script);
+
 /* Walks from the player to each target, each costed with the ms after it
  * (target, after); with waits, after each of a few waits too. */
 void offerWalks(const Situation &s, const std::vector<std::pair<Step, double>> &targets,

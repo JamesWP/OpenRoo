@@ -193,7 +193,10 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
     const std::vector<Blast> dropped = sim.dropped();
     const int killed = sim.killed();
     const std::vector<FoeModel::Kill> kills = sim.kills();
-    if (!reach) {
+    // On the exit with the quota the level is done: nothing pens it in.
+    const Step last = plan.back().cell;
+    const bool finishes = last.u == view.exitU && last.v == view.exitV;
+    if (!reach && !finishes) {
         bool near = false;
         for (size_t i = 0; i < sim.foeCount(); i++)
             near = near || chebyshev(sim.foeCell(i), plan.back().cell) <= PEN_NEAR + 3;
