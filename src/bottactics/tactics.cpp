@@ -89,10 +89,10 @@ double busy(const BotView &v)
     if (!p.moving)
         return 0;
     double ms = std::max(0.0, p.animStart + p.animMs - v.now);
-    // Stairs (kinds 5 to 8) are no drop.
+    // Onto stairs (kinds 5 to 8) the step has taken the player down a
+    // height already (nav.h).
     const Cell &to = v.cell(p.u, p.v);
-    if (!(to.kind >= 5 && to.kind <= 8))
-        ms += NavModel::fallMs(p.h - to.height, v.tickMs);
+    ms += NavModel::fallMs(p.h - to.height, v.tickMs, to.kind >= 5 && to.kind <= 8);
     return ms;
 }
 
@@ -117,7 +117,7 @@ double firstMove(const BotView &v, double busyMs)
             at += v.tickMs;
         return at;
     }
-    const double taken = v.tickMs, ended = p.animStart + p.animMs - v.now;
+    const double taken = v.tickMs, ended = p.stepEnd - v.now;
     const double since = taken - ended;
     // Not before now, which the routes take as no start (Paths).
     return since > 0 && since < STEP_GRACE_MS ? std::max(0.0, ended) : taken;

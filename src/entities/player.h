@@ -138,7 +138,9 @@ public:
     void  setFreezeStart(double d)                { freezeStart_ = d; }
     void  setProtectionStart(double d)                { protectionStart_ = d; }
     int   protectionActive() const                     { return protectionActive_; }
+    // The speed effects: 0x0a speeds the steps up, 0x0c slows them down.
     int   effectAActive() const                     { return effectAActive_; }
+    int   effectCActive() const                     { return effectCActive_; }
     // The reversed-controls effect (0x0b): forward and back, left and right
     // swap while it lasts.
     int   reversedActive() const                    { return effectBActive_; }

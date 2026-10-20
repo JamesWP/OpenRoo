@@ -164,7 +164,7 @@ void FoeModel::load(const BotView &view)
                 f.fromV = fv.v - DIR_DV[fv.moveDir];
             }
         } else {
-            f.stepEnd = fv.animStart + fv.animMs;
+            f.stepEnd = fv.stepEnd;
             f.riding  = view.cell(fv.u, fv.v).kind == TILE_PLATFORM_TRACK;
         }
         foes_.push_back(f);
