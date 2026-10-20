@@ -398,6 +398,7 @@ double NavModel::timeMove(double a, int pickup, double fixedMs, Speed *speed) co
         expire(t);
         if (ended) {
             const double end = a + ms, since = t - end;
+            speed->cut = since >= STEP_GRACE_MS;
             return (since > 1e-6 && since < STEP_GRACE_MS ? end : t) - a;
         }
     }
@@ -608,7 +609,9 @@ Outcome NavModel::turn(int u, int v, int f, int delta, double atMs, const Speed 
     out.v      = v;
     out.facing = turned(f, delta);
     out.speed  = speed ? *speed : speed_;
-    out.ms     = timeMove(atMs, 0, 0, &out.speed);
+    // After a move cut short its key is pressed on the tick after.
+    const double pressed = out.speed.cut ? view_->tickMs : 0;
+    out.ms     = pressed + timeMove(atMs + pressed, 0, 0, &out.speed);
     out.cells.push_back({u, v});
     return out;
 }

@@ -50,6 +50,24 @@ std::string schedule_json(const Option &o, double now)
     return "[" + out + "]";
 }
 
+/* The option's script, as JSON: each step its kind's letter (Turn, Drop,
+ * Walk, wAit, StepOff) and what it takes: a facing, the clock ms, a path. */
+std::string script_json(const Option &o)
+{
+    std::string out;
+    for (const ScriptStep &k : o.script) {
+        std::string step = "[\"" + std::string(1, "TDWAS"[k.kind]) + "\"";
+        if (k.kind == ScriptStep::Turn)
+            step += "," + std::to_string(k.facing);
+        if (k.kind == ScriptStep::Wait || k.kind == ScriptStep::StepOff)
+            step += "," + std::to_string(k.untilMs);
+        for (const Step &c : k.path)
+            step += ",[" + std::to_string(c.u) + "," + std::to_string(c.v) + "]";
+        out += (out.empty() ? "" : ",") + step + "]";
+    }
+    return "[" + out + "]";
+}
+
 std::string quoted(const std::string &s)
 {
     std::string out;
@@ -215,6 +233,7 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
                 cutPickups.c_str(), board.time(board.everything(), board.start(), board.exit()) < 0);
         printTo(log_, ",\"predicted_kills\":%s", kills_json(chosen_).c_str());
         printTo(log_, ",\"schedule\":%s", schedule_json(chosen_, view.now).c_str());
+        printTo(log_, ",\"script\":%s", script_json(chosen_).c_str());
         printTo(log_, ",\"chose\":\"%s\"}\n", quoted(note_).c_str());
     }
     return true;
@@ -252,8 +271,11 @@ unsigned Executive::act(const BotView &view)
         exec_.halt();
     if (view.player.atRest()) {
         const bool idle = exec_.status() != Executor::Running;
-        // A gem or a pickup is news; a bomb the script dropped is not.
-        const bool changed = view.player.gems != gems_ || view.player.bombs > bombs_;
+        // A gem or a pickup is news; a bomb the script dropped is not.  News
+        // waits while the option under way is not to be broken off (a
+        // retreat from the player's own bomb).
+        const bool committed = !idle && view.now < chosen_.committedUntil;
+        const bool changed = !committed && (view.player.gems != gems_ || view.player.bombs > bombs_);
         if (view.player.bombs < bombs_)
             bombs_ = view.player.bombs;
         const bool cornered = idle && !stuck_ && chosen_.script.empty();

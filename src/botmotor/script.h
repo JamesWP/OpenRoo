@@ -4,7 +4,10 @@
  *
  * The steps:
  *   Turn  to a facing, the shorter way;
- *   Drop  a bomb, once the last one's 2 s are up;
+ *   Drop  a bomb, once the last one's 2 s are up: pressed on the tick before
+ *         the move under way ends (a turn, or a step onto plain ground), it
+ *         drops on the tick it ends (playtick.cpp), so a Turn or a Walk
+ *         before one ends a tick early;
  *   Walk  a path with the motor (motor.h);
  *   Wait  until a time: what follows takes effect then (its key pressed
  *         on the tick before);
@@ -51,6 +54,11 @@ public:
 
 private:
     void next();
+    /* Whether a Drop follows this step, but for turns to facing (none). */
+    bool dropNext(int facing) const;
+    /* Whether the player's step under way ends on the next tick, on plain
+     * ground that moves it no further: a bomb pressed now drops then. */
+    static bool endsOnPlain(const BotView &view);
 
     Script   script_;
     size_t   at_ = 0;

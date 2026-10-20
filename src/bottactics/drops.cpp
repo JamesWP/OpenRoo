@@ -32,6 +32,45 @@ const double CLEAR_MARGIN_MS = 200;
  * it was stepped on (fallingmodel.h). */
 const double BLAST_WAITS[] = {0, 2500, 5500};
 
+/* The game's grace after a move (player.cpp's stepGrace_). */
+const double STEP_GRACE_MS = 20.0;
+
+/* When a bomb drops, ms from now, and when the step away from it starts.
+ * The script (script.h) presses it once the last bomb's 2 s are up, not
+ * before notBefore (a Wait), and after the move ending endMs from now (none
+ * if not above 0): on the tick before that move ends, if onEnd (a turn, or
+ * a step onto plain ground), so that it drops on the move's last tick, else
+ * at rest after it; a bomb pressed drops on the next tick.  The step away is
+ * pressed as it drops and taken on the tick after, starting where the last
+ * move ended if that is within the game's grace (playtick.cpp, player.cpp). */
+struct DropAt {
+    double drop, away;
+};
+DropAt dropAt(const BotView &view, double endMs, bool onEnd, double notBefore)
+{
+    const double t = view.tickMs;
+    const double ready = view.player.bombReadyAt - view.now;
+    if (t <= 0) {
+        const double drop = std::max({endMs, ready, notBefore, 0.0});
+        return {drop, drop};
+    }
+    auto tickAt = [t](double x) { return std::ceil(x / t - 1e-6) * t; };  // the first at or after x
+    double press = std::max({0.0, ready, notBefore - t});
+    if (endMs > 0)
+        press = std::max(press, tickAt(endMs) - (onEnd ? t : 0));
+    const double drop = tickAt(press) + t;
+    const double ended = endMs > 0 ? endMs : view.player.stepEnd - view.now;
+    const double since = drop + t - ended;
+    return {drop, since > 1e-6 && since < STEP_GRACE_MS ? ended : drop + t};
+}
+
+/* Ground a step onto ends on: the script presses a bomb for the step's
+ * last tick (script.h). */
+bool plain(const Cell &c)
+{
+    return c.kind == 1;   // TILE_KIND_01 (the start is one too, tile.h)
+}
+
 /* Whether o's blasts still kill as many foes, and the player stays safe,
  * with them going off SURE_MS earlier or later. */
 bool sure(Situation &s, const Option &o, int killed)
@@ -50,10 +89,11 @@ bool sure(Situation &s, const Option &o, int killed)
 }
 
 /* The ways to walk clear after a drop at site facing facing, dropIn ms from
- * now: the option so far (its script and schedule up to the drop) with a
- * retreat added and checked.  wait: stay until the blast has cleared. */
+ * now, setting off awayMs from now: the option so far (its script and
+ * schedule up to the drop) with a retreat added and checked.  wait: stay
+ * until the blast has cleared. */
 void retreats(Situation &s, const Option &before, Step site, int facing, double dropIn,
-              bool wait, int needKills, size_t most, std::vector<Option> &out)
+              double awayMs, bool wait, int needKills, size_t most, std::vector<Option> &out)
 {
     const BotView &view = s.view;
     const Blast blast = predictBomb(view, site.u, site.v, view.cell(site.u, site.v).height,
@@ -65,9 +105,7 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
     NavModel after = s.nav;
     for (const Timed &t : before.schedule)
         after.arm(t.cell, t.t);
-    // The drop is seen on the tick it is made, and the step away pressed then
-    // starts on the next (playtick.cpp, Player::actReleaseBomb).
-    const Paths away(after, site.u, site.v, facing, dropIn + view.tickMs);
+    const Paths away(after, site.u, site.v, facing, awayMs);
     std::vector<std::pair<double, Step>> cells;
     for (int v = 0; v < view.extentV; v++)
         for (int u = 0; u < view.extentU; u++) {
@@ -144,7 +182,7 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
         if (walkMs > 0) {
             if (!walkTo(s, s.from, site, 0, going))
                 continue;
-            arrives = Motor::facingAfter(p.facing, s.from.cellsTo(site.u, site.v));
+            arrives = s.from.facingAt(site.u, site.v);
         } else {
             going.schedule.push_back({0, site});
             going.cost = s.busyMs;
@@ -154,8 +192,12 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
             const double turnMs = (turns == 3 ? 1 : turns) * p.stepMs;
             for (const double delay : DELAYS) {
                 const double there = going.cost;   // when it is there, the move under way included
+                // Turns without a walk start on the first move's tick.
+                const double turned = (walkMs > 0 || turns == 0 ? there : s.from.startMs()) + turnMs;
+                const bool onEnd = turns > 0 || (there > 0 && plain(view.cell(site.u, site.v)));
+                const DropAt at = dropAt(view, turned, onEnd, delay > 0 ? turned + delay : 0);
                 const double ready = std::max(there + turnMs + delay, p.bombReadyAt - view.now);
-                const double dropIn = ready + view.tickMs;
+                const double dropIn = at.drop;
                 Option before = going;
                 char buf[96];
                 snprintf(buf, sizeof(buf), "ambush: bomb at (%d,%d) facing %d after %.0f ms", site.u,
@@ -165,10 +207,10 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
                 // facing it already has is no turn.
                 before.script.push_back({ScriptStep::Turn, facing, {}, 0});
                 if (ready > there + turnMs + 1)
-                    before.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn});
+                    before.script.push_back({ScriptStep::Wait, 0, {}, view.now + turned + delay});
                 before.schedule.push_back({dropIn, site});
                 const size_t first = out.size();
-                retreats(s, before, site, facing, dropIn, true, 1, AMBUSH_RETREATS, out);
+                retreats(s, before, site, facing, dropIn, at.away, true, 1, AMBUSH_RETREATS, out);
                 // Not a kill that wipes a gem the quota needs.
                 out.erase(std::remove_if(out.begin() + first, out.end(),
                                          [&](const Option &o) { return gemsWiped(view, o.killed) > spare; }),
@@ -195,11 +237,15 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
     // There first, then the turn.
     if (!walkTo(s, s.from, {site.u, site.v}, 0, before))
         return;
-    const int arrives = Motor::facingAfter(p.facing, s.from.cellsTo(site.u, site.v));
+    const int arrives = s.from.facingAt(site.u, site.v);
     const int turns = (site.facing - arrives + 4) % 4;
     const double turnMs = (turns == 3 ? 1 : turns) * p.stepMs;
     before.script.push_back({ScriptStep::Turn, site.facing, {}, 0});
-    double dropIn = std::max(before.cost + turnMs, p.bombReadyAt - view.now) + view.tickMs;
+    const bool walks = site.u != p.u || site.v != p.v;
+    const double endMs = (walks || turns == 0 ? before.cost : s.from.startMs()) + turnMs;
+    const bool onEnd = turns > 0 || (before.cost > 0 && plain(view.cell(site.u, site.v)));
+    DropAt at = dropAt(view, endMs, onEnd, 0);
+    double dropIn = at.drop;
     const int h = view.cell(site.u, site.v).height;
     // Carried off (bombmodel.h), where it blows hangs on when: the first
     // spell of drops that spends a block, at its start.
@@ -214,8 +260,9 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
         if (spell == spells.end())
             return;
         if (spell->from > view.now + dropIn) {
-            dropIn = spell->from - view.now;
-            before.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn});
+            at = dropAt(view, endMs, onEnd, spell->from - view.now);
+            before.script.push_back({ScriptStep::Wait, 0, {}, spell->from});
+            dropIn = at.drop;
         }
     }
     // Dropped as soon as it is there, or, if there is no way clear then (the
@@ -224,11 +271,12 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
         if (wait > 0 && !std::isinf(spells.back().to))
             break;  // a carried bomb's drop is timed to its carrier
         Option o = before;
+        const DropAt w = wait > 0 ? dropAt(view, endMs, onEnd, dropIn + wait) : at;
         if (wait > 0)
             o.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn + wait});
-        o.schedule.push_back({dropIn + wait, {site.u, site.v}});
+        o.schedule.push_back({w.drop, {site.u, site.v}});
         const size_t had = out.size();
-        retreats(s, o, {site.u, site.v}, site.facing, dropIn + wait, true, 0, RETREATS, out);
+        retreats(s, o, {site.u, site.v}, site.facing, w.drop, w.away, true, 0, RETREATS, out);
         if (out.size() > had)
             break;
     }

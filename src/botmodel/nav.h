@@ -46,6 +46,10 @@ struct Speed {
     double stepMs   = 200;
     double upEnds   = 1e300;
     double downEnds = 1e300;
+    /* The last move was cut short (its time shortened under way): it ended
+     * on the tick past its end, beyond the grace, so a key not held for the
+     * next move, a turn's, is taken on the tick after (motor.h). */
+    bool   cut      = false;
 };
 
 struct Outcome {

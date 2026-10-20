@@ -13,8 +13,9 @@ late can walk into a blast the check passed.
 
 A decision's schedule is followed until the next decision.  Each step of it
 is matched, in order, to the game's next move out of the same cell (but one
-off the schedule within the game's 20 ms step grace of the next decision,
-which took it and started it where the last step ended); a move
+off the schedule, or the next decision's first, within the game's 20 ms
+step grace of the next decision, which took it and started it where the
+last step ended); a move
 that carries the player on through cells the schedule also lists (a slide,
 ice) is matched to the first of them.  For each match: how many ticks late
 the move started.  Prints that by what came before the step (the first step
@@ -38,6 +39,15 @@ GRACE_MS = 20.0   # player.cpp's stepGrace_: a move taken within it starts where
 def load(path):
     with open(path) as f:
         return [json.loads(line) for line in f if line.strip()]
+
+
+def first_step(decision):
+    """The decision's first step, (from, to) cells, or None."""
+    sched = decision.get("schedule") or []
+    for a, b in zip(sched, sched[1:]):
+        if a[1:] != b[1:]:
+            return (a[1:], b[1:])
+    return None
 
 
 def check_level(decisions, actions, level, out, missed):
@@ -69,8 +79,9 @@ def check_level(decisions, actions, level, out, missed):
                                          % (d["now"], prev[1], prev[2], u, v, t))
                 break
             m = moves[k]
-            if (m["start_ms"] > until - GRACE_MS and
-                    m["to"][:2] not in [c[1:] for c in sched[j:]]):
+            if m["start_ms"] > until - GRACE_MS and (
+                    m["to"][:2] not in [c[1:] for c in sched[j:]] or
+                    first_step(decisions[i + 1]) == (m["from"][:2], m["to"][:2])):
                 break  # the next decision's, started where the last step ended
             late = round((m["start_ms"] - t) / TICK_MS)
             if first:
