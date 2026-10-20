@@ -10,10 +10,15 @@
  * tie-breaks and its reversed step test, the tank-style turn table, the step's
  * start checks (occupants, walls, climbs) and timing (500 ms a catcher's step,
  * 700 a thrower's, a step that follows within 20 ms of the last starting where
- * it ended), and the terrain's say over a foe at rest (a slide carries it on at
- * 150 ms a cell, ice the way it last moved, a sticky pad holds it 3 s).  Foes
- * see each other and the player through the cells' occupants,
- * as in the game.
+ * it ended), and the terrain's say over a foe at rest, seen to on the tick its
+ * step ends (a slide carries it on at 150 ms a cell, ice the way it last
+ * moved, a sticky pad holds it 3 s, a teleporter holds it 500 ms, moves it to
+ * its other pad, holds it 500 ms more and sends it on the way it came).  Foes
+ * see each other and the player through the cells' occupants, as in the game:
+ * a step holds the cell it leaves until it ends, the player's too, and a
+ * thrower steps into no occupied cell, a catcher into none but the player's.
+ * A returner with no way to its target goes back to the last target it had a
+ * way to.
  *
  * The search reads only the terrain (except a gem runner's and a switch
  * runner's, which read the occupants, and any search past a sticky pad), so
@@ -30,11 +35,11 @@
  *
  * A foe standing on a lift rides it, and steps off where the lift stands
  * level with the next cell.  A foe steps onto a platform where it stands
- * parked with time still for the step, rides it, and steps off it anywhere
- * but onto its track.
+ * parked with time still for the step, rides it (turning on it or not), and
+ * steps off it anywhere but onto its track.
  *
  * The falling tiles fall and come back as the game has them, armed by the
- * player and the foes, and a foe on one when it falls is gone with it.
+ * player and the foes, and a foe on one when it falls falls with it.
  *
  * What it leaves out: the bridges do not move, the idle animation's longer
  * moves, and the target of a switch runner (the view
@@ -50,6 +55,10 @@
 #include "botview.h"
 
 namespace bot {
+
+/* A foe's step, as foe.cpp's spawn sets it. */
+const double CATCHER_STEP_MS = 500.0;
+const double THROWER_STEP_MS = 700.0;
 
 class FoeModel {
 public:
@@ -88,7 +97,8 @@ public:
      * budget its type chases with (a follower's, a catcher). */
     bool reaches(size_t i, int u, int v);
     /* The cells foe i could walk to as the terrain stands, however far: by
-     * the search's own step rules, without its budget.  One a cell, row by
+     * the search's own step rules, without its budget, and no step a height
+     * up but on stairs, which the foe will not take.  One a cell, row by
      * row. */
     std::vector<char> walkable(size_t i) const;
     /* Whether foe i is a thrower that follows the catchers (foetype.h). */
@@ -183,6 +193,9 @@ private:
     double clock_ = 0;
     Step   player_{-1, -1};
     int    playerOcc_ = 4;
+    // The cell the player's step left, held until the step ends.
+    Step   playerLeft_{-1, -1};
+    double leftUntil_ = 0;
     Cell   wall_;
 
     // The search's scratch, reused.

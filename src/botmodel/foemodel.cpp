@@ -10,8 +10,6 @@ namespace bot {
 
 namespace {
 
-const double CATCHER_STEP_MS = 500.0;  // foe.cpp's spawn
-const double THROWER_STEP_MS = 700.0;
 const double STEP_GRACE_MS   = 20.0;   // a step this soon after the last starts where it ended
 const int    CATCHER = 2, THROWER = 3;
 const double SLIDE_MS        = 150.0;  // movableentity.cpp
@@ -137,6 +135,12 @@ void FoeModel::load(const BotView &view)
     byCaller_.assign(blasts_.size(), 0);
     player_ = {view.player.u, view.player.v};
     playerOcc_ = view.player.protection ? 3 : 4;
+    playerLeft_ = {-1, -1};
+    const PlayerView &p = view.player;
+    if (p.moving && p.moveDir >= 1 && p.moveDir <= 4) {
+        playerLeft_ = {p.u - DIR_DU[p.moveDir], p.v - DIR_DV[p.moveDir]};
+        leftUntil_  = p.animStart + p.animMs;
+    }
     foes_.clear();
     for (size_t i = 0; i < view.foes.size(); i++) {
         const FoeView &fv = view.foes[i];
@@ -172,8 +176,8 @@ void FoeModel::load(const BotView &view)
             }
         } else {
             f.stepEnd = fv.stepEnd;
-            f.riding  = view.cell(fv.u, fv.v).kind == TILE_PLATFORM_TRACK;
         }
+        f.riding = fv.riding;
         foes_.push_back(f);
     }
     falls_.clear();
@@ -640,12 +644,13 @@ void FoeModel::tickFoe(size_t i)
     f.held = clock_ < view_->player.freezeUntil ? 1 : 0;
     int tu, tv, speed;
     // A foe standing on a lift rides it (movableentity.cpp: on a lift, at
-    // its current height), and one on a platform goes where it does.
+    // its current height), and one on a platform goes where it does, turning
+    // or not (a step off it lets go first).
     if (f.moveDir == 0 && cell(f.u, f.v).kind == TILE_LIFT)
         f.h = heightNow(f.u, f.v);
     Step on;
     const PlatformView *p = f.riding ? platformThrough(*view_, f.u, f.v) : nullptr;
-    if (f.moveDir == 0 && p && platformCellAt(*view_, *p, clock_ - view_->now, &on) &&
+    if ((f.moveDir == 0 || f.moveDir > 10) && p && platformCellAt(*view_, *p, clock_ - view_->now, &on) &&
         (on.u != f.u || on.v != f.v)) {
         if (occ(f.u, f.v) == f.kind)
             setOcc(f.u, f.v, 0);
@@ -786,10 +791,21 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
     clock_ += view_->tickMs;
     // The level's objects first, as the game ticks them (gametick.cpp).
     tickFalls();
+    // The player's step holds the cell it leaves until it ends, and its
+    // end comes before the foes (movableentity.cpp).
+    auto letGo = [&]() {
+        if (playerLeft_.u >= 0 && occ(playerLeft_.u, playerLeft_.v) == playerOcc_ &&
+            (playerLeft_.u != player_.u || playerLeft_.v != player_.v))
+            setOcc(playerLeft_.u, playerLeft_.v, 0);
+        playerLeft_ = {-1, -1};
+    };
+    if (playerLeft_.u >= 0 && clock_ >= leftUntil_ - 1e-6)
+        letGo();
     const Step at = playerAt(clock_);
     if (at.u != player_.u || at.v != player_.v) {
-        if (occ(player_.u, player_.v) == playerOcc_)
-            setOcc(player_.u, player_.v, 0);
+        letGo();
+        playerLeft_ = player_;
+        leftUntil_  = clock_ + view_->player.stepMs;
         setOcc(at.u, at.v, playerOcc_);
         player_ = at;
     }
@@ -849,9 +865,18 @@ std::vector<char> FoeModel::walkable(size_t i) const
         for (int d = 0; d < 4; d++) {
             const int u = a.u + SU[d], v = a.v + SV[d];
             // The search runs from the target back: a step from a to b is
-            // tested as one from b to a.
+            // tested as one from b to a.  The step itself is the foe's, which
+            // will not go a height up but on stairs (startMove): a search
+            // that has it do so leaves it standing.
             if (!view_->inside(u, v) || seen[(size_t)v * W + u] || !passable(u, v, f.mode) ||
                 !stepLegal(u, v, a.u, a.v))
+                continue;
+            const Cell &here = cell(a.u, a.v), &dest = cell(u, v);
+            const int move = d + 1;
+            if (stairs(here.kind) && !(move == here.kind - 4 || move == opposite(here.kind - 4)) &&
+                dest.height == here.height + 1)
+                continue;
+            if (!stairs(dest.kind) && !stairs(here.kind) && dest.height == here.height + 1)
                 continue;
             seen[(size_t)v * W + u] = 1;
             open.push_back({u, v});
