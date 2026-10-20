@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "fallingmodel.h"
 #include "liftmodel.h"
+#include "nav.h"
 
 namespace bot {
 
@@ -14,10 +15,50 @@ const double FALL_MARGIN_MS = 100.0;  // off it this long before it goes
  * which run a little late. */
 const double DROP_MARGIN_MS = 250.0;
 
+/* A thrower this near the player pens it in when, with the throwers' cells
+ * shut, the player reaches no more than this many cells, and fewer than
+ * with them open.  It is tested this long after the plan's linger, the
+ * player staying: one closing the way out then has the player already. */
+const int    PEN_NEAR     = 3;
+const int    PEN_CELLS    = 20;
+const double PEN_AHEAD_MS = 2000.0;
+
 int chebyshev(Step a, Step b)
 {
     const int du = abs(a.u - b.u), dv = abs(a.v - b.v);
     return du > dv ? du : dv;
+}
+
+/* The cells the player at rest on at, atMs from the view's clock, can come
+ * to rest on, and whether from is one. */
+int reachable(const NavModel &nav, Step at, double atMs, Step from, bool *back)
+{
+    const Paths paths(nav, at.u, at.v, 1, atMs);
+    int n = 0;
+    for (int v = 0; v < nav.view().extentV; v++)
+        for (int u = 0; u < nav.view().extentU; u++)
+            n += paths.cost(u, v) >= 0;
+    *back = (from.u == at.u && from.v == at.v) || paths.cost(from.u, from.v) >= 0;
+    return n;
+}
+
+/* Whether the throwers, where the foe model has them, pen in the player at
+ * rest on at (PEN_NEAR), come from the cell from outside the pen: it cannot
+ * walk through one (movableentity.cpp), and is left a few cells to wait in
+ * for their bombs.  A player penned in already is not penned by a walk. */
+bool penned(const BotView &view, const FoeModel &sim, Step at, double atMs, Step from)
+{
+    NavModel shut(view);
+    bool near = false;
+    for (size_t i = 0; i < sim.foeCount(); i++) {
+        near = near || chebyshev(sim.foeCell(i), at) <= PEN_NEAR;
+        shut.shut(sim.foeCell(i));
+    }
+    if (!near)
+        return false;
+    bool inside, open;
+    const int left = reachable(shut, at, atMs, from, &inside);
+    return !inside && left <= PEN_CELLS && left < reachable(NavModel(view), at, atMs, from, &open);
 }
 
 /* checkPlan; with reach, passing within a thrower's reach is a hit too, as
@@ -147,15 +188,37 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
         if (sim.now() == prev)
             break;  // no tick step: nothing moves
     }
+    // The foes' bombs and kills within it, before the pen test runs the
+    // model on.
+    const std::vector<Blast> dropped = sim.dropped();
+    const int killed = sim.killed();
+    const std::vector<FoeModel::Kill> kills = sim.kills();
+    if (!reach) {
+        bool near = false;
+        for (size_t i = 0; i < sim.foeCount(); i++)
+            near = near || chebyshev(sim.foeCell(i), plan.back().cell) <= PEN_NEAR + 3;
+        while (near && sim.now() < end + PEN_AHEAD_MS) {
+            const double prev = sim.now();
+            sim.runTick(playerAt);
+            if (sim.now() == prev)
+                break;
+        }
+        if (near && penned(view, sim, plan.back().cell, sim.now() - start, plan.front().cell)) {
+            d.hit = true;
+            d.t   = sim.now() - start;
+            d.why = "penned";
+            return d;
+        }
+    }
     // A bomb a foe dropped meanwhile (at a catcher, say) may catch the player.
-    for (Blast b : sim.dropped()) {
+    for (Blast b : dropped) {
         b.from -= DROP_MARGIN_MS;
         b.until += DROP_MARGIN_MS;
         if (blasted(b))
             return d;
     }
-    d.killed = sim.killed();
-    for (const FoeModel::Kill &k : sim.kills())
+    d.killed = killed;
+    for (const FoeModel::Kill &k : kills)
         if (k.byAdded)
             d.kills.push_back(k);
         else
