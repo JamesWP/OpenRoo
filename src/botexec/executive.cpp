@@ -198,6 +198,8 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
             if (board.time(0, board.start(), p.cell) < 0)
                 cutPickups += (cutPickups.empty() ? "" : ",") + std::string("[") +
                               std::to_string(p.cell.u) + "," + std::to_string(p.cell.v) + "]";
+        if (finish.found && goals.front().kind != FINISH)
+            printTo(log_, ",\"finish_plan\":\"%s\"", finish.describe().c_str());
         printTo(log_, ",\"cut_off\":[%s],\"cut_off_pickups\":[%s],\"exit_cut\":%d", cut.c_str(),
                 cutPickups.c_str(), board.time(board.everything(), board.start(), board.exit()) < 0);
         printTo(log_, ",\"predicted_kills\":%s", kills_json(chosen_).c_str());
