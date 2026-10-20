@@ -161,6 +161,13 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
         sim.runTick(playerAt);
         const Timed e = entryAt(sim.now());
         const Step p = e.cell;
+        // A deck gone from under the player: a foe worked its switch.
+        if (!e.aloft && sim.cleared(p.u, p.v)) {
+            d.hit = true;
+            d.t   = sim.now() - start;
+            d.why = "bridge";
+            return d;
+        }
         for (size_t i = 0; i < sim.foeCount(); i++) {
             const Step f = sim.foeCell(i);
             const bool catcher = sim.foeKind(i) == 2;
