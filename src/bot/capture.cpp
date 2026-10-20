@@ -28,6 +28,7 @@ void fill_mover(Mover &m, const E &e)
     m.animMs = e.animDuration();
     m.stepEnd = e.stepEnd();
     m.stuckSince = e.stuckSince();
+    m.lastMoveDir = e.lastMoveDir();
 }
 
 }  // namespace
@@ -100,6 +101,8 @@ BotView capture(const Game &game)
         fv.dying = f.dyingStarted() != 0;
         fv.homeU = f.homeU();
         fv.homeV = f.homeV();
+        fv.lastU = f.lastTargetU();
+        fv.lastV = f.lastTargetV();
         fv.drops = f.dropContents();
         fv.lastDrop    = f.lastContact();
         fv.dropPending = f.bombDropRequest() != 0;

@@ -57,6 +57,7 @@ public:
     double stuckSince() const                  { return stuckSince_; }
     bool   launched() const                    { return launched_ != 0; }
     int    teleportPhase() const               { return teleportPhase_; }
+    int    lastMoveDir() const                 { return lastMoveDir_; }
     double teleportSince() const               { return teleportSince_; }
     double fallStart() const                   { return fallStart_; }
     // A foe: the clock of its last bomb, and a bomb asked for and not yet dropped.

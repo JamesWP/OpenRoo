@@ -60,6 +60,7 @@ struct Mover {
     double animMs = 0;     // how long that move takes (at rest, the step time)
     double stepEnd = 0;    // clock ms the last step or turn ended
     double stuckSince = 0; // clock ms a sticky pad caught it, 0 if not held
+    int    lastMoveDir = 0; // the last step's direction (not a turn's): ice and a teleporter carry it on
 };
 
 struct PlayerView : Mover {
@@ -81,6 +82,7 @@ struct FoeView : Mover {
     bool held = false;      // frozen
     bool dying = false;
     int  homeU = 0, homeV = 0;  // where it was spawned
+    int  lastU = 0, lastV = 0;  // the last cell its chase found a way to (a returner goes back there)
     int  drops = 0;         // what it leaves on its cell when killed (TileContents)
     double lastDrop = 0;    // a thrower: the clock ms of its last bomb
     bool dropPending = false;  // a thrower: a bomb asked for, dropped once it is at rest
