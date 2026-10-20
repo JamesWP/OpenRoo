@@ -12,7 +12,9 @@ the foes and the blasts against that schedule, so a step that starts a tick
 late can walk into a blast the check passed.
 
 A decision's schedule is followed until the next decision.  Each step of it
-is matched, in order, to the game's next move out of the same cell; a move
+is matched, in order, to the game's next move out of the same cell (but one
+off the schedule within the game's 20 ms step grace of the next decision,
+which took it and started it where the last step ended); a move
 that carries the player on through cells the schedule also lists (a slide,
 ice) is matched to the first of them.  For each match: how many ticks late
 the move started.  Prints that by what came before the step (the first step
@@ -30,6 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import backtest  # noqa: E402
 
 TICK_MS = 1000.0 / 60.0
+GRACE_MS = 20.0   # player.cpp's stepGrace_: a move taken within it starts where the last ended
 
 
 def load(path):
@@ -66,6 +69,9 @@ def check_level(decisions, actions, level, out, missed):
                                          % (d["now"], prev[1], prev[2], u, v, t))
                 break
             m = moves[k]
+            if (m["start_ms"] > until - GRACE_MS and
+                    m["to"][:2] not in [c[1:] for c in sched[j:]]):
+                break  # the next decision's, started where the last step ended
             late = round((m["start_ms"] - t) / TICK_MS)
             if first:
                 ctx = "first step"

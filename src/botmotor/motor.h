@@ -11,10 +11,12 @@
  * Cells are (u, v), each a neighbour of the one before, except where a forced
  * move carries the player on (ice, a slide, a teleporter): the motor holds
  * nothing while it is carried, and picks the path up from wherever on it the
- * player comes to rest.  It holds nothing on a sticky pad until the pad lets
- * go.  In the air it holds nothing, but under a paraglider, which steps and
- * turns as on the ground: there it walks on along the path, and the player
- * comes down where it ends. */
+ * player comes to rest.  It holds nothing on a sticky pad until the tick
+ * before the pad lets go, the game taking the key on the tick it does.  In
+ * the air it holds nothing, but under a paraglider, which steps and turns as
+ * on the ground, or falling with one to open, which takes the key on the tick
+ * it opens: there it walks on along the path, and the player comes down where
+ * it ends. */
 #pragma once
 
 #include <vector>

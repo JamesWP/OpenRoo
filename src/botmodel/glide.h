@@ -1,22 +1,24 @@
 /* The glide model: where a paraglider takes the player (movableentity.cpp).
  *
- * Holding a glide, the player who steps off an edge into a drop of more than
- * two falls freely until it has dropped that far, then the glider opens (one
- * glide spent) and it sinks at a steady rate.  While gliding it can step and
- * turn as on the ground, at its step time; it comes down on the cell below it
- * once it stands still there and has sunk to that cell's top.  A step in the
- * air is refused by a wall or a block, and by a cell whose top is just above
- * the player, and no other: a glide passes over lower cells and void, and
- * through a cell that stands well above it (the game lets it), never
- * stopping there.
+ * Holding a glide, the player who steps off an edge falls freely until its
+ * cell is three below the edge, then the glider opens (one glide spent) and
+ * it sinks at a steady rate.  While gliding it can step and turn as on the
+ * ground, at its step time; it comes down on the cell below it once it stands
+ * still there and its cell is that cell's top, or at the end of a move during
+ * which it sank to within half a height under the top.  A step in the air is
+ * refused by a wall or a block, and while the player's cell is one under the
+ * top of the cell ahead; off a lift, while the player is not within 0.2 of
+ * its cell's height; and otherwise not: a glide passes over lower cells and
+ * void, and through a cell that stands higher (the game lets it).
  *
- * A glide is launched from rest by a step forward off an edge.  A drop of
- * three or four only comes down on the cell below, the glider saving the
- * player from the fall; a longer one can end on any plain cell it reaches
- * above in time: the landing time is fixed by the
- * cell's height alone, since the player sinks at the same rate, moving or
- * not.  The model counts on its outcomes only with margins (heights, the
- * opening time), being unmeasured yet. */
+ * It is the game's tick by tick, in its float arithmetic: the free fall by
+ * the whole ms since it began, then the sinking by the tick's step, which the
+ * integrator runs once a tick and once more on a tick a move's key is
+ * handled, so a move sinks the player a tick's worth more.  A move refused is
+ * held, as the motor holds its key (motor.h), until the game takes it.  A
+ * glide is launched from rest by a step forward off an edge onto ground that
+ * does not move, and passes over a lift only out of reach of its top, and
+ * over no platform's track. */
 #pragma once
 
 #include <vector>
