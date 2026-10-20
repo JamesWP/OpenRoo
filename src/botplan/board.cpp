@@ -17,6 +17,27 @@ namespace {
 
 /* What a time bonus adds to the time limit (player.cpp). */
 const double TIME_BONUS_MS = 5000;
+/* A bait's way clear of the thrower's bomb is walked this long before it
+ * blows, at least. */
+const double CLEAR_MARGIN_MS = 300;
+
+/* Whether the player on at, the thrower beside it on by, gets clear of the
+ * thrower's bomb before it blows: some cell it walks to by then, never
+ * through the thrower, lies outside the blast. */
+bool clearOfBait(const BotView &view, Step at, Step by, const Blast &blast)
+{
+    NavModel nav(view);
+    nav.shut(by);
+    const Paths away(nav, at.u, at.v, 1);
+    for (int v = 0; v < view.extentV; v++)
+        for (int u = 0; u < view.extentU; u++) {
+            const double c = away.cost(u, v);
+            if (c > 0 && c <= FUSE_MS - CLEAR_MARGIN_MS &&
+                !blast.kills(u, v, view.cell(u, v).height, blast.from))
+                return true;
+        }
+    return false;
+}
 /* How far short the plans' times can run of the real ones, a fraction: the
  * walks are timed leg by leg, so a falling tile crossed again before it is
  * back, for one, is not counted (up to 0.2 short on the levels without foes
@@ -461,6 +482,26 @@ const std::vector<Site> &Board::baits(Changes s) const
     }
     if (walk.empty())
         return out;
+    // How far, in cells, the nearest thrower walks to each cell it can go.
+    std::vector<int> far(walk.size(), -1);
+    std::vector<Step> ring;
+    for (size_t i = 0; i < sim.foeCount(); i++)
+        if (sim.throwsAtPlayer(i)) {
+            const Step c = sim.foeCell(i);
+            if (view.inside(c.u, c.v) && far[(size_t)c.v * view.extentU + c.u] < 0) {
+                far[(size_t)c.v * view.extentU + c.u] = 0;
+                ring.push_back(c);
+            }
+        }
+    for (size_t k = 0; k < ring.size(); k++)
+        for (int d = DIR_MIN; d <= DIR_MAX; d++) {
+            const Step n{ring[k].u + DIR_DU[d], ring[k].v + DIR_DV[d]};
+            const size_t at = (size_t)n.v * view.extentU + n.u;
+            if (!view.inside(n.u, n.v) || !walk[at] || far[at] >= 0)
+                continue;
+            far[at] = far[(size_t)ring[k].v * view.extentU + ring[k].u] + 1;
+            ring.push_back(n);
+        }
     std::set<std::pair<int, int>> seen;
     for (const size_t i : open) {
         const Step b = worlds_->block(i);
@@ -475,18 +516,27 @@ const std::vector<Site> &Board::baits(Changes s) const
                     continue;
                 // The thrower beside it, facing the player on it.
                 Changes hits = 0;
+                int nearest = -1;
                 for (int f = DIR_MIN; f <= DIR_MAX; f++) {
                     const Step n{p.u - DIR_DU[f], p.v - DIR_DV[f]};
                     if (!view.inside(n.u, n.v) || !walk[(size_t)n.v * view.extentU + n.u])
                         continue;
                     const Blast blast =
                         predictBomb(view, n.u, n.v, view.cell(n.u, n.v).height, f, view.now);
+                    Changes these = 0;
                     for (const size_t j : open)
                         if (spends(view, blast, worlds_->block(j)))
-                            hits |= (Changes)1 << j;
+                            these |= (Changes)1 << j;
+                    // No bait where the player cannot get clear of it.
+                    if (!these || !clearOfBait(view, p, n, blast))
+                        continue;
+                    hits |= these;
+                    const int d = far[(size_t)n.v * view.extentU + n.u];
+                    if (d >= 0 && (nearest < 0 || d < nearest))
+                        nearest = d;
                 }
                 if (hits)
-                    out.push_back({{p.u, p.v, 0}, hits});
+                    out.push_back({{p.u, p.v, 0}, hits, nearest < 0 ? 0 : nearest});
             }
     }
     return out;

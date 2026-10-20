@@ -30,6 +30,13 @@ const double WAIT_MS = 15000;
 const int    LURE_NEAR = 3;
 const size_t LURES = 6;
 const double LURE_WAITS[] = {0, 2000};
+/* A thrower drawn off is led on to the bait a leg at a time, of this many of
+ * the way's turning points (Paths::cellsTo), the player waiting after each
+ * until one comes within LEAD_NEAR, for LEAD_WAIT_MS at most: the chase of a
+ * player further off may give up (foe.cpp, the search's cap). */
+const int    LEAD_LEG = 3;
+const int    LEAD_NEAR = 4;
+const double LEAD_WAIT_MS = 6000;
 /* The cells to walk away to: within this many ms of the bait cell, the
  * nearest RETREATS of them. */
 const double RETREAT_MS = 2500;
@@ -95,6 +102,65 @@ bool clearOf(Situation &s, const Option &before, Step at, int facing, double sta
     return false;
 }
 
+/* going, which ends on from, walked on to bait leading a thrower (LEAD_LEG):
+ * false if none keeps up. */
+bool leadOn(Situation &s, Option &going, Step from, Step bait)
+{
+    const BotView &view = s.view;
+    Step at = from;
+    for (int legs = 0; at.u != bait.u || at.v != bait.v; legs++) {
+        if (legs > 64)
+            return false;
+        NavModel after = s.nav;
+        for (const Timed &t : going.schedule)
+            after.arm(t.cell, t.t);
+        const Paths on(after, at.u, at.v, facingAfter(view.player.facing, going.script), going.cost);
+        const std::vector<Step> cells = on.cellsTo(bait.u, bait.v);
+        if (cells.size() < 2)
+            return false;
+        const Step end = cells[std::min(cells.size() - 1, (size_t)LEAD_LEG)];
+        Option leg;
+        if (!walkTo(s, on, end, 0, leg))
+            return false;
+        going.script.insert(going.script.end(), leg.script.begin(), leg.script.end());
+        going.schedule.insert(going.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
+        going.cost = leg.cost;
+        at = end;
+        if (at.u == bait.u && at.v == bait.v)
+            break;
+        // Waiting there until a thrower comes up.
+        const std::vector<Timed> &plan = going.schedule;
+        auto playerAt = [&](double clock) {
+            Step c = plan.front().cell;
+            for (const Timed &m : plan)
+                if (view.now + m.t <= clock + 1e-6)
+                    c = m.cell;
+            return c;
+        };
+        s.foes.load(view);
+        double came = -1;
+        while (came < 0 && s.foes.now() < view.now + going.cost + LEAD_WAIT_MS) {
+            const double prev = s.foes.now();
+            s.foes.runTick(playerAt);
+            if (s.foes.now() == prev)
+                return false;
+            if (s.foes.now() < view.now + going.cost)
+                continue;
+            for (size_t i = 0; i < s.foes.foeCount(); i++)
+                if (s.foes.throwsAtPlayer(i) && chebyshev(s.foes.foeCell(i), at) <= LEAD_NEAR)
+                    came = s.foes.now();
+        }
+        if (came < 0)
+            return false;
+        if (came - view.now > going.cost + 1) {
+            going.cost = came - view.now;
+            going.script.push_back({ScriptStep::Wait, 0, {}, came});
+            going.schedule.push_back({going.cost, at});
+        }
+    }
+    return true;
+}
+
 /* going: the walk to the bait cell, facing facing there.  The first bomb the
  * foe model has a thrower drop that spends a block, the player waiting on the
  * cell; false if none does in WAIT_MS, or it is dropped before the player is
@@ -136,9 +202,11 @@ public:
             const double t = board.time(f.changes, f.at, {site.cell.u, site.cell.v});
             if (t < 0)
                 continue;
+            // The thrower comes up as well.
+            const double ms = t + BAIT_MS + site.far * THROWER_STEP_MS;
             auto it = best.find(site.hits);
-            if (it == best.end() || t + BAIT_MS < it->second.first)
-                best[site.hits] = {t + BAIT_MS, site.cell};
+            if (it == best.end() || ms < it->second.first)
+                best[site.hits] = {ms, site.cell};
         }
         for (const auto &[hits, c] : best) {
             Successor n{f, {}};
@@ -195,12 +263,17 @@ public:
             for (size_t i = 0; i < near.size() && i < LURES; i++)
                 lures.push_back(near[i]);
         }
+        // Each lure with each wait there, and led on from it.
+        std::vector<std::pair<double, bool>> ways;
+        for (const double wait : LURE_WAITS)
+            ways.push_back({wait, false});
+        ways.push_back({0, true});
         for (const auto &[lureMs, lure] : lures) {
-            for (const double wait : LURE_WAITS) {
+            for (const auto &[wait, led] : ways) {
                 const bool drawn = lure.u >= 0;
-                if (!drawn && wait > 0)
+                if (!drawn && (wait > 0 || led))
                     break;
-                if (wait > 0 && s.nav.timed())
+                if ((wait > 0 || led) && s.nav.timed())
                     break;   // the lifts keep their own time (walk.h)
                 Option going;
                 int facing = p.facing;
@@ -219,7 +292,11 @@ public:
                         after.arm(t.cell, t.t);
                     const Paths on(after, lure.u, lure.v, facing, going.cost);
                     Option leg;
-                    if (bait.u != lure.u || bait.v != lure.v) {
+                    if (led) {
+                        if (!leadOn(s, going, lure, bait))
+                            continue;
+                        facing = facingAfter(p.facing, going.script);
+                    } else if (bait.u != lure.u || bait.v != lure.v) {
                         if (!walkTo(s, on, bait, 0, leg))
                             continue;
                         going.script.insert(going.script.end(), leg.script.begin(), leg.script.end());
@@ -228,8 +305,8 @@ public:
                         going.cost = leg.cost;
                         facing = facingAfter(p.facing, going.script);
                     }
-                    snprintf(buf, sizeof(buf), "bait at (%d,%d), drawn from (%d,%d) after %.0f ms",
-                             bait.u, bait.v, lure.u, lure.v, wait);
+                    snprintf(buf, sizeof(buf), "bait at (%d,%d), %s from (%d,%d) after %.0f ms",
+                             bait.u, bait.v, led ? "led" : "drawn", lure.u, lure.v, wait);
                 } else {
                     if (bait.u == here.u && bait.v == here.v) {
                         going.schedule.push_back({0, here});
