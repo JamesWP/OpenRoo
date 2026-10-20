@@ -28,9 +28,16 @@
  * it is at rest or has just set off (Foe::step, Foe::dropBomb).  A follower's
  * target is a catcher, so its bombs kill foes.
  *
- * What it leaves out: the platforms, bridges and falling tiles do not move
- * (a lift moves only for a foe stepping onto it: none rides one), the idle
- * animation's longer moves, and the target of a switch runner (the view
+ * A foe standing on a lift rides it, and steps off where the lift stands
+ * level with the next cell.  A foe steps onto a platform where it stands
+ * parked with time still for the step, rides it, and steps off it anywhere
+ * but onto its track.
+ *
+ * The falling tiles fall and come back as the game has them, armed by the
+ * player and the foes, and a foe on one when it falls is gone with it.
+ *
+ * What it leaves out: the bridges do not move, the idle animation's longer
+ * moves, and the target of a switch runner (the view
  * does not carry the switch cells), which is taken to be the player
  * (foetype.h).  botrun.h's foe log measures how often it is right against the
  * game (tools/bot/foecheck.py). */
@@ -106,12 +113,19 @@ private:
         double stuckSince = 0;     // on a sticky pad since then, or 0
         double lastDrop = 0;       // a thrower's last bomb
         bool   dropPending = false;
+        bool   riding = false;     // on a platform, carried where it goes
     };
 
     /* The cell's height and kind, beyond the grid a wall. */
     const Cell &cell(int u, int v) const;
+    /* Whether the cell holds no tile at the model's clock: a fallen tile's
+     * cell does not, a platform's track does. */
+    bool empty(int u, int v) const;
     /* The cell's height at the model's clock: a lift's where it has got to. */
     int heightNow(int u, int v) const;
+    /* How much longer the platform stands parked on (u, v) at the model's
+     * clock, ms; -1 if it is not parked there. */
+    double parkedLeft(int u, int v) const;
     int  occ(int u, int v) const;
     void setOcc(int u, int v, int o);
 
@@ -147,6 +161,18 @@ private:
     std::vector<unsigned char> occ_;   // the cells' occupants, as the sim moves them
     std::vector<unsigned char> gem_;   // a gem still on the cell (type 3 foes eat them)
     std::vector<unsigned char> spent_; // a sticky pad used up
+    /* The falling tiles (fallingtile.cpp): armed by whatever stands on one,
+     * gone FALL_MS later, and back BACK_MS after it was armed if it comes
+     * back.  A fallen tile is void to the foes' search. */
+    struct Fall {
+        int    u, v;
+        bool   respawns, armed, gone, goneAtLoad;
+        double armedAt;
+    };
+    std::vector<Fall> falls_;
+    std::vector<int>  fallAt_;         // a cell's index in falls_, or -1
+    int               fallsChanged_ = 0;  // tiles gone or back since the load
+    void tickFalls();
     double clock_ = 0;
     Step   player_{-1, -1};
     int    playerOcc_ = 4;

@@ -44,20 +44,48 @@ bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally)
 
 namespace {
 
-/* How long a wait on the cell must stay safe: on a lift, which carries the
- * player off to whatever waits at its other end, a whole cycle of it
- * (liftmodel.h). */
-double lingerOn(const BotView &v, Step c, double linger)
+/* How long a wait on the cell, come to rest on it arriveMs from the view's
+ * clock, must stay safe: on a lift, which carries the player off to whatever
+ * waits at its other end, a whole cycle of it (liftmodel.h); on a cell every
+ * way off which is onto a lift or a platform, as long again as the longest
+ * wait for one: the way on may be the one the player waits for. */
+double lingerOn(const Situation &s, Step c, double arriveMs, double linger)
 {
-    const LiftView *lift = liftAt(v, c.u, c.v);
-    return lift ? std::max(linger, liftCycleMs(*lift)) : linger;
+    const LiftView *lift = liftAt(s.view, c.u, c.v);
+    if (lift)
+        linger = std::max(linger, liftCycleMs(*lift));
+    double longest = 0;
+    for (int d = 1; d <= 4; d++) {
+        double start;
+        const Outcome o = s.nav.stepWhenOpen(c.u, c.v, d, d, arriveMs, &start);
+        if (o.kind != Outcome::Rest || o.cells.empty())
+            continue;
+        const Step to = o.cells.front();
+        if (!NavModel::moving(s.view.cell(to.u, to.v)))
+            return linger;
+        longest = std::max(longest, start - arriveMs);
+    }
+    return linger + longest;
 }
+
+/* A teleporter's hold before it sends the player, and after. */
+const double TELEPORT_HOLD_MS = 500.0;
 
 /* How long the player is busy yet: the move under way, and the fall into
  * the cell it is stepping to, if that is lower than the player is. */
 double busy(const BotView &v)
 {
     const PlayerView &p = v.player;
+    if (p.launched) {
+        // Up the arc to the pad's top, from where it steps on.
+        const Cell &pad = v.cell(p.u, p.v);
+        return std::max(0.0, p.launchedAt + NavModel::jumpMs(pad.jumpTop - pad.height, v.tickMs) - v.now);
+    }
+    if (p.teleport) {
+        // Each hold is half a second (movableentity.cpp); then it steps on.
+        const double holds = p.teleport == 1 ? 2 * TELEPORT_HOLD_MS : TELEPORT_HOLD_MS;
+        return std::max(0.0, p.teleportAt + holds - v.now);
+    }
     if (!p.moving)
         return 0;
     double ms = std::max(0.0, p.animStart + p.animMs - v.now);
@@ -82,6 +110,13 @@ double firstMove(const BotView &v, double busyMs)
     const PlayerView &p = v.player;
     if (p.moving || p.falling)
         return busyMs;
+    if (p.stuckSince > 0) {
+        // Held by a sticky pad: free on the first tick past its hold.
+        double at = v.tickMs;
+        while (v.now + at - p.stuckSince <= NavModel::stickyMs(0) && v.tickMs > 0)
+            at += v.tickMs;
+        return at;
+    }
     const double taken = v.tickMs, ended = p.animStart + p.animMs - v.now;
     const double since = taken - ended;
     // Not before now, which the routes take as no start (Paths).
@@ -155,7 +190,7 @@ bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *t
         Option o;
         if (!walkTo(s, s.from, c, 0, o))
             continue;
-        o.lingerMs = lingerOn(s.view, c, o.lingerMs);
+        o.lingerMs = lingerOn(s, c, s.from.startMs() + soFar, o.lingerMs);
         o.cost = whole - soFar;
         char buf[96];
         snprintf(buf, sizeof(buf), "approach (%d,%d) towards (%d,%d)", c.u, c.v, goal.u, goal.v);
@@ -183,8 +218,10 @@ bool evade(Situation &s, const Board &board, Option *out, Tally *tally)
             to.push_back({cells[i].second, 0});
     std::vector<Option> options;
     offerWalks(s, to, "evade to", false, options);
-    for (Option &o : options)
-        o.lingerMs = lingerOn(view, o.schedule.back().cell, o.lingerMs);
+    for (Option &o : options) {
+        const Step c = o.schedule.back().cell;
+        o.lingerMs = lingerOn(s, c, s.from.startMs() + s.from.cost(c.u, c.v), o.lingerMs);
+    }
     return pick(s, options, out, tally);
 }
 

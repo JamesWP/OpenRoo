@@ -56,6 +56,17 @@ struct Release {
     int     foes = 0;   // the catchers it then reaches
 };
 
+/* A way across a run of the falling tiles that do not come back, which the
+ * other walks keep off (fallingmodel.h, oneShotRuns): from a cell beside it,
+ * over it, to another; the run falls behind the player.  Its bit is the
+ * run's, in Facts::crossed. */
+struct Crossing {
+    Step     from;
+    Place    to;
+    double   ms = 0;
+    unsigned bit = 0;
+};
+
 /* The way to collect the quota from a place and go on to the exit. */
 struct GemRoute {
     bool              found = false;
@@ -150,7 +161,8 @@ public:
     bool canFinishAfter(Step gem) const;
     /* Whether, standing on that cell, the quota (the carriers' gems aside)
      * and the exit can be had, as canFinishAfter; where glides may be had,
-     * any cell, the walk alone being no measure. */
+     * any cell, the walk alone being no measure.  Both take a cell from
+     * which a one-shot run may be crossed (crossings) to be no trap. */
     bool canFinishFrom(Step cell) const;
     /* The blocks that may yet be spent: every one if the player holds bombs,
      * a bomb pickup is about or a thrower may be baited (baits); else none. */
@@ -182,6 +194,14 @@ public:
     /* Whether a release is still to be had in the world s, with bombs. */
     bool releasePending(Changes s, int bombs) const;
 
+    /* The ways across the one-shot runs: for each run (the first 32), from
+     * each cell beside it to each other the player can come to rest on over
+     * it alone, the quickest. */
+    const std::vector<Crossing> &crossings() const;
+    /* Whether a run not in crossed has a way across from a cell reachable
+     * from the place, in the world s. */
+    bool crossable(Changes s, Place from, unsigned crossed) const;
+
     /* Why there is no way to the goal at all, for the note: "no route: ...". */
     std::string noRoute() const;
 
@@ -209,6 +229,8 @@ private:
     mutable Changes spendable_ = 0;
     mutable bool    spendableFound_ = false;
     mutable int  hunted_ = 0;
+    mutable std::vector<Crossing> crossings_;
+    mutable bool crossingsFound_ = false;
 };
 
 }  // namespace bot

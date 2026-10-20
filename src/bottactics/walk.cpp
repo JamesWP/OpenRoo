@@ -50,8 +50,12 @@ bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Op
             o.script.push_back({ScriptStep::Walk, 0, {c.begin() + 1, c.end()}, 0});
             continue;
         }
-        if (legs[i].waitUntil > 0)
+        if (legs[i].waitUntil > 0) {
+            // The turn to the way on is made before the wait, as the route has it.
+            if (legs[i].facing)
+                o.script.push_back({ScriptStep::Turn, legs[i].facing, {}, 0});
             o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + legs[i].waitUntil});
+        }
         ScriptStep w;
         w.kind = ScriptStep::Walk;
         if (i > 0)

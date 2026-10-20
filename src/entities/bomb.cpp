@@ -88,7 +88,7 @@ Bomb::Bomb()
     zoneCleared_      = 0;
     field_124         = 1;
     facing_           = 1;
-    field_126         = 0.0;
+    stuckSince_         = 0.0;
     iceDir_          = 0;
     moveDir_         = 0;
     sliding_          = 0;
@@ -102,7 +102,7 @@ Bomb::Bomb()
     field_156         = 0;
     glides_          = 0;
     platformSlot_         = 0xff;
-    field_11a         = 0;
+    launched_         = 0;
     gliding_          = 0;
     onLift_          = 0;
     kind_             = 9;

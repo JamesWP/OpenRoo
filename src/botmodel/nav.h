@@ -17,7 +17,10 @@
  * may do.
  *
  * Foes are not seen, but for a cell shut to the routes: a held thrower's,
- * and those aroundThrowers shuts.  Lifts are followed in time
+ * and those aroundThrowers shuts.  A falling tile that does not come back is
+ * shut too where crossing it could cut off part of the level (keptOffRuns),
+ * unless asked for: crossing it is a step of its own to the planner
+ * (board.h, crossings).  Lifts are followed in time
  * (liftmodel.h): a step on or off a lift is allowed only while it is
  * parked, so a move is asked for at a time, and the quickest way waits for
  * the lifts where it must.  A platform
@@ -48,7 +51,10 @@ struct Outcome {
 
 class NavModel {
 public:
-    explicit NavModel(const BotView &view);
+    /* With oneShots, the routes may cross the falling tiles that do not
+     * come back; else they keep off the runs of them that bridge
+     * (keptOffRuns). */
+    explicit NavModel(const BotView &view, bool oneShots = false);
 
     /* From rest at (u, v) facing f: a step in direction d (f is forward, the
      * opposite of f is back) or a turn (delta +1 right, -1 left). */
@@ -89,6 +95,15 @@ public:
      * key pressed then moves the player on the tick after that (26 ticks
      * for a drop of two).  A move's time (step, stepAt) has it in. */
     static double fallMs(int drop, double tickMs);
+    /* How long after the step onto it a sticky pad lets the player move:
+     * the first tick more than 3 s after the one it caught it on
+     * (movableentity.cpp). */
+    static double stickyMs(double tickMs);
+    /* How long after the step onto it a jump pad that rises this many
+     * heights sets the player off on the next step: the launch climbs
+     * v0 t - 4.905 t^2, v0 from the rise, and on the tick after it is at the
+     * top the player is there and steps on (movableentity.cpp). */
+    static double jumpMs(int rise, double tickMs);
     /* Whether a step from a onto b falls, rather than walks down stairs. */
     static bool falls(const Cell &a, const Cell &b);
     Outcome turn(int u, int v, int f, int delta) const;
@@ -129,6 +144,7 @@ private:
     std::map<int, int> partner_;                // a platform's end cell index to its other end's
     std::map<int, std::vector<Alighting>> alight_;  // a platform's end cell index to its passes
     std::set<int> shut_;                        // cell indices shut()
+    std::set<int> oneShot_;                     // the one-shot tiles kept off
 };
 
 /* The bridge the switch on (u, v) works, or null if it is no working switch. */
@@ -137,6 +153,12 @@ const BridgeView *switchedBy(const BotView &view, int u, int v);
 /* Whether a held thrower stands on (u, v), at rest: a follower with no
  * catcher left to follow stays there, in the way (foetype.h). */
 bool parkedFoe(const BotView &view, int u, int v);
+
+/* The runs of one-shot falling tiles (fallingmodel.h, oneShotRuns) the
+ * walks keep off: those that bridge, without which the ground beside the run
+ * cannot all reach itself, so that crossing one can cut off part of the
+ * level.  Per cell as oneShotRuns, -1 for a run that bridges nothing. */
+std::vector<int> keptOffRuns(const BotView &view);
 
 /* A hash of what the nav model reads (the terrain and the step time): its
  * answers stand while this does. */
@@ -173,6 +195,7 @@ struct Leg {
     bool              stepOff = false;  // cells[0] is a platform passing at waitUntil:
                                         // the step to cells[1] is taken off it then,
     int               facing = 0;       // facing this way, turned to while on board
+                                        // or before the wait
     std::vector<Step> cells;
 };
 

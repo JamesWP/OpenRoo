@@ -91,13 +91,13 @@ public:
     void  setTeleportPhase(unsigned char b)    { teleportPhase_ = b; }
     void  setLastMoveDir(unsigned char b)      { lastMoveDir_ = b; }
     unsigned char fallStartH() const             { return fallStartH_; }
-    void  setField11a(int n)                   { field_11a = n; }
+    void  setLaunched(int n)                   { launched_ = n; }
     void  setPlatformSlot(unsigned char b)         { platformSlot_ = b; }
     // Nonzero while dead or respawning. Foe::checkPlayerContact sets it to 1
     // on contact with a foe.
     unsigned char *moveStateRef()              { return &moveState_; }
     void  setFalling(int n)                   { falling_ = n; }
-    void  setField126(double d)                { field_126 = d; }
+    void  setStuckSince(double d)                { stuckSince_ = d; }
     void  setField12e(int n)                   { field_12e = n; }
     signed char stepU() const                  { return stepU_; }
     signed char stepV() const                  { return stepV_; }

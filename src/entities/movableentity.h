@@ -53,6 +53,11 @@ public:
     unsigned char turnKind() const             { return turnKind_; }
     double animDuration() const                { return animDuration_; }
     double animStart() const                   { return animStart_; }
+    double stuckSince() const                  { return stuckSince_; }
+    bool   launched() const                    { return launched_ != 0; }
+    int    teleportPhase() const               { return teleportPhase_; }
+    double teleportSince() const               { return teleportSince_; }
+    double fallStart() const                   { return fallStart_; }
     // A foe: the clock of its last bomb, and a bomb asked for and not yet dropped.
     double lastContact() const                 { return lastContact_; }
     int   bombDropRequest() const              { return bombDropRequest_; }
@@ -216,7 +221,7 @@ protected:
     unsigned char       lastMoveDir_{};  // The last direction actually moved (as opposed to a turn on the spot).
     unsigned char       fallStartH_{};  // The height the current fall began at.
     double              fallStart_{};   // The clock the current fall began.
-    int                 field_11a{};
+    int                 launched_{};    // On a jump pad's arc, since fallStart_.
     unsigned char       platformSlot_{};  // The platform being ridden, 0xff for none.
     unsigned char       moveState_{};
     int                 falling_{};
@@ -224,7 +229,7 @@ protected:
     // pendingMove_'s turn relative to facing_: 1 forward, 2 and 4 the two
     // turns, 3 reverse, 0 when the move needs no turn at all.
     unsigned char       turnKind_{};
-    double              field_126{};  // The clock the sticky pad caught this entity; zero while not stuck.
+    double              stuckSince_{};  // The clock the sticky pad caught this entity; zero while not stuck.
     int                 field_12e{};
     double              animDuration_{};  // ms the current animation phase lasts.
     FoePath            *pathfinder_{};  // Foe: its FoePath.

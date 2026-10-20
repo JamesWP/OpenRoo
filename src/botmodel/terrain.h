@@ -23,8 +23,8 @@ namespace bot {
 
 class Terrain : public GlideSource {
 public:
-    /* With throughSwitches its routes pass over switches, and with glides
-     * they glide (Paths): a bound. */
+    /* With throughSwitches its routes pass over switches and the one-shot
+     * falling tiles (nav.h), and with glides they glide (Paths): a bound. */
     explicit Terrain(const BotView &view, bool throughSwitches = false, bool glides = false);
     Terrain(const Terrain &) = delete;
     Terrain &operator=(const Terrain &) = delete;

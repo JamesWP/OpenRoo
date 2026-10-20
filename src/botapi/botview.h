@@ -47,6 +47,10 @@ struct Mover {
     int facing = 0;
     bool moving = false;   // a step or turn is under way
     bool falling = false;  // in the air: falling, gliding or launched
+    bool launched = false; // on a jump pad's arc, since launchedAt (clock ms)
+    double launchedAt = 0;
+    int  teleport = 0;     // a teleporter's hold: 1 before the move, 2 after, since teleportAt
+    double teleportAt = 0;
     bool gliding = false;  // in the air under a paraglider: it can step and turn
     bool turning = false;  // the move under way is a turn
     int  moveDir = 0;      // the move under way: 1..4 a step, 11..14 a turn to (n - 10)
@@ -54,6 +58,7 @@ struct Mover {
     bool atRest() const { return !moving && !falling; }
     double animStart = 0;  // clock ms the current or last move began
     double animMs = 0;     // how long that move takes
+    double stuckSince = 0; // clock ms a sticky pad caught it, 0 if not held
 };
 
 struct PlayerView : Mover {

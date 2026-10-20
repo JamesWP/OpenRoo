@@ -289,21 +289,21 @@ unsigned int MovableEntity::updateMovement()
             // PRESERVED: the sticky pad freezes foes as well as the player --
             // there is no kind check gating it to the player alone.
             if ((signed char)t->objectMarker() == TILE_STICKY && t->busy() == 0) {
-                if (field_126 == K_ZERO) {
-                    copy8(&field_126, &now_);
+                if (stuckSince_ == K_ZERO) {
+                    copy8(&stuckSince_, &now_);
                     if (field_156 != 0)
                         snd_at(sound_bf_, (float)(int)GU, (float)(int)GH,
                                -(float)(int)GV, 0);
                     anim_ = 9;
                 }
-                if (now_ - field_126 <= K_STICKY_MS) {
+                if (now_ - stuckSince_ <= K_STICKY_MS) {
                     pendingMove_ = 0;  // stuck: drop the queued move
                 } else {
-                    field_126 = 0.0;
+                    stuckSince_ = 0.0;
                     CUR->setBusy(1);  // pad spent
                 }
             } else {
-                field_126 = 0.0;
+                stuckSince_ = 0.0;
             }
 
             // Slide tile.
@@ -619,12 +619,12 @@ unsigned int MovableEntity::updateMovement()
             if ((unsigned)(int)GH == (unsigned)t->height())
                 pendingMove_ = 0;
 
-            if (field_11a == 0) {
+            if (launched_ == 0) {
                 if ((unsigned)CUR->height() == (unsigned)(int)GH) {
                     snd_at(sound_b3_, (float)(int)GU, (float)(int)GH,
                            -(float)(int)GV, 0);
                     copy8(&fallStart_, &now_);  // the pad launch clock
-                    field_11a = 1;
+                    launched_ = 1;
                     posY_ = (float)(int)GH;
                 }
             } else {
@@ -644,7 +644,7 @@ unsigned int MovableEntity::updateMovement()
                     if (((signed char)kind_) != 9)
                         c->setOccupant(0);
                     signed char nh = (signed char)CUR->field1f1();
-                    field_11a = 0;
+                    launched_ = 0;
                     heightCell_   = nh;
                     posY_    = (float)(int)nh;
                     pendingMove_  = lastMoveDir_;

@@ -107,7 +107,15 @@ unsigned Executor::act(const BotView &view)
                 status_ = Failed;
                 return 0;
             }
-            return motor_.act(view);
+            {
+                const unsigned acts = motor_.act(view);
+                // Arrived on this tick: what follows is pressed on it too.
+                if (motor_.status() == Motor::Arrived) {
+                    next();
+                    continue;
+                }
+                return acts;
+            }
         }
     }
 }

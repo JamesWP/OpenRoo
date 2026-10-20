@@ -52,9 +52,11 @@ public:
         }
         // No way on to the exit from here: the quota for another step to go
         // on from, or what this part of the level gives, to glide on or to
-        // have before a block on the way to the rest is spent.
+        // have before a block on the way to the rest is spent or a one-shot
+        // run crossed.
         const GemRoute &g = board.gather(f.changes, f.at, f.taken, f.gemsNeeded);
-        const bool partial = board.glidesToBe() || (board.spendable() & ~f.changes) != 0;
+        const bool partial = board.glidesToBe() || (board.spendable() & ~f.changes) != 0 ||
+                             board.crossable(f.changes, f.at, f.crossed);
         if (!g.found || g.gems.empty() || ((int)g.gems.size() < f.gemsNeeded && !partial))
             return;
         Successor n{f, {}};

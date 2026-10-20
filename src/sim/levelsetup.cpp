@@ -214,7 +214,7 @@ Sim_SetupLevelObjects(Game *self)
     self->setGemsGoalReached(0);
     self->world()->player()->setMovingBackwards(0);
     self->world()->player()->setTeleportPhase(0);
-    self->world()->player()->setField11a(0);
+    self->world()->player()->setLaunched(0);
     self->world()->player()->setIceDir(0);
 
     // Tear down the previous level.

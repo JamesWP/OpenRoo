@@ -65,7 +65,9 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
     NavModel after = s.nav;
     for (const Timed &t : before.schedule)
         after.arm(t.cell, t.t);
-    const Paths away(after, site.u, site.v, facing, dropIn);
+    // The drop is seen on the tick it is made, and the step away pressed then
+    // starts on the next (playtick.cpp, Player::actReleaseBomb).
+    const Paths away(after, site.u, site.v, facing, dropIn + view.tickMs);
     std::vector<std::pair<double, Step>> cells;
     for (int v = 0; v < view.extentV; v++)
         for (int u = 0; u < view.extentU; u++) {
