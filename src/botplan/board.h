@@ -46,6 +46,7 @@ struct Pickup {
 struct Site {
     Place cell;
     Changes hits = 0;
+    int     far = 0;    // a bait: the cells the nearest thrower walks to stand beside it
 };
 
 /* A bombable block that pens a thrower in: spent, the thrower can reach
@@ -184,7 +185,8 @@ public:
     /* Every cell, in the world s, a thrower's bomb would spend some block of
      * that world on, with the player standing there as bait: a thrower that
      * bombs the player can walk next to it, and its bomb, dropped there
-     * facing the player, rolls onto it.  Facing 0. */
+     * facing the player, rolls onto it, and the player can get clear of it.
+     * Facing 0; far, how far the nearest thrower walks to get there. */
     const std::vector<Site> &baits(Changes s) const;
 
     /* The blocks, each spent alone, that let a follower out to catchers. */

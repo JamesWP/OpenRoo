@@ -99,6 +99,9 @@ cheapest plan starts with a checked step.
 A block can be spent without a bomb of the player's: a thrower that bombs
 the player is baited to it, the player standing where its bomb would land,
 and the foe model says when the bomb drops, so the walk away can be timed.
+A bait is planned only where the player can get clear of the bomb, and
+costs the thrower's walk to it as well; a thrower too far off for its chase
+to keep up is led there, a few cells at a time.
 
 ### 3.6 Motor
 
