@@ -12,6 +12,9 @@ const int BLOCKED_TICKS = 30;
 /* Waiting beside no next cell this many ticks (a teleporter takes a second):
  * the player has left the path. */
 const int WAIT_TICKS = 120;
+/* A sticky pad's hold (movableentity.cpp): the player is held while the clock
+ * is within this of the tick it was caught. */
+const double STICKY_MS = 3000.0;
 
 unsigned reverse(unsigned acts)
 {
@@ -85,8 +88,11 @@ unsigned Motor::act(const BotView &view)
         return 0;
     }
     const Cell &here = view.cell(p.u, p.v);
-    if (here.kind == TILE_STICKY && !here.busy) {
-        stillTicks_ = 0;  // held until the pad lets go
+    if (here.kind == TILE_STICKY && !here.busy &&
+        (p.stuckSince <= 0 || view.now + view.tickMs - p.stuckSince <= STICKY_MS)) {
+        // Held until the pad lets go: the game frees the player and takes
+        // the key on the same tick, so it is held from the tick before.
+        stillTicks_ = 0;
         return 0;
     }
     const int d = direction(p.u, p.v, path_[next_].u, path_[next_].v);
@@ -100,8 +106,14 @@ unsigned Motor::act(const BotView &view)
 
     unsigned acts = toward(p.facing, d);
     if (p.falling && !p.gliding) {
-        stillTicks_ = 0;  // nothing to press in the air, but under a glider
-        return 0;
+        // Nothing to press in the air, but under a glider.  One about to
+        // open takes the key held as it falls on the tick it opens; until
+        // then the game drops it (movableentity.cpp).
+        stillTicks_ = 0;
+        if (p.glides == 0 || p.launched || p.teleport)
+            return 0;
+        lastAct_ = 0;
+        return p.reversed ? reverse(acts) : acts;
     }
     if (p.moving) {
         // Hold only a step, never a turn, ahead of the step's end.
