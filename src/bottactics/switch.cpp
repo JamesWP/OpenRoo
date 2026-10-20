@@ -57,7 +57,7 @@ public:
             return;
         const double moveMs = board.live().bridges[k].moveMs() + SETTLE_MS;
         Option o;
-        if (!walkTo(s, s.from, cell, 0, 0, o))
+        if (!walkTo(s, s.from, cell, 0, o))
             return;
         // On the switch until the bridge is done.
         const double arrive = o.cost;

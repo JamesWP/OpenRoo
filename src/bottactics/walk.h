@@ -8,11 +8,11 @@
 
 namespace bot {
 
-/* Appends a walk to target by paths' quickest route, starting startMs from
- * now and after a further wait, to o's script and schedule, and sets its
- * cost to the time until it arrives.  False if target is unreachable. */
-bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, double startMs,
-            Option &o);
+/* Appends a walk to target by paths' quickest route, setting off when the
+ * paths do (Paths::startMs) and after a further wait, to o's script and
+ * schedule, and sets its cost to the time until it arrives.  False if
+ * target is unreachable. */
+bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Option &o);
 
 /* Walks from the player to each target, each costed with the ms after it
  * (target, after); with waits, after each of a few waits too. */

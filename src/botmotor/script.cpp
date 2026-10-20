@@ -47,7 +47,8 @@ unsigned Executor::act(const BotView &view)
         ticks_++;
         switch (s.kind) {
         case ScriptStep::Wait:
-            if (view.now < s.untilMs)
+            // A key pressed on this tick moves the player on the next.
+            if (view.now + view.tickMs < s.untilMs - 1e-6)
                 return 0;
             next();
             continue;

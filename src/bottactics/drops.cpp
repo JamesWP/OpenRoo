@@ -82,7 +82,7 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
         Option o = before;
         o.script.push_back({ScriptStep::Drop, 0, {}, 0});
         Option walk;
-        if (!walkTo(s, away, at, 0, dropIn, walk))
+        if (!walkTo(s, away, at, 0, walk))
             continue;
         o.script.insert(o.script.end(), walk.script.begin(), walk.script.end());
         o.schedule.insert(o.schedule.end(), walk.schedule.begin() + 1, walk.schedule.end());
@@ -140,9 +140,7 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
         Option going;
         int arrives = p.facing;
         if (walkMs > 0) {
-            // The drops on the way are landed after the steps.
-            const double falls = s.nav.fallsAlong(s.from.cellsTo(site.u, site.v));
-            if (!walkTo(s, s.from, site, 0, s.busyMs + falls, going))
+            if (!walkTo(s, s.from, site, 0, going))
                 continue;
             arrives = Motor::facingAfter(p.facing, s.from.cellsTo(site.u, site.v));
         } else {
@@ -165,7 +163,7 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
                 // facing it already has is no turn.
                 before.script.push_back({ScriptStep::Turn, facing, {}, 0});
                 if (ready > there + turnMs + 1)
-                    before.script.push_back({ScriptStep::Wait, 0, {}, view.now + ready});
+                    before.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn});
                 before.schedule.push_back({dropIn, site});
                 const size_t first = out.size();
                 retreats(s, before, site, facing, dropIn, true, 1, AMBUSH_RETREATS, out);
@@ -193,7 +191,7 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
     snprintf(buf, sizeof(buf), "blast from (%d,%d) facing %d", site.u, site.v, site.facing);
     before.what = buf;
     // There first, then the turn.
-    if (!walkTo(s, s.from, {site.u, site.v}, 0, 0, before))
+    if (!walkTo(s, s.from, {site.u, site.v}, 0, before))
         return;
     const int arrives = Motor::facingAfter(p.facing, s.from.cellsTo(site.u, site.v));
     const int turns = (site.facing - arrives + 4) % 4;
@@ -215,7 +213,7 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
             return;
         if (spell->from > view.now + dropIn) {
             dropIn = spell->from - view.now;
-            before.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn - view.tickMs});
+            before.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn});
         }
     }
     // Dropped as soon as it is there, or, if there is no way clear then (the
@@ -225,7 +223,7 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
             break;  // a carried bomb's drop is timed to its carrier
         Option o = before;
         if (wait > 0)
-            o.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn + wait - view.tickMs});
+            o.script.push_back({ScriptStep::Wait, 0, {}, view.now + dropIn + wait});
         o.schedule.push_back({dropIn + wait, {site.u, site.v}});
         const size_t had = out.size();
         retreats(s, o, {site.u, site.v}, site.facing, dropIn + wait, true, 0, RETREATS, out);

@@ -74,7 +74,7 @@ bool clearOf(Situation &s, const Option &before, Step at, int facing, double sta
     for (const Step &to : retreatCells(view, away)) {
         Option o = before;
         Option walk;
-        if (!walkTo(s, away, to, 0, startMs, walk))
+        if (!walkTo(s, away, to, 0, walk))
             continue;
         o.script.insert(o.script.end(), walk.script.begin(), walk.script.end());
         o.schedule.insert(o.schedule.end(), walk.schedule.begin() + 1, walk.schedule.end());
@@ -171,7 +171,7 @@ public:
             before.what = "clear of a thrower's bomb";
             before.schedule.push_back({0, here});
             Option o;
-            if (clearOf(s, before, here, p.facing, s.busyMs, blast, &o))
+            if (clearOf(s, before, here, p.facing, s.from.startMs(), blast, &o))
                 out.push_back(std::move(o));
             return;
         }
@@ -206,7 +206,7 @@ public:
                 int facing = p.facing;
                 char buf[96];
                 if (drawn) {
-                    if (!walkTo(s, s.from, lure, 0, s.busyMs, going))
+                    if (!walkTo(s, s.from, lure, 0, going))
                         continue;
                     facing = Motor::facingAfter(facing, s.from.cellsTo(lure.u, lure.v));
                     if (wait > 0) {
@@ -220,7 +220,7 @@ public:
                     const Paths on(after, lure.u, lure.v, facing, going.cost);
                     Option leg;
                     if (bait.u != lure.u || bait.v != lure.v) {
-                        if (!walkTo(s, on, bait, 0, going.cost, leg))
+                        if (!walkTo(s, on, bait, 0, leg))
                             continue;
                         going.script.insert(going.script.end(), leg.script.begin(), leg.script.end());
                         going.schedule.insert(going.schedule.end(), leg.schedule.begin() + 1,
@@ -233,9 +233,9 @@ public:
                 } else {
                     if (bait.u == here.u && bait.v == here.v) {
                         going.schedule.push_back({0, here});
-                        going.cost = s.busyMs;
+                        going.cost = s.from.startMs();
                     } else {
-                        if (!walkTo(s, s.from, bait, 0, s.busyMs, going))
+                        if (!walkTo(s, s.from, bait, 0, going))
                             continue;
                         facing = Motor::facingAfter(facing, s.from.cellsTo(bait.u, bait.v));
                     }

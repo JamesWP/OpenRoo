@@ -1,5 +1,6 @@
 #include "nav.h"
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <queue>
 #include "fallingmodel.h"
@@ -13,8 +14,8 @@ const double SLIDE_MS    = 150.0;   // a step along a slide (movableentity.cpp)
 const double TELEPORT_MS = 500.0;   // each of the teleporter's two waits
 const double STICKY_MS   = 3000.0;  // a sticky pad's hold
 const double JUMP_MS     = 500.0;   // a jump pad's arc; not measured yet
-const double FALL_MS     = 283.0;   // landing a drop of one or two, after the step
-const double FALL_3_MS   = 433.0;   // and of three
+const double FALL_SPEED  = 3.0f;    // the free fall (movableentity.cpp): its start, a height a s
+const double FALL_ACCEL  = 5.405f;  // and its gain, a height a s^2
 const int    MAX_CHAIN   = 400;     // forced steps before a chain is taken to loop
 const double LIFT_HORIZON_MS = 120000.0;  // how far ahead the lifts are followed
 const double LIFT_MARGIN_MS  = 100.0;     // a lift stays parked this long past a step on or off it
@@ -67,22 +68,25 @@ void NavModel::arm(Step c, double atMs)
     back_[at] = Fallen{back, view_->cell(c.u, c.v).height, from};
 }
 
-double NavModel::fallMs(int drop)
+double NavModel::fallMs(int drop, double tickMs)
 {
-    return drop >= 3 ? FALL_3_MS : drop >= 1 ? FALL_MS : 0.0;
+    if (drop <= 0 || tickMs <= 0)
+        return 0;
+    // From a height well clear of zero, so that the game's truncation of it
+    // is the floor; the elapsed ms are whole, as the game takes them.
+    const int from = 64, floor = from - drop;
+    for (int k = 1;; k++) {
+        const double ts = std::floor(k * tickMs + 1e-6) * (double)0.001f;
+        const double h  = (-FALL_SPEED - ts * FALL_ACCEL) * ts + from;
+        if ((int)(long long)h + 1 <= floor)
+            return (k + 2) * tickMs;
+    }
 }
 
-double NavModel::fallsAlong(const std::vector<Step> &cells) const
+bool NavModel::falls(const Cell &a, const Cell &b)
 {
-    double ms = 0;
-    for (size_t i = 1; i < cells.size(); i++) {
-        const Cell &a = view_->cell(cells[i - 1].u, cells[i - 1].v);
-        const Cell &b = view_->cell(cells[i].u, cells[i].v);
-        if (b.height < a.height && !stairs(b.kind) &&
-            (a.height - b.height >= 2 || !stairs(a.kind)))
-            ms += a.height - b.height >= 3 ? FALL_3_MS : FALL_MS;
-    }
-    return ms;
+    return b.height < a.height && !stairs(b.kind) &&
+           (a.height - b.height >= 2 || !stairs(a.kind));
 }
 
 const BridgeView *switchedBy(const BotView &view, int u, int v)
@@ -270,7 +274,13 @@ Outcome NavModel::stepWhenOpen(int u, int v, int f, int d, double atMs, double *
             starts.push_back(fallen->second.back);
     }
     std::sort(starts.begin(), starts.end());
+    // Standing on a platform is riding it: the wait for a later start is
+    // only while it stays parked.
+    const Cell &here = view_->cell(u, v);
+    const bool onPlatform = here.track && here.kind != TILE_LIFT;
     for (const double t : starts) {
+        if (onPlatform && liftHeight(u, v, atMs, t - atMs) < 0)
+            break;
         Outcome o = stepAt(u, v, f, d, t);
         if (o.kind == Outcome::Rest) {
             *startMs = t;
@@ -293,7 +303,10 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
         origin.kind   = TILE_KIND_01;
         origin.height = (unsigned char)fromHeight;
     } else if (timed && moving(origin)) {
-        const int h = liftHeight(u, v, atMs, through);
+        // Off a platform as it stands at a cell, which the step need not
+        // outlast: the game lets the rider go if it is there as the step
+        // starts (movableentity.cpp).  A lift must stay for the step.
+        const int h = liftHeight(u, v, atMs, origin.kind == TILE_LIFT ? through : 0);
         if (h < 0) {
             out.why = "moving";
             return out;
@@ -358,6 +371,7 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
             break;  // a forced move stops against it
         }
         const Cell &b = *bp;
+        out.at.push_back(t);
         t += sliding ? SLIDE_MS : w.player.stepMs;
         out.cells.push_back({nu, nv});
         if (stairs(b.kind) && dir != b.kind - 4 && dir != opposite(b.kind - 4) && b.height > ch) {
@@ -390,6 +404,9 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
             out.ms   = t;
             return out;
         }
+        const Cell &a = n == 0 ? origin : w.cell(cu, cv);
+        if (falls(a, b) && ch > b.height)
+            t += fallMs(ch - b.height, w.tickMs);
         cu = nu;
         cv = nv;
         ch = b.height;
@@ -406,6 +423,7 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
             cu = b.teleU;
             cv = b.teleV;
             ch = w.cell(cu, cv).height;
+            out.at.push_back(t);
             out.cells.push_back({cu, cv});
         } else if (b.kind == TILE_JUMP_PAD) {
             t += JUMP_MS;
@@ -679,9 +697,8 @@ std::vector<Timed> Paths::scheduleTo(int u, int v) const
         const int f  = from % 4 + 1;
         const int fu = (from / 4) % eu_, fv = (from / 4) / eu_;
         const Outcome o = nav_.stepAt(fu, fv, f, how == 0 ? f : NavModel::opposite(f), departs_[to]);
-        const double each = o.cells.empty() ? 0 : o.ms / (double)o.cells.size();
         for (size_t c = 0; c < o.cells.size(); c++)
-            out.push_back({departs_[to] - startMs_ + each * (double)c, o.cells[c]});
+            out.push_back({departs_[to] - startMs_ + o.at[c], o.cells[c]});
     }
     return out;
 }
