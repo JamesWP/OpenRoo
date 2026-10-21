@@ -102,6 +102,11 @@ and the foe model says when the bomb drops, so the walk away can be timed.
 A bait is planned only where the player can get clear of the bomb, and
 costs the thrower's walk to it as well; a thrower too far off for its chase
 to keep up is led there, a few cells at a time.
+A bridge can be extended without the player on its switch: a catcher is
+lured onto it, where the player could not work the switch and go on (one a
+jump pad throws onto a pillar, for one).  The player walks somewhere, by way
+of a cell that lets a catcher off a sticky pad if need be, and waits, and the
+foe model says whether its chase carries a catcher onto the switch.
 
 ### 3.6 Motor
 

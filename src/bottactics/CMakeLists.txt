@@ -14,6 +14,7 @@ add_library(bottactics OBJECT
     option.cpp
     release.cpp
     switch.cpp
+    lure.cpp
     tactics.cpp
     walk.cpp)
 target_include_directories(bottactics PUBLIC .)

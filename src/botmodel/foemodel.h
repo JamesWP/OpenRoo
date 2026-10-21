@@ -12,7 +12,8 @@
  * 700 a thrower's, a step that follows within 20 ms of the last starting where
  * it ended), and the terrain's say over a foe at rest, seen to on the tick its
  * step ends (a slide carries it on at 150 ms a cell, ice the way it last
- * moved, a sticky pad holds it 3 s, a teleporter holds it 500 ms, moves it to
+ * moved, a jump pad throws it up to the pad's top and on the way it went
+ * (as the player, nav.h), a sticky pad holds it 3 s, a teleporter holds it 500 ms, moves it to
  * its other pad, holds it 500 ms more and sends it on the way it came).  Foes
  * see each other and the player through the cells' occupants, as in the game:
  * a step holds the cell it leaves until it ends, the player's too, and a
@@ -153,6 +154,7 @@ private:
         int    switchSlot = -1;    // the switch worked, not yet acted on
         bool   turned = false;     // its chase has found a way (FoeView::turned)
         double fallsUntil = -1;    // falling into the void, gone then (model clock)
+        double padAt = -1;         // launched by the jump pad it stands on, then
     };
 
     /* A bridge as it moves (bridgeobject.cpp): phase 0 extends next, 1
@@ -210,7 +212,8 @@ private:
     int  chaseMove(const Foe &f, int tu, int tv, int speed);
     /* What the terrain under a foe at rest does to its move (movableentity.cpp):
      * a sticky pad holds it, a slide carries it on (*sliding), a teleporter
-     * holds it and sends it on, ice keeps it going the way it went. */
+     * holds it and sends it on, a jump pad throws it up and on, ice keeps it
+     * going the way it went. */
     int  terrain(Foe &f, int move, bool *sliding);
     /* The movement integrator's start of a move; false if refused.  A slide
      * moves at its own pace. */

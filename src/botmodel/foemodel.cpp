@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "foetype.h"
 #include "liftmodel.h"
+#include "nav.h"
 #include "tile.h"
 
 namespace bot {
@@ -263,6 +264,8 @@ void FoeModel::load(const BotView &view)
         f.onSwitch   = fv.onSwitch;
         f.switchSlot = fv.switchSlot;
         f.turned     = fv.turned;
+        if (fv.launched)
+            f.padAt = fv.launchedAt;
         // Falling into the void: gone 100 heights below the floor, the
         // height fallen so far, 3 t + 5.405 t^2, still to add to the drop.
         if (fv.falling && !fv.launched && !fv.gliding && view.inside(fv.u, fv.v) &&
@@ -874,6 +877,16 @@ int FoeModel::terrain(Foe &f, int move, bool *sliding)
             move = f.lastMoveDir;
         }
         return move;
+    }
+    if (here.kind == TILE_JUMP_PAD) {
+        // Thrown up to the pad's top, and on from there the way it last went.
+        if (f.padAt < 0)
+            f.padAt = clock_;
+        if (clock_ < f.padAt + NavModel::jumpMs(here.jumpTop - here.height, view_->tickMs) - 1e-6)
+            return 0;
+        f.padAt = -1;
+        f.h     = here.jumpTop;
+        return f.lastMoveDir;
     }
     if (here.kind == TILE_ICE && f.lastMoveDir != 0)
         return f.lastMoveDir;
