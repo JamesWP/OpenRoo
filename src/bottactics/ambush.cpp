@@ -1,5 +1,6 @@
 /* Ambush: with a bomb and a foe, a foe less and a bomb less; a carrier's
- * gem (board.h) taken too, if gems are needed.  Its cost is a
+ * gem (board.h) taken too, if gems are needed.  Or two carriers for the one
+ * bomb, dearer, for where the bombs are too few.  Its cost is a
  * guess: whether one can be had depends on where the foes go, which only the
  * tactical layer predicts.  Done as a turn, a drop and a walk away, taken
  * only where the foe model says the blast kills a foe (drops.h).  Not while
@@ -15,6 +16,9 @@ namespace {
 const double AMBUSH_MS = 2500;
 /* And picking up the gem a carrier leaves. */
 const double FETCH_MS = 1000;
+/* What waiting for two foes to come together into one blast takes, more:
+ * dearer than two ambushes, so planned only where the bombs are too few. */
+const double PAIR_MS = 3000;
 
 class AmbushAction : public Action {
     /* The foe (a carrier, if so) nearest the place, as the foes stand: where
@@ -44,6 +48,15 @@ public:
         // A follower to let out bombs the catchers for one bomb (release.cpp).
         if (f.bombs <= 0 || f.foes <= 0 || board.releasePending(f.changes, f.bombs))
             return;
+        // Where foes spawn, not before every bomb pickup is taken (bombs.cpp).
+        if (board.spawned() > 0) {
+            const std::vector<Pickup> &pickups = board.pickups();
+            for (size_t i = 0; i < pickups.size() && i < 32; i++)
+                if (pickups[i].kind == Pickup::Bombs && !(f.pickups & (1u << i)) &&
+                    Board::available(pickups[i], f.changes) &&
+                    board.time(f.changes, f.at, pickups[i].cell) >= 0)
+                    return;
+        }
         Successor n{f, {}};
         n.facts.bombs--;
         n.facts.foes--;
@@ -61,6 +74,21 @@ public:
                 n.step.ms += FETCH_MS;
             }
             out.push_back(n);
+        }
+        // Two carriers in the one blast (drops.cpp ranks those first).
+        if (f.carriers >= 2) {
+            Successor two{f, {}};
+            two.facts.bombs--;
+            two.facts.foes -= 2;
+            two.facts.carriers -= 2;
+            two.facts.unused = false;
+            two.step.ms = 2 * AMBUSH_MS + PAIR_MS;
+            two.step.heads = nearest(f, board, true);
+            for (int i = 0; i < 2 && two.facts.gemsNeeded > 0; i++) {
+                two.facts.gemsNeeded--;
+                two.step.ms += FETCH_MS;
+            }
+            out.push_back(two);
         }
     }
 

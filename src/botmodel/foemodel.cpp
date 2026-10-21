@@ -1117,6 +1117,10 @@ int spareGems(const BotView &view)
         for (int u = 0; u < view.extentU; u++) {
             const Cell &c = view.cell(u, v);
             have += (c.contents == CONTENTS_CRYSTAL) + (c.hidden == CONTENTS_CRYSTAL);
+            // A timed spawner makes foes with gems for as long as it takes
+            // (playtick.cpp, Play_SpawnTimedFoes).
+            if (c.contents == CONTENTS_TIMED_SPAWN)
+                return view.gemsRequired;
         }
     for (const FoeView &f : view.foes)
         have += f.drops == CONTENTS_CRYSTAL && !f.dying;

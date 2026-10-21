@@ -111,6 +111,11 @@ lured onto it, where the player could not work the switch and go on (one a
 jump pad throws onto a pillar, for one).  The player walks somewhere, by way
 of a cell that lets a catcher off a sticky pad if need be, and waits, and the
 foe model says whether its chase carries a catcher onto the switch.
+Where a timed spawner makes foes for their gems, the gems the level needs
+come from kills, so bombs are what runs out: every bomb pickup is taken
+before the first ambush, a blast that catches two foes can be planned for
+one bomb, and of the ambushes offered the one killing most is taken first.
+A kill on a cell already holding a gem leaves only the one gem there.
 
 ### 3.6 Motor
 
