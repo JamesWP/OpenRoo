@@ -41,6 +41,11 @@ namespace bot {
 
 enum GoalKind { FINISH, REMOVE_FOE, GOAL_KINDS };
 
+/* The least a gem from a carrier costs a plan: its kill and the fetch (the
+ * ambush action's estimates, ambush.cpp).  The heuristic counts it for each
+ * gem the map cannot give, so it must stay at most those. */
+const double CARRIER_GEM_MS = 3500;
+
 const char *goalName(GoalKind goal);
 
 /* The facts a plan's state is made of. */

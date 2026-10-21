@@ -1,6 +1,7 @@
 /* Bombs(p): with none held and a foe or a block to use them on, the bombs
  * at pickup p, not taken yet: 3 of them, to be used before the exit (items
- * are only a means to an end).  Done as a walk to the planned pickup, or
+ * are only a means to an end).  Where foes spawn (board.h's spawned()), with
+ * bombs held too, the ambushes waiting for every pickup (ambush.cpp).  Done as a walk to the planned pickup, or
  * another (costed with the whole plan still to do). */
 #include "action.h"
 #include "walk.h"
@@ -19,7 +20,9 @@ public:
     void expand(const Facts &f, double, const Board &board, const PlanOptions &,
                 std::vector<Successor> &out) const override
     {
-        if (f.bombs != 0 || (f.foes == 0 && (f.changes & board.allBlocks()) == board.allBlocks()))
+        // Where foes spawn for their gems, all of them at once: the foes
+        // gather round what is left on the map.
+        if ((f.bombs != 0 && board.spawned() == 0) || (f.foes == 0 && (f.changes & board.allBlocks()) == board.allBlocks()))
             return;
         const std::vector<Pickup> &pickups = board.pickups();
         for (size_t i = 0; i < pickups.size() && i < 32; i++) {

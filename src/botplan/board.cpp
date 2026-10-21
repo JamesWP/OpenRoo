@@ -53,6 +53,15 @@ Board::Board(const BotView &live, Worlds &worlds) : live_(live), worlds_(&worlds
         gemsNeeded_ = 0;
     for (const FoeView &f : live.foes)
         carriers_ += carrier(f);
+    int onMap = 0;
+    bool spawner = false;
+    for (const Cell &c : live.cells) {
+        onMap += (c.contents == CONTENTS_CRYSTAL) + (c.hidden == CONTENTS_CRYSTAL);
+        spawner = spawner || c.contents == CONTENTS_TIMED_SPAWN;
+    }
+    if (spawner)
+        spawned_ = std::max(0, gemsNeeded_ - onMap - carriers_);
+    carriers_ += spawned_;
     auto kind = [](int contents, Pickup::Kind *k) {
         *k = contents == CONTENTS_PARAGLIDER ? Pickup::Glider : Pickup::Bombs;
         return contents == CONTENTS_GRANT_09 || contents == CONTENTS_PARAGLIDER;

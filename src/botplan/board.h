@@ -87,10 +87,17 @@ public:
     Place start() const { return {live_.player.u, live_.player.v, live_.player.facing}; }
     int   gemsNeeded() const { return gemsNeeded_; }
     int   bombs() const { return live_.player.bombs; }
-    int   foes() const { return (int)live_.foes.size(); }
+    /* The foes: those alive, and those the timed spawners will make
+     * (spawned()). */
+    int   foes() const { return (int)live_.foes.size() + spawned_; }
+    /* The foes the timed spawners will make that the plans may count on,
+     * each with a gem (playtick.cpp, Play_SpawnTimedFoes): as many as there
+     * are gems still needed, if the level has a spawner.  None while a
+     * spawner is out of foes is known. */
+    int   spawned() const { return spawned_; }
     /* Whether the foe leaves a gem when killed (foe.cpp, finishDespawn). */
     static bool carrier(const FoeView &foe);
-    /* The foes that do. */
+    /* The foes that do, spawned() among them. */
     int   carriers() const { return carriers_; }
     Step  exit() const { return {live_.exitU, live_.exitV}; }
     /* Whether the player has, or could pick up, a glide. */
@@ -221,6 +228,7 @@ private:
     Worlds        *worlds_;
     int            gemsNeeded_ = 0;
     int            carriers_ = 0;
+    int            spawned_ = 0;
     std::vector<Pickup> pickups_;
     std::vector<Pickup> timeBonuses_;
     std::vector<std::pair<Step, int>> switches_;

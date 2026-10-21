@@ -85,21 +85,27 @@ private:
     }
 
     /* The least the rest can cost: for finishing, the route through the gems
-     * the carriers cannot give and the exit, in the most open world; a foe
-     * could be had at once. */
+     * the carriers cannot give and the exit, in the most open world, and
+     * CARRIER_GEM_MS for each gem the map cannot give; a foe could be had at
+     * once. */
     double heuristic(const Facts &f) const
     {
         if (options_.goal == REMOVE_FOE)
             return 0;
         if (f.atExit)
             return 0;
+        int onMap = 0;
+        for (const Step &g : board_.gems(board_.everything()))
+            onMap += !(f.taken & board_.gemBit(g));
+        const double fromCarriers = std::max(0, f.gemsNeeded - onMap) * CARRIER_GEM_MS;
         // The carriers' gems could stand in for the map's.
         const int fromMap = f.gemsNeeded - f.carriers;
         if (fromMap > 0) {
             const GemRoute &r = board_.gemRoute(board_.everything(), f.at, fromMap, f.taken);
-            return r.found ? r.toLast + r.toExit : -1;
+            return r.found ? r.toLast + r.toExit + fromCarriers : -1;
         }
-        return board_.time(board_.everything(), f.at, board_.exit());
+        const double t = board_.time(board_.everything(), f.at, board_.exit());
+        return t < 0 ? t : t + fromCarriers;
     }
 
     void push(const Facts &f, double g, double ms, int parent, const PlanStep &step)

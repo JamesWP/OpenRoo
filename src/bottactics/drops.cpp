@@ -20,6 +20,13 @@ const double SITE_MS = 1500;
 const size_t SITES = 6;
 const double DELAYS[] = {0, 250, 500, 750, 1000, 1250, 1500, 2000};
 const size_t AMBUSH_RETREATS = 2;
+/* What each foe past the first an ambush kills saves: an ambush, and its
+ * bomb (ambush.cpp's AMBUSH_MS).  Taken off its cost, so that one blast
+ * catching several foes is chosen over a quicker one catching one. */
+const double EXTRA_KILL_MS = 2500;
+/* What a kill on a gem costs: its own gem is lost (foe.cpp's finishDespawn
+ * sets the cell's contents, so one gem stays), an ambush wasted. */
+const double WIPED_MS = 2500;
 /* A kill is counted on only if the foe dies with the blast this much earlier
  * or later, too: the foe model's timing is good to about that, and a foe
  * caught only on its way past the blast's edge is not caught at all if it
@@ -216,6 +223,9 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
                                          [&](const Option &o) { return gemsWiped(view, o.killed) > spare; }),
                           out.end());
                 for (size_t i = first; i < out.size(); i++) {
+                    const int wiped = gemsWiped(view, out[i].killed);
+                    out[i].cost -= std::max(0, out[i].kills - wiped - 1) * EXTRA_KILL_MS;
+                    out[i].cost += wiped * WIPED_MS;
                     char more[48];
                     snprintf(more, sizeof(more), ", %d foe%s", out[i].kills,
                              out[i].kills == 1 ? "" : "s");
