@@ -252,4 +252,43 @@ double foeMeets(FoeModel &sim, const BotView &view, const std::vector<Timed> &pl
     return d.hit && (why == "catcher" || why == "thrower") ? d.t : -1;
 }
 
+double foeBreaksRun(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
+                    double horizonMs, Step *at)
+{
+    if (view.fallings.empty() || view.foes.empty())
+        return -1;
+    const std::vector<int> runs = keptOffRuns(view);
+    bool any = false;
+    for (int r : runs)
+        any = any || r >= 0;
+    if (!any)
+        return -1;
+    auto playerAt = [&](double clock) {
+        Step at = plan.empty() ? Step{view.player.u, view.player.v} : plan.front().cell;
+        for (const Timed &m : plan)
+            if (view.now + m.t <= clock + 1e-6)
+                at = m.cell;
+        return at;
+    };
+    sim.load(view);
+    std::vector<Step> was(view.foes.size());   // by foeId: where each last stood off the runs
+    for (size_t i = 0; i < sim.foeCount(); i++)
+        was[sim.foeId(i)] = sim.foeCell(i);
+    while (sim.now() < view.now + horizonMs) {
+        const double prev = sim.now();
+        sim.runTick(playerAt);
+        if (sim.now() == prev)
+            break;
+        for (size_t i = 0; i < sim.foeCount(); i++) {
+            const Step f = sim.foeCell(i);
+            if (view.inside(f.u, f.v) && runs[(size_t)f.v * view.extentU + f.u] >= 0) {
+                *at = was[sim.foeId(i)];
+                return sim.now() - view.now;
+            }
+            was[sim.foeId(i)] = f;
+        }
+    }
+    return -1;
+}
+
 }  // namespace bot

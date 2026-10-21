@@ -12,6 +12,9 @@ std::vector<Goal> selectGoals(const Senses &senses)
     // bombed them, met soon or not.
     else if (senses.hunted > 0)
         goals.push_back({REMOVE_FOE, -1});
+    // A foe about to break a one-shot run, the way on perhaps, before it does.
+    else if (senses.bombs > 0 && senses.runBrokenMs >= 0)
+        goals.push_back({REMOVE_FOE, senses.runBrokenMs, true, senses.runBrokenAt});
     goals.push_back({FINISH, -1});
     return goals;
 }

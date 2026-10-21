@@ -76,7 +76,11 @@ player schedule against all of them.
 
 Which goals are worth planning for now, the most relevant first: *finish*
 always, and above it *remove foe* while bombs are held and a foe will meet
-the player soon.  Goals are relevant on sensed facts, not on plans.
+the player soon, or a foe will step onto a one-shot run of falling tiles
+that bridges (an exit guard on its way to the exit over the only way in).
+That one is a race: while it cannot be done yet, the player heads for the
+cell the foe steps onto the run from, rather than finishing meanwhile.
+Goals are relevant on sensed facts, not on plans.
 
 ### 3.4 Planner
 

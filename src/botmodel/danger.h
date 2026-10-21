@@ -45,4 +45,12 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
 double foeMeets(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
                 double horizonMs);
 
+/* How soon a foe steps onto a run of one-shot falling tiles that bridges
+ * (nav.h, keptOffRuns), the player on plan and then standing at its end,
+ * within horizonMs: ms from now, or -1.  The run falls under it, and what
+ * lay beyond it may be cut off for good (an exit guard on its way to the
+ * exit, for one).  *at: the cell it steps onto the run from. */
+double foeBreaksRun(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
+                    double horizonMs, Step *at);
+
 }  // namespace bot

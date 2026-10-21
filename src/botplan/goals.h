@@ -7,7 +7,9 @@
  *                finishing: a foe met is better met with a bomb than avoided,
  *                unless the bomb is one the way to the exit needs (goap.cpp);
  *                or, met soon or not, while a follower is out after the
- *                catchers (foemodel.h), which bombs them.
+ *                catchers (foemodel.h), which bombs them; or bombs held, and
+ *                a foe is about to break a one-shot run that bridges
+ *                (danger.h, foeBreaksRun), before it does.
  *
  * Each goal is planned for in turn (goap.h) until one can be done safely;
  * the executive asks again as things change, and a goal above the one
@@ -16,11 +18,15 @@
 
 #include <vector>
 #include "goap.h"
+#include "botview.h"
 
 namespace bot {
 
 /* How far ahead the foes are sensed: a foe met later is no threat yet. */
 const double FOE_HORIZON_MS = 6000;
+/* And how far ahead for a foe breaking a one-shot run: far enough to get to
+ * it with a bomb. */
+const double RUN_HORIZON_MS = 20000;
 
 /* What goal selection goes by. */
 struct Senses {
@@ -28,11 +34,16 @@ struct Senses {
     int    foes = 0;
     double foeMeetsMs = -1;   // a foe meets the player this soon, or -1: none soon
     int    hunted = 0;        // catchers a follower can reach (foemodel.h)
+    double runBrokenMs = -1;  // a foe breaks a one-shot run that bridges this soon, or -1,
+    Step   runBrokenAt{-1, -1};  // on this tile
 };
 
 struct Goal {
     GoalKind kind = FINISH;
     double   by = -1;         // ms: when it must be under way by (-1: no limit)
+    bool     race = false;    // not to be put off for the goals below: if it
+                              // cannot be done yet, the way to it is taken,
+    Step     at{-1, -1};      // to here (else where its plan heads)
 };
 
 /* The relevant goals, the most relevant first. */

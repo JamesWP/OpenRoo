@@ -99,6 +99,8 @@ std::vector<Goal> Executive::goals(const BotView &view)
     if (!view.foes.empty()) {
         senses.foeMeetsMs = foeMeets(foes_, view, ahead(view), FOE_HORIZON_MS);
         senses.hunted     = catchersHunted(foes_, view);
+        if (view.player.bombs > 0)
+            senses.runBrokenMs = foeBreaksRun(foes_, view, ahead(view), RUN_HORIZON_MS, &senses.runBrokenAt);
     }
     return selectGoals(senses);
 }
@@ -138,6 +140,15 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
             if (have) {
                 planned = c.taken.describe();
                 chosen  = std::move(c.option);
+                goal    = g;
+                break;
+            }
+            // A race: towards it while it cannot be done yet.
+            const Step to = goal_wanted.at.u >= 0 ? goal_wanted.at : goal_of(c.first);
+            if (goal_wanted.race && to.u >= 0 &&
+                approach(s, board, to, &chosen, &tally[APPROACH])) {
+                have    = true;
+                planned = c.first.describe();
                 goal    = g;
                 break;
             }
