@@ -97,6 +97,9 @@ public:
     bool glidesToBe() const;
     /* The pickups, on the map and hidden. */
     const std::vector<Pickup> &pickups() const { return pickups_; }
+    /* The freezes on the map, apart from pickups(): taken only to hold the
+     * foes (freeze.cpp). */
+    const std::vector<Step> &freezes() const { return freezes_; }
     /* The time bonuses, on the map and hidden (their kind unused), apart
      * from pickups(): no plan but one against the clock goes for them. */
     const std::vector<Pickup> &timeBonuses() const { return timeBonuses_; }
@@ -222,6 +225,7 @@ private:
     int            gemsNeeded_ = 0;
     int            carriers_ = 0;
     std::vector<Pickup> pickups_;
+    std::vector<Step> freezes_;
     std::vector<Pickup> timeBonuses_;
     std::vector<std::pair<Step, int>> switches_;
     mutable std::map<Changes, std::vector<Step>> gems_;

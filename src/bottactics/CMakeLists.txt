@@ -9,6 +9,7 @@ add_library(bottactics OBJECT
     cross.cpp
     drops.cpp
     exit.cpp
+    freeze.cpp
     glide.cpp
     glider.cpp
     option.cpp

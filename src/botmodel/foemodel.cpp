@@ -187,6 +187,9 @@ void FoeModel::setOcc(int u, int v, int o)
         occ_[(size_t)v * view_->extentU + u] = (unsigned char)o;
 }
 
+/* How long a freeze holds the foes (player.cpp, K_FREEZE_MS). */
+const double FREEZE_MS = 5000.0;
+
 void FoeModel::load(const BotView &view)
 {
     view_ = &view;
@@ -196,8 +199,11 @@ void FoeModel::load(const BotView &view)
     occ_.resize(view.cells.size());
     gem_.resize(view.cells.size());
     spent_.assign(view.cells.size(), 0);
+    freeze_.resize(view.cells.size());
+    freezeUntil_ = view.player.freezeUntil;
     for (size_t i = 0; i < view.cells.size(); i++) {
         occ_[i] = view.cells[i].occupant;
+        freeze_[i] = view.cells[i].contents == CONTENTS_FREEZE;
         gem_[i] = view.cells[i].contents == CONTENTS_CRYSTAL;
         spent_[i] = view.cells[i].busy;
     }
@@ -774,7 +780,7 @@ bool FoeModel::startMove(Foe &f, int move, bool sliding)
 void FoeModel::tickFoe(size_t i)
 {
     Foe &f = foes_[i];
-    f.held = clock_ < view_->player.freezeUntil ? 1 : 0;
+    f.held = clock_ < freezeUntil_ ? 1 : 0;
     // A switch runner's search keeps off the switches not raised, but for
     // one standing on a switch (Foe::chase).
     if (f.type == FOE_SWITCH_RUNNER)
@@ -964,6 +970,15 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
         player_ = at;
         playerOnSwitch_ = false;
         playerRestAt_   = clock_ + view_->player.stepMs;
+    }
+    // A freeze is taken as the step onto it ends (player.cpp), and holds the
+    // foes 5 s from then.
+    if (clock_ >= playerRestAt_ - 1e-6 && view_->inside(player_.u, player_.v)) {
+        const size_t i = (size_t)player_.v * view_->extentU + player_.u;
+        if (freeze_[i]) {
+            freeze_[i] = 0;
+            freezeUntil_ = clock_ + FREEZE_MS;
+        }
     }
     if (ownGrid_) {
         if (clock_ >= playerRestAt_ - 1e-6 && view_->inside(player_.u, player_.v))

@@ -71,6 +71,10 @@ Board::Board(const BotView &live, Worlds &worlds) : live_(live), worlds_(&worlds
         for (int u = 0; u < live.extentU; u++)
             if (live.cell(u, v).contents == CONTENTS_TIME_BONUS)
                 timeBonuses_.push_back({{u, v}, -1});
+    for (int v = 0; v < live.extentV; v++)
+        for (int u = 0; u < live.extentU; u++)
+            if (live.cell(u, v).contents == CONTENTS_FREEZE)
+                freezes_.push_back({u, v});
     for (size_t i = 0; i < worlds.blockCount(); i++) {
         const Step b = worlds.block(i);
         if (live.cell(b.u, b.v).hidden == CONTENTS_TIME_BONUS)

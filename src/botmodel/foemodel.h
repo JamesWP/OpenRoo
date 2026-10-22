@@ -225,6 +225,8 @@ private:
     std::vector<unsigned char> occ_;   // the cells' occupants, as the sim moves them
     std::vector<unsigned char> gem_;   // a gem still on the cell (type 3 foes eat them)
     std::vector<unsigned char> spent_; // a sticky pad used up
+    std::vector<unsigned char> freeze_; // a freeze still on the cell, for the player to take
+    double freezeUntil_ = 0;           // the foes are held until then, as the player takes freezes
     /* The falling tiles (fallingtile.cpp): armed by whatever stands on one,
      * gone FALL_MS later, and back BACK_MS after it was armed if it comes
      * back.  A fallen tile is void to the foes' search. */
