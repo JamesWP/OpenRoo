@@ -882,21 +882,23 @@ std::vector<Timed> Paths::scheduleTo(int u, int v) const
 NavModel aroundThrowers(const BotView &view, double startMs, double withinMs)
 {
     NavModel nav(view);
-    std::vector<Step> cells;
+    // The cells, and whether the thrower stands still on them: one at rest
+    // is gone round however far off it is (it may stay put).
+    std::vector<std::pair<Step, bool>> cells;
     for (const FoeView &f : view.foes) {
         if (f.kind != 3 || f.dying)
             continue;
-        cells.push_back({f.u, f.v});
+        cells.push_back({{f.u, f.v}, !f.moving});
         if (f.moving && f.moveDir >= 1 && f.moveDir <= 4)
-            cells.push_back({f.u - DIR_DU[f.moveDir], f.v - DIR_DV[f.moveDir]});
+            cells.push_back({{f.u - DIR_DU[f.moveDir], f.v - DIR_DV[f.moveDir]}, false});
     }
     if (cells.empty())
         return nav;
     const PlayerView &p = view.player;
     const Paths open(nav, p.u, p.v, p.facing, startMs);
-    for (const Step &c : cells) {
+    for (const auto &[c, still] : cells) {
         const double t = open.cost(c.u, c.v);
-        if (t >= 0 && t <= withinMs)
+        if (t >= 0 && (t <= withinMs || still))
             nav.shut(c);
     }
     return nav;

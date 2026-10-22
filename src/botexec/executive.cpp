@@ -175,6 +175,7 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
     GoalKind goal = FINISH;
     bool have = false;
     Plan finish;
+    bool detour = false;
     auto plan = [&](Situation &s) {
         for (const Goal &goal_wanted : goals) {
             const GoalKind g = goal_wanted.kind;
@@ -203,19 +204,42 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
                 planned = c.taken.describe();
                 chosen  = std::move(c.option);
                 goal    = g;
+                // Not the way first planned: that one was found unsafe.
+                detour  = c.first.steps.empty() || c.taken.steps.empty() ||
+                          c.first.steps.front().action != c.taken.steps.front().action ||
+                          c.first.steps.front().end < c.taken.steps.front().end ||
+                          c.taken.steps.front().end < c.first.steps.front().end;
                 break;
             }
         }
     };
     plan(plain);
-    // No safe way past a thrower near by: the ways round it.
+    // No safe way past a thrower near by, or only another way than the one
+    // planned: the ways round it, if they cost less.
     std::unique_ptr<Situation> around;
-    if (!have && !view.foes.empty()) {
+    bool roundIt = false;
+    if ((!have || detour) && !view.foes.empty()) {
         around = std::make_unique<Situation>(view, foes_, true);
-        if (around->nav.anyShut())
+        if (around->nav.anyShut()) {
+            const bool plainHave = have;
+            Plan plainFirst = first, plainFinish = finish;
+            std::string plainPlanned = planned;
+            Option plainChosen = std::move(chosen);
+            const GoalKind plainGoal = goal;
+            have = false;
             plan(*around);
+            roundIt = have && (!plainHave || chosen.cost < plainChosen.cost);
+            if (!roundIt && plainHave) {
+                have    = true;
+                first   = plainFirst;
+                finish  = plainFinish;
+                planned = plainPlanned;
+                chosen  = std::move(plainChosen);
+                goal    = plainGoal;
+            }
+        }
     }
-    Situation &s = have && around ? *around : plain;
+    Situation &s = roundIt ? *around : plain;
     if (midway && !have)
         return false;  // the script under way carries on
 
