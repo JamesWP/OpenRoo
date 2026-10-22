@@ -7,7 +7,9 @@
  *                finishing: a foe met is better met with a bomb than avoided,
  *                unless the bomb is one the way to the exit needs (goap.cpp);
  *                or, met soon or not, while a follower is out after the
- *                catchers (foemodel.h), which bombs them.
+ *                catchers (foemodel.h), which bombs them; or while a foe
+ *                can get to a falling tile that does not come back and that
+ *                the way to the exit must cross, which would be lost under it.
  *
  * Each goal is planned for in turn (goap.h) until one can be done safely;
  * the executive asks again as things change, and a goal above the one
@@ -28,11 +30,14 @@ struct Senses {
     int    foes = 0;
     double foeMeetsMs = -1;   // a foe meets the player this soon, or -1: none soon
     int    hunted = 0;        // catchers a follower can reach (foemodel.h)
+    int    wreckers = 0;      // foes that can get to a one-shot run the exit needs
+    Step   guard{-1, -1};     // and the cell beside it the player gets to first
 };
 
 struct Goal {
     GoalKind kind = FINISH;
     double   by = -1;         // ms: when it must be under way by (-1: no limit)
+    Step     toward{-1, -1};  // while it cannot be done yet, where to make for
 };
 
 /* The relevant goals, the most relevant first. */

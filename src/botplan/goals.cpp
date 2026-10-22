@@ -12,6 +12,9 @@ std::vector<Goal> selectGoals(const Senses &senses)
     // bombed them, met soon or not.
     else if (senses.hunted > 0)
         goals.push_back({REMOVE_FOE, -1});
+    // A foe that would drop the only way to the exit: dealt with first.
+    else if (senses.wreckers > 0)
+        goals.push_back({REMOVE_FOE, -1, senses.guard});
     goals.push_back({FINISH, -1});
     return goals;
 }

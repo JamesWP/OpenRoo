@@ -51,6 +51,9 @@ private:
     /* The goals worth planning for now, the most relevant first (goals.h),
      * the foes sensed along the script under way. */
     std::vector<Goal> goals(const BotView &view);
+    /* The foes that would drop the way to the exit before it is crossed,
+     * and where to wait for them (goals.h). */
+    int wreckers(const BotView &view, Step *guard);
     /* Plans for the goals in turn and starts the first safe option found.
      * midway: a script is under way, and only a goal above it is tried; if
      * none can be done, false, and the script carries on.  From rest, with
