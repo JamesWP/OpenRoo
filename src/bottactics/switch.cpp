@@ -14,6 +14,8 @@ namespace bot {
 
 namespace {
 
+/* The waits a walk to a switch is also offered after, ms. */
+const double WAITS[] = {0, 600, 1500, 3000};
 /* The wait past the move's end, for the last deck cell to be stamped. */
 const double SETTLE_MS = 100;
 /* What letting a catcher in to the player costs: more than a way round a
@@ -80,20 +82,24 @@ public:
         if (k < 0)
             return;
         const double moveMs = board.live().bridges[k].moveMs() + SETTLE_MS;
-        Option o;
-        if (!walkTo(s, s.from, cell, 0, o))
-            return;
-        // On the switch until the bridge is done.
-        const double arrive = o.cost;
-        o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + arrive + moveMs});
-        o.schedule.push_back({arrive + moveMs, cell});
-        o.stepMs = arrive + moveMs;
-        o.cost = plan.cost - plan.steps.front().ms + o.stepMs;
-        char buf[96];
-        snprintf(buf, sizeof(buf), "switch (%d,%d) for bridge %d", cell.u, cell.v,
-                 board.live().bridges[k].slot);
-        o.what = buf;
-        out.push_back(std::move(o));
+        // Now, or after a wait: a foe working the switches may have the
+        // bridges on the way as they should be only for a while.
+        for (const double wait : WAITS) {
+            Option o;
+            if (!walkTo(s, s.from, cell, wait, o))
+                return;
+            // On the switch until the bridge is done.
+            const double arrive = o.cost;
+            o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + arrive + moveMs});
+            o.schedule.push_back({arrive + moveMs, cell});
+            o.stepMs = arrive + moveMs;
+            o.cost = plan.cost - plan.steps.front().ms + o.stepMs;
+            char buf[96];
+            snprintf(buf, sizeof(buf), "switch (%d,%d) for bridge %d", cell.u, cell.v,
+                     board.live().bridges[k].slot);
+            o.what = buf;
+            out.push_back(std::move(o));
+        }
     }
 };
 

@@ -185,8 +185,9 @@ bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *t
     const double whole = s.from.cost(goal.u, goal.v);
     for (const Step &c : s.from.cellsTo(goal.u, goal.v)) {
         const double soFar = s.from.cost(c.u, c.v);
-        if (soFar <= 0 || (c.u == goal.u && c.v == goal.v) || !board.canFinishFrom(c))
-            continue;  // the start, a cell passed only by a forced move, the goal itself, a trap
+        if (soFar <= 0 || (c.u == goal.u && c.v == goal.v) || !board.canFinishFrom(c) ||
+            switchedBy(s.view, c.u, c.v))
+            continue;  // the start, a cell passed only by a forced move, the goal itself, a trap, a switch
         Option o;
         if (!walkTo(s, s.from, c, 0, o))
             continue;
@@ -207,7 +208,8 @@ bool evade(Situation &s, const Board &board, Option *out, Tally *tally)
     for (int v = 0; v < view.extentV; v++)
         for (int u = 0; u < view.extentU; u++) {
             const double c = s.from.cost(u, v);
-            if (c > 0 && c <= EVADE_MS)
+            // Not onto a switch, which works a bridge no plan asked for.
+            if (c > 0 && c <= EVADE_MS && !switchedBy(view, u, v))
                 cells.push_back({c, {u, v}});
         }
     std::sort(cells.begin(), cells.end(),
