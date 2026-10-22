@@ -14,12 +14,13 @@ const Action &switchAction();
 const Action &gliderAction();
 const Action &glideAction();
 const Action &crossAction();
+const Action &freezeAction();
 
 const std::vector<const Action *> &actions()
 {
     static const std::vector<const Action *> all{&collectAction(), &exitAction(), &bombsAction(),
                                                  &blastAction(), &releaseAction(), &awaitAction(), &baitAction(), &ambushAction(), &switchAction(),
-                                                 &gliderAction(), &glideAction(), &crossAction()};
+                                                 &gliderAction(), &glideAction(), &crossAction(), &freezeAction()};
     return all;
 }
 

@@ -275,6 +275,11 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
             printTo(log_, "%s%s", i ? ", " : "", goalName(goals[i].kind));
         printTo(log_, "\",\"goal\":\"%s\",\"plan\":\"%s\",\"plan_ms\":%.0f,\"nodes\":%d,\"taken_from\":\"%s\"",
                 goalName(goal_), first.describe().c_str(), first.ms, first.nodes, planned.c_str());
+        // Where each of the plan's steps ends.
+        printTo(log_, ",\"plan_ends\":[");
+        for (size_t i = 0; i < first.steps.size(); i++)
+            printTo(log_, "%s[%d,%d]", i ? "," : "", first.steps[i].end.u, first.steps[i].end.v);
+        printTo(log_, "]");
         for (size_t i = 0; i < tally.size(); i++)
             printTo(log_, ",\"%s\":[%d,%d]",
                     i == APPROACH ? "approach" : i == EVADE ? "evade" : actions()[i]->name(),
