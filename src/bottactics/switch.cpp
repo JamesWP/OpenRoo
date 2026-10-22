@@ -1,8 +1,8 @@
 /* Switch(k): a bridge switched, by coming to rest on a switch of its slot,
  * and waited for until its move is done (terrain.h): extended, where that
- * leads somewhere new from the switch or the switch itself does (passed over
- * on the way somewhere new), or retracted, if it is not in the way (to pass
- * over a switch).  Not the switch the player stands on (it
+ * leads somewhere new from the switch, or the switch itself does (passed over
+ * on the way somewhere new), or another switch it leads to does; or retracted, if it is not in the way or the
+ * switch leads somewhere new (to pass over a switch).  Not the switch the player stands on (it
  * works only when stepped onto), nor a bridge on the move (the game ignores
  * the switch then).  A bridge that lets catchers in to the player costs
  * more than its time.  Done as a walk to the planned switch and a wait there. */
@@ -20,6 +20,18 @@ const double SETTLE_MS = 100;
  * switch, less than a bridge the level needs. */
 const double LET_IN_MS = 5000;
 
+/* Whether a switch other than cell, that cell can reach in world next,
+ * reaches more in next than in s. */
+bool beyond(const Board &board, Changes s, Changes next, Step cell)
+{
+    for (const auto &[other, k] : board.switches())
+        if ((other.u != cell.u || other.v != cell.v) &&
+            board.time(next, {cell.u, cell.v, 0}, other) >= 0 &&
+            board.reach(next, other) > board.reach(s, other))
+            return true;
+    return false;
+}
+
 class SwitchAction : public Action {
 public:
     const char *name() const override { return "switch"; }
@@ -34,15 +46,19 @@ public:
                 continue;
             const Changes bit = board.worlds().bridgeBit(k);
             const Changes next = f.changes ^ bit;
-            if (board.extended(f.changes, k) ? (wanted & bit) != 0 : false)
-                continue;  // retracting the way
             const double t = board.time(f.changes, f.at, cell);
             if (t < 0)
                 continue;
-            // Extending a bridge is worth it only if it leads somewhere new,
-            // or the switch does, passed over (one of a row of switches).
-            if (!board.extended(f.changes, k) && board.reach(next, cell) <= board.reach(f.changes, cell) &&
+            // Retracting the way, but for coming to a switch that leads
+            // somewhere new (one passed over).
+            if (board.extended(f.changes, k) && (wanted & bit) != 0 &&
                 !board.opens(next, cell, f.changes, f.at))
+                continue;
+            // Extending a bridge is worth it only if it leads somewhere new,
+            // or the switch does, passed over (one of a row of switches), or
+            // another switch does (the way it opens is beyond that one).
+            if (!board.extended(f.changes, k) && board.reach(next, cell) <= board.reach(f.changes, cell) &&
+                !board.opens(next, cell, f.changes, f.at) && !beyond(board, f.changes, next, cell))
                 continue;
             Successor n{f, {}};
             n.facts.changes = next;
