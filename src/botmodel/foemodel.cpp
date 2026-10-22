@@ -887,8 +887,10 @@ void FoeModel::stepFoe(Foe &f, int tu, int tv, int speed)
         if (f.animMs <= clock_ - f.animStart) {
             f.stepEnd = f.animStart + f.animMs;
             if (f.moveDir >= 1 && f.moveDir <= 4) {
-                if (occ(f.fromU, f.fromV) == f.kind)
-                    setOcc(f.fromU, f.fromV, 0);
+                // Whoever is there now: a player who stepped in as the foe
+                // left is taken off the grid, and the gem runners' search no
+                // longer keeps out of its cell (movableentity.cpp).
+                setOcc(f.fromU, f.fromV, 0);
                 f.riding = cell(f.u, f.v).track;
             } else {
                 f.facing = f.moveDir - 10;
