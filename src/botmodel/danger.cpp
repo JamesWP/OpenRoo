@@ -155,6 +155,14 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
     std::vector<Step> before(view.foes.size());   // by foeId
     for (size_t i = 0; i < sim.foeCount(); i++)
         before[sim.foeId(i)] = sim.foeCell(i);
+    // A foe spawned since: where it was spawned.
+    auto was = [&](size_t i) -> Step & {
+        if (sim.foeId(i) >= before.size())
+            before.resize(sim.foeId(i) + 1, {-1, -1});
+        if (before[sim.foeId(i)].u < 0)
+            before[sim.foeId(i)] = sim.foeCell(i);
+        return before[sim.foeId(i)];
+    };
     Step playerBefore = playerAt(start);
     while (sim.now() < end) {
         const double prev = sim.now();
@@ -174,7 +182,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
             const bool caught = catcher &&
                 ((f.u == p.u && f.v == p.v) ||
                  (f.u == playerBefore.u && f.v == playerBefore.v &&
-                  before[sim.foeId(i)].u == p.u && before[sim.foeId(i)].v == p.v));
+                  was(i).u == p.u && was(i).v == p.v));
             // Within a thrower's reach is no harm in passing, which its bombs
             // judge, but no place to stop.
             const bool thrown = (reach || sim.now() >= arrives) && sim.throwsAtPlayer(i) &&
@@ -189,7 +197,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
                 d.why = caught ? "catcher" : thrown ? "thrower" : "blocked";
                 return d;
             }
-            before[sim.foeId(i)] = f;
+            was(i) = f;
         }
         playerBefore = p;
         if (sim.now() == prev)

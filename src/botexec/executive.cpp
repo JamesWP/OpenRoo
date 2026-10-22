@@ -155,6 +155,7 @@ std::vector<Goal> Executive::goals(const BotView &view)
         senses.hunted     = catchersHunted(foes_, view);
         senses.wreckers   = wreckers(view, &senses.guard);
     }
+    senses.farm = gemsFromSpawners(view);
     return selectGoals(senses);
 }
 
@@ -256,7 +257,11 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
         chosen = Option();
         // Stuck among foes: keep out of their way, while what they do (a gem
         // a carrier leaves, a bridge switched) may open a way.
-        if (!view.foes.empty() && evade(s, board, &chosen, &tally[EVADE]))
+        // Where the foes are to give the gems: those they have left, the
+        // nearest first, meanwhile.
+        if (gemsFromSpawners(view) && fetchGem(s, board, &chosen, &tally[APPROACH]))
+            note_ += "; " + chosen.what;
+        else if (!view.foes.empty() && evade(s, board, &chosen, &tally[EVADE]))
             note_ += "; " + chosen.what;
     } else {
         // Nothing safe: keep safe, as near the way as may be.

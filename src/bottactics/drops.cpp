@@ -173,7 +173,8 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
         }
     std::sort(near.begin(), near.end(),
               [](const auto &a, const auto &b) { return a.first < b.first; });
-    const int spare = spareGems(view);
+    // None to spare is none, however short the gems are.
+    const int spare = std::max(0, spareGems(view));
     for (size_t i = 0; i < near.size() && i < SITES; i++)
         sites.push_back(near[i]);
     for (const auto &[walkMs, site] : sites) {
@@ -216,6 +217,7 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
                                          [&](const Option &o) { return gemsWiped(view, o.killed) > spare; }),
                           out.end());
                 for (size_t i = first; i < out.size(); i++) {
+                    out[i].cost += cramped(s, out[i].schedule.back().cell);
                     char more[48];
                     snprintf(more, sizeof(more), ", %d foe%s", out[i].kills,
                              out[i].kills == 1 ? "" : "s");

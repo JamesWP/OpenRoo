@@ -101,6 +101,16 @@ struct FallingView {
     bool   respawns = true;
 };
 
+/* A timed spawner (playtick.cpp): each time interval ms has passed since
+ * lastSpawn, it spawns a chaser on its cell if that is free and there are
+ * fewer than maxFoes foes, and starts the wait again either way. */
+struct SpawnerView {
+    int    u = 0, v = 0, h = 0;
+    double lastSpawn = 0;   // clock ms
+    double interval = 0;
+    int    maxFoes = 0;
+};
+
 /* A lift's cycle (liftobject.cpp): it rises from its base to its top, parks
  * there 1.5 s, falls to its base and parks there 1.5 s, at 200 ms a height. */
 struct LiftView {
@@ -167,6 +177,7 @@ public:
     std::vector<LiftView>    lifts;
     std::vector<PlatformView> platforms;
     std::vector<BridgeView>   bridges;
+    std::vector<SpawnerView>  spawners;
 
     /* Why the player died (it has: player.moveState != 0): foe, drop,
      * timeout, bomb, void, harakiri.  See botview.cpp. */

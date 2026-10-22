@@ -47,6 +47,17 @@ struct Tally {
     int  offered = 0, safe = 0;
 };
 
+/* The cells nearer c than any foe, in steps over the ground the player can
+ * walk (the foes as they stand), up to most of them: a pocket the foes hem
+ * in has few. */
+int room(const Situation &s, Step c, int most);
+/* Where the gems are had from the foes, the bot stays out of the pockets
+ * they would hem it in: an option ending on a cell costs this much more for
+ * each cell short of ROOM_CELLS it has room for. */
+const int ROOM_CELLS = 40;
+const double ROOM_MS = 100;
+double cramped(const Situation &s, Step c);
+
 /* The plan's first step, as the cheapest safe option: false if none. */
 bool realise(Situation &s, const Board &board, const Plan &plan, Option *out, Tally *tally);
 
@@ -72,6 +83,10 @@ bool choose(Situation &s, const Board &board, PlanOptions options, Choice *out,
 /* Part of the way to goal, as far along as is safe, and not to a cell the
  * quota and the exit cannot be had from: false if no cell is. */
 bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *tally);
+
+/* The walk to the nearest gem lying where the player can walk to, if it is
+ * safe: false if there is none, or it is not. */
+bool fetchGem(Situation &s, const Board &board, Option *out, Tally *tally);
 
 /* A nearby cell to stand on, safe and not a trap: false if none. */
 bool evade(Situation &s, const Board &board, Option *out, Tally *tally);

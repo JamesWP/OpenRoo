@@ -201,6 +201,70 @@ bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *t
     return pick(s, options, out, tally);
 }
 
+int room(const Situation &s, Step c, int most)
+{
+    const BotView &view = s.view;
+    const size_t n = (size_t)view.extentU * view.extentV;
+    // Steps from the foes, and from c: the cells c is nearer.
+    const int du[] = {0, 1, 0, -1}, dv[] = {-1, 0, 1, 0};
+    auto spread = [&](std::vector<Step> queue) {
+        std::vector<int> d(n, -1);
+        for (const Step &q : queue)
+            d[(size_t)q.v * view.extentU + q.u] = 0;
+        for (size_t i = 0; i < queue.size(); i++) {
+            const Step a = queue[i];
+            const int at = d[(size_t)a.v * view.extentU + a.u];
+            for (int k = 0; k < 4; k++) {
+                const int u = a.u + du[k], v = a.v + dv[k];
+                if (!view.inside(u, v) || s.from.cost(u, v) < 0 || d[(size_t)v * view.extentU + u] >= 0 ||
+                    abs(view.cell(u, v).height - view.cell(a.u, a.v).height) > 1)
+                    continue;
+                d[(size_t)v * view.extentU + u] = at + 1;
+                queue.push_back({u, v});
+            }
+        }
+        return d;
+    };
+    std::vector<Step> foes;
+    for (const FoeView &f : view.foes)
+        if (!f.dying && view.inside(f.u, f.v))
+            foes.push_back({f.u, f.v});
+    if (foes.empty() || !view.inside(c.u, c.v))
+        return most;
+    const std::vector<int> mine = spread({c}), theirs = spread(foes);
+    int cells = 0;
+    for (size_t i = 0; i < n && cells < most; i++)
+        cells += mine[i] >= 0 && (theirs[i] < 0 || mine[i] < theirs[i]);
+    return cells;
+}
+
+double cramped(const Situation &s, Step c)
+{
+    if (!gemsFromSpawners(s.view))
+        return 0;
+    return (ROOM_CELLS - room(s, c, ROOM_CELLS)) * ROOM_MS;
+}
+
+bool fetchGem(Situation &s, const Board &board, Option *out, Tally *tally)
+{
+    Step gem{-1, -1};
+    double best = -1;
+    for (const Step &g : board.gems(0)) {
+        const double c = s.from.cost(g.u, g.v);
+        if (c > 0 && (best < 0 || c < best)) {
+            gem  = g;
+            best = c;
+        }
+    }
+    std::vector<Option> options(1);
+    if (gem.u < 0 || !walkTo(s, s.from, gem, 0, options[0]))
+        return false;
+    char buf[64];
+    snprintf(buf, sizeof(buf), "fetch the gem at (%d,%d)", gem.u, gem.v);
+    options[0].what = buf;
+    return pick(s, options, out, tally);
+}
+
 bool evade(Situation &s, const Board &board, Option *out, Tally *tally)
 {
     const BotView &view = s.view;
@@ -226,6 +290,7 @@ bool evade(Situation &s, const Board &board, Option *out, Tally *tally)
     for (Option &o : options) {
         const Step c = o.schedule.back().cell;
         o.lingerMs = lingerOn(s, c, s.from.startMs() + s.from.cost(c.u, c.v), o.lingerMs);
+        o.cost += cramped(s, c);
     }
     return pick(s, options, out, tally);
 }
