@@ -133,7 +133,7 @@ public:
 
 private:
     struct Foe {
-        size_t id;                 // index in the view's foes
+        size_t id;                 // index in the view's foes; past them, one the model spawned
         int    u, v, h, facing;
         int    kind, type, mode;   // the search's mode: the type, a chaser's for a facing type
         int    homeU, homeV;
@@ -154,6 +154,9 @@ private:
         bool   turned = false;     // its chase has found a way (FoeView::turned)
         double fallsUntil = -1;    // falling into the void, gone then (model clock)
     };
+
+    /* The timed spawners' turns (playtick.cpp). */
+    void tickSpawners();
 
     /* A bridge as it moves (bridgeobject.cpp): phase 0 extends next, 1
      * retracts next. */
@@ -217,6 +220,8 @@ private:
     bool startMove(Foe &f, int move, bool sliding);
 
     const BotView    *view_ = nullptr;
+    std::vector<SpawnerView> spawners_;
+    size_t spawned_ = 0;   // foes spawned since load()
     std::vector<Foe>  foes_;
     std::vector<Blast> blasts_;
     std::vector<char>  byCaller_;   // a blast the caller added, by blasts_ index

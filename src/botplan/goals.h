@@ -32,6 +32,7 @@ struct Senses {
     int    hunted = 0;        // catchers a follower can reach (foemodel.h)
     int    wreckers = 0;      // foes that can get to a one-shot run the exit needs
     Step   guard{-1, -1};     // and the cell beside it the player gets to first
+    bool   farm = false;      // the gems are short, and the foes that spawn carry them
 };
 
 struct Goal {

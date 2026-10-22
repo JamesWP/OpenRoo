@@ -13,6 +13,19 @@
 
 namespace bot {
 
+bool gemsFromSpawners(const BotView &view)
+{
+    int gems = view.player.gems;
+    bool spawner = false;
+    for (const Cell &c : view.cells) {
+        gems += (c.contents == CONTENTS_CRYSTAL) + (c.hidden == CONTENTS_CRYSTAL);
+        spawner |= c.contents == CONTENTS_TIMED_SPAWN;
+    }
+    for (const FoeView &f : view.foes)
+        gems += f.drops == CONTENTS_CRYSTAL;
+    return spawner && gems < view.gemsRequired;
+}
+
 namespace {
 
 /* What a time bonus adds to the time limit (player.cpp). */

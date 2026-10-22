@@ -229,8 +229,18 @@ void FoeModel::load(const BotView &view)
     foes_.clear();
     for (size_t i = 0; i < view.foes.size(); i++) {
         const FoeView &fv = view.foes[i];
-        if (fv.dying)
+        // A dying foe is removed within half a second, freeing its cell and
+        // the one it last stepped from (Foe::~Foe): taken as removed now.
+        if (fv.dying) {
+            auto release = [&](int u, int v) {
+                if (view.inside(u, v) && occ(u, v) == fv.kind)
+                    setOcc(u, v, 0);
+            };
+            release(fv.u, fv.v);
+            if (fv.lastMoveDir >= 1 && fv.lastMoveDir <= 4)
+                release(fv.u - DIR_DU[fv.lastMoveDir], fv.v - DIR_DV[fv.lastMoveDir]);
             continue;
+        }
         Foe f;
         f.id = i;
         f.u = fv.u;
@@ -280,6 +290,8 @@ void FoeModel::load(const BotView &view)
         }
         foes_.push_back(f);
     }
+    spawners_ = view.spawners;
+    spawned_  = 0;
     switched_.clear();
     bridgesMoved_ = false;
     bridges_.clear();
@@ -942,6 +954,33 @@ void FoeModel::stepFoe(Foe &f, int tu, int tv, int speed)
         startMove(f, move, sliding);
 }
 
+void FoeModel::tickSpawners()
+{
+    for (SpawnerView &t : spawners_) {
+        if (!(clock_ - t.lastSpawn > t.interval))
+            continue;
+        t.lastSpawn = clock_;
+        if (occ(t.u, t.v) != 0 || foes_.size() >= (size_t)t.maxFoes)
+            continue;
+        // A chaser at rest, facing 1 (Foe::spawn).
+        Foe f;
+        f.id = view_->foes.size() + spawned_++;
+        f.u = t.u;
+        f.v = t.v;
+        f.h = t.h;
+        f.facing = 1;
+        f.kind = CATCHER;
+        f.type = FOE_FACING_BASE;
+        f.mode = FOE_FACING_BASE;
+        f.homeU = t.u;
+        f.homeV = t.v;
+        f.stepMs = CATCHER_STEP_MS;
+        f.stepEnd = clock_;
+        setOcc(t.u, t.v, CATCHER);
+        foes_.push_back(f);
+    }
+}
+
 void FoeModel::runTick(const std::function<Step(double)> &playerAt)
 {
     if (view_ == nullptr || view_->tickMs <= 0)
@@ -987,6 +1026,7 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
         if (playerSwitch_ >= 0 && workSwitch(playerSwitch_, false))
             playerSwitch_ = -1;
     }
+    tickSpawners();
     for (size_t i = 0; i < foes_.size(); i++) {
         Foe &f = foes_[i];
         if (f.fallsUntil >= 0)

@@ -100,6 +100,11 @@ void Checks::checkFoes(const BotView &view)
             // Where they are: while no foe has died, foe by foe.
             if (old.foes.size() != view.foes.size() || sim_.foeCount() != view.foes.size())
                 continue;
+            bool spawned = false;
+            for (size_t i = 0; i < sim_.foeCount(); i++)
+                spawned = spawned || sim_.foeId(i) >= old.foes.size();
+            if (spawned)
+                continue;
             printTo(foeLog_, "{\"frame\":%lu,\"ahead_ms\":%.1f,\"foes\":[", tick,
                     view.now - old.now);
             for (size_t i = 0; i < sim_.foeCount(); i++) {

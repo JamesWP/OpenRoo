@@ -77,6 +77,10 @@ struct GemRoute {
     unsigned          bonuses = 0; // timed: the time bonuses on the way, by Board::timeBonuses
 };
 
+/* Short of gems where a spawner makes foes that carry them: the gems held,
+ * lying, hidden and carried fall short of the quota. */
+bool gemsFromSpawners(const BotView &view);
+
 class Board {
 public:
     /* The view as it is now, and the worlds over its terrain (which the

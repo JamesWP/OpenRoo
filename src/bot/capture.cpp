@@ -167,6 +167,10 @@ BotView capture(const Game &game)
         bv.phaseStart = e.armed ? br.phaseStart() : 0;  // unset until first armed
         view.bridges.push_back(bv);
     }
+    for (unsigned i = 0; i < w->census()->timed; i++) {
+        const TimedSpawner *t = w->timedSpawner(i);
+        view.spawners.push_back({t->u, t->v, t->height, t->lastSpawn, t->interval, t->maxFoes});
+    }
     for (const Bomb &b : w->bombs()) {
         BombView bv;
         fill_mover(bv, b);
