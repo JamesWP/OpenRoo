@@ -290,8 +290,8 @@ private:
 /* The nav model with the throwers' cells shut, the one each is in and,
  * mid-step, the one it is leaving: the player cannot walk through one
  * (movableentity.cpp).  Only of those the player, setting off startMs from
- * the view's clock, could come to within withinMs: a thrower further off
- * moves on before the player gets there. */
+ * the view's clock, could come to within withinMs, or at rest: a thrower
+ * further off moves on before the player gets there, unless it stays put. */
 NavModel aroundThrowers(const BotView &view, double startMs, double withinMs);
 
 }  // namespace bot
