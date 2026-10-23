@@ -15,8 +15,12 @@ add_library(bottactics OBJECT
     option.cpp
     release.cpp
     switch.cpp
+    decisionlog.cpp
+    deliberate.cpp
+    senses.cpp
     tactics.cpp
     walk.cpp)
 target_include_directories(bottactics PUBLIC .)
 target_link_libraries(bottactics
-    PUBLIC botmodel botmotor botplan)
+    PUBLIC botmodel botmotor botplan
+    PRIVATE base)
