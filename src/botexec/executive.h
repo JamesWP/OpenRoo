@@ -46,7 +46,7 @@ private:
     /* Plans for the goals in turn and starts the first safe option found.
      * midway: a script is under way, and only a goal above it is tried; if
      * none can be done, false, and the script carries on.  From rest, with
-     * no goal doable, the player approaches or evades for finishing. */
+     * no goal doable, the fallbacks (fallback.h). */
     bool decide(const BotView &view, const std::vector<Goal> &goals, bool midway);
     /* The script's schedule still ahead from where the player is, or only
      * where it is if no script runs. */

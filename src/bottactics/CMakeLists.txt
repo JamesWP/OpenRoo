@@ -17,8 +17,10 @@ add_library(bottactics OBJECT
     switch.cpp
     decisionlog.cpp
     deliberate.cpp
+    fallbacks.cpp
     senses.cpp
     tactics.cpp
+    variants.cpp
     walk.cpp)
 target_include_directories(bottactics PUBLIC .)
 target_link_libraries(bottactics
