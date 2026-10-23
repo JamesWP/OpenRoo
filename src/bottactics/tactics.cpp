@@ -19,7 +19,8 @@ const double THROWER_NEAR_MS = 2000;
 /* The first steps choose checks at most. */
 const int MAX_CHECKS = 8;
 
-/* The cheapest safe option; options are sorted. */
+}  // namespace
+
 bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally)
 {
     std::stable_sort(options.begin(), options.end(),
@@ -39,8 +40,6 @@ bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally)
     }
     return found;
 }
-
-}  // namespace
 
 namespace {
 
@@ -179,9 +178,8 @@ bool choose(Situation &s, const Board &board, PlanOptions options, Choice *out,
     }
 }
 
-bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *tally)
+void offerApproach(Situation &s, const Board &board, Step goal, std::vector<Option> &options)
 {
-    std::vector<Option> options;
     const double whole = s.from.cost(goal.u, goal.v);
     for (const Step &c : s.from.cellsTo(goal.u, goal.v)) {
         const double soFar = s.from.cost(c.u, c.v);
@@ -198,6 +196,12 @@ bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *t
         o.what = buf;
         options.push_back(std::move(o));
     }
+}
+
+bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *tally)
+{
+    std::vector<Option> options;
+    offerApproach(s, board, goal, options);
     return pick(s, options, out, tally);
 }
 
@@ -245,7 +249,7 @@ double cramped(const Situation &s, Step c)
     return (ROOM_CELLS - room(s, c, ROOM_CELLS)) * ROOM_MS;
 }
 
-bool fetchGem(Situation &s, const Board &board, Option *out, Tally *tally)
+void offerFetchGem(Situation &s, const Board &board, std::vector<Option> &out)
 {
     Step gem{-1, -1};
     double best = -1;
@@ -256,16 +260,16 @@ bool fetchGem(Situation &s, const Board &board, Option *out, Tally *tally)
             best = c;
         }
     }
-    std::vector<Option> options(1);
-    if (gem.u < 0 || !walkTo(s, s.from, gem, 0, options[0]))
-        return false;
+    Option o;
+    if (gem.u < 0 || !walkTo(s, s.from, gem, 0, o))
+        return;
     char buf[64];
     snprintf(buf, sizeof(buf), "fetch the gem at (%d,%d)", gem.u, gem.v);
-    options[0].what = buf;
-    return pick(s, options, out, tally);
+    o.what = buf;
+    out.push_back(std::move(o));
 }
 
-bool evade(Situation &s, const Board &board, Option *out, Tally *tally)
+void offerEvade(Situation &s, const Board &board, std::vector<Option> &options)
 {
     const BotView &view = s.view;
     std::vector<std::pair<double, Step>> cells;
@@ -285,14 +289,14 @@ bool evade(Situation &s, const Board &board, Option *out, Tally *tally)
     for (size_t i = 0; i < cells.size() && to.size() < EVADES; i++)
         if (any || board.canFinishFrom(cells[i].second))
             to.push_back({cells[i].second, 0});
-    std::vector<Option> options;
+    const size_t first = options.size();
     offerWalks(s, to, "evade to", false, options);
-    for (Option &o : options) {
+    for (size_t i = first; i < options.size(); i++) {
+        Option &o = options[i];
         const Step c = o.schedule.back().cell;
         o.lingerMs = lingerOn(s, c, s.from.startMs() + s.from.cost(c.u, c.v), o.lingerMs);
         o.cost += cramped(s, c);
     }
-    return pick(s, options, out, tally);
 }
 
 }  // namespace bot

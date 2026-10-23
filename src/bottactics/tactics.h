@@ -9,10 +9,12 @@
  * the shared ways to build them are walks (walk.h) and drops (drops.h).  A
  * walk is also offered after a wait, so a foe can go by first.
  *
- * And two ways to keep the player safe while no step of any plan can be
- * done: approach, the farthest safe cell along the way to a goal (waiting
- * there for a foe to come within a bomb's reach is how an ambush becomes
- * possible); and evade, a nearby cell to stand on. */
+ * And the options the fallbacks (fallback.h) keep the player safe with while
+ * no step of any plan can be done: approach, the farthest safe cell along
+ * the way to a goal (waiting there for a foe to come within a bomb's reach
+ * is how an ambush becomes possible); fetching a gem; and evade, a nearby
+ * cell to stand on.  The situations a decision may be planned in besides
+ * the plain one are the variants (variant.h). */
 #pragma once
 
 #include <vector>
@@ -58,6 +60,10 @@ const int ROOM_CELLS = 40;
 const double ROOM_MS = 100;
 double cramped(const Situation &s, Step c);
 
+/* The cheapest of options found safe (danger.h), sorting them: false if
+ * none is; tally counts them. */
+bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally);
+
 /* The plan's first step, as the cheapest safe option: false if none. */
 bool realise(Situation &s, const Board &board, const Plan &plan, Option *out, Tally *tally);
 
@@ -80,15 +86,17 @@ struct Choice {
 bool choose(Situation &s, const Board &board, PlanOptions options, Choice *out,
             std::vector<Tally> &tally);
 
-/* Part of the way to goal, as far along as is safe, and not to a cell the
- * quota and the exit cannot be had from: false if no cell is. */
+/* Part of the way to goal, as far along as may be, and not to a cell the
+ * quota and the exit cannot be had from (unchecked options). */
+void offerApproach(Situation &s, const Board &board, Step goal, std::vector<Option> &out);
+/* The same, the cheapest safe: false if no cell is. */
 bool approach(Situation &s, const Board &board, Step goal, Option *out, Tally *tally);
 
-/* The walk to the nearest gem lying where the player can walk to, if it is
- * safe: false if there is none, or it is not. */
-bool fetchGem(Situation &s, const Board &board, Option *out, Tally *tally);
+/* The walk to the nearest gem lying where the player can walk to, if there
+ * is one (unchecked). */
+void offerFetchGem(Situation &s, const Board &board, std::vector<Option> &out);
 
-/* A nearby cell to stand on, safe and not a trap: false if none. */
-bool evade(Situation &s, const Board &board, Option *out, Tally *tally);
+/* Nearby cells to stand on, not traps (unchecked). */
+void offerEvade(Situation &s, const Board &board, std::vector<Option> &out);
 
 }  // namespace bot

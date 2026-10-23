@@ -119,11 +119,15 @@ logged with its reason.
 
 What it coordinates lives in the tactical layer: sensing for goal selection
 (`senses.h`); deliberation, from the goals to the option to take
-(`deliberate.h`), which, when no plan's first step is safe, plans again with
-the routes going round the throwers near the player, which the player
-cannot walk through: the quickest way past one is usually safe, as it steps
-aside, but not always; the news that calls for deciding again (`Progress`);
-and the decision log (`decisionlog.h`).
+(`deliberate.h`); the news that calls for deciding again (`Progress`); and
+the decision log (`decisionlog.h`).  Deliberation itself goes by lists, as
+the planner goes by the actions: the situation variants it may plan in
+besides the plain one (`variant.h`; so far the routes going round the
+throwers near the player, which the player cannot walk through: the
+quickest way past one is usually safe, as it steps aside, but not always),
+the cheapest option of all taken; and the fallbacks tried in turn when no
+goal can be done safely (`fallback.h`: fetch a gem the foes left, approach
+the way to finishing, evade).
 
 ### 3.8 In the code
 
