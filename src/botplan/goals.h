@@ -38,7 +38,7 @@ struct Senses {
 struct Goal {
     GoalKind kind = FINISH;
     double   by = -1;         // ms: when it must be under way by (-1: no limit)
-    Step     toward{-1, -1};  // while it cannot be done yet, where to make for
+    Step     toward{-1, -1};  // till its plan does it in one step, where to make for
 };
 
 /* The relevant goals, the most relevant first. */

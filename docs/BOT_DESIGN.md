@@ -110,20 +110,27 @@ the only part that presses keys.
 
 ### 3.7 Executive
 
-The agent loop.  It decides from rest, and re-selects goals every half
-second while a script runs.  A higher goal breaks the script off, unless
-the option under way is committed (its bomb still to go off).  When no
-plan's first step is safe, it plans again with the routes going round the
-throwers near the player, which the player cannot walk through: the
-quickest way past one is usually safe, as it steps aside, but not always.  The rest of
-the script is re-checked for safety, and the script is stopped if it turns
-unsafe.  Every decision is logged with its reason.
+The agent loop, and only that: it knows nothing of the game.  It decides
+from rest, and re-selects goals every half second while a script runs.  A
+higher goal breaks the script off, unless the option under way is committed
+(its bomb still to go off).  The rest of the script is re-checked for
+safety, and the script is stopped if it turns unsafe.  Every decision is
+logged with its reason.
+
+What it coordinates lives in the tactical layer: sensing for goal selection
+(`senses.h`); deliberation, from the goals to the option to take
+(`deliberate.h`), which, when no plan's first step is safe, plans again with
+the routes going round the throwers near the player, which the player
+cannot walk through: the quickest way past one is usually safe, as it steps
+aside, but not always; the news that calls for deciding again (`Progress`);
+and the decision log (`decisionlog.h`).
 
 ### 3.8 In the code
 
 One `src/` group per layer, held to this order by the layering check:
 `botapi` (vocabulary), `botmodel`, `botmotor`, `botplan` (goals, planner),
-`bottactics` (actions, tactics), `botexec`, and `bot` (the only one that
+`bottactics` (actions, tactics, sensing, deliberation), `botexec` (the
+agent loop), and `bot` (the only one that
 reads the game).  `tools/bot/` holds the Python orchestration and analysis.
 
 ## 4. Measuring
