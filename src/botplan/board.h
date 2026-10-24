@@ -49,6 +49,14 @@ struct Site {
     int     far = 0;    // a bait: the cells the nearest thrower walks to stand beside it
 };
 
+/* A teleporter pad a thrower may be sent through (Board::sends): on it,
+ * where it comes out, and the pad's index, 1 up (Facts::throwerAt). */
+struct Send {
+    Step pad;
+    Step out;
+    int  at = 0;
+};
+
 /* A bombable block that pens a thrower in: spent, the thrower can reach
  * catchers it cannot now.  A follower bombs the catchers it follows
  * (foemodel.h), so they die without a bomb of the player's. */
@@ -174,9 +182,9 @@ public:
      * player where it cannot is a trap. */
     bool canFinishAfter(Step gem) const;
     /* Whether, standing on that cell, the quota (the carriers' gems aside)
-     * and the exit can be had, as canFinishAfter; where glides may be had,
+     * and the exit can be had, as canFinishAfter; with a glide in hand,
      * any cell, the walk alone being no measure.  Both take a cell from
-     * which a one-shot run may be crossed (crossings) to be no trap. */
+     * which a glide or a crossing may lead on (leadsOn) to be no trap. */
     bool canFinishFrom(Step cell) const;
     /* The blocks that may yet be spent: every one if the player holds bombs,
      * a bomb pickup is about or a thrower may be baited (baits); else none. */
@@ -199,8 +207,16 @@ public:
      * that world on, with the player standing there as bait: a thrower that
      * bombs the player can walk next to it, and its bomb, dropped there
      * facing the player, rolls onto it, and the player can get clear of it.
-     * Facing 0; far, how far the nearest thrower walks to get there. */
-    const std::vector<Site> &baits(Changes s) const;
+     * Facing 0; far, how far the nearest thrower walks to get there.  The
+     * throwers where at puts them (Facts::throwerAt). */
+    const std::vector<Site> &baits(Changes s, int at = 0) const;
+
+    /* The cells the throwers may walk to, put where at says: 0 where they
+     * are, k the far end of the pad sends() gives k for. */
+    const std::vector<char> &throwerWalk(int at) const;
+    /* The pads the throwers, put where at says, can walk onto and be sent
+     * through to somewhere they could not walk to. */
+    std::vector<Send> sends(int at) const;
 
     /* The blocks, each spent alone, that let a follower out to catchers. */
     const std::vector<Release> &releases() const;
@@ -216,6 +232,11 @@ public:
     /* Whether a run not in crossed has a way across from a cell reachable
      * from the place, in the world s. */
     bool crossable(Changes s, Place from, unsigned crossed) const;
+    /* Whether a glide or a crossing may lead on from the place, in the world
+     * s: a glider to be had from it or over the runs crossable from it, or
+     * over those runs the exit and need gems not in taken (in no particular
+     * order). */
+    bool leadsOn(Changes s, Place from, Taken taken, int need) const;
 
     /* Why there is no way to the goal at all, for the note: "no route: ...". */
     std::string noRoute() const;
@@ -237,7 +258,11 @@ private:
     mutable std::map<std::tuple<Changes, Place, int, Taken, unsigned, long>, GemRoute> timed_;
     mutable std::map<std::pair<int, int>, bool> after_;
     mutable std::map<Changes, std::vector<Site>> sites_;
-    mutable std::map<Changes, std::vector<Site>> baits_;
+    mutable std::map<std::pair<Changes, int>, std::vector<Site>> baits_;
+    const std::vector<Send> &pads() const;
+    mutable std::map<int, std::vector<char>> throwerWalks_;
+    mutable std::vector<Send> pads_;   // every pad end, at its index + 1
+    mutable bool padsFound_ = false;
     mutable std::map<std::tuple<Changes, int, int>, int> reach_;
     mutable std::map<std::tuple<Changes, Place, bool>, Changes> way_;
     mutable std::vector<Release> releases_;

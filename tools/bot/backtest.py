@@ -107,17 +107,28 @@ def build(build_dir):
     return exe
 
 
-def make_workdir(path, exe):
-    """A working directory as launch.sh makes run/: links to the game data,
+def link_tree(src, dst, overlay):
+    """dst as links to src's entries, but where overlay (a directory laid out
+    as src) has a file of the same path, a link to that instead."""
+    os.makedirs(dst, exist_ok=True)
+    for name in os.listdir(src):
+        if name in ("SavedGames", "highscores", "ProgableControl.sav", "Karoo.exe", "res"):
+            continue
+        s, d = os.path.join(src, name), os.path.join(dst, name)
+        over = os.path.join(overlay, name) if overlay else None
+        if over and os.path.isdir(over) and os.path.isdir(s):
+            link_tree(s, d, over)
+        elif not os.path.lexists(d):
+            os.symlink(os.path.abspath(over) if over and os.path.isfile(over) else s, d)
+
+
+def make_workdir(path, exe, overlay=None):
+    """A working directory as launch.sh makes run/: links to the game data
+    (or to overlay's files in their place: generated levels, genlevels.py),
     the executable, and the harness's openroo.ini."""
     os.makedirs(os.path.join(path, "SavedGames"), exist_ok=True)
     os.makedirs(os.path.join(path, "highscores"), exist_ok=True)
-    for name in os.listdir(GAME):
-        if name in ("SavedGames", "highscores", "ProgableControl.sav", "Karoo.exe", "res"):
-            continue
-        dst = os.path.join(path, name)
-        if not os.path.lexists(dst):
-            os.symlink(os.path.join(GAME, name), dst)
+    link_tree(GAME, path, overlay)
     shutil.copy(os.path.join(REPO, "data", "openroo.ini.default"),
                 os.path.join(path, "openroo.ini"))
     shutil.copy2(exe, os.path.join(path, "OpenRoo"))
@@ -126,9 +137,9 @@ def make_workdir(path, exe):
 def play(job):
     """Plays one (level, seed); returns its summary, with the outcome "crash"
     or "no-summary" if the game left none."""
-    exe, out, level, name, seed, policy, extra_env, timeout, trace, watch = job
+    exe, out, level, name, seed, policy, extra_env, timeout, trace, watch, overlay = job
     work = os.path.join(out, "work")
-    make_workdir(work, exe)
+    make_workdir(work, exe, overlay)
     env = {"HOME": os.environ.get("HOME", ""), "PATH": os.environ.get("PATH", "")}
     if watch:
         # On screen, paced by the display: vsync stays on and each frame is
@@ -160,8 +171,9 @@ def play(job):
     env.update(extra_env)
     t0 = time.time()
     try:
-        r = subprocess.run(["./OpenRoo"], cwd=work, env=env, timeout=timeout + 30,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        with open(os.path.join(out, "stderr.log"), "w") as err:
+            r = subprocess.run(["./OpenRoo"], cwd=work, env=env, timeout=timeout + 30,
+                               stdout=subprocess.DEVNULL, stderr=err)
         rc = r.returncode
     except subprocess.TimeoutExpired:
         rc = None
@@ -206,7 +218,7 @@ def run_all(args, out):
     os.makedirs(out, exist_ok=True)
     meta = {
         "policy": args.policy, "levels": levels, "seeds": seeds, "dt": DT,
-        "env": extra, "sha": git("rev-parse", "HEAD"),
+        "env": extra, "overlay": args.overlay, "sha": git("rev-parse", "HEAD"),
         "dirty": bool(git("status", "--porcelain", "--untracked-files=no")),
         "started": datetime.datetime.now().isoformat(timespec="seconds"),
         "exe_sha256": hashlib.sha256(open(exe, "rb").read()).hexdigest(),
@@ -221,7 +233,7 @@ def run_all(args, out):
             os.makedirs(d, exist_ok=True)
             jobs.append((exe, d, lvl, names[lvl], seed, args.policy, extra,
                          args.timeout if not args.watch else max(args.timeout, 1200),
-                         args.trace, args.watch))
+                         args.trace, args.watch, args.overlay))
 
     results = []
     t0 = time.time()
@@ -405,6 +417,8 @@ def main():
                             "(vsync on); needs a display")
         p.add_argument("--trace", action="store_true",
                        help="write each level's BotView trace (trace.jsonl)")
+        p.add_argument("--overlay", metavar="DIR",
+                       help="game data laid over game/, e.g. generated levels (genlevels.py)")
         p.add_argument("--build-dir", default=os.path.join(REPO, "build"))
         p.add_argument("--quiet", action="store_true")
 

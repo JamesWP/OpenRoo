@@ -6,6 +6,8 @@
  * works only when stepped onto), nor a bridge on the move (the game ignores
  * the switch then).  A bridge that lets catchers in to the player costs
  * more than its time.  Done as a walk to the planned switch and a wait there. */
+#include <algorithm>
+#include <vector>
 #include <stdio.h>
 #include "action.h"
 #include "walk.h"
@@ -15,12 +17,15 @@ namespace bot {
 namespace {
 
 /* The waits a walk to a switch is also offered after, ms. */
-const double WAITS[] = {0, 600, 1500, 3000};
+const double WAITS[] = {0, 600, 1500, 3000, 5000, 8000};
 /* The wait past the move's end, for the last deck cell to be stamped. */
 const double SETTLE_MS = 100;
 /* What letting a catcher in to the player costs: more than a way round a
  * switch, less than a bridge the level needs. */
 const double LET_IN_MS = 5000;
+/* The cells near a switch a wait may be taken on, within NEAR_MS of it. */
+const double NEAR_MS    = 1500;
+const size_t NEAR_CELLS = 6;
 
 /* Whether a switch other than cell, that cell can reach in world next,
  * reaches more in next than in s. */
@@ -32,6 +37,79 @@ bool beyond(const Board &board, Changes s, Changes next, Step cell)
             board.reach(next, other) > board.reach(s, other))
             return true;
     return false;
+}
+
+/* Whether, the player keeping to plan and then staying, the foe model has a
+ * foe work bridge k within untilMs: one going after the switches it is
+ * raised, to take it back in before the player is across. */
+bool workedBack(Situation &s, const std::vector<Timed> &plan, double untilMs, size_t k)
+{
+    const BotView &view = s.view;
+    if (view.foes.empty())
+        return false;
+    s.foes.load(view);
+    s.foes.run(view.now + untilMs, [&](double clock) {
+        Step at = plan.front().cell;
+        for (const Timed &m : plan)
+            if (view.now + m.t <= clock + 1e-6)
+                at = m.cell;
+        return at;
+    });
+    for (const FoeModel::Switched &w : s.foes.switched())
+        if (w.bridge == k && w.byFoe)
+            return true;
+    return false;
+}
+
+/* A walk to the switch cell by way of at, with the wait taken there (where
+ * the lifts keep a wait from being taken before setting off, walkTo; or
+ * where a foe is to be drawn off first). */
+bool waitAt(const Situation &s, Step at, Step cell, double wait, Option &o)
+{
+    o = Option();
+    if (at.u == s.view.player.u && at.v == s.view.player.v) {
+        o.schedule.push_back({0, at});
+        o.cost = s.from.startMs();
+    } else if (!walkTo(s, s.from, at, 0, o)) {
+        return false;
+    }
+    o.cost += wait;
+    o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + o.cost});
+    NavModel after = s.nav;
+    for (const Timed &m : o.schedule)
+        after.arm(m.cell, m.t);
+    const Paths on(after, at.u, at.v, facingAfter(s.view.player.facing, o.script), o.cost);
+    Option leg;
+    if (!walkTo(s, on, cell, 0, leg))
+        return false;
+    o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
+    o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
+    o.cost = leg.cost;
+    return true;
+}
+
+/* The cells to wait on for a switch: the one before it on the way, then
+ * the nearest others within NEAR_MS of it, the nearest first. */
+std::vector<Step> waitCells(const Situation &s, Step cell)
+{
+    std::vector<Step> cells;
+    const std::vector<Timed> route = s.from.scheduleTo(cell.u, cell.v);
+    if (route.size() >= 2)
+        cells.push_back(route[route.size() - 2].cell);
+    const BotView &view = s.view;
+    const Paths back(s.nav, cell.u, cell.v, 1, 0);
+    std::vector<std::pair<double, Step>> near;
+    for (int v = 0; v < view.extentV; v++)
+        for (int u = 0; u < view.extentU; u++) {
+            const double c = back.cost(u, v);
+            if (c > 0 && c <= NEAR_MS && s.from.cost(u, v) >= 0 && !NavModel::moving(view.cell(u, v)) &&
+                !switchedBy(view, u, v) && (cells.empty() || u != cells[0].u || v != cells[0].v))
+                near.push_back({c, {u, v}});
+        }
+    std::stable_sort(near.begin(), near.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+    for (size_t i = 0; i < near.size() && cells.size() < NEAR_CELLS; i++)
+        cells.push_back(near[i].second);
+    return cells;
 }
 
 class SwitchAction : public Action {
@@ -81,24 +159,83 @@ public:
         const int k = board.switched(cell);
         if (k < 0)
             return;
-        const double moveMs = board.live().bridges[k].moveMs() + SETTLE_MS;
+        const BridgeView &b = board.live().bridges[k];
+        const double moveMs = b.moveMs() + SETTLE_MS;
+        // Going out, how long the bridge must then stay out: for the walk
+        // from the switch to its far end.
+        double holdMs = -1;
+        if (!b.extended)
+            for (const Step &c : {b.deck.front(), b.deck.back()})
+                holdMs = std::max(holdMs, board.time(board.worlds().bridgeBit(k), {cell.u, cell.v, 0}, c));
         // Now, or after a wait: a foe working the switches may have the
         // bridges on the way as they should be only for a while.
-        for (const double wait : WAITS) {
-            Option o;
-            if (!walkTo(s, s.from, cell, wait, o))
+        std::vector<Step> at{{-1, -1}};
+        const std::vector<Step> cells = waitCells(s, cell);
+        at.insert(at.end(), cells.begin(), cells.end());
+        for (size_t i = 0; i < at.size(); i++) {
+            for (const double wait : WAITS) {
+                Option o;
+                // Walked straight to, or by way of a cell to wait on, when going
+                // out wants a foe drawn off (or the lifts keep a wait from being
+                // taken before setting off).
+                if (at[i].u < 0 ? !walkTo(s, s.from, cell, wait, o)
+                                : (holdMs <= 0 && i > 1) || !waitAt(s, at[i], cell, wait, o))
+                    continue;
+                // On the switch until the bridge is done.
+                const double arrive = o.cost;
+                o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + arrive + moveMs});
+                o.schedule.push_back({arrive + moveMs, cell});
+                o.stepMs = arrive + moveMs;
+                if (holdMs > 0 && workedBack(s, o.schedule, arrive + moveMs + holdMs, (size_t)k))
+                    continue;
+                o.cost = plan.cost - plan.steps.front().ms + o.stepMs;
+                char buf[96];
+                snprintf(buf, sizeof(buf), "switch (%d,%d) for bridge %d", cell.u, cell.v,
+                         board.live().bridges[k].slot);
+                o.what = buf;
+                out.push_back(std::move(o));
+            }
+        }
+        if (holdMs <= 0 || !out.empty())
+            return;
+        // A decoy: another switch worked first, whose own switches, raised,
+        // draw a foe off (FoeModel::nearestSwitch), and the walk on from it.
+        for (const auto &[decoy, dk] : board.switches()) {
+            const BridgeView &db = board.live().bridges[dk];
+            if (dk == k || db.moving || (decoy.u == cell.u && decoy.v == cell.v) ||
+                s.from.cost(decoy.u, decoy.v) < 0)
+                continue;
+            Option first;
+            if (!walkTo(s, s.from, decoy, 0, first))
+                continue;
+            for (const double wait : WAITS) {
+                Option o = first;
+                const double settled = o.cost + db.moveMs() + SETTLE_MS + wait;
+                o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + settled});
+                o.schedule.push_back({settled, decoy});
+                NavModel after = s.nav;
+                for (const Timed &m : o.schedule)
+                    after.arm(m.cell, m.t);
+                const Paths on(after, decoy.u, decoy.v, facingAfter(s.view.player.facing, o.script), settled);
+                Option leg;
+                if (!walkTo(s, on, cell, 0, leg))
+                    break;
+                o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
+                o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
+                const double arrive = leg.cost;
+                o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + arrive + moveMs});
+                o.schedule.push_back({arrive + moveMs, cell});
+                o.stepMs = arrive + moveMs;
+                if (workedBack(s, o.schedule, arrive + moveMs + holdMs, (size_t)k))
+                    continue;
+                o.cost = plan.cost - plan.steps.front().ms + o.stepMs;
+                char buf[128];
+                snprintf(buf, sizeof(buf), "switch (%d,%d) for bridge %d, after (%d,%d) to draw a foe off",
+                         cell.u, cell.v, b.slot, decoy.u, decoy.v);
+                o.what = buf;
+                out.push_back(std::move(o));
                 return;
-            // On the switch until the bridge is done.
-            const double arrive = o.cost;
-            o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + arrive + moveMs});
-            o.schedule.push_back({arrive + moveMs, cell});
-            o.stepMs = arrive + moveMs;
-            o.cost = plan.cost - plan.steps.front().ms + o.stepMs;
-            char buf[96];
-            snprintf(buf, sizeof(buf), "switch (%d,%d) for bridge %d", cell.u, cell.v,
-                     board.live().bridges[k].slot);
-            o.what = buf;
-            out.push_back(std::move(o));
+            }
         }
     }
 };
