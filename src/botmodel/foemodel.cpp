@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "foetype.h"
 #include "liftmodel.h"
+#include "nav.h"
 #include "tile.h"
 
 namespace bot {
@@ -64,13 +65,22 @@ void FoeModel::tickBridges()
         const int i = b.phase == 0 ? k : span - 1 - k;
         if (i < 0 || i >= span)
             continue;
-        Cell &c = grid_[(size_t)b.deck[(size_t)i].v * view_->extentU + b.deck[(size_t)i].u];
+        const size_t at = (size_t)b.deck[(size_t)i].v * view_->extentU + b.deck[(size_t)i].u;
+        Cell &c = grid_[at];
+        if (c.kind != (b.phase == 0 ? TILE_BRIDGE_DECK : TILE_EMPTY))
+            changeAt(at, 1);
         c.kind   = b.phase == 0 ? TILE_BRIDGE_DECK : TILE_EMPTY;
         c.height = b.phase == 0 ? (unsigned char)b.height : 0;
         c.busy   = b.phase == 0;
-        cleared_[(size_t)b.deck[(size_t)i].v * view_->extentU + b.deck[(size_t)i].u] = b.phase != 0;
-        bridgesMoved_ = true;
+        cleared_[at] = b.phase != 0;
     }
+}
+
+void FoeModel::changeAt(size_t cell, unsigned what)
+{
+    unsigned long long x = (cell * 4 + what + 1) * 0x9e3779b97f4a7c15ull;
+    x ^= x >> 29;
+    changed_ ^= x * 0xbf58476d1ce4e5b9ull;
 }
 
 bool FoeModel::workSwitch(int slot, bool byFoe)
@@ -83,12 +93,15 @@ bool FoeModel::workSwitch(int slot, bool byFoe)
             return false;
         // The switches stand raised while it goes out (playtick.cpp).
         if ((size_t)slot < switchCells_.size())
-            for (const Step &c : switchCells_[(size_t)slot])
-                grid_[(size_t)c.v * view_->extentU + c.u].busy = b.phase == 0;
+            for (const Step &c : switchCells_[(size_t)slot]) {
+                const size_t at = (size_t)c.v * view_->extentU + c.u;
+                if (grid_[at].busy != (b.phase == 0))
+                    changeAt(at, 2);
+                grid_[at].busy = b.phase == 0;
+            }
         b.armed = true;
         b.phaseStart = clock_;
         switched_.push_back({clock_, i, byFoe});
-        bridgesMoved_ = true;
         return true;
     }
     return false;
@@ -155,7 +168,7 @@ void FoeModel::tickFalls()
         if (t.gone && t.respawns && clock_ - t.armedAt > BACK_MS)
             t.gone = false;
         if (t.gone != was)
-            fallsChanged_ += t.gone == t.goneAtLoad ? -1 : 1;
+            changeAt((size_t)t.v * view_->extentU + t.u, 3);
     }
 }
 
@@ -293,7 +306,7 @@ void FoeModel::load(const BotView &view)
     spawners_ = view.spawners;
     spawned_  = 0;
     switched_.clear();
-    bridgesMoved_ = false;
+    changed_ = 0;
     bridges_.clear();
     switchCells_.clear();
     ownGrid_ = !view.bridges.empty();
@@ -316,7 +329,6 @@ void FoeModel::load(const BotView &view)
     }
     falls_.clear();
     fallAt_.assign(view.cells.size(), -1);
-    fallsChanged_ = 0;
     for (const FallingView &t : view.fallings) {
         fallAt_[(size_t)t.v * view.extentU + t.u] = (int)falls_.size();
         falls_.push_back({t.u, t.v, t.respawns, t.armed, t.fallen, t.fallen, t.armedAt});
@@ -334,7 +346,6 @@ void FoeModel::load(const BotView &view)
     auto mix = [&h](unsigned x) { h = (h ^ x) * 1099511628211ull; };
     mix((unsigned)view.extentU);
     mix((unsigned)view.extentV);
-    sticky_ = false;
     for (const Cell &c : view.cells) {
         mix(c.height);
         mix(c.kind);
@@ -344,7 +355,6 @@ void FoeModel::load(const BotView &view)
         mix(c.liftTop);
         mix(c.slideDir);
         mix(c.jumpTop);
-        sticky_ = sticky_ || c.kind == TILE_STICKY;
     }
     if (h != terrain_) {
         firstSteps_.clear();
@@ -411,31 +421,45 @@ bool FoeModel::stepLegal(int uf, int vf, int ut, int vt) const
     }
     if (to.kind == TILE_JUMP_PAD)
         flag = true;
-    if (from.kind == TILE_STICKY && occ(uf, vf) == 0)
-        return occ(ut + (uf - ut) * 2, vt + (vf - vt) * 2) == 4;
+    if (from.kind == TILE_STICKY) {
+        const int here = occ(uf, vf);
+        reads_.push_back({vf * view_->extentU + uf, here});
+        if (here == 0) {
+            const int au = ut + (uf - ut) * 2, av = vt + (vf - vt) * 2;
+            const int ahead = occ(au, av);
+            if (view_->inside(au, av))
+                reads_.push_back({av * view_->extentU + au, ahead});
+            return ahead == 4;
+        }
+    }
     return flag;
 }
 
 bool FoeModel::firstStep(const Foe &f, int tu, int tv, int cap, int *nu, int *nv)
 {
     const int stride = view_->extentU;
-    const bool keep = !sticky_ && fallsChanged_ == 0 && !bridgesMoved_ && f.mode != FOE_GEM_RUNNER && f.mode != FOE_SWITCH_RUNNER;
+    const bool keep = f.mode != FOE_GEM_RUNNER && f.mode != FOE_SWITCH_RUNNER;
     const unsigned long long memo =
         ((((unsigned long long)(f.v * stride + f.u) * 65536 + (unsigned)(tv * stride + tu)) * 256 +
           (unsigned)(f.mode & 0xff)) * 1024) + (unsigned)(cap & 0x3ff);
+    const Memo kept{memo, changed_};
     if (keep) {
-        const auto it = firstSteps_.find(memo);
-        if (it != firstSteps_.end()) {
-            if (it->second < 0)
+        const auto it = firstSteps_.find(kept);
+        const bool same = it != firstSteps_.end() &&
+            std::all_of(it->second.reads.begin(), it->second.reads.end(),
+                        [&](const std::pair<int, int> &r) { return occ_[(size_t)r.first] == r.second; });
+        if (same) {
+            if (it->second.step < 0)
                 return false;
-            *nu = it->second % stride;
-            *nv = it->second / stride;
+            *nu = it->second.step % stride;
+            *nv = it->second.step / stride;
             return true;
         }
     }
+    reads_.clear();
     const bool found = search(f, tu, tv, cap, nu, nv);
     if (keep)
-        firstSteps_[memo] = found ? *nv * stride + *nu : -1;
+        firstSteps_[kept] = {found ? *nv * stride + *nu : -1, reads_};
     return found;
 }
 
@@ -893,6 +917,16 @@ int FoeModel::terrain(Foe &f, int move, bool *sliding)
         }
         return move;
     }
+    if (here.kind == TILE_JUMP_PAD) {
+        // Up the arc to the pad's top, then on the way it last went.
+        if (f.launchedAt < 0)
+            f.launchedAt = clock_;
+        if (clock_ - f.launchedAt < NavModel::jumpMs(here.jumpTop - here.height, view_->tickMs))
+            return 0;
+        f.launchedAt = -1;
+        f.h = here.jumpTop;
+        return f.lastMoveDir;
+    }
     if (here.kind == TILE_ICE && f.lastMoveDir != 0)
         return f.lastMoveDir;
     return move;
@@ -1092,19 +1126,55 @@ bool FoeModel::reaches(size_t i, int u, int v)
     return firstStep(foes_[i], u, v, 0x96, &nu, &nv);
 }
 
-std::vector<char> FoeModel::walkable(size_t i) const
+std::vector<char> FoeModel::walkable(size_t i, Step from) const
 {
     static const int SU[4] = {0, 1, 0, -1}, SV[4] = {-1, 0, 1, 0};
     const int W = view_->extentU;
     std::vector<char> seen((size_t)W * view_->extentV, 0);
     const Foe &f = foes_[i];
-    if (!view_->inside(f.u, f.v))
+    const Step start = from.u >= 0 ? from : Step{f.u, f.v};
+    if (!view_->inside(start.u, start.v))
         return seen;
-    std::vector<Step> open{{f.u, f.v}};
-    seen[(size_t)f.v * W + f.u] = 1;
+    std::vector<Step> open{start};
+    seen[(size_t)start.v * W + start.u] = 1;
+    auto reach = [&](int u, int v) {
+        if (view_->inside(u, v) && !seen[(size_t)v * W + u]) {
+            seen[(size_t)v * W + u] = 1;
+            open.push_back({u, v});
+        }
+    };
+    // A platform's track cells, which it carries a foe along at its height.
+    auto onTrack = [&](const PlatformView &pl, int u, int v) {
+        return pl.alongU ? v == pl.originV && u >= std::min(pl.originU, pl.limit) &&
+                               u <= std::max(pl.originU, pl.limit)
+                         : u == pl.originU && v >= std::min(pl.originV, pl.limit) &&
+                               v <= std::max(pl.originV, pl.limit);
+    };
     while (!open.empty()) {
         const Step a = open.back();
         open.pop_back();
+        const Cell &at = cell(a.u, a.v);
+        for (const PlatformView &pl : view_->platforms) {
+            // On the track, it is carried to the rest of it, and steps off
+            // at the platform's height.
+            const bool on = onTrack(pl, a.u, a.v);
+            bool beside = false;
+            for (int d = 0; d < 4; d++)
+                beside = beside || onTrack(pl, a.u + SU[d], a.v + SV[d]);
+            if (!on && !(beside && at.height == pl.height))
+                continue;
+            for (int k = 0; k <= abs(pl.limit - (pl.alongU ? pl.originU : pl.originV)); k++) {
+                const int step = pl.limit >= (pl.alongU ? pl.originU : pl.originV) ? k : -k;
+                reach(pl.alongU ? pl.originU + step : pl.originU, pl.alongU ? pl.originV : pl.originV + step);
+            }
+            if (on)
+                for (int d = 0; d < 4; d++) {
+                    const int u = a.u + SU[d], v = a.v + SV[d];
+                    if (view_->inside(u, v) && !onTrack(pl, u, v) && cell(u, v).height == pl.height &&
+                        passable(u, v, f.mode))
+                        reach(u, v);
+                }
+        }
         for (int d = 0; d < 4; d++) {
             const int u = a.u + SU[d], v = a.v + SV[d];
             // The search runs from the target back: a step from a to b is

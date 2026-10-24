@@ -20,6 +20,10 @@ const double DROP_MARGIN_MS = 250.0;
  * with them open.  It is tested this long after the plan's linger, the
  * player staying: one closing the way out then has the player already. */
 const int    PEN_NEAR     = 3;
+/* A thrower standing in the way is a hit only this soon: where one further
+ * off will stand is a guess, and the way is checked again as it nears, when
+ * the routes can go round it (tactics.h, realise). */
+const double BLOCK_AHEAD_MS = 3000.0;
 const int    PEN_CELLS    = 20;
 const double PEN_AHEAD_MS = 2000.0;
 
@@ -61,10 +65,13 @@ bool penned(const BotView &view, const FoeModel &sim, Step at, double atMs, Step
     return !inside && left <= PEN_CELLS && left < reachable(NavModel(view), at, atMs, from, &open);
 }
 
-/* checkPlan; with reach, passing within a thrower's reach is a hit too, as
- * soon as it is (foeMeets). */
+/* How check takes a thrower's reach: as checkPlan, a hit only to stop in;
+ * for foeMeets, as soon as the player is in it; for checkEscape, no hit,
+ * its bombs alone judging it. */
+enum Reach { STOP_IN, PASS_IN, BOMBS_ONLY };
+
 Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
-             double lingerMs, const std::vector<Blast> &extra, bool reach)
+             double lingerMs, const std::vector<Blast> &extra, Reach reach)
 {
     Danger d;
     if (plan.empty())
@@ -179,22 +186,28 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
         for (size_t i = 0; i < sim.foeCount(); i++) {
             const Step f = sim.foeCell(i);
             const bool catcher = sim.foeKind(i) == 2;
+            const Step leaving = sim.foeLeaving(i);
             const bool caught = catcher &&
-                ((f.u == p.u && f.v == p.v) ||
+                ((f.u == p.u && f.v == p.v) || (leaving.u == p.u && leaving.v == p.v) ||
                  (f.u == playerBefore.u && f.v == playerBefore.v &&
-                  was(i).u == p.u && was(i).v == p.v));
+                  ((was(i).u == p.u && was(i).v == p.v) ||
+                   // into the cell the player is still leaving: the catch is
+                   // by distance (foe.cpp, checkPlayerContact)
+                   p.u != playerBefore.u || p.v != playerBefore.v)));
             // Within a thrower's reach is no harm in passing, which its bombs
             // judge, but no place to stop.
-            const bool thrown = (reach || sim.now() >= arrives) && sim.throwsAtPlayer(i) &&
-                                chebyshev(f, p) <= 1;
+            const bool thrown = (reach == PASS_IN || (reach == STOP_IN && sim.now() >= arrives)) &&
+                                sim.throwsAtPlayer(i) && chebyshev(f, p) <= 1;
             // A thrower stands in the way: the step into its cell is not
             // taken (movableentity.cpp), and the plan goes wrong.
             const bool blocked = !catcher && f.u == p.u && f.v == p.v &&
+                                 sim.now() - start < BLOCK_AHEAD_MS &&
                                  (p.u != playerBefore.u || p.v != playerBefore.v);
             if ((caught || thrown || blocked) && !e.aloft) {
                 d.hit = true;
                 d.t   = sim.now() - start;
                 d.why = caught ? "catcher" : thrown ? "thrower" : "blocked";
+                d.at  = p;
                 return d;
             }
             was(i) = f;
@@ -211,7 +224,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
     // On the exit with the quota the level is done: nothing pens it in.
     const Step last = plan.back().cell;
     const bool finishes = last.u == view.exitU && last.v == view.exitV;
-    if (!reach && !finishes) {
+    if (reach != PASS_IN && !finishes) {
         bool near = false;
         for (size_t i = 0; i < sim.foeCount(); i++)
             near = near || chebyshev(sim.foeCell(i), plan.back().cell) <= PEN_NEAR + 3;
@@ -249,13 +262,19 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
 Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
                  double lingerMs, const std::vector<Blast> &extra)
 {
-    return check(sim, view, plan, lingerMs, extra, false);
+    return check(sim, view, plan, lingerMs, extra, STOP_IN);
+}
+
+Danger checkEscape(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
+                   double lingerMs)
+{
+    return check(sim, view, plan, lingerMs, {}, BOMBS_ONLY);
 }
 
 double foeMeets(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
                 double horizonMs)
 {
-    const Danger d = check(sim, view, plan, horizonMs, {}, true);
+    const Danger d = check(sim, view, plan, horizonMs, {}, PASS_IN);
     const std::string why = d.why;
     return d.hit && (why == "catcher" || why == "thrower") ? d.t : -1;
 }

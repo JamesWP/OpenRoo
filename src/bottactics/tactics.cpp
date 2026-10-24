@@ -1,6 +1,9 @@
 #include "tactics.h"
 #include <algorithm>
+#include <memory>
+#include <string>
 #include <stdio.h>
+#include <stdlib.h>
 #include "danger.h"
 #include "action.h"
 #include "liftmodel.h"
@@ -18,18 +21,29 @@ const size_t EVADES = 12;
 const double THROWER_NEAR_MS = 2000;
 /* The first steps choose checks at most. */
 const int MAX_CHECKS = 8;
+/* How many times realise offers a step again round the throwers in the way. */
+const int ROUNDS = 3;
 
 }  // namespace
 
-bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally)
+bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally,
+          std::vector<Step> *blocked)
 {
     std::stable_sort(options.begin(), options.end(),
                      [](const Option &a, const Option &b) { return a.cost < b.cost; });
     bool found = false;
     for (Option &o : options) {
         tally->offered++;
-        if (!o.checked && checkPlan(s.foes, s.view, o.schedule, o.lingerMs, o.blasts).hit)
-            continue;
+        if (!o.checked) {
+            const Danger d = checkPlan(s.foes, s.view, o.schedule, o.lingerMs, o.blasts);
+            if (d.hit) {
+                if (blocked && std::string(d.why) == "blocked" &&
+                    std::none_of(blocked->begin(), blocked->end(),
+                                 [&](Step c) { return c.u == d.at.u && c.v == d.at.v; }))
+                    blocked->push_back(d.at);
+                continue;
+            }
+        }
         tally->safe++;
         if (!found) {
             *out  = std::move(o);
@@ -131,13 +145,49 @@ Situation::Situation(const BotView &v, FoeModel &m, bool around)
 {
 }
 
+namespace {
+
+NavModel shutting(NavModel nav, const std::vector<Step> &cells)
+{
+    for (const Step &c : cells)
+        nav.shut(c);
+    return nav;
+}
+
+}  // namespace
+
+Situation::Situation(const Situation &base, const std::vector<Step> &shut)
+    : view(base.view), nav(shutting(base.nav, shut)), busyMs(base.busyMs),
+      from(nav, view.player.u, view.player.v, view.player.facing, base.from.startMs()),
+      foes(base.foes)
+{
+}
+
 bool realise(Situation &s, const Board &board, const Plan &plan, Option *out, Tally *tally)
 {
     if (plan.steps.empty())
         return false;
+    const Action &action = *actions()[plan.steps.front().action];
     std::vector<Option> options;
-    actions()[plan.steps.front().action]->offer(s, board, plan, options);
-    return pick(s, options, out, tally);
+    action.offer(s, board, plan, options);
+    std::vector<Step> blocked;
+    if (pick(s, options, out, tally, &blocked))
+        return true;
+    // Round where the throwers stood in the way.
+    std::unique_ptr<Situation> round;
+    for (int i = 0; i < ROUNDS && !blocked.empty(); i++) {
+        const Step here{s.view.player.u, s.view.player.v};
+        blocked.erase(std::remove_if(blocked.begin(), blocked.end(),
+                                     [&](Step c) { return c.u == here.u && c.v == here.v; }),
+                      blocked.end());
+        round = std::make_unique<Situation>(round ? *round : s, blocked);
+        options.clear();
+        action.offer(*round, board, plan, options);
+        blocked.clear();
+        if (pick(*round, options, out, tally, &blocked))
+            return true;
+    }
+    return false;
 }
 
 bool choose(Situation &s, const Board &board, PlanOptions options, Choice *out,

@@ -34,6 +34,8 @@ struct Situation {
      * With aroundThrowers, they go round the throwers near the player
      * (nav.h): for when no way past them is safe. */
     Situation(const BotView &v, FoeModel &m, bool aroundThrowers = false);
+    /* base's, with the cells shut to the routes besides. */
+    Situation(const Situation &base, const std::vector<Step> &shut);
 
     const BotView &view;
     NavModel       nav;
@@ -61,10 +63,15 @@ const double ROOM_MS = 100;
 double cramped(const Situation &s, Step c);
 
 /* The cheapest of options found safe (danger.h), sorting them: false if
- * none is; tally counts them. */
-bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally);
+ * none is; tally counts them.  blocked, if given, gets the cells where a
+ * thrower stood in the way of one. */
+bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally,
+          std::vector<Step> *blocked = nullptr);
 
-/* The plan's first step, as the cheapest safe option: false if none. */
+/* The plan's first step, as the cheapest safe option: false if none.  With
+ * a thrower in the way of every one, offered again with the routes going
+ * round where it stood then, a few times: it moves on as the player comes,
+ * which going round where it stands now does not see. */
 bool realise(Situation &s, const Board &board, const Plan &plan, Option *out, Tally *tally);
 
 /* What choose found: the planner's first plan, on its estimates; the plan

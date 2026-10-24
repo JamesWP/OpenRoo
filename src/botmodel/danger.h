@@ -26,6 +26,7 @@ namespace bot {
 struct Danger {
     bool        hit = false;
     double      t = 0;      // ms from now
+    Step        at{-1, -1}; // the player's cell then
     const char *why = "";   // "catcher", "thrower", "blocked", "penned", "bomb", "falling tile",
                             // "bridge"
     int         killed = 0; // foes the extra blasts killed meanwhile
@@ -38,6 +39,12 @@ struct Danger {
  * means to drop. */
 Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
                  double lingerMs, const std::vector<Blast> &extra = {});
+
+/* checkPlan for a way clear of a bomb: the player may stop within a
+ * thrower's reach, only the bombs it drops meanwhile judging that (the next
+ * choice keeps clear of the one after). */
+Danger checkEscape(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
+                   double lingerMs);
 
 /* How soon a foe (a catcher, or a thrower's reach: where it will drop a
  * bomb) meets the player on plan and then standing at its end, within

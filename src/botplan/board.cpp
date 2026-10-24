@@ -398,18 +398,21 @@ Changes Board::spendable() const
         bool bombs = live_.player.bombs > 0;
         for (const Pickup &p : pickups_)
             bombs = bombs || p.kind == Pickup::Bombs;
-        spendable_ = bombs || !baits(0).empty() ? allBlocks() : 0;
+        bool baited = !baits(0).empty();
+        for (const Send &p : sends(0))
+            baited = baited || !baits(0, p.at).empty();
+        spendable_ = bombs || baited ? allBlocks() : 0;
     }
     return spendable_;
 }
 
 bool Board::canFinishFrom(Step cell) const
 {
-    if (glidesToBe())
+    if (live_.player.glides > 0)
         return true;  // a glide may lead on: no cell is known to be a trap
     const Place at{cell.u, cell.v, worlds_->pointFacing()};
-    if (crossable(spendable(), at, 0))
-        return true;  // and so may a crossing
+    if (leadsOn(spendable(), at, 0, fromMap()))
+        return true;
     for (const Changes s : {(Changes)0, spendable()}) {
         if (fromMap() <= 0 ? time(s, at, exit()) >= 0 : gemRoute(s, at, fromMap()).found)
             return true;
@@ -421,7 +424,7 @@ bool Board::canFinishFrom(Step cell) const
 
 bool Board::canFinishAfter(Step gem) const
 {
-    if (glidesToBe())
+    if (live_.player.glides > 0)
         return true;
     const auto key = std::make_pair(gem.u, gem.v);
     auto it = after_.find(key);
@@ -429,7 +432,7 @@ bool Board::canFinishAfter(Step gem) const
         return it->second;
     const int need = fromMap() - 1;
     const Place at{gem.u, gem.v, worlds_->pointFacing()};
-    bool found = crossable(spendable(), at, 0);  // a crossing may lead on
+    bool found = leadsOn(spendable(), at, gemBit(gem), need);
     for (const Changes s : {(Changes)0, spendable()}) {
         if (found)
             break;
@@ -492,12 +495,62 @@ const std::vector<Site> &Board::sites(Changes s) const
     return sites_[s] = out;
 }
 
-const std::vector<Site> &Board::baits(Changes s) const
+const std::vector<char> &Board::throwerWalk(int at) const
 {
-    auto it = baits_.find(s);
+    auto it = throwerWalks_.find(at);
+    if (it != throwerWalks_.end())
+        return it->second;
+    FoeModel sim;
+    sim.load(live_);
+    const Step from = at > 0 && (size_t)at <= pads().size() ? pads()[(size_t)at - 1].out : Step{-1, -1};
+    std::vector<char> walk;
+    for (size_t i = 0; i < sim.foeCount(); i++) {
+        if (!sim.throwsAtPlayer(i))
+            continue;
+        const std::vector<char> w = sim.walkable(i, from);
+        if (walk.empty())
+            walk = w;
+        for (size_t c = 0; c < w.size(); c++)
+            walk[c] |= w[c];
+        if (at > 0)
+            break;  // sent out of a pad, the throwers stand as one
+    }
+    return throwerWalks_[at] = walk;
+}
+
+const std::vector<Send> &Board::pads() const
+{
+    if (!padsFound_) {
+        padsFound_ = true;
+        for (int v = 0; v < live_.extentV; v++)
+            for (int u = 0; u < live_.extentU; u++) {
+                const Cell &c = live_.cell(u, v);
+                if (c.kind == TILE_TELEPORTER && live_.inside(c.teleU, c.teleV))
+                    pads_.push_back({{u, v}, {c.teleU, c.teleV}, (int)pads_.size() + 1});
+            }
+    }
+    return pads_;
+}
+
+std::vector<Send> Board::sends(int at) const
+{
+    std::vector<Send> out;
+    const std::vector<char> walk = throwerWalk(at);
+    if (walk.empty())
+        return out;
+    const int W = live_.extentU;
+    for (const Send &p : pads())
+        if (walk[(size_t)p.pad.v * W + p.pad.u] && !walk[(size_t)p.out.v * W + p.out.u])
+            out.push_back(p);
+    return out;
+}
+
+const std::vector<Site> &Board::baits(Changes s, int at) const
+{
+    auto it = baits_.find({s, at});
     if (it != baits_.end())
         return it->second;
-    std::vector<Site> &out = baits_[s];
+    std::vector<Site> &out = baits_[{s, at}];
     const BotView &view = worlds_->get(s).view();
     std::vector<size_t> open;
     for (size_t i = 0; i < worlds_->blockCount(); i++)
@@ -508,16 +561,7 @@ const std::vector<Site> &Board::baits(Changes s) const
     // Where the throwers can go, all together.
     FoeModel sim;
     sim.load(view);
-    std::vector<char> walk;
-    for (size_t i = 0; i < sim.foeCount(); i++) {
-        if (!sim.throwsAtPlayer(i))
-            continue;
-        const std::vector<char> w = sim.walkable(i);
-        if (walk.empty())
-            walk = w;
-        for (size_t c = 0; c < w.size(); c++)
-            walk[c] |= w[c];
-    }
+    const std::vector<char> walk = throwerWalk(at);
     if (walk.empty())
         return out;
     // How far, in cells, the nearest thrower walks to each cell it can go.
@@ -525,7 +569,7 @@ const std::vector<Site> &Board::baits(Changes s) const
     std::vector<Step> ring;
     for (size_t i = 0; i < sim.foeCount(); i++)
         if (sim.throwsAtPlayer(i)) {
-            const Step c = sim.foeCell(i);
+            const Step c = at > 0 ? pads()[(size_t)at - 1].out : sim.foeCell(i);
             if (view.inside(c.u, c.v) && far[(size_t)c.v * view.extentU + c.u] < 0) {
                 far[(size_t)c.v * view.extentU + c.u] = 0;
                 ring.push_back(c);
@@ -595,10 +639,13 @@ const std::vector<Crossing> &Board::crossings() const
         for (int u = 0; u < view.extentU; u++) {
             if (runAt(u, v) >= 0)
                 continue;
-            // From a cell beside a run, facing it.
+            // From a cell beside a run, facing it, or beside a teleporter
+            // that may send the player on to one.
             for (int f = DIR_MIN; f <= DIR_MAX; f++) {
-                const int run = runAt(u + DIR_DU[f], v + DIR_DV[f]);
-                if (run < 0 || run >= 32)
+                const int nu = u + DIR_DU[f], nv = v + DIR_DV[f];
+                const int beside = runAt(nu, nv);
+                const bool tele = view.inside(nu, nv) && view.cell(nu, nv).kind == TILE_TELEPORTER;
+                if ((beside < 0 && !tele) || beside >= 32)
                     continue;
                 const Paths paths(over, u, v, f);
                 for (int tv = 0; tv < view.extentV; tv++)
@@ -606,12 +653,21 @@ const std::vector<Crossing> &Board::crossings() const
                         const double ms = paths.cost(tu, tv);
                         if (ms <= 0 || runAt(tu, tv) >= 0)
                             continue;
-                        // Over the run alone.
+                        // Over the run alone, but for the teleporters on the
+                        // way, where the player does not stop.
                         const std::vector<Step> cells = paths.cellsTo(tu, tv);
+                        int run = beside;
                         bool alone = cells.size() > 2;
-                        for (size_t i = 1; i + 1 < cells.size() && alone; i++)
-                            alone = runAt(cells[i].u, cells[i].v) == run;
-                        if (alone)
+                        for (size_t i = 1; i + 1 < cells.size() && alone; i++) {
+                            const int r = runAt(cells[i].u, cells[i].v);
+                            if (r < 0)
+                                alone = view.cell(cells[i].u, cells[i].v).kind == TILE_TELEPORTER;
+                            else if (run < 0)
+                                run = r;
+                            else
+                                alone = r == run;
+                        }
+                        if (alone && run >= 0 && run < 32)
                             crossings_.push_back({{u, v}, {tu, tv, paths.facingAt(tu, tv)}, ms,
                                                   1u << run});
                     }
@@ -626,6 +682,34 @@ bool Board::crossable(Changes s, Place from, unsigned crossed) const
         if (!(crossed & c.bit) && time(s, from, c.from) >= 0)
             return true;
     return false;
+}
+
+bool Board::leadsOn(Changes s, Place from, Taken taken, int need) const
+{
+    // The places come to: the start, and the far side of each run crossed.
+    std::vector<Place> at{from};
+    unsigned crossed = 0;
+    for (size_t i = 0; i < at.size(); i++)
+        for (const Crossing &c : crossings())
+            if (!(crossed & c.bit) && time(s, at[i], c.from) >= 0) {
+                crossed |= c.bit;
+                at.push_back(c.to);
+            }
+    auto reached = [&](Step c) {
+        for (const Place &p : at)
+            if (time(s, p, c) >= 0)
+                return true;
+        return false;
+    };
+    for (const Pickup &p : pickups_)
+        if (p.kind == Pickup::Glider && reached(p.cell))
+            return true;
+    if (at.size() == 1)
+        return false;  // nothing crossed: the gem route says
+    int have = 0;
+    for (const Step &g : gems(s))
+        have += !(taken & gemBit(g)) && reached(g);
+    return have >= need && reached(exit());
 }
 
 std::string Board::noRoute() const

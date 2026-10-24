@@ -69,14 +69,21 @@ model (where a paraglider can bring the player down), the route
 optimiser (which k of the n gems, in what order, and against the clock
 which time bonuses on the way), and the predictors for
 foes, falling tiles and bombs.  The foe predictor steps the foes' own chase
-search, since their routes are not stable.  The danger check runs a
-player schedule against all of them.
+search, since their routes are not stable; the search knows no teleporters,
+so a foe goes through a pad only where its way to the player steps onto it.
+The danger check runs a player schedule against all of them.
+A cell is a trap where the quota and the exit can no longer be had from it:
+a glider or a one-shot crossing may still lead on, but only one that can be
+reached from it, and a crossing only to enough gems.
 
 ### 3.3 Goal selection
 
 Which goals are worth planning for now, the most relevant first: *finish*
 always, and above it *remove foe* while bombs are held and a foe will meet
-the player soon.  Goals are relevant on sensed facts, not on plans.
+the player soon, or while a foe would drop a one-shot run the exit needs
+before the plan crosses it (the foe model run with the player keeping to the
+plan, since the foes follow the player).  Goals are relevant on sensed
+facts, not on plans.
 
 ### 3.4 Planner
 
@@ -101,7 +108,21 @@ the player is baited to it, the player standing where its bomb would land,
 and the foe model says when the bomb drops, so the walk away can be timed.
 A bait is planned only where the player can get clear of the bomb, and
 costs the thrower's walk to it as well; a thrower too far off for its chase
-to keep up is led there, a few cells at a time.
+to keep up is led there, a few cells at a time, or drawn on by the player
+waiting on the bait cell while the foe model has it coming.  Where the
+thrower stands short of the cell, the cells beside it are tried, and the
+walk clear of the bomb is judged by the bombs alone: the next decision keeps
+clear of the thrower's next one.
+A thrower is sent through a teleporter (*send*) to bait sites it could not
+walk to: the planner tracks which pad it went out of, and the player waits
+by the pad, on its side, where the foe model has the thrower's chase cross
+it and walk off the far end in the way the bait after it needs.  Until it
+does, the player stands where the foe model has the thrower come nearest the
+pad, and stays put while waiting brings it nearer.
+A carrier is *goaded* into a thrower's bomb, planned only where the
+throwers can get near it and the player can reach its side (so a walled-in
+carrier is first baited out), and done where the foe model has the bomb
+kill it, the carrier following the player into it if need be.
 
 ### 3.6 Motor
 
@@ -144,6 +165,10 @@ reads the game).  `tools/bot/` holds the Python orchestration and analysis.
   trace and a recording that replays on screen.  `compare` diffs two runs,
   regressions first; `check-determinism` runs twice and requires identical
   results.
+- **`genlevels.py`** writes generated levels (two areas, holes, a thrower,
+  teleporter pairs) as an overlay of the game data; `backtest.py --overlay`
+  plays them in place of the real ones, to check the foe model on cases the
+  levels have few of.
 - **Checks of the model against the game**: `calibrate.py` (moves),
   `foecheck.py` and `modelcheck.py` (foe and nav predictions), `bombcheck.py`
   (blasts), `ambushcheck.py` (did the predicted kills happen).

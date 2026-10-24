@@ -13,7 +13,8 @@
  * it ended), and the terrain's say over a foe at rest, seen to on the tick its
  * step ends (a slide carries it on at 150 ms a cell, ice the way it last
  * moved, a sticky pad holds it 3 s, a teleporter holds it 500 ms, moves it to
- * its other pad, holds it 500 ms more and sends it on the way it came).  Foes
+ * its other pad, holds it 500 ms more and sends it on the way it came, a jump
+ * pad launches it to its top and sends it on the way it came, as the player).  Foes
  * see each other and the player through the cells' occupants, as in the game:
  * a step holds the cell it leaves until it ends, the player's too, and a
  * thrower steps into no occupied cell, a catcher into none but the player's.
@@ -115,14 +116,25 @@ public:
     size_t foeCount() const { return foes_.size(); }
     Step   foeCell(size_t i) const { return {foes_[i].u, foes_[i].v}; }
     int    foeKind(size_t i) const { return foes_[i].kind; }
+    /* The cell foe i is stepping out of, in the first half of the step
+     * (nearer it than the cell it steps to), or {-1, -1}. */
+    Step   foeLeaving(size_t i) const
+    {
+        const Foe &f = foes_[i];
+        const bool early = f.moveDir >= 1 && f.moveDir <= 4 && clock_ < f.animStart + f.animMs / 2;
+        return early ? Step{f.fromU, f.fromV} : Step{-1, -1};
+    }
     /* Whether foe i's search finds a way to (u, v) as the foes stand, at the
      * budget its type chases with (a follower's, a catcher). */
     bool reaches(size_t i, int u, int v);
     /* The cells foe i could walk to as the terrain stands, however far: by
      * the search's own step rules, without its budget, and no step a height
      * up but on stairs, which the foe will not take.  One a cell, row by
-     * row. */
-    std::vector<char> walkable(size_t i) const;
+     * row.  From the cell from, if given, in place of where the foe stands.
+     * Not through teleporters: the search knows none, and a foe goes
+     * through one only where its way to the player steps onto it (Board,
+     * sends). */
+    std::vector<char> walkable(size_t i, Step from = {-1, -1}) const;
     /* Whether foe i is a thrower that follows the catchers (foetype.h). */
     bool bombsCatchers(size_t i) const;
     /* Whether foe i is a thrower that bombs the player when beside it: not
@@ -147,6 +159,7 @@ private:
         double lastDrop = 0;       // a thrower's last bomb
         bool   dropPending = false;
         bool   riding = false;     // on a platform, carried where it goes
+        double launchedAt = -1;    // on a jump pad's arc since then, or -1
         int    tele = 0;           // a teleporter's hold: 1 before the jump, 2 after, since teleAt
         double teleAt = 0;
         bool   onSwitch = false;   // has worked the switch it stands on
@@ -247,13 +260,17 @@ private:
     std::vector<Cell> grid_;
     bool   ownGrid_ = false;
     std::vector<char> cleared_;     // a deck cell the model has cleared
-    bool   bridgesMoved_ = false;   // a deck cell changed since the load
     bool   playerOnSwitch_ = false;
     int    playerSwitch_ = -1;      // the switch the player worked, not yet acted on
     double playerRestAt_ = 0;       // when the player's step onto its cell ends
     std::vector<Fall> falls_;
     std::vector<int>  fallAt_;         // a cell's index in falls_, or -1
-    int               fallsChanged_ = 0;  // tiles gone or back since the load
+    // What the search reads that has changed since the load, hashed: a
+    // token for each changed cell (a deck stamped or cleared, a switch
+    // raised or lowered, a falling tile gone or back), xored in as it
+    // changes, so it is 0 again once all are as they were.
+    unsigned long long changed_ = 0;
+    void changeAt(size_t cell, unsigned what);
     void tickFalls();
     double clock_ = 0;
     Step   player_{-1, -1};
@@ -273,12 +290,24 @@ private:
     std::vector<int>  openAt_, closedAt_;   // the node a key has, or -1
     std::vector<int>  keys_;                // keys set this search
 
-    // The first steps found, by (from, target, mode, cap), while the terrain
-    // hashes to terrain_; -1 for none.  sticky_: the level has sticky pads,
-    // whose rule reads occupants, so nothing is kept.
-    std::unordered_map<unsigned long long, int> firstSteps_;
+    // The first steps found, by (from, target, mode, cap) and the changes
+    // since the load (changed_), while the terrain hashes to terrain_; -1 for
+    // none, with the occupants the search read (a sticky pad's rule reads
+    // them): kept while they are the same.
+    struct Memo {
+        unsigned long long key, changed;
+        bool operator==(const Memo &o) const { return key == o.key && changed == o.changed; }
+    };
+    struct MemoHash {
+        size_t operator()(const Memo &m) const { return (size_t)(m.key ^ (m.changed * 0x9e3779b97f4a7c15ull)); }
+    };
+    struct Kept {
+        int step;
+        std::vector<std::pair<int, int>> reads;   // (cell, occupant)
+    };
+    std::unordered_map<Memo, Kept, MemoHash> firstSteps_;
     unsigned long long terrain_ = 0;
-    bool sticky_ = false;
+    mutable std::vector<std::pair<int, int>> reads_;   // by the search under way
 };
 
 /* How many gems the level can lose and still make its quota: those on the

@@ -75,6 +75,8 @@ import os
 import shutil
 import sys
 
+from replay import save_files  # every file the game reads from SavedGames/
+
 GAM_KEY = 5
 SAV_KEY = 0x37
 SLOT_SIZE = 0x2A

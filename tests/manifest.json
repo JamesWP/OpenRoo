@@ -1800,6 +1800,18 @@
       "notes": "Named for the crash it used to reproduce; kept under that name because docs/TESTING.md and CRASH.md both reference it. Re-baselined 2026-08-31 after the crash fix: two consecutive runs produced identical end-state dumps. The fault it guarded happened INSIDE DrawPrimitiveStrided; headless runs skip the draw calls, so only --no-headless exercises that path."
     },
     {
+      "name": "bonus-human",
+      "file": "bonus-human.rec",
+      "level": "Space\\Bonus",
+      "description": "Hand-played by James: Space\\Bonus, how the gems behind the jump-pad switches are had in one life",
+      "scenario": "Hand-played by James: Space\\Bonus, how the gems behind the jump-pad switches are had in one life",
+      "expect": {
+        "crash": "none",
+        "state": {}
+      },
+      "notes": "Captured 5319 frames. No end-state assertions yet \u2014 run `replaytest.py --bless bonus-human` once a replay is trusted."
+    },
+    {
       "name": "bridge01",
       "file": "bridge01.rec",
       "level": "Space\\Bridge01",
@@ -2461,6 +2473,18 @@
       "notes": "Blessed 2026-09-05, after two consecutive runs produced identical end-state dumps. The level is not completed, so there is no at_completion block and completed_a_level is false. Its value is the tile-effect coverage, not the outcome: this is the recording that will catch a regression in Game::UpdatePlayerTileEffects (0x41fcb0), which handles glue, slides, jump pads and teleporters and which no recording could see before it existed."
     },
     {
+      "name": "space02-human",
+      "file": "space02-human.rec",
+      "level": "Space\\Space02",
+      "description": "Hand-played by James: Space\\Space02, how the exit is reached in one life",
+      "scenario": "Hand-played by James: Space\\Space02, how the exit is reached in one life",
+      "expect": {
+        "crash": "none",
+        "state": {}
+      },
+      "notes": "Captured 23160 frames. No end-state assertions yet \u2014 run `replaytest.py --bless space02-human` once a replay is trusted."
+    },
+    {
       "name": "switchfoe",
       "file": "switchfoe.rec",
       "level": "Space\\Bridges&EnemiesStart",
@@ -2563,6 +2587,18 @@
         "seconds": 1.2
       },
       "notes": "Blessed 2026-09-05, after two consecutive runs produced identical end-state dumps. foes_killed=1 is worth keeping an eye on: it is one of only two recordings that kills anything (with bombstart-crash), so it is thin coverage of the foe-death path and of CalculateLevelScore's foe term."
+    },
+    {
+      "name": "thrower02-human",
+      "file": "thrower02-human.rec",
+      "level": "Candy\\Thrower02",
+      "description": "Hand-played by James: Candy\\Thrower02 completed in one life",
+      "scenario": "Hand-played by James: Candy\\Thrower02 completed in one life",
+      "expect": {
+        "crash": "none",
+        "state": {}
+      },
+      "notes": "Captured 30246 frames. No end-state assertions yet \u2014 run `replaytest.py --bless thrower02-human` once a replay is trusted."
     },
     {
       "name": "thrower02_fly",

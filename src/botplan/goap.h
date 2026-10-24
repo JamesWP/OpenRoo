@@ -56,13 +56,14 @@ struct Facts {
     unsigned pickups = 0;    // a bit per board pickup taken (the first 32)
     unsigned bonuses = 0;    // a bit per board time bonus taken (the first 32)
     unsigned crossed = 0;    // a bit per one-shot run crossed (Board::crossings)
+    int      throwerAt = 0;  // the pad the throwers were sent out of (Board::sends), 0: none
     bool     unused = false; // bombs taken that the plan has not used yet
     bool     atExit = false;
 
     auto key() const
     {
         return std::make_tuple(at.u, at.v, at.facing, changes, gemsNeeded, taken, bombs, glides, foes, carriers, pickups,
-                               bonuses, crossed, unused, atExit);
+                               bonuses, crossed, throwerAt, unused, atExit);
     }
     bool operator<(const Facts &o) const { return key() < o.key(); }
 };
@@ -75,6 +76,7 @@ struct PlanStep {
     double     ms = 0;             // its time
     double     risk = 0;           // foe-seconds
     double     penalty = 0;        // ms of cost besides its time
+    int        arg = -1;           // what the action does it to, by its own count (a bridge, say)
 };
 
 struct PlanOptions;
