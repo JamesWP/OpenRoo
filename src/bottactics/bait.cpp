@@ -94,7 +94,7 @@ bool clearOf(Situation &s, const Option &before, Step at, int facing, double sta
     NavModel after = s.nav;
     for (const Timed &t : before.schedule)
         after.arm(t.cell, t.t);
-    const Paths away(after, at.u, at.v, facing, startMs);
+    const Paths away(after, at.u, at.v, facing, startMs, Bound{RETREAT_MS});
     for (const Step &to : retreatCells(view, away)) {
         Option o = before;
         Option walk;

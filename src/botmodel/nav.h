@@ -228,6 +228,15 @@ struct Leg {
     std::vector<Step> cells;
 };
 
+/* How far a search for routes need go (Paths): only to the cells it comes
+ * to rest on within withinMs of setting off, and to the nearest most of
+ * them; < 0, no limit.  Those routes are the ones a search without the bound
+ * finds; the cells past it are as if unreachable. */
+struct Bound {
+    double withinMs = -1;
+    int    most = -1;
+};
+
 /* The quickest routes from one rest state to every other: Dijkstra over
  * (cell, facing), each move costing its time, and, where lifts are, waiting
  * for them (the routes start at the view's clock).  A route ends at a working
@@ -240,7 +249,11 @@ public:
      * where they can, as often as they like: bounds, for the planner's most
      * open world (worlds.h), not ways to be walked. */
     Paths(const NavModel &nav, int u, int v, int facing, double startMs = 0,
-          bool throughSwitches = false, const GlideSource *glides = nullptr);
+          bool throughSwitches = false, const GlideSource *glides = nullptr,
+          const Bound &bound = Bound());
+    /* Only the routes within the bound. */
+    Paths(const NavModel &nav, int u, int v, int facing, double startMs, const Bound &bound)
+        : Paths(nav, u, v, facing, startMs, false, nullptr, bound) {}
 
     /* When the routes set off, ms from the view's clock. */
     double startMs() const { return startMs_; }

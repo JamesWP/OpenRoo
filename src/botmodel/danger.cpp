@@ -35,10 +35,11 @@ int chebyshev(Step a, Step b)
 }
 
 /* The cells the player at rest on at, atMs from the view's clock, can come
- * to rest on, and whether from is one. */
-int reachable(const NavModel &nav, Step at, double atMs, Step from, bool *back)
+ * to rest on, up to most of them, and whether from is one (if they are
+ * fewer). */
+int reachable(const NavModel &nav, Step at, double atMs, Step from, int most, bool *back)
 {
-    const Paths paths(nav, at.u, at.v, 1, atMs);
+    const Paths paths(nav, at.u, at.v, 1, atMs, Bound{-1, most});
     int n = 0;
     for (int v = 0; v < nav.view().extentV; v++)
         for (int u = 0; u < nav.view().extentU; u++)
@@ -70,7 +71,7 @@ bool switchesOut(const BotView &view, const FoeModel &sim, Step at, double atMs)
             for (size_t i = 0; i < sim.foeCount(); i++)
                 opened.shut(sim.foeCell(i));
             bool back;
-            if (reachable(opened, {u, v}, atMs, {u, v}, &back) > PEN_CELLS)
+            if (reachable(opened, {u, v}, atMs, {u, v}, PEN_CELLS + 1, &back) > PEN_CELLS)
                 return true;
         }
     return false;
@@ -92,8 +93,9 @@ bool penned(const BotView &view, const FoeModel &sim, Step at, double atMs, Step
     if (!near)
         return false;
     bool inside, open;
-    const int left = reachable(shut, at, atMs, from, &inside);
-    return !inside && left <= PEN_CELLS && left < reachable(NavModel(view), at, atMs, from, &open) &&
+    const int left = reachable(shut, at, atMs, from, PEN_CELLS + 1, &inside);
+    return !inside && left <= PEN_CELLS &&
+           left < reachable(NavModel(view), at, atMs, from, PEN_CELLS + 1, &open) &&
            !switchesOut(view, sim, at, atMs);
 }
 

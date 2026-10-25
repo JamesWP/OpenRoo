@@ -123,7 +123,7 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
     NavModel after = s.nav;
     for (const Timed &t : before.schedule)
         after.arm(t.cell, t.t);
-    const Paths away(after, site.u, site.v, facing, awayMs);
+    const Paths away(after, site.u, site.v, facing, awayMs, Bound{RETREAT_MS});
     std::vector<std::pair<double, Step>> cells;
     for (int v = 0; v < view.extentV; v++)
         for (int u = 0; u < view.extentU; u++) {
