@@ -124,23 +124,27 @@ bool walkOn(const Situation &s, const NavModel &nav, Option &o, Step at, Step ta
     return true;
 }
 
-std::vector<Step> retreatCells(const BotView &view, const Paths &paths, size_t most, bool stable)
+Near nearCells(const BotView &view, const Paths &paths, double withinMs, size_t most,
+               const std::function<bool(Step)> &keep)
 {
-    std::vector<std::pair<double, Step>> cells;
+    Near cells;
     for (int v = 0; v < view.extentV; v++)
         for (int u = 0; u < view.extentU; u++) {
             const double c = paths.cost(u, v);
-            if (c > 0 && c <= RETREAT_MS && !NavModel::moving(view.cell(u, v)))
+            if (c > 0 && c <= withinMs && !NavModel::moving(view.cell(u, v)) && (!keep || keep({u, v})))
                 cells.push_back({c, {u, v}});
         }
-    auto nearer = [](const auto &a, const auto &b) { return a.first < b.first; };
-    if (stable)
-        std::stable_sort(cells.begin(), cells.end(), nearer);
-    else
-        std::sort(cells.begin(), cells.end(), nearer);
+    std::sort(cells.begin(), cells.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+    if (cells.size() > most)
+        cells.resize(most);
+    return cells;
+}
+
+std::vector<Step> retreatCells(const BotView &view, const Paths &paths, size_t most)
+{
     std::vector<Step> out;
-    for (size_t i = 0; i < cells.size() && i < most; i++)
-        out.push_back(cells[i].second);
+    for (const auto &[ms, c] : nearCells(view, paths, RETREAT_MS, most))
+        out.push_back(c);
     return out;
 }
 

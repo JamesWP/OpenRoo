@@ -318,16 +318,9 @@ void offerFetchGem(Situation &s, const Board &board, std::vector<Option> &out)
 void offerEvade(Situation &s, const Board &board, std::vector<Option> &options)
 {
     const BotView &view = s.view;
-    std::vector<std::pair<double, Step>> cells;
-    for (int v = 0; v < view.extentV; v++)
-        for (int u = 0; u < view.extentU; u++) {
-            const double c = s.from.cost(u, v);
-            // Not onto a switch, which works a bridge no plan asked for.
-            if (c > 0 && c <= EVADE_MS && !switchedBy(view, u, v))
-                cells.push_back({c, {u, v}});
-        }
-    std::sort(cells.begin(), cells.end(),
-              [](const auto &a, const auto &b) { return a.first < b.first; });
+    // Not onto a switch, which works a bridge no plan asked for.
+    const Near cells = nearCells(view, s.from, EVADE_MS, SIZE_MAX,
+                                 [&](Step c) { return !switchedBy(view, c.u, c.v); });
     // Not into a trap, but where the player is cannot finish either (a foe
     // may yet open the way, say), the test tells none apart.
     const bool any = !board.canFinishFrom({view.player.u, view.player.v});

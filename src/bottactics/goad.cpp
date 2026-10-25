@@ -114,28 +114,18 @@ public:
         if (carriers.empty())
             return;
         const Step here{view.player.u, view.player.v};
-        std::vector<std::pair<double, Step>> cells{{0, here}}, leads;
-        for (int v = 0; v < view.extentV; v++)
-            for (int u = 0; u < view.extentU; u++) {
-                const double c = s.from.cost(u, v) - s.from.startMs();
-                if (c <= 0 || c > WALK_MS || NavModel::moving(view.cell(u, v)) || switchedBy(view, u, v))
-                    continue;
-                bool near = false;
-                for (const Step &k : carriers)
-                    near = near || chebyshev(k, {u, v}) <= NEAR;
-                if (near)
-                    cells.push_back({c, {u, v}});
-                else if (c <= LEAD_MS)
-                    leads.push_back({c, {u, v}});
-            }
-        auto nearest = [](auto &list, size_t first, size_t most) {
-            std::stable_sort(list.begin() + first, list.end(),
-                             [](const auto &a, const auto &b) { return a.first < b.first; });
-            if (list.size() > first + most)
-                list.resize(first + most);
+        auto nearCarrier = [&](Step c) {
+            for (const Step &k : carriers)
+                if (chebyshev(k, c) <= NEAR)
+                    return true;
+            return false;
         };
-        nearest(cells, 1, CELLS);
-        nearest(leads, 0, LEADS);
+        Near cells{{0, here}};
+        const Near near = nearCells(view, s.from, WALK_MS, CELLS,
+                                    [&](Step c) { return !switchedBy(view, c.u, c.v) && nearCarrier(c); });
+        const Near leads = nearCells(view, s.from, LEAD_MS, LEADS,
+                                     [&](Step c) { return !switchedBy(view, c.u, c.v) && !nearCarrier(c); });
+        cells.insert(cells.end(), near.begin(), near.end());
         cells.insert(cells.end(), leads.begin(), leads.end());
         for (const auto &[ms, at] : cells)
             for (const double wait : WAITS) {
