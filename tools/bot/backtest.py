@@ -264,6 +264,11 @@ def summarise(results):
             k += " (no route)"
         by[k] = by.get(k, 0) + 1
     print("completed %d/%d (%.0f%%)" % (passed, n, 100.0 * passed / n if n else 0))
+    think = [s["think"] for s in results if "think" in s]
+    if think:
+        print("thinking: %d ticks over a 60 Hz frame, the longest %.0f ms, %.0f s in all"
+              % (sum(t["slow_ticks"] for t in think), max(t["max_ms"] for t in think),
+                 sum(t["total_s"] for t in think)))
     for k in sorted(by, key=lambda k: -by[k]):
         print("  %-20s %d" % (k, by[k]))
 
@@ -380,6 +385,7 @@ def cmd_check_determinism(args):
                 ja, jb = (json.load(open(p)) for p in (fa, fb))
                 for j in (ja, jb):
                     j.pop("wall_s", None)
+                    j.pop("think", None)
                 same = ja == jb
             else:
                 same = open(fa, "rb").read() == open(fb, "rb").read()

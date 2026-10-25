@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <string>
+#include <chrono>
 #include "binio.h"
 #include "game.h"
 #include "keycodes.h"
@@ -87,6 +88,9 @@ public:
         const unsigned acts = policy_->act(view);
         actMs_ = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
         actMostMs_ = actMs_ > actMostMs_ ? actMs_ : actMostMs_;
+        // Wall time, not the game's: the ticks the bot holds up a 60 Hz frame.
+        thinkMs_ += actMs_;
+        slowTicks_ += actMs_ > SLOW_TICK_MS;
         held_     = acts;
         last_     = std::move(view);
         haveLast_ = true;
@@ -190,6 +194,8 @@ private:
         printTo(fp, "  \"level_index\": %u,\n", (unsigned)s->levelIndex());
         printTo(fp, "  \"level\": \"%s\",\n", name.c_str());
         printTo(fp, "  \"frames\": %lu,\n", (unsigned long)(frames_ - startFrame_));
+        printTo(fp, "  \"think\": {\"slow_ticks\": %lu, \"max_ms\": %.1f, \"total_s\": %.2f},\n",
+                slowTicks_, actMostMs_, thinkMs_ / 1000.0);
         printTo(fp, "  \"game_ms\": %.0f,\n", w->now() - startMs_);
         printTo(fp, "  \"gems_collected\": %d,\n", pl->gemsCollected());
         printTo(fp, "  \"gems_required\": %d,\n", w->gemsRequired());
@@ -215,6 +221,11 @@ private:
     bool        playing_ = false;
     unsigned    enterTick_ = 0;
     unsigned long frames_ = 0, startFrame_ = 0;
+    // The bot's thinking, wall clock: ticks over a 60 Hz frame, the longest,
+    // and all of it.
+    static constexpr double SLOW_TICK_MS = 1000.0 / 60.0;
+    unsigned long slowTicks_ = 0;
+    double        thinkMs_ = 0;
     double      startMs_ = 0, lastProgressMs_ = 0;
     int         lastGems_ = 0;
     size_t      lastFoes_ = (size_t)-1;
