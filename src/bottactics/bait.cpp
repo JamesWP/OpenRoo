@@ -45,12 +45,8 @@ const double LEAD_WAIT_MS = 6000;
 const double SEND_WAIT_MS = 15000;
 /* A thrower led to the bait may be baited from a cell this near it instead. */
 const int    BESIDE = 2;
-/* The cells to walk away to: within this many ms of the bait cell, the
- * nearest RETREATS of them. */
-const double RETREAT_MS = 2500;
+/* The cells to walk away to: the nearest RETREATS (walk.h). */
 const size_t RETREATS = 24;
-/* A wait for a blast ends this long after its zone clears. */
-const double CLEAR_MARGIN_MS = 200;
 /* With no bait to be had yet, the player waits on the bait cell this long,
  * drawing a thrower on, where the foe model has one come within DRAW_NEAR
  * of it in DRAW_COME_MS. */
@@ -67,41 +63,19 @@ int chebyshev(Step a, Step b)
     return du > dv ? du : dv;
 }
 
-/* The cells within RETREAT_MS of paths' start, nearest first. */
-std::vector<Step> retreatCells(const BotView &view, const Paths &paths)
-{
-    std::vector<std::pair<double, Step>> cells;
-    for (int v = 0; v < view.extentV; v++)
-        for (int u = 0; u < view.extentU; u++) {
-            const double c = paths.cost(u, v);
-            if (c > 0 && c <= RETREAT_MS && !NavModel::moving(view.cell(u, v)))
-                cells.push_back({c, {u, v}});
-        }
-    std::stable_sort(cells.begin(), cells.end(),
-                     [](const auto &a, const auto &b) { return a.first < b.first; });
-    std::vector<Step> out;
-    for (size_t i = 0; i < cells.size() && i < RETREATS; i++)
-        out.push_back(cells[i].second);
-    return out;
-}
-
 /* before, with a walk from at, startMs from now, to the nearest cell where
  * the player is safe through blast, and a wait until it has blown. */
 bool clearOf(Situation &s, const Option &before, Step at, int facing, double startMs,
              const Blast &blast, Option *out)
 {
     const BotView &view = s.view;
-    NavModel after = s.nav;
-    for (const Timed &t : before.schedule)
-        after.arm(t.cell, t.t);
-    const Paths away(after, at.u, at.v, facing, startMs, Bound{RETREAT_MS});
-    for (const Step &to : retreatCells(view, away)) {
+    const RoutesOn away(s.nav, before.schedule, at, facing, startMs, Bound{RETREAT_MS});
+    for (const Step &to : retreatCells(view, away.paths(), RETREATS, true)) {
         Option o = before;
         Option walk;
-        if (!walkTo(s, away, to, 0, walk))
+        if (!walkTo(s, away.paths(), to, 0, walk))
             continue;
-        o.script.insert(o.script.end(), walk.script.begin(), walk.script.end());
-        o.schedule.insert(o.schedule.end(), walk.schedule.begin() + 1, walk.schedule.end());
+        append(o, walk);
         const double done = blast.until + CLEAR_MARGIN_MS;
         o.script.push_back({ScriptStep::Wait, 0, {}, done});
         o.lingerMs = std::max(1000.0, done - view.now - o.schedule.back().t);
@@ -130,18 +104,10 @@ bool walkAndWait(Situation &s, Option &going, const Paths &on, Step end, Step by
     Option leg;
     if (!walkTo(s, on, end, 0, leg))
         return false;
-    o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
-    o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
-    o.cost = leg.cost;
+    append(o, leg);
     if (near >= 0) {
         const std::vector<Timed> &plan = o.schedule;
-        auto playerAt = [&](double clock) {
-            Step c = plan.front().cell;
-            for (const Timed &m : plan)
-                if (view.now + m.t <= clock + 1e-6)
-                    c = m.cell;
-            return c;
-        };
+        auto playerAt = keeping(plan, view.now);
         s.foes.load(view);
         double came = -1;
         while (came < 0 && s.foes.now() < view.now + o.cost + waitMs) {
@@ -180,10 +146,9 @@ bool leadOn(Situation &s, Option &going, Step from, Step bait)
     for (int legs = 0; at.u != bait.u || at.v != bait.v; legs++) {
         if (legs > 64)
             return false;
-        NavModel after = s.nav;
-        for (const Timed &t : going.schedule)
-            after.arm(t.cell, t.t);
-        const Paths on(after, at.u, at.v, facingAfter(view.player.facing, going.script), going.cost);
+        const RoutesOn routes(s.nav, going.schedule, at, facingAfter(view.player.facing, going.script),
+                              going.cost);
+        const Paths &on = routes.paths();
         const std::vector<Step> cells = on.cellsTo(bait.u, bait.v);
         if (cells.size() < 2)
             return false;
@@ -232,13 +197,7 @@ bool baitedBomb(Situation &s, const Option &going, Blast *out)
     const BotView &view = s.view;
     const std::vector<Timed> &plan = going.schedule;
     s.foes.load(view);
-    s.foes.run(view.now + going.cost + WAIT_MS, [&](double clock) {
-        Step at = plan.front().cell;
-        for (const Timed &m : plan)
-            if (view.now + m.t <= clock + 1e-6)
-                at = m.cell;
-        return at;
-    });
+    s.foes.run(view.now + going.cost + WAIT_MS, keeping(plan, view.now));
     for (const Blast &b : s.foes.dropped())
         if (spendsBlock(view, b)) {
             if (b.from - FUSE_MS - view.now < going.cost - view.tickMs)
@@ -257,10 +216,9 @@ bool besideBait(Situation &s, const Option &going, Step bait,
                 const std::function<bool(const Option &, Step, const Blast &)> &take)
 {
     const BotView &view = s.view;
-    NavModel after = s.nav;
-    for (const Timed &t : going.schedule)
-        after.arm(t.cell, t.t);
-    const Paths on(after, bait.u, bait.v, facingAfter(view.player.facing, going.script), going.cost);
+    const RoutesOn routes(s.nav, going.schedule, bait, facingAfter(view.player.facing, going.script),
+                          going.cost);
+    const Paths &on = routes.paths();
     for (int v = bait.v - BESIDE; v <= bait.v + BESIDE; v++)
         for (int u = bait.u - BESIDE; u <= bait.u + BESIDE; u++) {
             if (!view.inside(u, v) || (u == bait.u && v == bait.v) || on.cost(u, v) < 0 ||
@@ -270,9 +228,7 @@ bool besideBait(Situation &s, const Option &going, Step bait,
             Option leg;
             if (!walkTo(s, on, {u, v}, 0, leg))
                 continue;
-            o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
-            o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
-            o.cost = leg.cost;
+            append(o, leg);
             Blast blast;
             if (baitedBomb(s, o, &blast) && take(o, {u, v}, blast))
                 return true;
@@ -374,27 +330,16 @@ public:
                 if (drawn) {
                     if (!walkTo(s, s.from, lure, 0, going))
                         continue;
-                    const int facing = facingAfter(p.facing, going.script);
                     if (wait > 0 && !led) {
                         going.cost += wait;
                         going.script.push_back({ScriptStep::Wait, 0, {}, view.now + going.cost});
                         going.schedule.push_back({going.cost, lure});
                     }
-                    NavModel after = s.nav;
-                    for (const Timed &t : going.schedule)
-                        after.arm(t.cell, t.t);
-                    const Paths on(after, lure.u, lure.v, facing, going.cost);
-                    Option leg;
                     if (led) {
                         if (!leadOn(s, going, lure, bait))
                             continue;
-                    } else if (bait.u != lure.u || bait.v != lure.v) {
-                        if (!walkTo(s, on, bait, 0, leg))
-                            continue;
-                        going.script.insert(going.script.end(), leg.script.begin(), leg.script.end());
-                        going.schedule.insert(going.schedule.end(), leg.schedule.begin() + 1,
-                                              leg.schedule.end());
-                        going.cost = leg.cost;
+                    } else if ((bait.u != lure.u || bait.v != lure.v) && !walkOn(s, s.nav, going, lure, bait)) {
+                        continue;
                     }
                     snprintf(buf, sizeof(buf), "bait at (%d,%d), %s from (%d,%d) after %.0f ms",
                              bait.u, bait.v, led ? "led" : "drawn", lure.u, lure.v, wait);
@@ -457,13 +402,7 @@ private:
         bool coming = false;
         s.foes.load(view);
         while (!coming && s.foes.now() < view.now + o.cost + DRAW_COME_MS && view.tickMs > 0) {
-            s.foes.runTick([&](double clock) {
-                Step at = o.schedule.front().cell;
-                for (const Timed &m : o.schedule)
-                    if (view.now + m.t <= clock + 1e-6)
-                        at = m.cell;
-                return at;
-            });
+            s.foes.runTick(keeping(o.schedule, view.now));
             for (size_t i = 0; i < s.foes.foeCount() && !coming; i++)
                 coming = s.foes.throwsAtPlayer(i) && chebyshev(s.foes.foeCell(i), bait) <= DRAW_NEAR;
         }

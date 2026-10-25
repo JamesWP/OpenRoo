@@ -128,13 +128,7 @@ public:
         // and walked off the far end by its end.
         auto sent = [&](const std::vector<Timed> &plan, double untilMs) {
             s.foes.load(view);
-            s.foes.run(view.now + untilMs, [&](double clock) {
-                Step at = plan.front().cell;
-                for (const Timed &m : plan)
-                    if (view.now + m.t <= clock + 1e-6)
-                        at = m.cell;
-                return at;
-            });
+            s.foes.run(view.now + untilMs, keeping(plan, view.now));
             for (size_t i = 0; i < s.foes.foeCount(); i++) {
                 const Step c = s.foes.foeCell(i);
                 if (s.foes.throwsAtPlayer(i) && view.inside(c.u, c.v) && far[(size_t)c.v * W + c.u] &&
@@ -163,23 +157,15 @@ public:
                 return true;
             const Step bait{next->end.u, next->end.v};
             for (const double pause : FOLLOW_PAUSES) {
-                NavModel after = s.nav;
-                for (const Timed &m : o.schedule)
-                    after.arm(m.cell, m.t);
-                const Paths on(after, at.u, at.v, facingAfter(view.player.facing, o.script), o.cost + pause);
+                const RoutesOn on(s.nav, o.schedule, at, facingAfter(view.player.facing, o.script),
+                                  o.cost + pause, Bound{-1, -1, bait});
                 Option leg;
-                if (!walkTo(s, on, bait, 0, leg))
+                if (!walkTo(s, on.paths(), bait, 0, leg))
                     return false;
                 std::vector<Timed> plan = o.schedule;
                 plan.insert(plan.end(), leg.schedule.begin() + 1, leg.schedule.end());
                 s.foes.load(view);
-                s.foes.run(view.now + leg.cost + BAIT_WAIT_MS, [&](double clock) {
-                    Step c = plan.front().cell;
-                    for (const Timed &m : plan)
-                        if (view.now + m.t <= clock + 1e-6)
-                            c = m.cell;
-                    return c;
-                });
+                s.foes.run(view.now + leg.cost + BAIT_WAIT_MS, keeping(plan, view.now));
                 for (const Blast &b : s.foes.dropped())
                     if (b.from - FUSE_MS - view.now >= leg.cost - view.tickMs && spendsBlock(view, b))
                         return true;
@@ -214,13 +200,7 @@ public:
         // the plan's end: 0 through it or on it.
         auto nearPad = [&](const std::vector<Timed> &plan, double untilMs) {
             s.foes.load(view);
-            s.foes.run(view.now + untilMs, [&](double clock) {
-                Step at = plan.front().cell;
-                for (const Timed &m : plan)
-                    if (view.now + m.t <= clock + 1e-6)
-                        at = m.cell;
-                return at;
-            });
+            s.foes.run(view.now + untilMs, keeping(plan, view.now));
             int best = -1;
             for (size_t i = 0; i < s.foes.foeCount(); i++) {
                 if (!s.foes.throwsAtPlayer(i))

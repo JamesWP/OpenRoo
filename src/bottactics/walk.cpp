@@ -78,6 +78,58 @@ bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Op
     return true;
 }
 
+void append(Option &o, const Option &leg)
+{
+    o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
+    o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
+    o.cost = leg.cost;
+}
+
+static NavModel armed(const NavModel &nav, const std::vector<Timed> &schedule)
+{
+    NavModel after = nav;
+    for (const Timed &t : schedule)
+        after.arm(t.cell, t.t);
+    return after;
+}
+
+RoutesOn::RoutesOn(const NavModel &nav, const std::vector<Timed> &schedule, Step at, int facing,
+                   double setOffMs, const Bound &bound)
+    : nav_(armed(nav, schedule)), paths_(nav_, at.u, at.v, facing, setOffMs, bound)
+{
+}
+
+bool walkOn(const Situation &s, const NavModel &nav, Option &o, Step at, Step target, double wait)
+{
+    const RoutesOn on(nav, o.schedule, at, facingAfter(s.view.player.facing, o.script), o.cost,
+                      Bound{-1, -1, target});
+    Option leg;
+    if (!walkTo(s, on.paths(), target, wait, leg))
+        return false;
+    append(o, leg);
+    return true;
+}
+
+std::vector<Step> retreatCells(const BotView &view, const Paths &paths, size_t most, bool stable)
+{
+    std::vector<std::pair<double, Step>> cells;
+    for (int v = 0; v < view.extentV; v++)
+        for (int u = 0; u < view.extentU; u++) {
+            const double c = paths.cost(u, v);
+            if (c > 0 && c <= RETREAT_MS && !NavModel::moving(view.cell(u, v)))
+                cells.push_back({c, {u, v}});
+        }
+    auto nearer = [](const auto &a, const auto &b) { return a.first < b.first; };
+    if (stable)
+        std::stable_sort(cells.begin(), cells.end(), nearer);
+    else
+        std::sort(cells.begin(), cells.end(), nearer);
+    std::vector<Step> out;
+    for (size_t i = 0; i < cells.size() && i < most; i++)
+        out.push_back(cells[i].second);
+    return out;
+}
+
 void offerWalks(const Situation &s, const std::vector<std::pair<Step, double>> &targets,
                 const char *what, bool waits, std::vector<Option> &out)
 {

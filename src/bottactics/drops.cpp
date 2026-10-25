@@ -9,9 +9,7 @@ namespace bot {
 
 namespace {
 
-/* The cells to walk away to: within this many ms of the drop, the nearest
- * RETREATS of them. */
-const double RETREAT_MS = 2500;
+/* The cells to walk away to: the nearest RETREATS (walk.h). */
 const size_t RETREATS = 16;
 /* An ambush: the drop sites within this many ms of the player (the nearest
  * SITES of them, and where it stands), the waits before the drop, the few
@@ -25,9 +23,6 @@ const size_t AMBUSH_RETREATS = 2;
  * caught only on its way past the blast's edge is not caught at all if it
  * is out. */
 const double SURE_MS = 250;
-/* A wait after a drop ends this long after the blast's zone clears: the
- * foe model's chase assumed the player stays put until then. */
-const double CLEAR_MARGIN_MS = 200;
 /* The waits a blast's drop is tried after: a fallen tile is back 5 s after
  * it was stepped on (fallingmodel.h). */
 const double BLAST_WAITS[] = {0, 2500, 5500};
@@ -118,33 +113,14 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
                                     facing, view.now + dropIn);
     if (blast.lost)
         return;
-    // The way away is found after the way there, which arms the falling
-    // tiles it goes over.
-    NavModel after = s.nav;
-    for (const Timed &t : before.schedule)
-        after.arm(t.cell, t.t);
-    const Paths away(after, site.u, site.v, facing, awayMs, Bound{RETREAT_MS});
-    std::vector<std::pair<double, Step>> cells;
-    for (int v = 0; v < view.extentV; v++)
-        for (int u = 0; u < view.extentU; u++) {
-            const double c = away.cost(u, v);
-            // Not onto a platform or a lift: it may carry the player along
-            // with the bomb.
-            if (c > 0 && c <= RETREAT_MS && !NavModel::moving(view.cell(u, v)))
-                cells.push_back({c, {u, v}});
-        }
-    std::sort(cells.begin(), cells.end(),
-              [](const auto &a, const auto &b) { return a.first < b.first; });
-    for (size_t i = 0; i < cells.size() && i < most; i++) {
-        const Step at = cells[i].second;
+    const RoutesOn away(s.nav, before.schedule, site, facing, awayMs, Bound{RETREAT_MS});
+    for (const Step &at : retreatCells(view, away.paths(), most, false)) {
         Option o = before;
         o.script.push_back({ScriptStep::Drop, 0, {}, 0});
         Option walk;
-        if (!walkTo(s, away, at, 0, walk))
+        if (!walkTo(s, away.paths(), at, 0, walk))
             continue;
-        o.script.insert(o.script.end(), walk.script.begin(), walk.script.end());
-        o.schedule.insert(o.schedule.end(), walk.schedule.begin() + 1, walk.schedule.end());
-        o.cost = walk.cost;
+        append(o, walk);
         o.blasts.push_back(blast);
         if (wait) {
             o.script.push_back({ScriptStep::Wait, 0, {}, blast.until + CLEAR_MARGIN_MS});
