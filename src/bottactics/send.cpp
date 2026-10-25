@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include "bombmodel.h"
 #include "danger.h"
+#include "rules.h"
 #include "walk.h"
 
 namespace bot {
@@ -46,12 +47,6 @@ const double BAIT_WAIT_MS = 8000;
  * model is run to see which cell draws it nearest the pad. */
 const double DRAW_MS = 800;
 const double DRAW_AHEAD_MS = 2000;
-
-int chebyshev(Step a, Step b)
-{
-    const int du = abs(a.u - b.u), dv = abs(a.v - b.v);
-    return du > dv ? du : dv;
-}
 
 class SendAction : public Action {
 public:

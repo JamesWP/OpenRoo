@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "danger.h"
+#include "rules.h"
 #include "walk.h"
 
 namespace bot {
@@ -37,12 +38,6 @@ const double LINGER_MS = 8000;
  * catchers (foetype.h). */
 const int THROWER  = 3;
 const int FOLLOWER = 5;
-
-int chebyshev(Step a, Step b)
-{
-    const int du = abs(a.u - b.u), dv = abs(a.v - b.v);
-    return du > dv ? du : dv;
-}
 
 /* A thrower that bombs the player. */
 bool thrower(const BotView &view)

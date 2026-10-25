@@ -29,4 +29,4 @@ add_library(bottactics OBJECT
 target_include_directories(bottactics PUBLIC .)
 target_link_libraries(bottactics
     PUBLIC botmodel botmotor botplan
-    PRIVATE base)
+    PRIVATE base botapi)

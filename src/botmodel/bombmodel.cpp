@@ -2,6 +2,7 @@
 #include <cmath>
 #include <stdlib.h>
 #include "liftmodel.h"
+#include "rules.h"
 #include "tile.h"
 
 namespace bot {
@@ -14,8 +15,6 @@ const double STEP_MS = 200.0;    // its one step
  * platform's runs and parks), a step apart. */
 const double CYCLE_MS      = 8000.0;
 const double SPELL_STEP_MS = 50.0;
-
-bool stairs(int k) { return k > 4 && k < 9; }
 
 /* A bomb on (u, v) of a platform's track from atMs (from the view's clock):
  * it rides the platform, and blows where the platform has carried it by the

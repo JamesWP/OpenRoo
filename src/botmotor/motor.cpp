@@ -1,6 +1,7 @@
 #include "motor.h"
 #include <cstdlib>
 #include "policy.h"
+#include "rules.h"
 #include "tile.h"
 
 namespace bot {
@@ -13,9 +14,6 @@ const int BLOCKED_TICKS = 30;
 /* Waiting beside no next cell this many ticks (a teleporter takes a second):
  * the player has left the path. */
 const int WAIT_TICKS = 120;
-/* A sticky pad's hold (movableentity.cpp): the player is held while the clock
- * is within this of the tick it was caught. */
-const double STICKY_MS = 3000.0;
 
 unsigned reverse(unsigned acts)
 {

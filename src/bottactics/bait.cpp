@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "danger.h"
+#include "rules.h"
 #include "walk.h"
 
 namespace bot {
@@ -56,12 +57,6 @@ const int    DRAW_NEAR = 2;
 
 /* A teleporter's tile kind (TILE_TELEPORTER, tile.h). */
 const int TELEPORTER = 0x0f;
-
-int chebyshev(Step a, Step b)
-{
-    const int du = abs(a.u - b.u), dv = abs(a.v - b.v);
-    return du > dv ? du : dv;
-}
 
 /* before, with a walk from at, startMs from now, to the nearest cell where
  * the player is safe through blast, and a wait until it has blown. */
