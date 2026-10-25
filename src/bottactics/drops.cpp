@@ -32,6 +32,24 @@ const double CLEAR_MARGIN_MS = 200;
  * it was stepped on (fallingmodel.h). */
 const double BLAST_WAITS[] = {0, 2500, 5500};
 
+/* Where the gems are had from foes the spawners make, the foes an ambush
+ * kills, at the least: the bombs are too few to spend on one foe each
+ * (EnemyFactory's 24 for its 20 gems; the enemyfactory-human recording bombs
+ * them in twos to fours, as they bunch up chasing the player). */
+const int FARM_KILLS = 2;
+
+/* The foes an ambush must kill: FARM_KILLS where the gems are farmed, as
+ * many as the spawners let be about at once; else one. */
+int killsWanted(const BotView &view)
+{
+    if (!gemsFromSpawners(view))
+        return 1;
+    int most = 1;
+    for (const SpawnerView &t : view.spawners)
+        most = std::max(most, t.maxFoes);
+    return std::min(FARM_KILLS, most);
+}
+
 /* The game's grace after a move (player.cpp's stepGrace_). */
 const double STEP_GRACE_MS = 20.0;
 
@@ -175,6 +193,7 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
               [](const auto &a, const auto &b) { return a.first < b.first; });
     // None to spare is none, however short the gems are.
     const int spare = std::max(0, spareGems(view));
+    const int need = killsWanted(view);
     for (size_t i = 0; i < near.size() && i < SITES; i++)
         sites.push_back(near[i]);
     for (const auto &[walkMs, site] : sites) {
@@ -211,7 +230,7 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
                     before.script.push_back({ScriptStep::Wait, 0, {}, view.now + turned + delay});
                 before.schedule.push_back({dropIn, site});
                 const size_t first = out.size();
-                retreats(s, before, site, facing, dropIn, at.away, true, 1, AMBUSH_RETREATS, out);
+                retreats(s, before, site, facing, dropIn, at.away, true, need, AMBUSH_RETREATS, out);
                 // Not a kill that wipes a gem the quota needs.
                 out.erase(std::remove_if(out.begin() + first, out.end(),
                                          [&](const Option &o) { return gemsWiped(view, o.killed) > spare; }),
