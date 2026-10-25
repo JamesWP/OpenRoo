@@ -182,22 +182,16 @@ Changes Board::inTheWay(Changes s, Place from, bool pickups) const
     if (it != way_.end())
         return it->second;
     const Terrain &w = worlds_->get(everything());
-    Changes mask = 0;
     // The unspent blocks and the bridges not extended (of s) on the cells a
     // path crosses.
+    Changes missing = allBlocks() & ~s;
+    for (size_t i = 0; i < worlds_->bridgeCount(); i++)
+        if (!extended(s, i))
+            missing |= worlds_->bridgeBit(i);
+    Changes mask = 0;
     auto cross = [&](const std::vector<Step> &cells) {
-        for (const Step &c : cells) {
-            for (size_t i = 0; i < worlds_->blockCount(); i++) {
-                const Step b = worlds_->block(i);
-                if (b.u == c.u && b.v == c.v && !(s >> i & 1))
-                    mask |= (Changes)1 << i;
-            }
-            for (size_t i = 0; i < worlds_->bridgeCount(); i++)
-                if (!extended(s, i))
-                    for (const Step &d : live_.bridges[i].deck)
-                        if (d.u == c.u && d.v == c.v)
-                            mask |= worlds_->bridgeBit(i);
-        }
+        for (const Step &c : cells)
+            mask |= worlds_->on(c) & missing;
     };
     Place at = from;
     auto go = [&](Step to) {
