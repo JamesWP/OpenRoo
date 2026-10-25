@@ -3,9 +3,12 @@
  * leads somewhere new from the switch, or the switch itself does (passed over
  * on the way somewhere new), or another switch it leads to does; or retracted, if it is not in the way or the
  * switch leads somewhere new (to pass over a switch).  Not the switch the player stands on (it
- * works only when stepped onto), nor a bridge on the move (the game ignores
- * the switch then).  A bridge that lets catchers in to the player costs
- * more than its time.  Done as a walk to the planned switch and a wait there. */
+ * works only when stepped onto).  A bridge on the move ignores its switch
+ * till the move is done, and then the switch works it (foemodel.h).  A bridge that lets catchers in to the player costs
+ * more than its time.  Done as a walk to the planned switch and a wait there:
+ * till the bridge is done, or, where the plan's next step does not cross its
+ * deck and a catcher is after the player, not at all (one passed over on the
+ * way). */
 #include <algorithm>
 #include <vector>
 #include <stdio.h>
@@ -26,6 +29,15 @@ const double LET_IN_MS = 5000;
 /* The cells near a switch a wait may be taken on, within NEAR_MS of it. */
 const double NEAR_MS    = 1500;
 const size_t NEAR_CELLS = 6;
+
+/* FoeView::kind of a catcher. */
+const int CATCHER = 2;
+
+/* How long the bridge's move under way has still to go, ms from now. */
+double busyMs(const BotView &view, const BridgeView &b)
+{
+    return b.moving ? std::max(0.0, b.phaseStart + b.moveMs() - view.now) : 0;
+}
 
 /* Whether a switch other than cell, that cell can reach in world next,
  * reaches more in next than in s. */
@@ -58,6 +70,22 @@ bool workedBack(Situation &s, const std::vector<Timed> &plan, double untilMs, si
     for (const FoeModel::Switched &w : s.foes.switched())
         if (w.bridge == k && w.byFoe)
             return true;
+    return false;
+}
+
+/* Whether the walk from the switch cell to the plan's next step crosses
+ * bridge k's deck, the bridge switched: no next step does not. */
+bool nextCrosses(const Board &board, const Plan &plan, Step cell, size_t k)
+{
+    if (plan.steps.size() < 2)
+        return true;
+    const Place &next = plan.steps[1].end;
+    const Paths &paths = board.worlds().get(board.worlds().bridgeBit(k)).from(cell.u, cell.v,
+                                                                             board.worlds().pointFacing());
+    for (const Step &c : paths.cellsTo(next.u, next.v))
+        for (const Step &d : board.live().bridges[k].deck)
+            if (c.u == d.u && c.v == d.v)
+                return true;
     return false;
 }
 
@@ -122,7 +150,7 @@ public:
         const Changes wanted = board.inTheWay(f.changes, f.at, false);
         for (const auto &[cell, k] : board.switches()) {
             const BridgeView &b = board.live().bridges[k];
-            if (b.moving || (cell.u == f.at.u && cell.v == f.at.v))
+            if (cell.u == f.at.u && cell.v == f.at.v)
                 continue;
             const Changes bit = board.worlds().bridgeBit(k);
             const Changes next = f.changes ^ bit;
@@ -145,7 +173,7 @@ public:
             n.facts.at   = {cell.u, cell.v, 0};
             n.step.end   = n.facts.at;
             n.step.heads = cell;
-            n.step.ms    = t + b.moveMs() + SETTLE_MS;
+            n.step.ms    = std::max(t, busyMs(board.live(), b)) + b.moveMs() + SETTLE_MS;
             n.step.penalty = LET_IN_MS * board.letsIn(next, cell, f.changes, f.at);
             out.push_back(n);
         }
@@ -161,10 +189,18 @@ public:
             return;
         const BridgeView &b = board.live().bridges[k];
         const double moveMs = b.moveMs() + SETTLE_MS;
-        // Going out, how long the bridge must then stay out: for the walk
-        // from the switch to its far end.
+        // On the switch till the bridge is done (a foe kept off it the while),
+        // or, where the way on does not need it and a catcher is after the
+        // player, only till a move under way is: coming onto it works it.
+        const bool needed = nextCrosses(board, plan, cell, (size_t)k);
+        const bool chased = std::any_of(s.view.foes.begin(), s.view.foes.end(), [](const FoeView &f) {
+            return f.kind == CATCHER && !f.dying && !f.held;
+        });
+        const double busy = busyMs(s.view, b);
+        // Going out, and needed, how long the bridge must then stay out: for
+        // the walk from the switch to its far end.
         double holdMs = -1;
-        if (!b.extended)
+        if (!b.extended && needed)
             for (const Step &c : {b.deck.front(), b.deck.back()})
                 holdMs = std::max(holdMs, board.time(board.worlds().bridgeBit(k), {cell.u, cell.v, 0}, c));
         // Now, or after a wait: a foe working the switches may have the
@@ -181,11 +217,15 @@ public:
                 if (at[i].u < 0 ? !walkTo(s, s.from, cell, wait, o)
                                 : (holdMs <= 0 && i > 1) || !waitAt(s, at[i], cell, wait, o))
                     continue;
-                // On the switch until the bridge is done.
+                // A move under way is done first: the switch waits for it,
+                // and the player with it, as the next switch come onto would
+                // take the place of this one (movableentity.h, switchSlot_).
                 const double arrive = o.cost;
-                o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + arrive + moveMs});
-                o.schedule.push_back({arrive + moveMs, cell});
-                o.stepMs = arrive + moveMs;
+                const double stay = needed || !chased ? std::max(arrive, busy) + moveMs - arrive
+                                                      : (busy > arrive ? busy - arrive + SETTLE_MS : 0);
+                o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + arrive + stay});
+                o.schedule.push_back({arrive + stay, cell});
+                o.stepMs = arrive + stay;
                 if (holdMs > 0 && workedBack(s, o.schedule, arrive + moveMs + holdMs, (size_t)k))
                     continue;
                 o.cost = plan.cost - plan.steps.front().ms + o.stepMs;

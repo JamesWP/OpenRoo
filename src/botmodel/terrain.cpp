@@ -7,14 +7,16 @@ Terrain::Terrain(const BotView &view, bool throughSwitches, bool glides)
     : view_(view), nav_(view_, throughSwitches), throughSwitches_(throughSwitches), glides_on_(glides)
 {
     // A bridge on its way back is gone already: its deck goes from under
-    // whoever is on it (one going out is there as far as it is stamped).
+    // whoever is on it.  One going out is out: it will be by the time a walk
+    // the planner weighs comes to the far end of it (3.6 s at most), and the
+    // walks taken go by the view's cells (tactics.h).
     for (const BridgeView &b : view_.bridges)
-        if (b.moving && !b.extended)
+        if (b.moving)
             for (const Step &d : b.deck) {
                 Cell &c = view_.cells[(size_t)d.v * view_.extentU + d.u];
-                c.kind = TILE_EMPTY;
-                c.height = 0;
-                c.busy = false;
+                c.kind   = b.extended ? TILE_BRIDGE_DECK : TILE_EMPTY;
+                c.height = b.extended ? b.height : 0;
+                c.busy   = b.extended;
             }
     for (int v = 0; v < view_.extentV; v++)
         for (int u = 0; u < view_.extentU; u++) {
