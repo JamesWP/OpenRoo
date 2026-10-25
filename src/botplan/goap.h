@@ -77,6 +77,7 @@ struct PlanStep {
     double     risk = 0;           // foe-seconds
     double     penalty = 0;        // ms of cost besides its time
     int        arg = -1;           // what the action does it to, by its own count (a bridge, say)
+    Facts      after;              // the facts once it is done
 };
 
 struct PlanOptions;
