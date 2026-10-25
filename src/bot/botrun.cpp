@@ -271,6 +271,10 @@ void debug_panel()
     const std::vector<Thought> thoughts = s_run->policy().thoughts();
     if (thoughts.empty() || !ImGui::BeginTable("thoughts", 2, ImGuiTableFlags_SizingFixedFit))
         return;
+    // The text column takes the rest of the width: a fixed-fit column has
+    // none to wrap in, and wraps at every character.
+    ImGui::TableSetupColumn("label", ImGuiTableColumnFlags_WidthFixed);
+    ImGui::TableSetupColumn("text", ImGuiTableColumnFlags_WidthStretch);
     for (const Thought &t : thoughts) {
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
