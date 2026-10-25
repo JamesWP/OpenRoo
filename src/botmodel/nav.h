@@ -31,6 +31,7 @@
  * what the game did (botrun.h's model log). */
 #pragma once
 
+#include <functional>
 #include <map>
 #include <set>
 #include <vector>
@@ -201,6 +202,14 @@ struct Timed {
     bool   aloft = false;  // high above the cell (gliding): out of reach of what is on it
 };
 
+/* The entry of a schedule (its times ms from start, a clock's ms) the player
+ * is on at the clock: the last begun by then, or the first. */
+const Timed &entryAt(const std::vector<Timed> &schedule, double start, double clock);
+
+/* The player's cell by the clock, keeping to the schedule (entryAt), as the
+ * foe model takes it (FoeModel::run); the schedule must outlive it. */
+std::function<Step(double)> keeping(const std::vector<Timed> &schedule, double start);
+
 /* Where a glide comes down (glide.h). */
 struct Landing {
     Step   cell;
@@ -229,12 +238,14 @@ struct Leg {
 };
 
 /* How far a search for routes need go (Paths): only to the cells it comes
- * to rest on within withinMs of setting off, and to the nearest most of
- * them; < 0, no limit.  Those routes are the ones a search without the bound
+ * to rest on within withinMs of setting off, to the nearest most of them,
+ * and no further than the cell to (as soon as it can be come to rest on);
+ * < 0, no limit.  Those routes are the ones a search without the bound
  * finds; the cells past it are as if unreachable. */
 struct Bound {
     double withinMs = -1;
     int    most = -1;
+    Step   to{-1, -1};
 };
 
 /* The quickest routes from one rest state to every other: Dijkstra over

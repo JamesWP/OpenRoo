@@ -113,14 +113,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
     const double start = view.now;
     const double arrives = start + plan.back().t;
     const double end     = arrives + lingerMs;
-    auto entryAt = [&](double clock) {
-        const Timed *at = &plan.front();
-        for (const Timed &m : plan)
-            if (start + m.t <= clock + 1e-6)
-                at = &m;
-        return *at;
-    };
-    auto playerAt = [&](double clock) { return entryAt(clock).cell; };
+    const std::function<Step(double)> playerAt = keeping(plan, start);
 
     // Aloft, the player is out of reach of the foes and the blasts below.
 
@@ -158,7 +151,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
         if (b.lost)
             return false;
         for (double t = b.from; t < b.until; t += view.tickMs > 0 ? view.tickMs : 400) {
-            const Timed e = entryAt(t);
+            const Timed e = entryAt(plan, start, t);
             const Step at = e.cell;
             if (!e.aloft && view.inside(at.u, at.v) && b.kills(at.u, at.v, heightAt(at, t), t)) {
                 d.hit = true;
@@ -196,7 +189,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
     while (sim.now() < end) {
         const double prev = sim.now();
         sim.runTick(playerAt);
-        const Timed e = entryAt(sim.now());
+        const Timed e = entryAt(plan, start, sim.now());
         const Step p = e.cell;
         // A deck gone from under the player (a foe worked its switch), or
         // not out yet.

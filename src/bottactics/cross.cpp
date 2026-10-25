@@ -55,9 +55,8 @@ public:
         Option leg;
         if (!walkTo(s, on, to, 0, leg))
             return;
-        o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
-        o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
-        o.stepMs = leg.cost;
+        append(o, leg);
+        o.stepMs = o.cost;
         o.cost   = plan.cost - step.ms + o.stepMs;
         char buf[96];
         snprintf(buf, sizeof(buf), "cross from (%d,%d) to (%d,%d)", from.u, from.v, to.u, to.v);

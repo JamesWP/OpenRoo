@@ -297,6 +297,20 @@ std::vector<int> keptOffRuns(const BotView &view)
     return kept[key] = runs;
 }
 
+const Timed &entryAt(const std::vector<Timed> &schedule, double start, double clock)
+{
+    const Timed *at = &schedule.front();
+    for (const Timed &m : schedule)
+        if (start + m.t <= clock + 1e-6)
+            at = &m;
+    return *at;
+}
+
+std::function<Step(double)> keeping(const std::vector<Timed> &schedule, double start)
+{
+    return [&schedule, start](double clock) { return entryAt(schedule, start, clock).cell; };
+}
+
 unsigned long long navHash(const BotView &view)
 {
     unsigned long long h = 1469598103934665603ull;
@@ -640,6 +654,8 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
     std::vector<char> done(n, 0);
     std::vector<char> reached(bound.most >= 0 ? (size_t)eu_ * ev_ : 0, 0);
     int cells = 0;
+    double within = bound.withinMs;
+    const int target = bound.to.u >= 0 ? bound.to.v * eu_ + bound.to.u : -1;
     const bool timed = nav.timed() || nav.speedy();
     while (!open.empty()) {
         const auto [c, i] = open.top();
@@ -647,8 +663,11 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
         if (done[i])
             continue;
         // Past the bound: what is left unsettled is out of it.
-        if (bound.withinMs >= 0 && c - startMs_ > bound.withinMs)
+        if (within >= 0 && c - startMs_ > within)
             break;
+        // The target come to: on only through what is as near.
+        if (i / 4 == target && (within < 0 || c - startMs_ < within))
+            within = c - startMs_;
         if (bound.most >= 0 && !reached[i / 4] && cells++ == bound.most)
             break;
         if (bound.most >= 0)
@@ -730,7 +749,7 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
                     }
                 }
     }
-    if (bound.withinMs >= 0 || bound.most >= 0)
+    if (within >= 0 || bound.most >= 0)
         for (size_t i = 0; i < n; i++)
             if (!done[i]) {
                 cost_[i]   = -1;

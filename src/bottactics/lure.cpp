@@ -77,13 +77,7 @@ double lured(Situation &s, const std::vector<Timed> &plan, double untilMs, size_
 {
     const BotView &view = s.view;
     s.foes.load(view);
-    s.foes.run(view.now + untilMs, [&](double clock) {
-        Step at = plan.front().cell;
-        for (const Timed &m : plan)
-            if (view.now + m.t <= clock + 1e-6)
-                at = m.cell;
-        return at;
-    });
+    s.foes.run(view.now + untilMs, keeping(plan, view.now));
     double first = -1;
     int goes = 0;
     for (const FoeModel::Switched &w : s.foes.switched())
@@ -241,7 +235,7 @@ public:
              }))
             pivots.push_back(c);
         for (const auto &[ms, a] : pivots) {
-            const Paths fromA(s.nav, a.u, a.v, 1, 0);
+            const Paths fromA(s.nav, a.u, a.v, 1, 0, Bound{NEAR_MS});
             for (const auto &[ms2, b] : nearest(fromA, NEAR_MS, any))
                 rounds.push_back({a, b});
         }
@@ -260,16 +254,8 @@ public:
                 const Step target = round[legs % round.size()];
                 if (target.u == at.u && target.v == at.v)
                     continue;
-                NavModel after = s.nav;
-                for (const Timed &t : o.schedule)
-                    after.arm(t.cell, t.t);
-                const Paths on(after, at.u, at.v, facingAfter(p.facing, o.script), o.cost);
-                Option leg;
-                if (!walkTo(s, on, target, 0, leg))
+                if (!walkOn(s, s.nav, o, at, target))
                     break;
-                o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
-                o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
-                o.cost = leg.cost;
                 ends.push_back({o.script.size(), o.schedule.size(), o.cost});
                 at = target;
             }
