@@ -5,6 +5,7 @@
  * only where the foe model says the blast kills a foe (drops.h).  Not while
  * a follower can still be let out to the catchers (release.cpp). */
 #include "action.h"
+#include <algorithm>
 #include "drops.h"
 
 namespace bot {
@@ -64,9 +65,24 @@ public:
         }
     }
 
-    void offer(Situation &s, const Board &, const Plan &, std::vector<Option> &out) const override
+    void offer(Situation &s, const Board &board, const Plan &plan, std::vector<Option> &out) const override
     {
+        const size_t first = out.size();
         offerAmbushes(s, out);
+        // The plan's kill a carrier's: only one that kills a carrier will do
+        // (a bomb spent on another may leave none for it).
+        if (plan.steps.front().after.carriers >= board.carriers())
+            return;
+        const std::vector<FoeView> &foes = s.view.foes;
+        out.erase(std::remove_if(out.begin() + first, out.end(),
+                                 [&](const Option &o) {
+                                     return std::none_of(o.killed.begin(), o.killed.end(),
+                                                         [&](const FoeModel::Kill &k) {
+                                                             return k.id < foes.size() &&
+                                                                    Board::carrier(foes[k.id]);
+                                                         });
+                                 }),
+                  out.end());
     }
 };
 
