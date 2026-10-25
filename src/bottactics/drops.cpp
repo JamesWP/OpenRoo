@@ -112,7 +112,7 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
     if (blast.lost)
         return;
     const RoutesOn away(s.nav, before.schedule, site, facing, awayMs, Bound{RETREAT_MS});
-    for (const Step &at : retreatCells(view, away.paths(), most, false)) {
+    for (const Step &at : retreatCells(view, away.paths(), most)) {
         Option o = before;
         o.script.push_back({ScriptStep::Drop, 0, {}, 0});
         Option walk;
@@ -155,21 +155,12 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
         return;
     // Where to drop it: here, or a cell or two off, so that the foe on its
     // way is in the blast as it goes.
-    std::vector<std::pair<double, Step>> sites{{0, {p.u, p.v}}};
-    std::vector<std::pair<double, Step>> near;
-    for (int v = 0; v < view.extentV; v++)
-        for (int u = 0; u < view.extentU; u++) {
-            const double c = s.from.cost(u, v);
-            if (c > 0 && c <= SITE_MS)
-                near.push_back({c, {u, v}});
-        }
-    std::sort(near.begin(), near.end(),
-              [](const auto &a, const auto &b) { return a.first < b.first; });
+    Near sites{{0, {p.u, p.v}}};
+    const Near near = nearCells(view, s.from, SITE_MS, SITES);
+    sites.insert(sites.end(), near.begin(), near.end());
     // None to spare is none, however short the gems are.
     const int spare = std::max(0, spareGems(view));
     const int need = killsWanted(view);
-    for (size_t i = 0; i < near.size() && i < SITES; i++)
-        sites.push_back(near[i]);
     for (const auto &[walkMs, site] : sites) {
         Option going;
         int arrives = p.facing;

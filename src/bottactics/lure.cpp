@@ -164,25 +164,13 @@ public:
         } remember{none, key, out, before};
 
         const Step here{p.u, p.v};
-        // The nearest CELLS a walk from paths ends on within withinMs, where
-        // keep says.
+        // The nearest CELLS a walk from paths ends on within withinMs, off
+        // the switches, where keep says.
         auto nearest = [&](const Paths &paths, double withinMs, const std::function<bool(Step)> &keep) {
-            std::vector<std::pair<double, Step>> cells;
-            for (int v = 0; v < view.extentV; v++)
-                for (int u = 0; u < view.extentU; u++) {
-                    const double c = paths.cost(u, v) - paths.startMs();
-                    if (c > 0 && c <= withinMs && !NavModel::moving(view.cell(u, v)) &&
-                        !switchedBy(view, u, v) && keep({u, v}))
-                        cells.push_back({c, {u, v}});
-                }
-            std::stable_sort(cells.begin(), cells.end(),
-                             [](const auto &a, const auto &b) { return a.first < b.first; });
-            if (cells.size() > CELLS)
-                cells.resize(CELLS);
-            return cells;
+            return nearCells(view, paths, withinMs, CELLS,
+                             [&](Step c) { return !switchedBy(view, c.u, c.v) && (!keep || keep(c)); });
         };
-        const auto any = [](Step) { return true; };
-        const std::vector<std::pair<double, Step>> near = nearest(s.from, NEAR_MS, any);
+        const Near near = nearest(s.from, NEAR_MS, {});
 
         auto take = [&](Option o, double at, const char *how, Step c) {
             const double done = at + moveMs;
@@ -201,7 +189,7 @@ public:
         };
 
         // A wait, here or on a cell near.
-        std::vector<std::pair<double, Step>> cells{{0, here}};
+        Near cells{{0, here}};
         cells.insert(cells.end(), near.begin(), near.end());
         for (const auto &[walkMs, at] : cells) {
             Option o;
@@ -219,7 +207,7 @@ public:
         std::vector<std::vector<Step>> rounds;
         for (const auto &[ms, a] : near)
             rounds.push_back({a, here});
-        std::vector<std::pair<double, Step>> pivots = near;
+        Near pivots = near;
         for (const auto &c : nearest(s.from, PIVOT_MS, [&](Step c) {
                  for (const FoeView &f : view.foes)
                      if (f.atRest() && !f.dying && abs(f.u - c.u) <= FOE_NEAR && abs(f.v - c.v) <= FOE_NEAR)
@@ -229,7 +217,7 @@ public:
             pivots.push_back(c);
         for (const auto &[ms, a] : pivots) {
             const Paths fromA(s.nav, a.u, a.v, 1, 0, Bound{NEAR_MS});
-            for (const auto &[ms2, b] : nearest(fromA, NEAR_MS, any))
+            for (const auto &[ms2, b] : nearest(fromA, NEAR_MS, {}))
                 rounds.push_back({a, b});
         }
         for (const std::vector<Step> &round : rounds) {

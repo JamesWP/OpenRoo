@@ -45,18 +45,9 @@ public:
         const PlayerView &p = view.player;
         if (p.falling)
             return;
-        std::vector<std::pair<double, Step>> cells{{0, {p.u, p.v}}};
-        std::vector<std::pair<double, Step>> near;
-        for (int v = 0; v < view.extentV; v++)
-            for (int u = 0; u < view.extentU; u++) {
-                const double c = s.from.cost(u, v);
-                if (c > 0 && c <= NEAR_MS && !NavModel::moving(view.cell(u, v)))
-                    near.push_back({c, {u, v}});
-            }
-        std::sort(near.begin(), near.end(),
-                  [](const auto &a, const auto &b) { return a.first < b.first; });
-        for (size_t i = 0; i < near.size() && i < CELLS; i++)
-            cells.push_back(near[i]);
+        Near cells{{0, {p.u, p.v}}};
+        const Near near = nearCells(view, s.from, NEAR_MS, CELLS);
+        cells.insert(cells.end(), near.begin(), near.end());
         for (const auto &[walkMs, at] : cells) {
             Option o;
             if (!walkTo(s, s.from, at, 0, o))

@@ -1,6 +1,7 @@
 /* Walks as options (option.h): the tactics' common move. */
 #pragma once
 
+#include <functional>
 #include <utility>
 #include <vector>
 #include "option.h"
@@ -51,11 +52,18 @@ bool walkOn(const Situation &s, const NavModel &nav, Option &o, Step at, Step ta
 const double RETREAT_MS = 2500;
 const double CLEAR_MARGIN_MS = 200;
 
-/* The nearest most cells paths come to rest on within RETREAT_MS of setting
- * off, nearest first: none on a platform or a lift, which may carry the
- * player along.  Cells as near in grid order if stable, else as std::sort
- * leaves them (the ambushes': which of a tie is taken changes outcomes). */
-std::vector<Step> retreatCells(const BotView &view, const Paths &paths, size_t most, bool stable);
+/* The nearest most cells paths come to rest on, other than the start,
+ * within withinMs of setting off and where keep says, with their times from
+ * setting off: nearest first, a tie as std::sort leaves it (grid order
+ * instead loses four levels: which of a tie is taken changes outcomes, the
+ * ambushes' retreats most).  None on a platform or a lift, which may carry
+ * the player off. */
+using Near = std::vector<std::pair<double, Step>>;
+Near nearCells(const BotView &view, const Paths &paths, double withinMs, size_t most,
+               const std::function<bool(Step)> &keep = {});
+
+/* The nearest most cells to retreat to (nearCells) within RETREAT_MS. */
+std::vector<Step> retreatCells(const BotView &view, const Paths &paths, size_t most);
 
 /* The facing the player has after a script, from facing: each Turn's, and
  * after each Walk the motor's (Motor::facingAfter), which turns its own way

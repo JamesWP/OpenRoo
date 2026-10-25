@@ -10,6 +10,7 @@
  * already, a walk clear of it and a wait for it to blow. */
 #include "action.h"
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <map>
 #include <set>
@@ -65,7 +66,7 @@ bool clearOf(Situation &s, const Option &before, Step at, int facing, double sta
 {
     const BotView &view = s.view;
     const RoutesOn away(s.nav, before.schedule, at, facing, startMs, Bound{RETREAT_MS});
-    for (const Step &to : retreatCells(view, away.paths(), RETREATS, true)) {
+    for (const Step &to : retreatCells(view, away.paths(), RETREATS)) {
         Option o = before;
         Option walk;
         if (!walkTo(s, away.paths(), to, 0, walk))
@@ -272,22 +273,13 @@ public:
         // The cells to draw a thrower off from first, if it is not coming.
         std::vector<std::pair<double, Step>> lures{{0, {-1, -1}}};
         {
-            std::vector<std::pair<double, Step>> near;
-            for (int v = 0; v < view.extentV; v++)
-                for (int u = 0; u < view.extentU; u++) {
-                    const double c = s.from.cost(u, v);
-                    if (c <= 0 || NavModel::moving(view.cell(u, v)))
-                        continue;
-                    for (const FoeView &f : view.foes)
-                        if (f.kind == 3 && !f.held && chebyshev({f.u, f.v}, {u, v}) == LURE_NEAR) {
-                            near.push_back({c, {u, v}});
-                            break;
-                        }
-                }
-            std::stable_sort(near.begin(), near.end(),
-                             [](const auto &a, const auto &b) { return a.first < b.first; });
-            for (size_t i = 0; i < near.size() && i < LURES; i++)
-                lures.push_back(near[i]);
+            const Near near = nearCells(view, s.from, INFINITY, LURES, [&](Step c) {
+                for (const FoeView &f : view.foes)
+                    if (f.kind == 3 && !f.held && chebyshev({f.u, f.v}, c) == LURE_NEAR)
+                        return true;
+                return false;
+            });
+            lures.insert(lures.end(), near.begin(), near.end());
         }
         // Each lure with each wait there, and led on from it.
         std::vector<std::pair<double, bool>> ways;

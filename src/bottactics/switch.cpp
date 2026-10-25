@@ -105,17 +105,11 @@ std::vector<Step> waitCells(const Situation &s, Step cell)
         cells.push_back(route[route.size() - 2].cell);
     const BotView &view = s.view;
     const Paths back(s.nav, cell.u, cell.v, 1, 0);
-    std::vector<std::pair<double, Step>> near;
-    for (int v = 0; v < view.extentV; v++)
-        for (int u = 0; u < view.extentU; u++) {
-            const double c = back.cost(u, v);
-            if (c > 0 && c <= NEAR_MS && s.from.cost(u, v) >= 0 && !NavModel::moving(view.cell(u, v)) &&
-                !switchedBy(view, u, v) && (cells.empty() || u != cells[0].u || v != cells[0].v))
-                near.push_back({c, {u, v}});
-        }
-    std::stable_sort(near.begin(), near.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
-    for (size_t i = 0; i < near.size() && cells.size() < NEAR_CELLS; i++)
-        cells.push_back(near[i].second);
+    for (const auto &[ms, c] : nearCells(view, back, NEAR_MS, NEAR_CELLS - cells.size(), [&](Step c) {
+             return s.from.cost(c.u, c.v) >= 0 && !switchedBy(view, c.u, c.v) &&
+                    (cells.empty() || c.u != cells[0].u || c.v != cells[0].v);
+         }))
+        cells.push_back(c);
     return cells;
 }
 

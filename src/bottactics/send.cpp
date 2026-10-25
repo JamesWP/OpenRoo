@@ -13,6 +13,7 @@
  * model has draw the thrower nearest the pad. */
 #include "action.h"
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include <stdio.h>
 #include <stdlib.h>
@@ -100,24 +101,15 @@ public:
         // The cells about the pad, on its level (a step up or down), nearest
         // first.
         const Step here{view.player.u, view.player.v};
-        std::vector<std::pair<double, Step>> cells;
+        Near cells;
         if (chebyshev(here, pad.pad) <= NEAR)
             cells.push_back({0, here});
-        for (int v = pad.pad.v - NEAR; v <= pad.pad.v + NEAR; v++)
-            for (int u = pad.pad.u - NEAR; u <= pad.pad.u + NEAR; u++) {
-                if (!view.inside(u, v) || (u == here.u && v == here.v))
-                    continue;
-                const Cell &c = view.cell(u, v);
-                const double ms = s.from.cost(u, v) - s.from.startMs();
-                if (ms <= 0 || c.kind == padCell.kind || abs(c.height - padCell.height) > 1 ||
-                    NavModel::moving(c) || switchedBy(view, u, v))
-                    continue;
-                cells.push_back({ms, {u, v}});
-            }
-        std::stable_sort(cells.begin(), cells.end(),
-                         [](const auto &a, const auto &b) { return a.first < b.first; });
-        if (cells.size() > CELLS)
-            cells.resize(CELLS);
+        const Near near = nearCells(view, s.from, INFINITY, CELLS - cells.size(), [&](Step at) {
+            const Cell &c = view.cell(at.u, at.v);
+            return chebyshev(at, pad.pad) <= NEAR && c.kind != padCell.kind &&
+                   abs(c.height - padCell.height) <= 1 && !switchedBy(view, at.u, at.v);
+        });
+        cells.insert(cells.end(), near.begin(), near.end());
 
         // Whether, the player keeping to plan, a thrower has gone through
         // and walked off the far end by its end.
