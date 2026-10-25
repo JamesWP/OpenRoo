@@ -101,23 +101,11 @@ bool walkAndWait(Situation &s, Option &going, const Paths &on, Step end, Step by
         return false;
     append(o, leg);
     if (near >= 0) {
-        const std::vector<Timed> &plan = o.schedule;
-        auto playerAt = keeping(plan, view.now);
-        s.foes.load(view);
-        double came = -1;
-        while (came < 0 && s.foes.now() < view.now + o.cost + waitMs) {
-            const double prev = s.foes.now();
-            s.foes.runTick(playerAt);
-            if (s.foes.now() == prev)
-                return false;
-            if (s.foes.now() < view.now + o.cost)
-                continue;
-            for (size_t i = 0; i < s.foes.foeCount(); i++)
-                if (s.foes.throwsAtPlayer(i) && chebyshev(s.foes.foeCell(i), by) <= near)
-                    came = s.foes.now();
-        }
-        if (came < 0)
+        const double there = view.now + o.cost;
+        if (!follow(s.foes, view, o.schedule, there + waitMs,
+                    [&] { return s.foes.now() >= there && throwerNear(s.foes, by, near); }))
             return false;
+        const double came = s.foes.now();
         if (came - view.now > o.cost + 1) {
             o.cost = came - view.now;
             o.script.push_back({ScriptStep::Wait, 0, {}, came});
@@ -191,8 +179,7 @@ bool baitedBomb(Situation &s, const Option &going, Blast *out)
 {
     const BotView &view = s.view;
     const std::vector<Timed> &plan = going.schedule;
-    s.foes.load(view);
-    s.foes.run(view.now + going.cost + WAIT_MS, keeping(plan, view.now));
+    follow(s.foes, view, plan, view.now + going.cost + WAIT_MS);
     for (const Blast &b : s.foes.dropped())
         if (spendsBlock(view, b)) {
             if (b.from - FUSE_MS - view.now < going.cost - view.tickMs)
@@ -394,14 +381,8 @@ private:
         } else if (!walkTo(s, s.from, bait, 0, o)) {
             return;
         }
-        bool coming = false;
-        s.foes.load(view);
-        while (!coming && s.foes.now() < view.now + o.cost + DRAW_COME_MS && view.tickMs > 0) {
-            s.foes.runTick(keeping(o.schedule, view.now));
-            for (size_t i = 0; i < s.foes.foeCount() && !coming; i++)
-                coming = s.foes.throwsAtPlayer(i) && chebyshev(s.foes.foeCell(i), bait) <= DRAW_NEAR;
-        }
-        if (!coming)
+        if (!follow(s.foes, view, o.schedule, view.now + o.cost + DRAW_COME_MS,
+                    [&] { return throwerNear(s.foes, bait, DRAW_NEAR); }))
             return;
         o.cost += DRAW_MS;
         o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost});

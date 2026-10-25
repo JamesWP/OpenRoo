@@ -281,6 +281,31 @@ Danger checkEscape(FoeModel &sim, const BotView &view, const std::vector<Timed> 
     return check(sim, view, plan, lingerMs, {}, BOMBS_ONLY);
 }
 
+bool follow(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan, double untilMs,
+            const std::function<bool()> &until)
+{
+    sim.load(view);
+    const std::function<Step(double)> playerAt = keeping(plan, view.now);
+    if (!until) {
+        sim.run(untilMs, playerAt);
+        return false;
+    }
+    while (view.tickMs > 0 && sim.now() + view.tickMs <= untilMs + 1e-6) {
+        sim.runTick(playerAt);
+        if (until())
+            return true;
+    }
+    return false;
+}
+
+bool throwerNear(const FoeModel &sim, Step c, int near)
+{
+    for (size_t i = 0; i < sim.foeCount(); i++)
+        if (sim.throwsAtPlayer(i) && chebyshev(sim.foeCell(i), c) <= near)
+            return true;
+    return false;
+}
+
 double foeMeets(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
                 double horizonMs)
 {

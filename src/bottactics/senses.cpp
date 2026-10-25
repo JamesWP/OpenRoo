@@ -52,17 +52,6 @@ std::vector<Timed> finishWay(const BotView &view, Worlds &worlds, bool toCrossin
     return way;
 }
 
-/* The foes, loaded, run in the foe model until untilMs, the player keeping
- * to way; each after every tick. */
-void follow(FoeModel &foes, const BotView &view, const std::vector<Timed> &way, double untilMs,
-            const std::function<void()> &each)
-{
-    while (foes.now() + view.tickMs <= untilMs + 1e-6 && view.tickMs > 0) {
-        foes.runTick(keeping(way, view.now));
-        each();
-    }
-}
-
 /* The foes that would walk onto a run of falling tiles that do not come
  * back (nav.h, keptOffRuns) before the way to finish crosses it, where the
  * exit is out of reach but over such a run; and the cell beside such a run
@@ -109,14 +98,15 @@ int wreckers(const BotView &view, FoeModel &foes, Worlds &worlds, Step *guard)
         }
         return n;
     }
-    foes.load(view);
-    std::vector<char> onRun(foes.foeCount(), 0);
+    std::vector<char> onRun;
     follow(foes, view, way, view.now + std::min(crossBy, WRECK_HORIZON_MS), [&] {
+        onRun.resize(std::max(onRun.size(), foes.foeCount()), 0);
         for (size_t i = 0; i < foes.foeCount(); i++) {
             const Step c = foes.foeCell(i);
-            if (i < onRun.size() && view.inside(c.u, c.v) && runs[(size_t)c.v * view.extentU + c.u] >= 0)
+            if (view.inside(c.u, c.v) && runs[(size_t)c.v * view.extentU + c.u] >= 0)
                 onRun[i] = 1;
         }
+        return false;
     });
     for (const char r : onRun)
         n += r;
@@ -138,16 +128,13 @@ bool switchers(const BotView &view, FoeModel &foes, Worlds &worlds)
     const std::vector<Timed> way = finishWay(view, worlds, false, &ms);
     if (ms < 0)
         return false;
-    foes.load(view);
-    bool lost = false;
-    follow(foes, view, way, view.now + std::min(ms, SWITCH_HORIZON_MS), [&] {
-        if (lost || std::none_of(foes.switched().begin(), foes.switched().end(),
-                                 [](const FoeModel::Switched &w) { return w.byFoe; }))
-            return;
+    return follow(foes, view, way, view.now + std::min(ms, SWITCH_HORIZON_MS), [&] {
+        if (std::none_of(foes.switched().begin(), foes.switched().end(),
+                         [](const FoeModel::Switched &w) { return w.byFoe; }))
+            return false;
         const Step at = entryAt(way, view.now, foes.now()).cell;
-        lost = foes.deckGone(at.u, at.v);
+        return foes.deckGone(at.u, at.v);
     });
-    return lost;
 }
 
 }  // namespace

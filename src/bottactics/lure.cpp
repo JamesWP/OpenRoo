@@ -76,8 +76,7 @@ bool workable(const Board &board, Changes s, Place at, Step cell, Changes next)
 double lured(Situation &s, const std::vector<Timed> &plan, double untilMs, size_t k)
 {
     const BotView &view = s.view;
-    s.foes.load(view);
-    s.foes.run(view.now + untilMs, keeping(plan, view.now));
+    follow(s.foes, view, plan, view.now + untilMs);
     double first = -1;
     int goes = 0;
     for (const FoeModel::Switched &w : s.foes.switched())

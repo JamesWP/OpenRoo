@@ -16,6 +16,7 @@
  * the lift's. */
 #pragma once
 
+#include <functional>
 #include <vector>
 #include "botview.h"
 #include "foemodel.h"
@@ -49,6 +50,16 @@ Danger checkPlan(FoeModel &sim, const BotView &view, const std::vector<Timed> &p
  * choice keeps clear of the one after). */
 Danger checkEscape(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
                    double lingerMs);
+
+/* Loads the foes afresh and runs them, the player keeping to plan (its
+ * times ms from the view's clock), until the clock's untilMs; with until,
+ * only up to the first tick after which until() holds.  Whether it did. */
+bool follow(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan, double untilMs,
+            const std::function<bool()> &until = {});
+
+/* Whether a thrower that bombs the player stands within near of c (cells,
+ * a diagonal one). */
+bool throwerNear(const FoeModel &sim, Step c, int near);
 
 /* How soon a foe (a catcher, or a thrower's reach: where it will drop a
  * bomb) meets the player on plan and then standing at its end, within
