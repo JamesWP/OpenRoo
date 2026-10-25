@@ -535,8 +535,8 @@ Outcome NavModel::stepImpl(int u, int v, int f, int d, bool timed, double atMs,
             return out;
         }
         if (b.height > ch + 1 && !stairs(b.kind)) {
-            // The game takes a step at a face two or more high, and the
-            // player falls down it.
+            // A tile two or more higher is a slab with open space below:
+            // the game takes the step, the player walks under it and falls.
             out.kind = Outcome::Death;
             out.why  = "cliff";
             out.ms   = t;
