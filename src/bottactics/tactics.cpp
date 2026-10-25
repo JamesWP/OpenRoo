@@ -1,7 +1,6 @@
 #include "tactics.h"
 #include <algorithm>
 #include <memory>
-#include <string>
 #include <stdio.h>
 #include <stdlib.h>
 #include "danger.h"
@@ -38,7 +37,7 @@ bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally,
         if (!o.checked) {
             const Danger d = checkPlan(s.foes, s.view, o.schedule, o.lingerMs, o.blasts);
             if (d.hit) {
-                if (blocked && std::string(d.why) == "blocked" &&
+                if (blocked && d.why == Danger::BLOCKED &&
                     std::none_of(blocked->begin(), blocked->end(),
                                  [&](Step c) { return c.u == d.at.u && c.v == d.at.v; }))
                     blocked->push_back(d.at);
