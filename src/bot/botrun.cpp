@@ -1,4 +1,5 @@
 #include "botrun.h"
+#include <chrono>
 #include <fstream>
 #include <memory>
 #include <set>
@@ -61,6 +62,10 @@ public:
     bool exclusive() const override { return true; }
     bool done() const { return done_; }
     const std::string &outcome() const { return outcome_; }
+    const Policy &policy() const { return *policy_; }
+    /* Wall-clock ms the policy's act took: the last tick's, the slowest. */
+    double actMs() const { return actMs_; }
+    double actMostMs() const { return actMostMs_; }
 
     void sample(unsigned char keys[input::KEY_COUNT]) override
     {
@@ -78,7 +83,10 @@ public:
         if (trace_)
             trace_ << view.toJson(frames_, haveLast_ ? &last_ : nullptr) << '\n';
         checks_.observe(view, frames_, held_);
+        const auto t0 = std::chrono::steady_clock::now();
         const unsigned acts = policy_->act(view);
+        actMs_ = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+        actMostMs_ = actMs_ > actMostMs_ ? actMs_ : actMostMs_;
         held_     = acts;
         last_     = std::move(view);
         haveLast_ = true;
@@ -201,6 +209,7 @@ private:
     BotView     last_;
     Checks      checks_;
     unsigned    held_ = 0;
+    double      actMs_ = 0, actMostMs_ = 0;
     bool        haveLast_ = false;
     bool        done_    = false;
     bool        playing_ = false;
@@ -256,6 +265,20 @@ void debug_panel()
         engage(on);
     if (!s_lastOutcome.empty())
         ImGui::TextDisabled("last run: %s", s_lastOutcome.c_str());
+    if (!s_run || s_run->done())
+        return;
+    ImGui::Text("act: %.2f ms, slowest %.2f ms", s_run->actMs(), s_run->actMostMs());
+    const std::vector<Thought> thoughts = s_run->policy().thoughts();
+    if (thoughts.empty() || !ImGui::BeginTable("thoughts", 2, ImGuiTableFlags_SizingFixedFit))
+        return;
+    for (const Thought &t : thoughts) {
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::TextDisabled("%s", t.label.c_str());
+        ImGui::TableNextColumn();
+        ImGui::TextWrapped("%s", t.text.c_str());
+    }
+    ImGui::EndTable();
 }
 
 }  // namespace

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "botview.h"
 
@@ -19,6 +20,11 @@ enum Press : unsigned {
     PRESS_BOMB    = 1u << 4,
 };
 
+/* A line of what a policy is thinking, for the debug UI's Bot section. */
+struct Thought {
+    std::string label, text;
+};
+
 class Policy {
 public:
     virtual ~Policy() {}
@@ -29,6 +35,9 @@ public:
     /* What the policy last made of the level, for the run's summary: why it
      * stopped, say.  Empty when it has nothing to say. */
     virtual std::string note() const { return {}; }
+    /* What the policy is thinking, as of its last tick, for the debug UI:
+     * empty when it has nothing to show. */
+    virtual std::vector<Thought> thoughts() const { return {}; }
 };
 
 }  // namespace bot

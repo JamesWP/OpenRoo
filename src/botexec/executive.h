@@ -18,7 +18,11 @@
  * rest by the model: # as things stand, + once every block is spent, . never.
  * KAROO_BOT_DECISIONS=<file> logs every decision, one JSON object a line: the
  * player's state, the plan, each kind of option offered and found safe, and
- * the one taken. */
+ * the one taken.
+ *
+ * Its thoughts (policy.h) are the last decision, set out: the goals, the
+ * plan for the first, the plan taken, the options offered and found safe,
+ * and the wall-clock time deciding took. */
 #pragma once
 
 #include <fstream>
@@ -38,6 +42,7 @@ public:
     Executive();
     unsigned act(const BotView &view) override;
     std::string note() const override { return note_; }
+    std::vector<Thought> thoughts() const override;
 
 private:
     /* The goals worth planning for now, the most relevant first (goals.h),
@@ -48,6 +53,9 @@ private:
      * none can be done, false, and the script carries on.  From rest, with
      * no goal doable, the fallbacks (fallback.h). */
     bool decide(const BotView &view, const std::vector<Goal> &goals, bool midway);
+    /* Sets out decision d, which took tookMs, as the thoughts. */
+    void note(const BotView &view, const std::vector<Goal> &goals, bool midway,
+              const Decision &d, double tookMs);
     /* The script's schedule still ahead from where the player is, or only
      * where it is if no script runs. */
     std::vector<Timed> ahead(const BotView &view) const;
@@ -64,6 +72,16 @@ private:
     Progress  progress_;             // what was last decided from (deliberate.h)
     unsigned long ticks_ = 0;
     std::string note_;
+    std::vector<Thought> thinking_;  // the last decision, for thoughts()
+    /* Wall-clock ms the decisions took: sensing the goals, then deciding
+     * (board and deliberation), the last, the slowest and the total. */
+    struct Timing {
+        double last = 0, most = 0, total = 0;
+        unsigned long count = 0;
+        void add(double ms);
+        std::string describe() const;
+    };
+    Timing    senseTime_, decideTime_;
     std::ofstream log_;
     std::ofstream reach_;
     bool      reachDone_ = false;

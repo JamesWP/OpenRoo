@@ -1,5 +1,7 @@
 #include "executive.h"
+#include <stdio.h>
 #include <stdlib.h>
+#include <chrono>
 #include "board.h"
 #include "decisionlog.h"
 #include "deliberate.h"
@@ -16,7 +18,36 @@ const unsigned long CHECK_TICKS = 15;
 /* Ticks between looks at the goals while a script runs. */
 const unsigned long GOAL_TICKS = 30;
 
+double wallMs()
+{
+    using namespace std::chrono;
+    return duration<double, std::milli>(steady_clock::now().time_since_epoch()).count();
+}
+
+std::string format(const char *fmt, double a, double b = 0, double c = 0)
+{
+    char buf[96];
+    snprintf(buf, sizeof buf, fmt, a, b, c);
+    return buf;
+}
+
 }  // namespace
+
+void Executive::Timing::add(double ms)
+{
+    last = ms;
+    most = ms > most ? ms : most;
+    total += ms;
+    count++;
+}
+
+std::string Executive::Timing::describe() const
+{
+    if (!count)
+        return "-";
+    return format("%.2f ms last, %.2f mean, %.2f most", last, total / count, most) + " (" +
+           std::to_string(count) + ")";
+}
 
 Executive::Executive()
 {
@@ -33,11 +64,15 @@ Executive::Executive()
 
 std::vector<Goal> Executive::goals(const BotView &view)
 {
-    return senseGoals(view, foes_, worlds_, ahead(view));
+    const double t0 = wallMs();
+    std::vector<Goal> out = senseGoals(view, foes_, worlds_, ahead(view));
+    senseTime_.add(wallMs() - t0);
+    return out;
 }
 
 bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool midway)
 {
+    const double t0 = wallMs();
     worlds_.update(view);
     const Board board(view, worlds_);
     Deliberation how;
@@ -46,6 +81,9 @@ bool Executive::decide(const BotView &view, const std::vector<Goal> &goals, bool
     how.mu       = mu_;
     how.tallyAll = log_.is_open();
     Decision d = deliberate(view, foes_, board, goals, how);
+    const double took = wallMs() - t0;
+    decideTime_.add(took);
+    note(view, goals, midway, d, took);
     if (midway && !d.have)
         return false;  // the script under way carries on
 
@@ -104,6 +142,54 @@ unsigned Executive::act(const BotView &view)
             decide(view, goals(view), false);
     }
     return exec_.act(view);
+}
+
+}  // namespace bot
+
+namespace bot {
+
+void Executive::note(const BotView &view, const std::vector<Goal> &goals, bool midway,
+                     const Decision &d, double tookMs)
+{
+    std::vector<Thought> t;
+    std::string names;
+    for (const Goal &g : goals)
+        names += (names.empty() ? "" : ", ") + std::string(goalName(g.kind));
+    t.push_back({"at", format("%.1f s", view.now / 1000.0) + (midway ? ", midway" : ", from rest")});
+    t.push_back({"goals", names});
+    t.push_back({"first plan", d.first.found ? d.first.describe() : "none found"});
+    if (d.first.found)
+        t.push_back({"", format("%.0f ms of play, cost %.0f, %.0f nodes", d.first.ms, d.first.cost,
+                                d.first.nodes)});
+    for (const PlanStep &s : d.first.steps)
+        t.push_back({"", std::string("  ") + s.name +
+                             format(" to %.0f,%.0f in %.0f ms", s.end.u, s.end.v, s.ms) +
+                             (s.risk > 0 ? format(", risk %.2f", s.risk) : "")});
+    if (d.finish.found && !goals.empty() && goals.front().kind != FINISH)
+        t.push_back({"finish plan", d.finish.describe()});
+    t.push_back({"taken", d.have ? std::string(goalName(d.goal)) + ": " + d.planned
+                                 : midway ? "nothing above the goal under way" : "none"});
+    std::string tally;
+    for (size_t i = 0; i < d.tally.size(); i++)
+        if (d.tally[i].offered)
+            tally += (tally.empty() ? "" : ", ") + std::string(tallyName(i)) + " " +
+                     std::to_string(d.tally[i].safe) + "/" + std::to_string(d.tally[i].offered);
+    t.push_back({"safe/offered", tally.empty() ? "-" : tally});
+    if (!d.note.empty())
+        t.push_back({"note", d.note});
+    t.push_back({"took", format("%.2f ms", tookMs)});
+    thinking_ = std::move(t);
+}
+
+std::vector<Thought> Executive::thoughts() const
+{
+    std::vector<Thought> t = thinking_;
+    t.push_back({"running", exec_.status() == Executor::Running ? note_ : "idle"});
+    if (stuck_)
+        t.push_back({"stuck", "waiting for the terrain to change"});
+    t.push_back({"sense time", senseTime_.describe()});
+    t.push_back({"decide time", decideTime_.describe()});
+    return t;
 }
 
 }  // namespace bot
