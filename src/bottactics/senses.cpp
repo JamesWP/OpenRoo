@@ -1,7 +1,6 @@
 #include "senses.h"
 #include <algorithm>
 #include <functional>
-#include <string>
 #include "action.h"
 #include "board.h"
 #include "danger.h"
@@ -21,9 +20,10 @@ const double SWITCH_HORIZON_MS = 30000;
 
 /* Where the player is over the way to finish, keeping to the plan and
  * walking from each step's end to the next on the ground as the steps before
- * have switched it, up to a step called stop: the places, and *ms the time
- * it reaches (-1: no plan). */
-std::vector<Timed> finishWay(const BotView &view, Worlds &worlds, const char *stop, double *ms)
+ * have left it (or, if there is no way there, as the step leaves it), up to
+ * the first crossing of a one-shot run if toCrossing: the places, and *ms
+ * the time it reaches (-1: no plan). */
+std::vector<Timed> finishWay(const BotView &view, Worlds &worlds, bool toCrossing, double *ms)
 {
     worlds.update(view);
     const Board board(view, worlds);
@@ -32,26 +32,22 @@ std::vector<Timed> finishWay(const BotView &view, Worlds &worlds, const char *st
     const Plan finish = planGoal(board, planActions(), options);
     std::vector<Timed> way{{0, {view.player.u, view.player.v}}};
     *ms = finish.found ? 0 : -1;
-    Changes changes = 0;
+    Facts before;
     for (const PlanStep &step : finish.steps) {
-        if (stop && std::string(step.name) == stop)
+        if (toCrossing && step.after.crossed != before.crossed)
             break;
-        // A switch (the one it ends on) or a lure switches its bridge; a drop
-        // crosses it out and leaves it in.
         const Step from = way.back().cell, to{step.end.u, step.end.v};
-        const std::string name = step.name;
-        const int k = name == "switch" ? board.switched(to) : step.arg;
-        const bool bridge = k >= 0 && (size_t)k < view.bridges.size();
-        if (bridge && name == "drop" && !board.extended(changes, (size_t)k))
-            changes ^= worlds.bridgeBit((size_t)k);
-        const Paths walk(worlds.get(changes).nav(), from.u, from.v, view.player.facing);
-        if (walk.cost(to.u, to.v) >= 0)
+        for (const Changes s : {before.changes, step.after.changes}) {
+            const Paths walk(worlds.get(s).nav(), from.u, from.v, view.player.facing);
+            if (walk.cost(to.u, to.v) < 0)
+                continue;
             for (const Step &c : walk.cellsTo(to.u, to.v))
                 way.push_back({*ms + walk.cost(c.u, c.v), c});
+            break;
+        }
         *ms += step.ms;
         way.push_back({*ms, to});
-        if (bridge && (name == "switch" || name == "lure" || name == "drop"))
-            changes ^= worlds.bridgeBit((size_t)k);
+        before = step.after;
     }
     return way;
 }
@@ -98,7 +94,7 @@ int wreckers(const BotView &view, FoeModel &foes, Worlds &worlds, Step *guard)
     }
     // When the way to finish crosses, and where the player is till then.
     double crossBy;
-    const std::vector<Timed> way = finishWay(view, worlds, "cross", &crossBy);
+    const std::vector<Timed> way = finishWay(view, worlds, true, &crossBy);
     int n = 0;
     if (crossBy < 0) {
         // No way to finish: any foe that gets to such a run.
@@ -139,7 +135,7 @@ bool switchers(const BotView &view, FoeModel &foes, Worlds &worlds)
                      [](const FoeView &f) { return f.kind == CATCHER && !f.dying && !f.held; }))
         return false;
     double ms;
-    const std::vector<Timed> way = finishWay(view, worlds, nullptr, &ms);
+    const std::vector<Timed> way = finishWay(view, worlds, false, &ms);
     if (ms < 0)
         return false;
     foes.load(view);
@@ -148,10 +144,7 @@ bool switchers(const BotView &view, FoeModel &foes, Worlds &worlds)
         if (lost || std::none_of(foes.switched().begin(), foes.switched().end(),
                                  [](const FoeModel::Switched &w) { return w.byFoe; }))
             return;
-        Step at = way.front().cell;
-        for (const Timed &m : way)
-            if (view.now + m.t <= foes.now() + 1e-6)
-                at = m.cell;
+        const Step at = entryAt(way, view.now, foes.now()).cell;
         lost = foes.deckGone(at.u, at.v);
     });
     return lost;

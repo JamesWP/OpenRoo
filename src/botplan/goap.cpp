@@ -54,8 +54,10 @@ public:
                 plan.found = true;
                 plan.cost  = node.g;
                 plan.ms    = node.ms;
-                for (int i = at; nodes_[i].parent >= 0; i = nodes_[i].parent)
+                for (int i = at; nodes_[i].parent >= 0; i = nodes_[i].parent) {
                     plan.steps.insert(plan.steps.begin(), nodes_[i].step);
+                    plan.steps.front().after = nodes_[i].facts;
+                }
                 return plan;
             }
             expand(at);
