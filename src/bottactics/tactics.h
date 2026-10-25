@@ -55,11 +55,13 @@ struct Tally {
  * walk (the foes as they stand), up to most of them: a pocket the foes hem
  * in has few. */
 int room(const Situation &s, Step c, int most);
-/* Where the gems are had from the foes, the bot stays out of the pockets
- * they would hem it in: an option ending on a cell costs this much more for
- * each cell short of ROOM_CELLS it has room for. */
+/* What ending on a cell the foes would hem the player in on costs: this
+ * much for each cell short of ROOM_CELLS it has room for. */
 const int ROOM_CELLS = 40;
 const double ROOM_MS = 100;
+double hemmedIn(const Situation &s, Step c);
+/* Where the gems are had from the foes, the bot stays out of the pockets
+ * they would hem it in: hemmedIn there, else nothing. */
 double cramped(const Situation &s, Step c);
 
 /* The cheapest of options found safe (danger.h), sorting them: false if

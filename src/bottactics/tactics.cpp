@@ -288,11 +288,14 @@ int room(const Situation &s, Step c, int most)
     return cells;
 }
 
+double hemmedIn(const Situation &s, Step c)
+{
+    return (ROOM_CELLS - room(s, c, ROOM_CELLS)) * ROOM_MS;
+}
+
 double cramped(const Situation &s, Step c)
 {
-    if (!gemsFromSpawners(s.view))
-        return 0;
-    return (ROOM_CELLS - room(s, c, ROOM_CELLS)) * ROOM_MS;
+    return gemsFromSpawners(s.view) ? hemmedIn(s, c) : 0;
 }
 
 void offerFetchGem(Situation &s, const Board &board, std::vector<Option> &out)
@@ -334,7 +337,8 @@ void offerEvade(Situation &s, const Board &board, std::vector<Option> &options)
         Option &o = options[i];
         const Step c = o.schedule.back().cell;
         o.lingerMs = lingerOn(s, c, s.from.startMs() + s.from.cost(c.u, c.v), o.lingerMs);
-        o.cost += cramped(s, c);
+        // Away from the foes, not into a pocket they would corner it in.
+        o.cost += hemmedIn(s, c);
     }
 }
 
