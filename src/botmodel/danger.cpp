@@ -4,6 +4,7 @@
 #include "fallingmodel.h"
 #include "liftmodel.h"
 #include "nav.h"
+#include "terrain.h"
 
 namespace bot {
 
@@ -46,10 +47,40 @@ int reachable(const NavModel &nav, Step at, double atMs, Step from, bool *back)
     return n;
 }
 
+/* Whether a switch the player at rest on at can come to, the foes' cells
+ * shut (passing over the switches between), works a bridge that, switched,
+ * lets it reach more than PEN_CELLS from there: a way out of the pen (a long
+ * deck to cross, say). */
+bool switchesOut(const BotView &view, const FoeModel &sim, Step at, double atMs)
+{
+    if (view.bridges.empty())
+        return false;
+    NavModel shut(view);
+    for (size_t i = 0; i < sim.foeCount(); i++)
+        shut.shut(sim.foeCell(i));
+    const Paths paths(shut, at.u, at.v, 1, atMs, true);
+    const Terrain base(view);
+    for (int v = 0; v < view.extentV; v++)
+        for (int u = 0; u < view.extentU; u++) {
+            const BridgeView *b = switchedBy(view, u, v);
+            if (!b || paths.cost(u, v) < 0)
+                continue;
+            const std::unique_ptr<Terrain> next = base.changed({}, {(size_t)(b - view.bridges.data())});
+            NavModel opened = next->nav();
+            for (size_t i = 0; i < sim.foeCount(); i++)
+                opened.shut(sim.foeCell(i));
+            bool back;
+            if (reachable(opened, {u, v}, atMs, {u, v}, &back) > PEN_CELLS)
+                return true;
+        }
+    return false;
+}
+
 /* Whether the throwers, where the foe model has them, pen in the player at
  * rest on at (PEN_NEAR), come from the cell from outside the pen: it cannot
  * walk through one (movableentity.cpp), and is left a few cells to wait in
- * for their bombs.  A player penned in already is not penned by a walk. */
+ * for their bombs.  A player penned in already is not penned by a walk, nor
+ * one with a switch in the pen that opens a way out (switchesOut). */
 bool penned(const BotView &view, const FoeModel &sim, Step at, double atMs, Step from)
 {
     NavModel shut(view);
@@ -62,7 +93,8 @@ bool penned(const BotView &view, const FoeModel &sim, Step at, double atMs, Step
         return false;
     bool inside, open;
     const int left = reachable(shut, at, atMs, from, &inside);
-    return !inside && left <= PEN_CELLS && left < reachable(NavModel(view), at, atMs, from, &open);
+    return !inside && left <= PEN_CELLS && left < reachable(NavModel(view), at, atMs, from, &open) &&
+           !switchesOut(view, sim, at, atMs);
 }
 
 /* How check takes a thrower's reach: as checkPlan, a hit only to stop in;
@@ -99,18 +131,6 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
             d.why = "fallen tile";
             return d;
         }
-    // A bridge on its way back: its deck is going from under the player (a
-    // foe may work its switch).
-    for (const BridgeView &b : view.bridges)
-        if (b.moving && !b.extended)
-            for (const Timed &m : plan)
-                for (const Step &c : b.deck)
-                    if (c.u == m.cell.u && c.v == m.cell.v) {
-                        d.hit = true;
-                        d.t   = m.t;
-                        d.why = "bridge";
-                        return d;
-                    }
     for (size_t i = 0; i < plan.size(); i++) {
         const double falls = fallsAt(view, plan[i].cell, plan[i].t);
         if (falls < 0)
@@ -176,8 +196,9 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
         sim.runTick(playerAt);
         const Timed e = entryAt(sim.now());
         const Step p = e.cell;
-        // A deck gone from under the player: a foe worked its switch.
-        if (!e.aloft && sim.cleared(p.u, p.v)) {
+        // A deck gone from under the player (a foe worked its switch), or
+        // not out yet.
+        if (!e.aloft && sim.deckGone(p.u, p.v)) {
             d.hit = true;
             d.t   = sim.now() - start;
             d.why = "bridge";

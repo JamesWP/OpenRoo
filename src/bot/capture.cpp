@@ -101,7 +101,13 @@ BotView capture(const Game &game)
         fv.kind  = (int)f.foeKind();
         fv.type  = f.type();
         fv.held  = f.held() != 0;
-        fv.dying = f.dyingStarted() != 0;
+        // One falling where there is no tile (a deck cleared from under it),
+        // or under its cell's tile, falls into the void: it is as good as
+        // gone (movableentity.cpp).
+        const Tile *under = map->tile(fv.u, fv.v);
+        fv.dying = f.dyingStarted() != 0 ||
+                   (fv.falling && !fv.gliding && !fv.launched &&
+                    (under->objectMarker() == TILE_EMPTY || fv.h < (int)under->height()));
         fv.homeU = f.homeU();
         fv.homeV = f.homeV();
         fv.lastU = f.lastTargetU();

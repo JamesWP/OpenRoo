@@ -15,6 +15,9 @@ std::vector<Goal> selectGoals(const Senses &senses)
     // A foe that would drop the only way to the exit: dealt with first.
     else if (senses.wreckers > 0)
         goals.push_back({REMOVE_FOE, -1, senses.guard});
+    // A foe that would switch back the bridges the way to the exit needs.
+    else if (senses.switchers)
+        goals.push_back({REMOVE_FOE, -1});
     // Gems to be had only from the foes: any foe about is one to blast.
     else if (senses.farm && senses.foes > 0)
         goals.push_back({REMOVE_FOE, -1});

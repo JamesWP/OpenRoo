@@ -76,6 +76,14 @@ void FoeModel::tickBridges()
     }
 }
 
+bool FoeModel::deckGone(int u, int v) const
+{
+    if (!ownGrid_ || !view_->inside(u, v))
+        return false;
+    const size_t at = (size_t)v * view_->extentU + u;
+    return deck_[at] && grid_[at].kind == TILE_EMPTY;
+}
+
 void FoeModel::changeAt(size_t cell, unsigned what)
 {
     unsigned long long x = (cell * 4 + what + 1) * 0x9e3779b97f4a7c15ull;
@@ -306,6 +314,7 @@ void FoeModel::load(const BotView &view)
     spawners_ = view.spawners;
     spawned_  = 0;
     switched_.clear();
+    fell_.clear();
     changed_ = 0;
     bridges_.clear();
     switchCells_.clear();
@@ -313,6 +322,10 @@ void FoeModel::load(const BotView &view)
     if (ownGrid_) {
         grid_ = view.cells;
         cleared_.assign(view.cells.size(), 0);
+        deck_.assign(view.cells.size(), 0);
+        for (const BridgeView &b : view.bridges)
+            for (const Step &d : b.deck)
+                deck_[(size_t)d.v * view.extentU + d.u] = 1;
         for (const BridgeView &b : view.bridges)
             bridges_.push_back({b.slot, b.deck, b.height, b.moving,
                                 b.moving ? (b.extended ? 0 : 1) : (b.extended ? 1 : 0), b.phaseStart});
@@ -1034,6 +1047,14 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
     };
     if (playerLeft_.u >= 0 && clock_ >= leftUntil_ - 1e-6)
         letGo();
+    // A switch is worked as the step onto it ends, though the next step
+    // starts on the same tick (a walk straight over it).
+    auto workPlayerSwitch = [&]() {
+        if (ownGrid_ && clock_ >= playerRestAt_ - 1e-6 && view_->inside(player_.u, player_.v))
+            onSwitch(cell(player_.u, player_.v), cell(player_.u, player_.v).height, &playerOnSwitch_,
+                     &playerSwitch_);
+    };
+    workPlayerSwitch();
     const Step at = playerAt(clock_);
     if (at.u != player_.u || at.v != player_.v) {
         letGo();
@@ -1053,13 +1074,9 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
             freezeUntil_ = clock_ + FREEZE_MS;
         }
     }
-    if (ownGrid_) {
-        if (clock_ >= playerRestAt_ - 1e-6 && view_->inside(player_.u, player_.v))
-            onSwitch(cell(player_.u, player_.v), cell(player_.u, player_.v).height, &playerOnSwitch_,
-                     &playerSwitch_);
-        if (playerSwitch_ >= 0 && workSwitch(playerSwitch_, false))
-            playerSwitch_ = -1;
-    }
+    workPlayerSwitch();
+    if (ownGrid_ && playerSwitch_ >= 0 && workSwitch(playerSwitch_, false))
+        playerSwitch_ = -1;
     tickSpawners();
     for (size_t i = 0; i < foes_.size(); i++) {
         Foe &f = foes_[i];
@@ -1081,6 +1098,7 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
             if (occ(f.u, f.v) == f.kind)
                 setOcc(f.u, f.v, 0);
             f.h = -1;
+            fell_.push_back({clock_, f.u, f.v});
         }
         if (f.fallsUntil < 0 || clock_ < f.fallsUntil) {
             ++i;
