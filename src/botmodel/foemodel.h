@@ -100,11 +100,16 @@ public:
         bool   byFoe;
     };
     const std::vector<Switched> &switched() const { return switched_; }
-    /* Whether the cell is a bridge's deck the model has cleared since load(). */
-    bool cleared(int u, int v) const
-    {
-        return ownGrid_ && view_->inside(u, v) && cleared_[(size_t)v * view_->extentU + u];
-    }
+    /* The foes that fell off a deck cleared under them since load(): when
+     * (the model's clock) and where. */
+    struct Fell {
+        double ms;
+        int    u, v;
+    };
+    const std::vector<Fell> &fell() const { return fell_; }
+    /* Whether the cell is a bridge's deck with no deck on it at the model's
+     * clock: cleared, or not yet stamped. */
+    bool deckGone(int u, int v) const;
 
     /* Ticks the foes until the clock reaches untilMs, the player standing on
      * playerAt(t) at each tick's clock t. */
@@ -256,10 +261,12 @@ private:
     std::vector<Bridge> bridges_;
     std::vector<std::vector<Step>> switchCells_;  // by slot, in grid order
     std::vector<Switched> switched_;
+    std::vector<Fell> fell_;
     // The cells, as the bridges change them, when the level has any.
     std::vector<Cell> grid_;
     bool   ownGrid_ = false;
     std::vector<char> cleared_;     // a deck cell the model has cleared
+    std::vector<char> deck_;        // a bridge's deck cell
     bool   playerOnSwitch_ = false;
     int    playerSwitch_ = -1;      // the switch the player worked, not yet acted on
     double playerRestAt_ = 0;       // when the player's step onto its cell ends

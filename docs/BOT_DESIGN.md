@@ -71,7 +71,13 @@ which time bonuses on the way), and the predictors for
 foes, falling tiles and bombs.  The foe predictor steps the foes' own chase
 search, since their routes are not stable; the search knows no teleporters,
 so a foe goes through a pad only where its way to the player steps onto it.
-The danger check runs a player schedule against all of them.
+The foe predictor plays out the bridges as well: a switch worked while its
+bridge moves waits for the move to end, one per mover (the next switch it
+comes onto takes its place), and a deck going back clears from its far end,
+a foe on a cleared cell falling into the void.
+The danger check runs a player schedule against all of them, a deck gone
+from under the player among them; the player is not taken to be penned in
+where a switch it can reach opens the way out.
 A cell is a trap where the quota and the exit can no longer be had from it:
 a glider or a one-shot crossing may still lead on, but only one that can be
 reached from it, and a crossing only to enough gems.
@@ -81,7 +87,8 @@ reached from it, and a crossing only to enough gems.
 Which goals are worth planning for now, the most relevant first: *finish*
 always, and above it *remove foe* while bombs are held and a foe will meet
 the player soon, or while a foe would drop a one-shot run the exit needs
-before the plan crosses it (the foe model run with the player keeping to the
+before the plan crosses it, or would work a switch behind the player that
+takes a deck from under it on the way to the exit (the foe model run with the player keeping to the
 plan, since the foes follow the player).  Goals are relevant on sensed
 facts, not on plans.
 
@@ -123,6 +130,17 @@ A carrier is *goaded* into a thrower's bomb, planned only where the
 throwers can get near it and the player can reach its side (so a walled-in
 carrier is first baited out), and done where the foe model has the bomb
 kill it, the carrier following the player into it if need be.
+A switch is worked by coming onto it.  The player stays on it till its
+bridge is done (keeping foes off it), but with a catcher after it, only
+where the way on needs the bridge, or while a move under way is to finish,
+so that the press is not lost to the next switch.
+A foe that would take a deck from under the player is *dropped* off a
+bridge: the player crosses the deck with the foe following and works a
+switch on the far side, and the deck goes from under the foe.  Where the
+bridge is in, it is set out first, with a lap off its switch and back if
+the foe model has the foe's own press then setting it out again behind the
+player; the walk, its waits, and the lap are taken only where the foe model
+has the foe fall, and once begun the drop is not broken off.
 
 ### 3.6 Motor
 

@@ -9,7 +9,9 @@
  *                or, met soon or not, while a follower is out after the
  *                catchers (foemodel.h), which bombs them; or while a foe
  *                can get to a falling tile that does not come back and that
- *                the way to the exit must cross, which would be lost under it.
+ *                the way to the exit must cross, which would be lost under it;
+ *                or while a foe would work a switch behind the player on the
+ *                way to the exit that takes a deck from under the player.
  *
  * Each goal is planned for in turn (goap.h) until one can be done safely;
  * the executive asks again as things change, and a goal above the one
@@ -32,6 +34,7 @@ struct Senses {
     int    hunted = 0;        // catchers a follower can reach (foemodel.h)
     int    wreckers = 0;      // foes that can get to a one-shot run the exit needs
     Step   guard{-1, -1};     // and the cell beside it the player gets to first
+    bool   switchers = false; // a foe would take a deck from under the player on the way to finish
     bool   farm = false;      // the gems are short, and the foes that spawn carry them
 };
 

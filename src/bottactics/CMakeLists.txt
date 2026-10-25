@@ -13,6 +13,7 @@ add_library(bottactics OBJECT
     goad.cpp
     send.cpp
     lure.cpp
+    drop.cpp
     glide.cpp
     glider.cpp
     option.cpp
