@@ -24,39 +24,6 @@ const int MAX_CHECKS = 8;
 /* How many times realise offers a step again round the throwers in the way. */
 const int ROUNDS = 3;
 
-}  // namespace
-
-bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally,
-          std::vector<Step> *blocked)
-{
-    std::stable_sort(options.begin(), options.end(),
-                     [](const Option &a, const Option &b) { return a.cost < b.cost; });
-    bool found = false;
-    for (Option &o : options) {
-        tally->offered++;
-        if (!o.checked) {
-            const Danger d = checkPlan(s.foes, s.view, o.schedule, o.lingerMs, o.blasts);
-            if (d.hit) {
-                if (blocked && d.why == Danger::BLOCKED &&
-                    std::none_of(blocked->begin(), blocked->end(),
-                                 [&](Step c) { return c.u == d.at.u && c.v == d.at.v; }))
-                    blocked->push_back(d.at);
-                continue;
-            }
-        }
-        tally->safe++;
-        if (!found) {
-            *out  = std::move(o);
-            found = true;
-        }
-        if (!tally->all)
-            break;
-    }
-    return found;
-}
-
-namespace {
-
 /* How long a wait on the cell, come to rest on it arriveMs from the view's
  * clock, must stay safe: on a lift, which carries the player off to whatever
  * waits at its other end, a whole cycle of it (liftmodel.h); on a cell every
@@ -80,6 +47,41 @@ double lingerOn(const Situation &s, Step c, double arriveMs, double linger)
     }
     return linger + longest;
 }
+
+}  // namespace
+
+bool pick(Situation &s, std::vector<Option> &options, Option *out, Tally *tally,
+          std::vector<Step> *blocked)
+{
+    std::stable_sort(options.begin(), options.end(),
+                     [](const Option &a, const Option &b) { return a.cost < b.cost; });
+    bool found = false;
+    for (Option &o : options) {
+        tally->offered++;
+        if (!o.checked) {
+            if (!o.schedule.empty())
+                o.lingerMs = lingerOn(s, o.schedule.back().cell, o.schedule.back().t, o.lingerMs);
+            const Danger d = checkPlan(s.foes, s.view, o.schedule, o.lingerMs, o.blasts);
+            if (d.hit) {
+                if (blocked && d.why == Danger::BLOCKED &&
+                    std::none_of(blocked->begin(), blocked->end(),
+                                 [&](Step c) { return c.u == d.at.u && c.v == d.at.v; }))
+                    blocked->push_back(d.at);
+                continue;
+            }
+        }
+        tally->safe++;
+        if (!found) {
+            *out  = std::move(o);
+            found = true;
+        }
+        if (!tally->all)
+            break;
+    }
+    return found;
+}
+
+namespace {
 
 /* A teleporter's hold before it sends the player, and after. */
 const double TELEPORT_HOLD_MS = 500.0;
@@ -235,7 +237,6 @@ void offerApproach(Situation &s, const Board &board, Step goal, std::vector<Opti
         Option o;
         if (!walkTo(s, s.from, c, 0, o))
             continue;
-        o.lingerMs = lingerOn(s, c, s.from.startMs() + soFar, o.lingerMs);
         o.cost = whole - soFar;
         char buf[96];
         snprintf(buf, sizeof(buf), "approach (%d,%d) towards (%d,%d)", c.u, c.v, goal.u, goal.v);
@@ -336,7 +337,6 @@ void offerEvade(Situation &s, const Board &board, std::vector<Option> &options)
     for (size_t i = first; i < options.size(); i++) {
         Option &o = options[i];
         const Step c = o.schedule.back().cell;
-        o.lingerMs = lingerOn(s, c, s.from.startMs() + s.from.cost(c.u, c.v), o.lingerMs);
         // Away from the foes, not into a pocket they would corner it in.
         o.cost += hemmedIn(s, c);
     }
