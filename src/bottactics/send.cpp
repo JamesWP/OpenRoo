@@ -131,14 +131,6 @@ public:
             }
             return false;
         };
-        auto walk = [&](Step at, Option &o) {
-            if (at.u == here.u && at.v == here.v) {
-                o.schedule.push_back({0, here});
-                o.cost = s.from.startMs();
-                return true;
-            }
-            return walkTo(s, s.from, at, 0, o);
-        };
 
         // A bait to follow: the thrower must come out where the player,
         // following it, draws a bomb that spends a block, not straight back
@@ -169,11 +161,9 @@ public:
         for (const double wait : WAITS)
             for (const auto &[ms, at] : cells) {
                 Option o;
-                if (!walk(at, o))
+                if (!walkTo(s, s.from, at, 0, o))
                     continue;
-                o.cost += wait;
-                o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost});
-                o.schedule.push_back({o.cost, at});
+                waitTill(view, o, o.cost + wait);
                 if (!sent(o.schedule, o.cost + SETTLE_MS) || !baited(o, at))
                     continue;
                 o.lingerMs = SETTLE_MS;
@@ -221,11 +211,9 @@ public:
         int bestNear = -1;
         for (const auto &[ms, at] : cells) {
             Option o;
-            if (!walk(at, o))
+            if (!walkTo(s, s.from, at, 0, o))
                 continue;
-            o.cost += DRAW_MS;
-            o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost});
-            o.schedule.push_back({o.cost, at});
+            waitTill(view, o, o.cost + DRAW_MS);
             o.lingerMs = DRAW_MS;
             if (checkPlan(s.foes, view, o.schedule, o.lingerMs).hit)
                 continue;

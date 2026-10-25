@@ -59,16 +59,11 @@ public:
             cells.push_back(near[i]);
         for (const auto &[walkMs, at] : cells) {
             Option o;
-            if (walkMs > 0) {
-                if (!walkTo(s, s.from, at, 0, o))
-                    continue;
-            } else {
-                o.schedule.push_back({0, at});
-                o.cost = s.from.startMs();
-            }
+            if (!walkTo(s, s.from, at, 0, o))
+                continue;
             const double until = o.cost + WAIT_MS;
-            o.script.push_back({ScriptStep::Wait, 0, {}, view.now + until});
-            o.lingerMs = WAIT_MS + LINGER_MS;
+            waitTill(view, o, until);
+            o.lingerMs = LINGER_MS;
             const Danger d = checkPlan(s.foes, view, o.schedule, o.lingerMs);
             if (d.hit)
                 continue;

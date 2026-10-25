@@ -44,6 +44,11 @@ bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Op
         wait = std::ceil((startMs + wait) / s.view.tickMs - 1e-6) * s.view.tickMs - startMs;
     o.schedule.clear();
     o.schedule.push_back({0, plan.front().cell});
+    if (plan.size() == 1) {
+        o.cost = startMs;
+        waitTill(s.view, o, startMs + wait);
+        return true;
+    }
     for (const Timed &m : plan)
         o.schedule.push_back({m.t + startMs + wait, m.cell});
     if (wait > 0)
@@ -76,6 +81,15 @@ bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Op
     }
     o.cost = startMs + wait + paths.cost(target.u, target.v);
     return true;
+}
+
+void waitTill(const BotView &view, Option &o, double ms)
+{
+    if (ms <= o.cost)
+        return;
+    o.script.push_back({ScriptStep::Wait, 0, {}, view.now + ms});
+    o.schedule.push_back({ms, o.schedule.back().cell});
+    o.cost = ms;
 }
 
 void append(Option &o, const Option &leg)
