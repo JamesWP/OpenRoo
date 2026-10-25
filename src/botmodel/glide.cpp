@@ -3,6 +3,7 @@
 #include <cmath>
 #include <functional>
 #include <queue>
+#include "rules.h"
 #include "tile.h"
 
 namespace bot {
@@ -34,11 +35,6 @@ bool wall(const Cell &c)
     return c.kind == TILE_IMPASSABLE || (c.kind == TILE_BOMBABLE && !c.busy);
 }
 
-bool stairs(const Cell &c)
-{
-    return c.kind >= TILE_STAIRS_1 && c.kind <= TILE_STAIRS_4;
-}
-
 /* Plain ground to come down on: nothing that moves, carries or works on the
  * player when it lands. */
 bool landable(const Cell &c)
@@ -48,9 +44,6 @@ bool landable(const Cell &c)
     return c.kind == TILE_KIND_01 || c.kind == TILE_START || c.kind == TILE_EXIT ||
            c.kind == TILE_BRIDGE_DECK || (c.kind == TILE_BOMBABLE && c.busy);
 }
-
-const int DU[] = {0, 0, 1, 0, -1};
-const int DV[] = {0, -1, 0, 1, 0};
 
 /* The player in the air: its height and its cell's (heightCell_). */
 struct Air {
@@ -79,7 +72,7 @@ bool sink(Air &a, const Cell &c, double tickMs)
         a.y = (float)th;
     }
     // Stairs let it settle half a height lower.
-    if (stairs(c) && (float)th < a.y && a.y <= (float)th + 0.5)
+    if (stairs(c.kind) && (float)th < a.y && a.y <= (float)th + 0.5)
         a.h -= 1;
     return a.h >= LOWEST;
 }
@@ -89,7 +82,7 @@ bool sink(Air &a, const Cell &c, double tickMs)
 bool glideLaunch(const BotView &view, int u, int v, int f)
 {
     const Cell &here = view.cell(u, v);
-    const int bu = u + DU[f], bv = v + DV[f];
+    const int bu = u + DIR_DU[f], bv = v + DIR_DV[f];
     if (!view.inside(bu, bv))
         return false;
     const Cell &b = view.cell(bu, bv);
@@ -99,7 +92,7 @@ bool glideLaunch(const BotView &view, int u, int v, int f)
     // is a thin slab with open space below, and the player walks under it
     // and falls.
     return here.height - b.height >= OPEN_DROP ||
-           (b.height >= here.height + 2 && !stairs(b) && !stairs(here));
+           (b.height >= here.height + 2 && !stairs(b.kind) && !stairs(here.kind));
 }
 
 /* The game's tick by tick: each tick the integrator runs once, and once more
@@ -119,7 +112,7 @@ std::vector<Landing> glideLandings(const BotView &view, int u, int v, int f)
     while (moveTicks * tick < view.player.stepMs - 1e-6)
         moveTicks++;
     const int H = view.cell(u, v).height;
-    const Step b{u + DU[f], v + DV[f]};
+    const Step b{u + DIR_DU[f], v + DIR_DV[f]};
 
     // The free fall, from the tick the launch step ends, to the glider opening.
     Air air{(float)H, H + 1};
@@ -209,14 +202,14 @@ std::vector<Landing> glideLandings(const BotView &view, int u, int v, int f)
                         continue;
                     if (here.kind == TILE_LIFT && std::fabs(a.y - (float)a.h) > (float)LIFT_EPS)
                         continue;
-                    if (stairs(here)) {
+                    if (stairs(here.kind)) {
                         const int along = here.kind - 4;
                         if (d != along && d != NavModel::opposite(along) && to.height == here.height + 1)
                             return;
                     }
                 }
                 Air m = a;
-                if (step && stairs(to) && to.height < here.height)
+                if (step && stairs(to.kind) && to.height < here.height)
                     m.h -= 1;
                 for (int j = 1; j < moveTicks; j++)
                     if (!sink(m, to, tick))
@@ -242,7 +235,7 @@ std::vector<Landing> glideLandings(const BotView &view, int u, int v, int f)
         move(cu, cv, 0, NavModel::turned(cf, 1));
         move(cu, cv, 0, NavModel::turned(cf, -1));
         for (const int d : {cf, NavModel::opposite(cf)}) {
-            const int nu = cu + DU[d], nv = cv + DV[d];
+            const int nu = cu + DIR_DU[d], nv = cv + DIR_DV[d];
             if (view.inside(nu, nv))
                 move(nu, nv, d, cf);
         }

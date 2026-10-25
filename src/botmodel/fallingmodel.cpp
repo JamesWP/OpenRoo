@@ -1,13 +1,12 @@
 #include "fallingmodel.h"
 #include <algorithm>
+#include "rules.h"
 #include "tile.h"
 
 namespace bot {
 
 namespace {
 
-const double FALL_MS = 1500.0;  // fallingtile.cpp: armed to falling
-const double BACK_MS = 5000.0;  // armed to respawned
 
 }  // namespace
 

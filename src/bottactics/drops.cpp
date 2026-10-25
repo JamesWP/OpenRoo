@@ -3,6 +3,7 @@
 #include <cmath>
 #include <stdio.h>
 #include "danger.h"
+#include "rules.h"
 #include "walk.h"
 
 namespace bot {
@@ -44,9 +45,6 @@ int killsWanted(const BotView &view)
         most = std::max(most, t.maxFoes);
     return std::min(FARM_KILLS, most);
 }
-
-/* The game's grace after a move (player.cpp's stepGrace_). */
-const double STEP_GRACE_MS = 20.0;
 
 /* When a bomb drops, ms from now, and when the step away from it starts.
  * The script (script.h) presses it once the last bomb's 2 s are up, not

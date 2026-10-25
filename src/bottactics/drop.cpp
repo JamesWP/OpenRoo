@@ -28,7 +28,7 @@ const double DROP_MS = 10000;
 const double WAITS[] = {0, 600, 1500, 3000, 5000, 8000};
 /* How long after the switch is worked a foe may still fall: the bridge's
  * move, and the fall's start. */
-const double FALL_MS = 500;
+const double FALLS_WITHIN_MS = 500;
 
 bool onDeck(const BridgeView &b, Step c)
 {
@@ -175,7 +175,7 @@ public:
                         continue;
                     if (!walkOn(s, nav, o, edge, to, atEdge))
                         continue;
-                    const double done = o.cost + b.moveMs() + FALL_MS;
+                    const double done = o.cost + b.moveMs() + FALLS_WITHIN_MS;
                     s.foes.load(view);
                     s.foes.run(view.now + done, keeping(o.schedule, view.now));
                     if (s.foes.fell().empty())

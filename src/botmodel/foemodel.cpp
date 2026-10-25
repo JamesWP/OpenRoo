@@ -5,26 +5,20 @@
 #include "foetype.h"
 #include "liftmodel.h"
 #include "nav.h"
+#include "rules.h"
 #include "tile.h"
 
 namespace bot {
 
 namespace {
 
-const double STEP_GRACE_MS   = 20.0;   // a step this soon after the last starts where it ended
 const int    CATCHER = 2, THROWER = 3;
-const double SLIDE_MS        = 150.0;  // movableentity.cpp
-const double STICKY_MS       = 3000.0;
-const double TELEPORT_MS     = 500.0;  // a teleporter's hold, before the jump and after
 const unsigned DROP_EVERY_MS = 2000;   // foe.cpp's Foe::step
 const double DROP_LATE_MS    = 50.0;   // Foe::dropBomb: this soon into a move it still drops
-const double FALL_MS         = 1500.0; // fallingtile.cpp: armed to fallen
-const double BACK_MS         = 5000.0; // armed to back
 
 int opposite(int d) { return d > 2 ? d - 2 : d + 2; }
 int right(int d)    { return d % 4 + 1; }
 int left(int d)     { return (d + 2) % 4 + 1; }
-bool stairs(int k)  { return k > 4 && k < 9; }
 
 /* The stairs-orientation code of a step (foepath.cpp's
  * Sim_GetCellStepDirectionCode): its own enumeration, not a facing. */

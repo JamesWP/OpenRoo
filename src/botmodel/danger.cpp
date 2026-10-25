@@ -4,6 +4,7 @@
 #include "fallingmodel.h"
 #include "liftmodel.h"
 #include "nav.h"
+#include "rules.h"
 #include "terrain.h"
 
 namespace bot {
@@ -27,12 +28,6 @@ const int    PEN_NEAR     = 3;
 const double BLOCK_AHEAD_MS = 3000.0;
 const int    PEN_CELLS    = 20;
 const double PEN_AHEAD_MS = 2000.0;
-
-int chebyshev(Step a, Step b)
-{
-    const int du = abs(a.u - b.u), dv = abs(a.v - b.v);
-    return du > dv ? du : dv;
-}
 
 /* The cells the player at rest on at, atMs from the view's clock, can come
  * to rest on, up to most of them, and whether from is one (if they are

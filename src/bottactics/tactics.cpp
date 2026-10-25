@@ -7,6 +7,7 @@
 #include "danger.h"
 #include "action.h"
 #include "liftmodel.h"
+#include "rules.h"
 #include "walk.h"
 
 namespace bot {
@@ -105,13 +106,9 @@ double busy(const BotView &v)
     // Onto stairs (kinds 5 to 8) the step has taken the player down a
     // height already (nav.h).
     const Cell &to = v.cell(p.u, p.v);
-    ms += NavModel::fallMs(p.h - to.height, v.tickMs, to.kind >= 5 && to.kind <= 8);
+    ms += NavModel::fallMs(p.h - to.height, v.tickMs, stairs(to.kind));
     return ms;
 }
-
-/* The game's grace after a move (player.cpp's stepGrace_): a move taken
- * within it starts, on the clock, where the last one ended. */
-const double STEP_GRACE_MS = 20.0;
 
 /* When a walk set off now starts its first move, ms from now: once the move
  * under way is done, a key pressed in it being kept for then; from rest, on

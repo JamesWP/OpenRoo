@@ -4,15 +4,13 @@
 #include <functional>
 #include <queue>
 #include "fallingmodel.h"
+#include "rules.h"
 #include "tile.h"
 
 namespace bot {
 
 namespace {
 
-const double SLIDE_MS    = 150.0;   // a step along a slide (movableentity.cpp)
-const double TELEPORT_MS = 500.0;   // each of the teleporter's two waits
-const double STICKY_MS   = 3000.0;  // a sticky pad's hold (movableentity.cpp)
 const double ARC_BIAS    = 7.2f;    // a jump pad's launch (movableentity.cpp)
 const double GRAVITY_TWO = 19.62f;
 const double GRAVITY_HALF = 4.905f;
@@ -21,7 +19,6 @@ const double FALL_ACCEL  = 5.405f;  // and its gain, a height a s^2
 const int    MAX_CHAIN   = 400;     // forced steps before a chain is taken to loop
 const double LIFT_HORIZON_MS = 120000.0;  // how far ahead the lifts are followed
 const double LIFT_MARGIN_MS  = 100.0;     // a lift stays parked this long past a step on or off it
-const double STEP_GRACE_MS   = 20.0;      // a move this soon after the last starts where it ended
 const double NORMAL_STEP_MS  = 200.0;     // player.cpp: the step time, and under the speed effects,
 const double FAST_STEP_MS    = 100.0;     // for EFFECT_MS from the tick one is picked up
 const double SLOW_STEP_MS    = 400.0;
@@ -29,8 +26,6 @@ const double EFFECT_MS       = 10000.0;
 /* A pickup is taken on the first tick the step to it is this far done:
  * centred on the cell, within 0.3 / sqrt(3) of it (player.cpp). */
 const double CENTRED = 1.0 - 0.3 / 1.7320508075688772;
-
-bool stairs(int kind) { return kind >= TILE_STAIRS_1 && kind <= TILE_STAIRS_4; }
 
 /* The kinds whose cells move or change under the player: the model does not
  * follow them yet, and treats them as walls. */
