@@ -141,6 +141,10 @@ bridge is in, it is set out first, with a lap off its switch and back if
 the foe model has the foe's own press then setting it out again behind the
 player; the walk, its waits, and the lap are taken only where the foe model
 has the foe fall, and once begun the drop is not broken off.
+An *ambush* drops a bomb where a foe chasing the player walks into it.
+Where the gems must come from foes the spawners make, the bombs are too few
+to spend one a foe: an ambush is taken only where it kills two or more,
+the player keeping out of the way meanwhile while the chasers bunch up.
 
 ### 3.6 Motor
 

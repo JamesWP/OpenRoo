@@ -6,7 +6,8 @@
  *           walks into the blast.  The bomb model (bombmodel.h) gives the blast and the foe
  *           model (foemodel.h), with the foes chasing the player along the
  *           walk, whether a foe dies in it; only the candidates where one
- *           does are offered.
+ *           does are offered (two, where the gems are farmed from the
+ *           foes the spawners make).
  *   blast   from a given site: walk there, turn to its facing, drop (at
  *           once, or after a wait if there is no way clear yet, a falling
  *           tile behind not back), walk away and wait for the blast to
