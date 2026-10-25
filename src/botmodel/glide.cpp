@@ -93,7 +93,13 @@ bool glideLaunch(const BotView &view, int u, int v, int f)
     if (!view.inside(bu, bv))
         return false;
     const Cell &b = view.cell(bu, bv);
-    return !wall(b) && !NavModel::moving(b) && here.height - b.height >= OPEN_DROP;
+    if (wall(b) || NavModel::moving(b))
+        return false;
+    // Off an edge, or under a tile two or more higher (not stairs): a tile
+    // is a thin slab with open space below, and the player walks under it
+    // and falls.
+    return here.height - b.height >= OPEN_DROP ||
+           (b.height >= here.height + 2 && !stairs(b) && !stairs(here));
 }
 
 /* The game's tick by tick: each tick the integrator runs once, and once more

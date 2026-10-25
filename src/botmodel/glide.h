@@ -17,8 +17,9 @@
  * handled, so a move sinks the player a tick's worth more.  A move refused is
  * held, as the motor holds its key (motor.h), until the game takes it.  A
  * glide is launched from rest by a step forward off an edge onto ground that
- * does not move, and passes over a lift only out of reach of its top, and
- * over no platform's track. */
+ * does not move, or under a tile two or more higher (a thin slab with open
+ * space below, which the player walks under, falling), and passes over a
+ * lift only out of reach of its top, and over no platform's track. */
 #pragma once
 
 #include <vector>
@@ -29,12 +30,13 @@ namespace bot {
 
 
 /* The landings of a glide launched from rest on (u, v) facing f, a step
- * forward off the edge: one for each cell it can end on, the quickest way
- * there.  Empty if the step is no launch (no drop of three or more ahead). */
+ * forward off the edge (or under a raised tile): one for each cell it can end
+ * on, the quickest way there.  Empty if the step is no launch. */
 std::vector<Landing> glideLandings(const BotView &view, int u, int v, int f);
 
 /* Whether a launch from (u, v) facing f could be: the step forward drops far
- * enough to open the glider. */
+ * enough to open the glider, or goes under a tile two or more higher, where
+ * the player falls. */
 bool glideLaunch(const BotView &view, int u, int v, int f);
 
 }  // namespace bot
