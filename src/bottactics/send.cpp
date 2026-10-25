@@ -94,8 +94,14 @@ public:
         if (it == sends.end())
             return;
         const Send pad = *it;
-        const std::vector<char> far = board.throwerWalk(k);
+        // Through: where a thrower out of the pad can walk and none now can
+        // (a way down from the far side may lead back to this one).
+        const std::vector<char> &far = board.throwerWalk(k), &now = board.throwerWalk(0);
         const int W = view.extentU;
+        auto through = [&](Step c) {
+            const size_t i = (size_t)c.v * W + c.u;
+            return view.inside(c.u, c.v) && far[i] && !now[i];
+        };
         const Cell &padCell = view.cell(pad.pad.u, pad.pad.v);
 
         // The cells about the pad, on its level (a step up or down), nearest
@@ -117,8 +123,7 @@ public:
             follow(s.foes, view, plan, view.now + untilMs);
             for (size_t i = 0; i < s.foes.foeCount(); i++) {
                 const Step c = s.foes.foeCell(i);
-                if (s.foes.throwsAtPlayer(i) && view.inside(c.u, c.v) && far[(size_t)c.v * W + c.u] &&
-                    (c.u != pad.out.u || c.v != pad.out.v))
+                if (s.foes.throwsAtPlayer(i) && through(c) && (c.u != pad.out.u || c.v != pad.out.v))
                     return true;
             }
             return false;
@@ -180,8 +185,7 @@ public:
                 if (!s.foes.throwsAtPlayer(i))
                     continue;
                 const Step c = s.foes.foeCell(i);
-                const bool through = view.inside(c.u, c.v) && far[(size_t)c.v * W + c.u];
-                const int d = through ? 0 : chebyshev(c, pad.pad);
+                const int d = through(c) ? 0 : chebyshev(c, pad.pad);
                 if (best < 0 || d < best)
                     best = d;
             }
