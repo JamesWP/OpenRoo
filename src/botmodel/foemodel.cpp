@@ -1127,7 +1127,7 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
         }
         if (occ(f.u, f.v) == f.kind)
             setOcc(f.u, f.v, 0);
-        kills_.push_back({clock_, f.u, f.v, !byOther});
+        kills_.push_back({clock_, f.u, f.v, !byOther, {f.homeU, f.homeV}, f.id});
         foes_.erase(foes_.begin() + (long)i);
     }
 }
@@ -1252,8 +1252,11 @@ int spareGems(const BotView &view)
 int gemsWiped(const BotView &view, const std::vector<FoeModel::Kill> &kills)
 {
     int n = 0;
-    for (const FoeModel::Kill &k : kills)
+    for (const FoeModel::Kill &k : kills) {
         n += view.cell(k.u, k.v).contents == CONTENTS_CRYSTAL;
+        n += (k.home.u != k.u || k.home.v != k.v) && view.inside(k.home.u, k.home.v) &&
+             view.cell(k.home.u, k.home.v).contents == CONTENTS_CRYSTAL;
+    }
     return n;
 }
 
