@@ -619,7 +619,7 @@ Outcome NavModel::turn(int u, int v, int f, int delta, double atMs, const Speed 
 }
 
 Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
-             bool throughSwitches, const GlideSource *glides)
+             bool throughSwitches, const GlideSource *glides, const Bound &bound)
     : nav_(nav), eu_(nav.view().extentU), ev_(nav.view().extentV), startU_(u), startV_(v),
       startMs_(startMs)
 {
@@ -638,12 +638,21 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
     departs_[s] = startMs;
     open.push({startMs, s});
     std::vector<char> done(n, 0);
+    std::vector<char> reached(bound.most >= 0 ? (size_t)eu_ * ev_ : 0, 0);
+    int cells = 0;
     const bool timed = nav.timed() || nav.speedy();
     while (!open.empty()) {
         const auto [c, i] = open.top();
         open.pop();
         if (done[i])
             continue;
+        // Past the bound: what is left unsettled is out of it.
+        if (bound.withinMs >= 0 && c - startMs_ > bound.withinMs)
+            break;
+        if (bound.most >= 0 && !reached[i / 4] && cells++ == bound.most)
+            break;
+        if (bound.most >= 0)
+            reached[i / 4] = 1;
         done[i] = 1;
         const int f  = i % 4 + 1;
         const int cu = (i / 4) % eu_, cv = (i / 4) / eu_;
@@ -721,6 +730,12 @@ Paths::Paths(const NavModel &nav, int u, int v, int facing, double startMs,
                     }
                 }
     }
+    if (bound.withinMs >= 0 || bound.most >= 0)
+        for (size_t i = 0; i < n; i++)
+            if (!done[i]) {
+                cost_[i]   = -1;
+                parent_[i] = -1;
+            }
 }
 
 Outcome Paths::alighted(int from, int to) const
