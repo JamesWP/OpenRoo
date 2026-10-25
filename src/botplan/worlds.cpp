@@ -1,4 +1,5 @@
 #include "worlds.h"
+#include <algorithm>
 #include "tile.h"
 
 namespace bot {
@@ -27,18 +28,15 @@ void Worlds::update(const BotView &view)
     facing_ = view.player.facing;
     worlds_.clear();
     worlds_[0] = std::make_unique<Terrain>(view);
-}
-
-size_t Worlds::blockCount() const
-{
-    const size_t n = base().blocks().size();
-    return n < 63 ? n : 63;
-}
-
-size_t Worlds::bridgeCount() const
-{
-    const size_t n = base().view().bridges.size(), room = 63 - blockCount();
-    return n < room ? n : room;
+    const BotView &b = base().view();
+    blocks_  = std::min<size_t>(base().blocks().size(), 63);
+    bridges_ = std::min<size_t>(b.bridges.size(), 63 - blocks_);
+    on_.assign(b.cells.size(), 0);
+    for (size_t i = 0; i < blocks_; i++)
+        on_[(size_t)block(i).v * b.extentU + block(i).u] |= (Changes)1 << i;
+    for (size_t i = 0; i < bridges_; i++)
+        for (const Step &d : b.bridges[i].deck)
+            on_[(size_t)d.v * b.extentU + d.u] |= bridgeBit(i);
 }
 
 const Terrain &Worlds::get(Changes s)

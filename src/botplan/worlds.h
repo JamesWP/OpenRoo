@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <stdint.h>
+#include <vector>
 #include "terrain.h"
 
 namespace bot {
@@ -39,16 +40,21 @@ public:
     size_t size() const { return worlds_.size(); }
 
     /* The blocks the bits stand for. */
-    size_t blockCount() const;
+    size_t blockCount() const { return blocks_; }
     Step   block(size_t bit) const { return base().blocks()[bit]; }
     /* The bridges that have bits, and the bit of each. */
-    size_t bridgeCount() const;
-    Changes bridgeBit(size_t i) const { return (Changes)1 << (blockCount() + i); }
+    size_t bridgeCount() const { return bridges_; }
+    Changes bridgeBit(size_t i) const { return (Changes)1 << (blocks_ + i); }
+    /* The bits of what is on the cell: its block, the bridges whose decks
+     * cover it. */
+    Changes on(Step c) const { return on_[(size_t)c.v * base().view().extentU + c.u]; }
 
 private:
     unsigned long long hash_ = 0;
     int facing_ = 1;
     std::map<Changes, std::unique_ptr<Terrain>> worlds_;
+    size_t blocks_ = 0, bridges_ = 0;
+    std::vector<Changes> on_;
 };
 
 }  // namespace bot
