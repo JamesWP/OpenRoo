@@ -13,6 +13,7 @@
 #include <vector>
 #include <stdio.h>
 #include "action.h"
+#include "danger.h"
 #include "walk.h"
 
 namespace bot {
@@ -59,8 +60,7 @@ bool workedBack(Situation &s, const std::vector<Timed> &plan, double untilMs, si
     const BotView &view = s.view;
     if (view.foes.empty())
         return false;
-    s.foes.load(view);
-    s.foes.run(view.now + untilMs, keeping(plan, view.now));
+    follow(s.foes, view, plan, view.now + untilMs);
     for (const FoeModel::Switched &w : s.foes.switched())
         if (w.bridge == k && w.byFoe)
             return true;

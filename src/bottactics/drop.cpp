@@ -176,8 +176,7 @@ public:
                     if (!walkOn(s, nav, o, edge, to, atEdge))
                         continue;
                     const double done = o.cost + b.moveMs() + FALLS_WITHIN_MS;
-                    s.foes.load(view);
-                    s.foes.run(view.now + done, keeping(o.schedule, view.now));
+                    follow(s.foes, view, o.schedule, view.now + done);
                     if (s.foes.fell().empty())
                         continue;
                     o.script.push_back({ScriptStep::Wait, 0, {}, view.now + done});

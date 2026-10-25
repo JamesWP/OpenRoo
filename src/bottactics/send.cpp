@@ -122,8 +122,7 @@ public:
         // Whether, the player keeping to plan, a thrower has gone through
         // and walked off the far end by its end.
         auto sent = [&](const std::vector<Timed> &plan, double untilMs) {
-            s.foes.load(view);
-            s.foes.run(view.now + untilMs, keeping(plan, view.now));
+            follow(s.foes, view, plan, view.now + untilMs);
             for (size_t i = 0; i < s.foes.foeCount(); i++) {
                 const Step c = s.foes.foeCell(i);
                 if (s.foes.throwsAtPlayer(i) && view.inside(c.u, c.v) && far[(size_t)c.v * W + c.u] &&
@@ -159,8 +158,7 @@ public:
                     return false;
                 std::vector<Timed> plan = o.schedule;
                 plan.insert(plan.end(), leg.schedule.begin() + 1, leg.schedule.end());
-                s.foes.load(view);
-                s.foes.run(view.now + leg.cost + BAIT_WAIT_MS, keeping(plan, view.now));
+                follow(s.foes, view, plan, view.now + leg.cost + BAIT_WAIT_MS);
                 for (const Blast &b : s.foes.dropped())
                     if (b.from - FUSE_MS - view.now >= leg.cost - view.tickMs && spendsBlock(view, b))
                         return true;
@@ -194,8 +192,7 @@ public:
         // How near the pad the foe model has a thrower by DRAW_AHEAD_MS past
         // the plan's end: 0 through it or on it.
         auto nearPad = [&](const std::vector<Timed> &plan, double untilMs) {
-            s.foes.load(view);
-            s.foes.run(view.now + untilMs, keeping(plan, view.now));
+            follow(s.foes, view, plan, view.now + untilMs);
             int best = -1;
             for (size_t i = 0; i < s.foes.foeCount(); i++) {
                 if (!s.foes.throwsAtPlayer(i))
