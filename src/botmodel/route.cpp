@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <bitset>
 #include <limits>
+#include <unordered_map>
 
 namespace bot {
 
@@ -9,6 +10,7 @@ namespace {
 
 const double INF = std::numeric_limits<double>::infinity();
 const int EXACT_MAX = 14;  // points, for the subset DP
+const size_t KEPT_ROUTES = 256;
 
 double d_of(const std::vector<std::vector<double>> &dist, int a, int b)
 {
@@ -309,9 +311,32 @@ std::vector<int> planRoute(const std::vector<std::vector<double>> &dist, int k, 
         *cost = -1;
         return {};
     }
-    if (n <= EXACT_MAX)
-        return exact(dist, n, k, cost);
-    return heuristic(dist, n, k, cost);
+    // The same question comes again and again, decision after decision (the
+    // board's routes are kept for one), and the answer is slow to find: the
+    // answers are kept, up to KEPT_ROUTES of them.
+    struct Answer {
+        std::vector<std::vector<double>> dist;
+        int k;
+        std::vector<int> order;
+        double cost;
+    };
+    static std::unordered_multimap<size_t, Answer> kept;
+    size_t h = std::hash<int>()(k);
+    for (const std::vector<double> &row : dist)
+        for (const double d : row)
+            h = h * 1099511628211ull ^ std::hash<double>()(d);
+    const auto [first, last] = kept.equal_range(h);
+    for (auto it = first; it != last; ++it)
+        if (it->second.k == k && it->second.dist == dist) {
+            *cost = it->second.cost;
+            return it->second.order;
+        }
+    if (kept.size() >= KEPT_ROUTES)
+        kept.clear();
+    Answer a{dist, k, n <= EXACT_MAX ? exact(dist, n, k, cost) : heuristic(dist, n, k, cost), 0};
+    a.cost = *cost;
+    kept.emplace(h, a);
+    return a.order;
 }
 
 }  // namespace bot
