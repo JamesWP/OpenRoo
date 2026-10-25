@@ -1,5 +1,4 @@
 #include "danger.h"
-#include <string>
 #include <stdlib.h>
 #include "fallingmodel.h"
 #include "liftmodel.h"
@@ -118,7 +117,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
         if (goneAt(view, plan[i].cell, plan[i].t)) {
             d.hit = true;
             d.t   = plan[i].t;
-            d.why = "fallen tile";
+            d.why = Danger::FALLEN_TILE;
             return d;
         }
     for (size_t i = 0; i < plan.size(); i++) {
@@ -129,7 +128,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
         if (leave + FALL_MARGIN_MS > falls) {
             d.hit = true;
             d.t   = falls;
-            d.why = "falling tile";
+            d.why = Danger::FALLING_TILE;
             return d;
         }
     }
@@ -151,7 +150,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
             if (!e.aloft && view.inside(at.u, at.v) && b.kills(at.u, at.v, heightAt(at, t), t)) {
                 d.hit = true;
                 d.t   = t - start;
-                d.why = "bomb";
+                d.why = Danger::BOMB;
                 return true;
             }
         }
@@ -191,7 +190,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
         if (!e.aloft && sim.deckGone(p.u, p.v)) {
             d.hit = true;
             d.t   = sim.now() - start;
-            d.why = "bridge";
+            d.why = Danger::BRIDGE;
             return d;
         }
         for (size_t i = 0; i < sim.foeCount(); i++) {
@@ -217,7 +216,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
             if ((caught || thrown || blocked) && !e.aloft) {
                 d.hit = true;
                 d.t   = sim.now() - start;
-                d.why = caught ? "catcher" : thrown ? "thrower" : "blocked";
+                d.why = caught ? Danger::CATCHER : thrown ? Danger::THROWER : Danger::BLOCKED;
                 d.at  = p;
                 return d;
             }
@@ -248,7 +247,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
         if (near && penned(view, sim, plan.back().cell, sim.now() - start, plan.front().cell)) {
             d.hit = true;
             d.t   = sim.now() - start;
-            d.why = "penned";
+            d.why = Danger::PENNED;
             return d;
         }
     }
@@ -286,8 +285,7 @@ double foeMeets(FoeModel &sim, const BotView &view, const std::vector<Timed> &pl
                 double horizonMs)
 {
     const Danger d = check(sim, view, plan, horizonMs, {}, PASS_IN);
-    const std::string why = d.why;
-    return d.hit && (why == "catcher" || why == "thrower") ? d.t : -1;
+    return d.hit && (d.why == Danger::CATCHER || d.why == Danger::THROWER) ? d.t : -1;
 }
 
 }  // namespace bot

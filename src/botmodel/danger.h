@@ -24,11 +24,15 @@
 namespace bot {
 
 struct Danger {
+    /* What the hit is: caught, in a thrower's reach, a thrower in the way,
+     * penned in, in a blast, on a falling tile as it falls or onto one
+     * fallen, on a deck as it goes. */
+    enum Why { NONE, CATCHER, THROWER, BLOCKED, PENNED, BOMB, FALLING_TILE, FALLEN_TILE, BRIDGE };
+
     bool        hit = false;
     double      t = 0;      // ms from now
     Step        at{-1, -1}; // the player's cell then
-    const char *why = "";   // "catcher", "thrower", "blocked", "penned", "bomb", "falling tile",
-                            // "bridge"
+    Why         why = NONE;
     int         killed = 0; // foes the extra blasts killed meanwhile
     std::vector<FoeModel::Kill> kills;  // those, where and when (the foe model's clock)
     int         foeKills = 0;  // foes the other blasts killed (a thrower's, say)
