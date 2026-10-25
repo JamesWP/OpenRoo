@@ -140,25 +140,16 @@ public:
         for (const auto &[ms, at] : cells)
             for (const double wait : WAITS) {
                 Option o;
-                if (ms > 0) {
-                    if (!walkTo(s, s.from, at, 0, o))
-                        break;
-                } else {
-                    o.schedule.push_back({0, at});
-                    o.cost = s.from.startMs();
-                }
-                if (wait > 0) {
-                    o.cost += wait;
-                    o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost});
-                }
+                if (!walkTo(s, s.from, at, 0, o))
+                    break;
+                waitTill(view, o, o.cost + wait);
                 o.lingerMs = LINGER_MS;
                 const Danger d = checkPlan(s.foes, view, o.schedule, o.lingerMs);
                 if (d.hit || d.foeKills <= 0)
                     continue;
                 o.checked = true;
-                o.stepMs  = o.cost + LINGER_MS;
-                o.cost    = o.stepMs;
-                o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost});
+                waitTill(view, o, o.cost + LINGER_MS);
+                o.stepMs  = o.cost;
                 char buf[80];
                 snprintf(buf, sizeof(buf), "goad a thrower's bomb onto a carrier, waiting at (%d,%d)",
                          at.u, at.v);

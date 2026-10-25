@@ -10,9 +10,13 @@ namespace bot {
 
 /* Appends a walk to target by paths' quickest route, setting off when the
  * paths do (Paths::startMs) and after a further wait, to o's script and
- * schedule, and sets its cost to the time until it arrives.  False if
- * target is unreachable. */
+ * schedule, and sets its cost to the time until it arrives (target the
+ * start, a wait there or none).  False if target is unreachable. */
 bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Option &o);
+
+/* o waited out where it ends till ms from now: a wait in its script, an end
+ * to its schedule there then, and its cost.  Nothing if o ends no sooner. */
+void waitTill(const BotView &view, Option &o, double ms);
 
 /* Appends leg, a walk from where o ends, to o: its script, its schedule past
  * the first entry (where o ends) and its cost. */

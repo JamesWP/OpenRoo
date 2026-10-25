@@ -89,14 +89,9 @@ bool nextCrosses(const Board &board, const Plan &plan, Step cell, size_t k)
 bool waitAt(const Situation &s, Step at, Step cell, double wait, Option &o)
 {
     o = Option();
-    if (at.u == s.view.player.u && at.v == s.view.player.v) {
-        o.schedule.push_back({0, at});
-        o.cost = s.from.startMs();
-    } else if (!walkTo(s, s.from, at, 0, o)) {
+    if (!walkTo(s, s.from, at, 0, o))
         return false;
-    }
-    o.cost += wait;
-    o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + o.cost});
+    waitTill(s.view, o, o.cost + wait);
     return walkOn(s, s.nav, o, at, cell);
 }
 
@@ -207,8 +202,7 @@ public:
                 const double arrive = o.cost;
                 const double stay = needed || !chased ? std::max(arrive, busy) + moveMs - arrive
                                                       : (busy > arrive ? busy - arrive + SETTLE_MS : 0);
-                o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + arrive + stay});
-                o.schedule.push_back({arrive + stay, cell});
+                waitTill(s.view, o, arrive + stay);
                 o.stepMs = arrive + stay;
                 if (holdMs > 0 && workedBack(s, o.schedule, arrive + moveMs + holdMs, (size_t)k))
                     continue;
@@ -234,15 +228,11 @@ public:
                 continue;
             for (const double wait : WAITS) {
                 Option o = first;
-                const double settled = o.cost + db.moveMs() + SETTLE_MS + wait;
-                o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + settled});
-                o.schedule.push_back({settled, decoy});
-                o.cost = settled;
+                waitTill(s.view, o, o.cost + db.moveMs() + SETTLE_MS + wait);
                 if (!walkOn(s, s.nav, o, decoy, cell))
                     break;
                 const double arrive = o.cost;
-                o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + arrive + moveMs});
-                o.schedule.push_back({arrive + moveMs, cell});
+                waitTill(s.view, o, arrive + moveMs);
                 o.stepMs = arrive + moveMs;
                 if (workedBack(s, o.schedule, arrive + moveMs + holdMs, (size_t)k))
                     continue;

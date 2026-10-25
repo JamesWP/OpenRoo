@@ -186,9 +186,8 @@ public:
 
         auto take = [&](Option o, double at, const char *how, Step c) {
             const double done = at + moveMs;
-            if (done > o.cost + 1)
-                o.script.push_back({ScriptStep::Wait, 0, {}, view.now + done});
-            o.lingerMs = std::max(LINGER_MS, done - o.schedule.back().t + LINGER_MS);
+            waitTill(view, o, done);
+            o.lingerMs = LINGER_MS;
             if (checkPlan(s.foes, view, o.schedule, o.lingerMs).hit)
                 return false;
             o.checked = true;
@@ -206,13 +205,8 @@ public:
         cells.insert(cells.end(), near.begin(), near.end());
         for (const auto &[walkMs, at] : cells) {
             Option o;
-            if (walkMs > 0) {
-                if (!walkTo(s, s.from, at, 0, o))
-                    continue;
-            } else {
-                o.schedule.push_back({0, at});
-                o.cost = s.from.startMs();
-            }
+            if (!walkTo(s, s.from, at, 0, o))
+                continue;
             const double t = lured(s, o.schedule, o.cost + HORIZON_MS, k);
             if (t >= 0 && take(o, std::max(t, o.cost), "waiting at", at))
                 return;
@@ -240,8 +234,7 @@ public:
         }
         for (const std::vector<Step> &round : rounds) {
             Option o;
-            o.schedule.push_back({0, here});
-            o.cost = s.from.startMs();
+            walkTo(s, s.from, here, 0, o);
             // Where each leg ends: the script's and the schedule's sizes, and the time.
             struct End {
                 size_t script, schedule;

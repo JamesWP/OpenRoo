@@ -105,12 +105,7 @@ bool walkAndWait(Situation &s, Option &going, const Paths &on, Step end, Step by
         if (!follow(s.foes, view, o.schedule, there + waitMs,
                     [&] { return s.foes.now() >= there && throwerNear(s.foes, by, near); }))
             return false;
-        const double came = s.foes.now();
-        if (came - view.now > o.cost + 1) {
-            o.cost = came - view.now;
-            o.script.push_back({ScriptStep::Wait, 0, {}, came});
-            o.schedule.push_back({o.cost, end});
-        }
+        waitTill(view, o, s.foes.now() - view.now);
     }
     going = std::move(o);
     return true;
@@ -312,11 +307,8 @@ public:
                 if (drawn) {
                     if (!walkTo(s, s.from, lure, 0, going))
                         continue;
-                    if (wait > 0 && !led) {
-                        going.cost += wait;
-                        going.script.push_back({ScriptStep::Wait, 0, {}, view.now + going.cost});
-                        going.schedule.push_back({going.cost, lure});
-                    }
+                    if (!led)
+                        waitTill(view, going, going.cost + wait);
                     if (led) {
                         if (!leadOn(s, going, lure, bait))
                             continue;
@@ -326,15 +318,11 @@ public:
                     snprintf(buf, sizeof(buf), "bait at (%d,%d), %s from (%d,%d) after %.0f ms",
                              bait.u, bait.v, led ? "led" : "drawn", lure.u, lure.v, wait);
                 } else {
-                    if (bait.u == here.u && bait.v == here.v) {
-                        going.schedule.push_back({0, here});
-                        going.cost = s.from.startMs() + wait;
-                    } else if (wait > 0) {
-                        const Paths later(s.nav, here.u, here.v, p.facing, s.from.startMs() + wait);
-                        if (!walkTo(s, later, bait, 0, going))
+                    if (wait > 0) {
+                        walkTo(s, s.from, here, 0, going);
+                        waitTill(view, going, going.cost + wait);
+                        if (!walkOn(s, s.nav, going, here, bait))
                             continue;
-                        going.script.insert(going.script.begin(), {ScriptStep::Wait, 0, {}, view.now + s.from.startMs() + wait});
-                        going.schedule.insert(going.schedule.begin(), {0, here});
                     } else if (!walkTo(s, s.from, bait, 0, going)) {
                         continue;
                     }
@@ -345,11 +333,9 @@ public:
                 auto take = [&](const Option &on, Step stand, const Blast &blast) {
                     Option o = on;
                     const double leave = blast.from - FUSE_MS - view.now + view.tickMs;
-                    if (leave > o.cost + 1)
-                        o.script.push_back({ScriptStep::Wait, 0, {}, view.now + leave});
-                    o.schedule.push_back({std::max(leave, o.cost), stand});
+                    waitTill(view, o, leave);
                     Option cleared;
-                    if (!clearOf(s, o, stand, facingAfter(p.facing, o.script), std::max(leave, o.cost),
+                    if (!clearOf(s, o, stand, facingAfter(p.facing, o.script), o.cost,
                                  blast, &cleared))
                         return false;
                     out.push_back(std::move(cleared));
@@ -373,20 +359,13 @@ private:
     static void drawTo(Situation &s, Step bait, std::vector<Option> &out)
     {
         const BotView &view = s.view;
-        const Step here{view.player.u, view.player.v};
         Option o;
-        if (bait.u == here.u && bait.v == here.v) {
-            o.schedule.push_back({0, here});
-            o.cost = s.from.startMs();
-        } else if (!walkTo(s, s.from, bait, 0, o)) {
+        if (!walkTo(s, s.from, bait, 0, o))
             return;
-        }
         if (!follow(s.foes, view, o.schedule, view.now + o.cost + DRAW_COME_MS,
                     [&] { return throwerNear(s.foes, bait, DRAW_NEAR); }))
             return;
-        o.cost += DRAW_MS;
-        o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost});
-        o.schedule.push_back({o.cost, bait});
+        waitTill(view, o, o.cost + DRAW_MS);
         o.lingerMs = DRAW_MS;
         if (checkPlan(s.foes, view, o.schedule, o.lingerMs).hit)
             return;

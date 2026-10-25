@@ -154,8 +154,7 @@ public:
             for (const double first : WAITS)
                 for (const double atEdge : WAITS) {
                     Option o;
-                    o.schedule.push_back({0, here});
-                    o.cost = s.from.startMs();
+                    walkTo(s, s.from, here, 0, o);
                     if (!(start.u == here.u && start.v == here.v) && !walkOn(s, s.nav, o, here, start, 0))
                         continue;
                     // The lap; from the switch, it ends off it again.
@@ -167,10 +166,7 @@ public:
                             continue;
                         at = onSwitch ? lap : start;
                     }
-                    if (first > 0) {
-                        o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost + first});
-                        o.cost += first;
-                    }
+                    waitTill(view, o, o.cost + first);
                     if (!(at.u == edge.u && at.v == edge.v) && !walkOn(s, nav, o, at, edge, 0))
                         continue;
                     if (!walkOn(s, nav, o, edge, to, atEdge))
@@ -179,8 +175,8 @@ public:
                     follow(s.foes, view, o.schedule, view.now + done);
                     if (s.foes.fell().empty())
                         continue;
-                    o.script.push_back({ScriptStep::Wait, 0, {}, view.now + done});
-                    o.lingerMs = done - o.schedule.back().t + 1000;
+                    waitTill(view, o, done);
+                    o.lingerMs = 1000;
                     if (checkPlan(s.foes, view, o.schedule, o.lingerMs).hit)
                         continue;
                     // Not broken off: a walk stopped short on the deck, or
