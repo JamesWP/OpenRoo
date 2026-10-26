@@ -361,8 +361,8 @@ private:
         o.lingerMs = DRAW_MS;
         if (checkPlan(s.foes, view, o.schedule, o.lingerMs).hit)
             return;
+        // Only a start on the bait: its time is still the planner's guess.
         o.checked = true;
-        o.stepMs  = o.cost;
         char buf[80];
         snprintf(buf, sizeof(buf), "draw a thrower to bait at (%d,%d)", bait.u, bait.v);
         o.what = buf;

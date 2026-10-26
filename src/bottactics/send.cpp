@@ -216,8 +216,8 @@ public:
             const int near = nearPad(o.schedule, o.cost + DRAW_AHEAD_MS);
             if (near < 0 || (ms <= 0 && near >= nowNear) || (bestNear >= 0 && near >= bestNear))
                 continue;  // cells come nearest first: a tie keeps the nearer
+            // Only a start on the send: its time is still the planner's guess.
             o.checked = true;
-            o.stepMs  = o.cost;
             char buf[80];
             snprintf(buf, sizeof(buf), "draw a thrower to (%d,%d), to (%d,%d)", pad.pad.u, pad.pad.v, at.u, at.v);
             o.what   = buf;
