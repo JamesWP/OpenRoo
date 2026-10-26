@@ -12,7 +12,12 @@
  *
  * KAROO_BOT_BOMB_LOG=<file> checks the bomb model (bombmodel.h): each bomb's
  * predicted blast cell, made when it is first seen, beside the cell it is on
- * when its fuse runs out (tools/bot/bombcheck.py). */
+ * when its fuse runs out (tools/bot/bombcheck.py).
+ *
+ * KAROO_BOT_SIM_LOG=<file> checks the world sim (worldsim.h): every tenth of
+ * a second it runs the sim from the views 1, 6, 30 and 120 ticks ago, with
+ * the presses really held since, and logs which parts of the world it has
+ * right (compare.h; tools/bot/simcheck.py). */
 #pragma once
 
 #include <deque>
@@ -38,6 +43,7 @@ private:
     void logAction(const BotView &view);
     void checkFoes(const BotView &view);
     void checkBombs(const BotView &view);
+    void checkSim(const BotView &view);
     void writeAction(const BotView &view, const PlayerView &to);
 
     unsigned long frame_ = 0;
@@ -59,6 +65,14 @@ private:
 
     std::ofstream bombLog_;  // KAROO_BOT_BOMB_LOG: the bomb model against the game
     std::map<double, std::tuple<Blast, bool, double>> bombs_;  // by drop time
+
+    std::ofstream simLog_;   // KAROO_BOT_SIM_LOG: the world sim against the game
+    struct Seen {
+        unsigned long frame;
+        unsigned      held;   // the presses held into this view
+        BotView       view;
+    };
+    std::deque<Seen> seen_;
 };
 
 }  // namespace bot

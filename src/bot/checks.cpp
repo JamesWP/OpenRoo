@@ -1,6 +1,8 @@
 #include "checks.h"
 #include "binio.h"
+#include "compare.h"
 #include "sysdev.h"
+#include "worldsim.h"
 
 namespace bot {
 
@@ -15,6 +17,9 @@ Checks::Checks()
     const std::string foeLog = sysdev::getEnv("KAROO_BOT_FOE_LOG");
     if (!foeLog.empty())
         foeLog_.open(sysdev::nativePath(foeLog));
+    const std::string simLog = sysdev::getEnv("KAROO_BOT_SIM_LOG");
+    if (!simLog.empty())
+        simLog_.open(sysdev::nativePath(simLog));
 }
 
 void Checks::observe(const BotView &view, unsigned long frame, unsigned held)
@@ -24,6 +29,7 @@ void Checks::observe(const BotView &view, unsigned long frame, unsigned held)
     logAction(view);
     checkFoes(view);
     checkBombs(view);
+    checkSim(view);
     if (actions_.is_open()) {
         last_     = view;
         haveLast_ = true;
@@ -141,6 +147,54 @@ void Checks::checkBombs(const BotView &view)
         printTo(bombLog_, "{\"dropped_at\":%.1f,\"seen_after_ms\":%.1f,\"pred\":[%d,%d,%d],"
                 "\"pred_lost\":%d,\"actual\":[%d,%d,%d]}\n", b.droppedAt, seenAfter,
                 pred.cell.u, pred.cell.v, pred.h, pred.lost ? 1 : 0, b.u, b.v, b.h);
+    }
+}
+
+/* The sim check: every CHECK_TICKS, the world sim is run from the views
+ * of each look-ahead ago, each tick with the presses held into the next view
+ * seen, and compared part by part with the view now. */
+void Checks::checkSim(const BotView &view)
+{
+    if (!simLog_.is_open())
+        return;
+    static const unsigned long CHECK_TICKS = 6;
+    static const unsigned long AHEAD[] = {1, 6, 30, 120};
+    seen_.push_back({frame_, held_, view});
+    while (seen_.front().frame + AHEAD[3] < frame_)
+        seen_.pop_front();
+    if (frame_ % CHECK_TICKS != 0)
+        return;
+    for (const unsigned long ahead : AHEAD) {
+        if (seen_.front().frame + ahead > frame_)
+            continue;
+        // The views are a tick apart, but where play paused (the run skips
+        // the ticks it does not act on): then the look-ahead is not checked.
+        const size_t from = seen_.size() - 1 - ahead;
+        if (seen_[from].frame + ahead != frame_)
+            continue;
+        WorldSim sim(seen_[from].view);
+        for (size_t i = from + 1; i < seen_.size(); i++)
+            sim.tick(seen_[i].held);
+        printTo(simLog_, "{\"frame\":%lu,\"ahead\":%lu,\"ahead_ms\":%.1f,\"clock_ms\":%.1f,\"parts\":{",
+                frame_, ahead, view.now - seen_[from].view.now, sim.now() - view.now);
+        const std::vector<PartResult> parts = compareViews(sim.view(), view);
+        bool first = true;
+        for (size_t p = 0; p < parts.size(); p++) {
+            if (!parts[p].counted)
+                continue;
+            printTo(simLog_, "%s\"%s\":%d", first ? "" : ",", partName((SimPart)p), parts[p].right);
+            first = false;
+        }
+        printTo(simLog_, "},\"why\":{");
+        first = true;
+        for (size_t p = 0; p < parts.size(); p++) {
+            if (!parts[p].counted || parts[p].right)
+                continue;
+            printTo(simLog_, "%s\"%s\":\"%s\"", first ? "" : ",", partName((SimPart)p),
+                    parts[p].detail.c_str());
+            first = false;
+        }
+        printTo(simLog_, "}}\n");
     }
 }
 
