@@ -54,10 +54,8 @@ const double CLEAR_MARGIN_MS = 200;
 
 /* The nearest most cells paths come to rest on, other than the start,
  * within withinMs of setting off and where keep says, with their times from
- * setting off: nearest first, a tie as std::sort leaves it (grid order
- * instead loses Pyramid02, whose bait the foe model gets wrong on the way
- * a retreat there leads).  None on a platform or a lift, which may carry
- * the player off. */
+ * setting off: nearest first, a tie in grid order.  None on a platform or
+ * a lift, which may carry the player off. */
 using Near = std::vector<std::pair<double, Step>>;
 Near nearCells(const BotView &view, const Paths &paths, double withinMs, size_t most,
                const std::function<bool(Step)> &keep = {});
