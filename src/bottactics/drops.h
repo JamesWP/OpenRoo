@@ -25,6 +25,11 @@
 namespace bot {
 
 void offerAmbushes(Situation &s, std::vector<Option> &out);
+
+/* Whether the bombs are short: carriers must die for the gems and the
+ * bombs are fewer than the foes, so each must take several, bunched up in
+ * open ground (and the gems lying about are had first, the foes chasing). */
+bool bombsShort(const BotView &view);
 void offerBlast(Situation &s, Place site, std::vector<Option> &out);
 
 }  // namespace bot

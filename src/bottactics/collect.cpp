@@ -7,6 +7,7 @@
  * its last gem.  Done as a walk to the route's next gem (or time bonus), or
  * another of the nearest gems (costed with the whole route still to do). */
 #include "action.h"
+#include "drops.h"
 #include "walk.h"
 
 namespace bot {
@@ -53,10 +54,12 @@ public:
         // No way on to the exit from here: the quota for another step to go
         // on from, or what this part of the level gives, to glide on or to
         // have before a block on the way to the rest is spent, a one-shot
-        // run crossed or a bridge switched.
+        // run crossed or a bridge switched; or, the bombs short, all that lie
+        // about, the rest the carriers' (ambush.cpp, drops.h).
         const GemRoute &g = board.gather(f.changes, f.at, f.taken, f.gemsNeeded);
         const bool partial = board.glidesToBe() || (board.spendable() & ~f.changes) != 0 ||
-                             board.crossable(f.changes, f.at, f.crossed) || !board.switches().empty();
+                             board.crossable(f.changes, f.at, f.crossed) || !board.switches().empty() ||
+                             (bombsShort(board.live()) && (int)g.gems.size() + f.carriers >= f.gemsNeeded);
         if (!g.found || g.gems.empty() || ((int)g.gems.size() < f.gemsNeeded && !partial))
             return;
         Successor n{f, {}};
