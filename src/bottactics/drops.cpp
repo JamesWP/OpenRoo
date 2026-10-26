@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <stdio.h>
+#include <stdlib.h>
 #include "danger.h"
 #include "moves.h"
 #include "walk.h"
@@ -19,6 +20,15 @@ const size_t RETREATS = 24;
  * cells to retreat to. */
 const double SITE_MS = 1500;
 const size_t SITES = 6;
+/* Where a bomb must take several foes, the leads to the drop: walks to the
+ * nearest LEADS cells within LEAD_MS, and back; and what each foe killed past
+ * the first is worth, in ms, so that the most are taken. */
+const double LEAD_MS = 15000;
+const size_t LEADS = 8;
+/* How open a cell's ground is: the cells within OPEN_REACH of it on its
+ * level (a step up or down). */
+const int OPEN_REACH = 2;
+const double KILL_MS = 4000;
 const double DELAYS[] = {0, 250, 500, 750, 1000, 1250, 1500, 2000};
 const size_t AMBUSH_RETREATS = 2;
 /* A kill is counted on only if the foe dies with the blast this much earlier
@@ -39,16 +49,63 @@ const double BLAST_WAITS[] = {0, 2500, 5500};
  * them in twos to fours, as they bunch up chasing the player). */
 const int FARM_KILLS = 2;
 
+/* A bomb pickup's bombs (CONTENTS_GRANT_09, tile.h). */
+const int BOMB_PICKUP = 0x09;
+const int PICKUP_BOMBS = 3;
+/* TileContents of a gem. */
+const int GEM = 0x01;
+
+/* The bomb budget: the bombs held and still to be picked up, and the
+ * carriers that must die for the gems the quota needs beyond those lying
+ * about (hidden ones too). */
+struct Budget {
+    int bombs = 0, carriers = 0;
+};
+Budget budget(const BotView &view)
+{
+    Budget b;
+    b.bombs = view.player.bombs;
+    int lying = 0;
+    for (int v = 0; v < view.extentV; v++)
+        for (int u = 0; u < view.extentU; u++) {
+            const Cell &c = view.cell(u, v);
+            b.bombs += PICKUP_BOMBS * ((c.contents == BOMB_PICKUP) + (c.hidden == BOMB_PICKUP));
+            lying += (c.contents == GEM) + (c.hidden == GEM);
+        }
+    b.carriers = std::max(0, view.gemsRequired - view.player.gems - lying);
+    return b;
+}
+
 /* The foes an ambush must kill: FARM_KILLS where the gems are farmed, as
- * many as the spawners let be about at once; else one. */
+ * many as the spawners let be about at once.  Where carriers must die and
+ * the bombs are fewer than the foes, enough a bomb to have them all: the
+ * chasers bunch up, and one bomb takes several.  Else one. */
 int killsWanted(const BotView &view)
 {
-    if (!gemsFromSpawners(view))
+    if (gemsFromSpawners(view)) {
+        int most = 1;
+        for (const SpawnerView &t : view.spawners)
+            most = std::max(most, t.maxFoes);
+        return std::min(FARM_KILLS, most);
+    }
+    const Budget b = budget(view);
+    int foes = 0;
+    for (const FoeView &f : view.foes)
+        foes += !f.dying;
+    if (b.carriers <= 0 || b.bombs <= 0 || b.bombs >= foes)
         return 1;
-    int most = 1;
-    for (const SpawnerView &t : view.spawners)
-        most = std::max(most, t.maxFoes);
-    return std::min(FARM_KILLS, most);
+    return (foes + b.bombs - 1) / b.bombs;
+}
+
+/* Whether an ambush killing these leaves bombs enough for the carriers
+ * still to kill after it. */
+bool affordable(const BotView &view, const std::vector<FoeModel::Kill> &kills)
+{
+    const Budget b = budget(view);
+    int carriers = 0;
+    for (const FoeModel::Kill &k : kills)
+        carriers += k.foe < view.foes.size() && view.foes[k.foe].drops == GEM;
+    return b.bombs - 1 >= b.carriers - carriers;
 }
 
 /* The game's grace after a move (player.cpp's stepGrace_). */
@@ -88,6 +145,28 @@ DropAt dropAt(const BotView &view, double endMs, bool onEnd, double notBefore)
 bool plain(const Cell &c)
 {
     return c.kind == 1;   // TILE_KIND_01 (the start is one too, tile.h)
+}
+
+/* The LEADS most open cells within LEAD_MS (OPEN_REACH), the nearer first
+ * where they tie: where chasers led there come up side by side, not in
+ * single file, so one blast takes several. */
+std::vector<Near> openCells(const Situation &s)
+{
+    const BotView &view = s.view;
+    std::vector<std::pair<int, Near>> scored;
+    for (const Near &n : nearCells(s, s.from, LEAD_MS, (size_t)-1)) {
+        const int h = view.cell(n.cell.u, n.cell.v).height;
+        int open = 0;
+        for (int v = n.cell.v - OPEN_REACH; v <= n.cell.v + OPEN_REACH; v++)
+            for (int u = n.cell.u - OPEN_REACH; u <= n.cell.u + OPEN_REACH; u++)
+                open += view.inside(u, v) && s.from.cost(u, v) >= 0 && abs(view.cell(u, v).height - h) <= 1;
+        scored.push_back({open, n});
+    }
+    std::stable_sort(scored.begin(), scored.end(), [](const auto &a, const auto &b) { return a.first > b.first; });
+    std::vector<Near> out;
+    for (size_t i = 0; i < scored.size() && i < LEADS; i++)
+        out.push_back(scored[i].second);
+    return out;
 }
 
 /* Whether o's blasts still kill as many foes, and the player stays safe,
@@ -167,41 +246,52 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
     // known.
     if (p.bombs <= 0 || view.foes.empty() || p.falling)
         return;
-    // Where to drop it: here, or a cell or two off, so that the foe on its
-    // way is in the blast as it goes.
-    std::vector<std::pair<double, Step>> sites{{0, {p.u, p.v}}};
-    std::vector<std::pair<double, Step>> near;
-    for (int v = 0; v < view.extentV; v++)
-        for (int u = 0; u < view.extentU; u++) {
-            const double c = s.from.cost(u, v);
-            if (c > 0 && c <= SITE_MS)
-                near.push_back({c, {u, v}});
-        }
-    std::sort(near.begin(), near.end(),
-              [](const auto &a, const auto &b) { return a.first < b.first; });
     // None to spare is none, however short the gems are.
     const int spare = std::max(0, spareGems(view));
     const int need = killsWanted(view);
-    for (size_t i = 0; i < near.size() && i < SITES; i++)
-        sites.push_back(near[i]);
-    for (const auto &[walkMs, site] : sites) {
+    // Where to drop it: here, or a cell or two off, so that the foe on its
+    // way is in the blast as it goes; and, where a bomb must take several,
+    // at the end of a lead: a walk off, or off and back, the chasers
+    // bunching up behind the player.
+    struct Lead {
+        Step   site;
         Option going;
-        int arrives = p.facing;
-        if (walkMs > 0) {
-            if (!walkTo(s, s.from, site, 0, going))
+        bool   walked;
+    };
+    std::vector<Lead> leads;
+    {
+        Lead here{{p.u, p.v}, Option(), false};
+        here.going.schedule.push_back({0, here.site});
+        here.going.cost = s.busyMs;
+        leads.push_back(std::move(here));
+    }
+    for (const Near &n : nearCells(s, s.from, SITE_MS, SITES, {}, true)) {
+        Lead l{n.cell, Option(), true};
+        if (walkTo(s, s.from, n.cell, 0, l.going))
+            leads.push_back(std::move(l));
+    }
+    if (need > 1)
+        for (const Near &n : openCells(s)) {
+            Lead off{n.cell, Option(), true};
+            if (!walkTo(s, s.from, n.cell, 0, off.going))
                 continue;
-            arrives = facingAfter(p.facing, going.script);
-        } else {
-            going.schedule.push_back({0, site});
-            going.cost = s.busyMs;
+            Lead back{{p.u, p.v}, off.going, true};
+            leads.push_back(std::move(off));
+            if (walkOn(s, s.nav, back.going, n.cell, back.site))
+                leads.push_back(std::move(back));
         }
+    for (const Lead &lead : leads) {
+        const Step site = lead.site;
+        const Option &going = lead.going;
+        const bool walked = lead.walked;
+        const int arrives = walked ? facingAfter(p.facing, going.script) : p.facing;
         for (int facing = 1; facing <= 4; facing++) {   // the four directions
             const int turns = (facing - arrives + 4) % 4;
             const double turnMs = (turns == 3 ? 1 : turns) * p.stepMs;
             for (const double delay : DELAYS) {
                 const double there = going.cost;   // when it is there, the move under way included
                 // Turns without a walk start on the first move's tick.
-                const double turned = (walkMs > 0 || turns == 0 ? there : s.from.startMs()) + turnMs;
+                const double turned = (walked || turns == 0 ? there : s.from.startMs()) + turnMs;
                 const bool onEnd = turns > 0 || (there > 0 && plain(view.cell(site.u, site.v)));
                 const DropAt at = dropAt(view, turned, onEnd, delay > 0 ? turned + delay : 0);
                 const double ready = std::max(there + turnMs + delay, p.bombReadyAt - view.now);
@@ -221,10 +311,13 @@ void offerAmbushes(Situation &s, std::vector<Option> &out)
                 retreats(s, before, site, facing, dropIn, at.away, true, need, AMBUSH_RETREATS, out);
                 // Not a kill that wipes a gem the quota needs.
                 out.erase(std::remove_if(out.begin() + first, out.end(),
-                                         [&](const Option &o) { return gemsWiped(view, o.killed) > spare; }),
+                                         [&](const Option &o) {
+                                             return gemsWiped(view, o.killed) > spare || !affordable(view, o.killed);
+                                         }),
                           out.end());
                 for (size_t i = first; i < out.size(); i++) {
-                    out[i].cost += cramped(s, out[i].schedule.back().cell);
+                    out[i].cost += cramped(s, out[i].schedule.back().cell) -
+                                   KILL_MS * std::max(0, out[i].kills - 1) * (need > 1);
                     char more[48];
                     snprintf(more, sizeof(more), ", %d foe%s", out[i].kills,
                              out[i].kills == 1 ? "" : "s");
@@ -289,6 +382,11 @@ void offerBlast(Situation &s, Place site, std::vector<Option> &out)
         if (out.size() > had)
             break;
     }
+}
+
+bool bombsShort(const BotView &view)
+{
+    return !gemsFromSpawners(view) && killsWanted(view) > 1;
 }
 
 }  // namespace bot

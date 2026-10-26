@@ -47,6 +47,10 @@ public:
         // A follower to let out bombs the catchers for one bomb (release.cpp).
         if (f.bombs <= 0 || f.foes <= 0 || board.releasePending(f.changes, f.bombs))
             return;
+        // With bombs short, the gems lying about first: the kills are had
+        // after, the foes bunched up behind the player.
+        if (bombsShort(board.live()) && f.gemsNeeded > f.carriers)
+            return;
         Successor n{f, {}};
         n.facts.bombs--;
         n.facts.foes--;
