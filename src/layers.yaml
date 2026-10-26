@@ -51,10 +51,12 @@ layers:
   # the game and presses the keys.  Then the model (the nav, the routes and
   # the predictors) and the motor, peers; the planner, which plans over the
   # model; the tactical layer, which turns a plan's step into a script the
-  # motor runs; and the executive, the policy that drives them.
+  # motor runs; and the executive, the policy that drives them.  Beside the
+  # planner, botworld: the whole level stepped forward as the game would,
+  # built apart from the planner and measured against the game.
   - [botapi]
   - [botmodel, botmotor]
-  - [botplan]
+  - [botplan, botworld]
   - [bottactics]
   - [botexec]
 
