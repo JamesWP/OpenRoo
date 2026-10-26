@@ -558,26 +558,33 @@ const std::vector<Site> &Board::baits(Changes s, int at) const
     const std::vector<char> walk = throwerWalk(at);
     if (walk.empty())
         return out;
-    // How far, in cells, the nearest thrower walks to each cell it can go.
-    std::vector<int> far(walk.size(), -1);
-    std::vector<Step> ring;
-    for (size_t i = 0; i < sim.foeCount(); i++)
-        if (sim.throwsAtPlayer(i)) {
-            const Step c = at > 0 ? pads()[(size_t)at - 1].out : sim.foeCell(i);
-            if (view.inside(c.u, c.v) && far[(size_t)c.v * view.extentU + c.u] < 0) {
-                far[(size_t)c.v * view.extentU + c.u] = 0;
-                ring.push_back(c);
+    // How far, in cells, the nearest thrower walks to each cell it can go
+    // (-1 none), the player standing on bait (if inside): not through it.
+    auto farWith = [&](Step bait) {
+        std::vector<int> far(walk.size(), -1);
+        if (view.inside(bait.u, bait.v))
+            far[(size_t)bait.v * view.extentU + bait.u] = -2;
+        std::vector<Step> ring;
+        for (size_t i = 0; i < sim.foeCount(); i++)
+            if (sim.throwsAtPlayer(i)) {
+                const Step c = at > 0 ? pads()[(size_t)at - 1].out : sim.foeCell(i);
+                if (view.inside(c.u, c.v) && far[(size_t)c.v * view.extentU + c.u] == -1) {
+                    far[(size_t)c.v * view.extentU + c.u] = 0;
+                    ring.push_back(c);
+                }
             }
-        }
-    for (size_t k = 0; k < ring.size(); k++)
-        for (int d = DIR_MIN; d <= DIR_MAX; d++) {
-            const Step n{ring[k].u + DIR_DU[d], ring[k].v + DIR_DV[d]};
-            const size_t at = (size_t)n.v * view.extentU + n.u;
-            if (!view.inside(n.u, n.v) || !walk[at] || far[at] >= 0)
-                continue;
-            far[at] = far[(size_t)ring[k].v * view.extentU + ring[k].u] + 1;
-            ring.push_back(n);
-        }
+        for (size_t k = 0; k < ring.size(); k++)
+            for (int d = DIR_MIN; d <= DIR_MAX; d++) {
+                const Step n{ring[k].u + DIR_DU[d], ring[k].v + DIR_DV[d]};
+                const size_t at = (size_t)n.v * view.extentU + n.u;
+                if (!view.inside(n.u, n.v) || !walk[at] || far[at] != -1)
+                    continue;
+                far[at] = far[(size_t)ring[k].v * view.extentU + ring[k].u] + 1;
+                ring.push_back(n);
+            }
+        return far;
+    };
+    const std::vector<int> farOpen = farWith({-1, -1});
     std::set<std::pair<int, int>> seen;
     for (const size_t i : open) {
         const Step b = worlds_->block(i);
@@ -590,12 +597,16 @@ const std::vector<Site> &Board::baits(Changes s, int at) const
                 if (c.height == 0 || c.kind == TILE_IMPASSABLE || c.kind == TILE_EMPTY ||
                     (c.kind == TILE_BOMBABLE && !c.busy))
                     continue;
-                // The thrower beside it, facing the player on it.
+                // The thrower beside it, facing the player on it: not on a
+                // cell it comes to only by the player's (a dead end's cells
+                // past the player).
+                const std::vector<int> far = farWith(p);
                 Changes hits = 0;
                 int nearest = -1;
                 for (int f = DIR_MIN; f <= DIR_MAX; f++) {
                     const Step n{p.u - DIR_DU[f], p.v - DIR_DV[f]};
-                    if (!view.inside(n.u, n.v) || !walk[(size_t)n.v * view.extentU + n.u])
+                    const size_t ni = (size_t)n.v * view.extentU + n.u;
+                    if (!view.inside(n.u, n.v) || !walk[ni] || (farOpen[ni] >= 0 && far[ni] < 0))
                         continue;
                     const Blast blast =
                         predictBomb(view, n.u, n.v, view.cell(n.u, n.v).height, f, view.now);
