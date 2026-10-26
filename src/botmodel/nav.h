@@ -201,6 +201,17 @@ struct Timed {
     bool   aloft = false;  // high above the cell (gliding): out of reach of what is on it
 };
 
+/* The moment of a nonempty timed plan, its t counted from origin on the
+ * clock, that holds at clock. */
+inline const Timed &entryAt(const std::vector<Timed> &plan, double origin, double clock)
+{
+    const Timed *at = &plan.front();
+    for (const Timed &m : plan)
+        if (origin + m.t <= clock + 1e-6)
+            at = &m;
+    return *at;
+}
+
 /* Where a glide comes down (glide.h). */
 struct Landing {
     Step   cell;

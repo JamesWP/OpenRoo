@@ -16,6 +16,7 @@
 #include "action.h"
 #include "danger.h"
 #include "terrain.h"
+#include "playout.h"
 #include "walk.h"
 
 namespace bot {
@@ -36,29 +37,6 @@ bool onDeck(const BridgeView &b, Step c)
         if (d.u == c.u && d.v == c.v)
             return true;
     return false;
-}
-
-/* Appends leg, a walk from where o ends, to o. */
-void append(Option &o, const Option &leg)
-{
-    o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
-    o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
-    o.cost = leg.cost;
-}
-
-/* A walk over nav from where o ends, at = its last cell, to target after a
- * wait. */
-bool walkOn(const Situation &s, const NavModel &nav, Option &o, Step at, Step target, double wait)
-{
-    NavModel after = nav;
-    for (const Timed &t : o.schedule)
-        after.arm(t.cell, t.t);
-    const Paths on(after, at.u, at.v, facingAfter(s.view.player.facing, o.script), o.cost);
-    Option leg;
-    if (!walkTo(s, on, target, wait, leg))
-        return false;
-    append(o, leg);
-    return true;
 }
 
 /* Bridge k's switch nearest the place by time (as times says), other than
@@ -199,14 +177,7 @@ public:
                     if (!walkOn(s, nav, o, edge, to, atEdge))
                         continue;
                     const double done = o.cost + b.moveMs() + FALL_MS;
-                    s.foes.load(view);
-                    s.foes.run(view.now + done, [&](double clock) {
-                        Step at = o.schedule.front().cell;
-                        for (const Timed &m : o.schedule)
-                            if (view.now + m.t <= clock + 1e-6)
-                                at = m.cell;
-                        return at;
-                    });
+                    playOut(s.foes, view, o.schedule, done);
                     if (s.foes.fell().empty())
                         continue;
                     o.script.push_back({ScriptStep::Wait, 0, {}, view.now + done});

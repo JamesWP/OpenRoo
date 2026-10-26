@@ -23,6 +23,13 @@ struct Step {
     int u, v;
 };
 
+/* The king's-move distance between two cells. */
+inline int chebyshev(Step a, Step b)
+{
+    const int du = a.u > b.u ? a.u - b.u : b.u - a.u, dv = a.v > b.v ? a.v - b.v : b.v - a.v;
+    return du > dv ? du : dv;
+}
+
 struct Cell {
     unsigned char height   = 0;  // 0: no tile
     unsigned char kind     = 0;  // TileKind

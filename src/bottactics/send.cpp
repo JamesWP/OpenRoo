@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include "bombmodel.h"
 #include "danger.h"
+#include "playout.h"
 #include "walk.h"
 
 namespace bot {
@@ -46,12 +47,6 @@ const double BAIT_WAIT_MS = 8000;
  * model is run to see which cell draws it nearest the pad. */
 const double DRAW_MS = 800;
 const double DRAW_AHEAD_MS = 2000;
-
-int chebyshev(Step a, Step b)
-{
-    const int du = abs(a.u - b.u), dv = abs(a.v - b.v);
-    return du > dv ? du : dv;
-}
 
 class SendAction : public Action {
 public:
@@ -127,14 +122,7 @@ public:
         // Whether, the player keeping to plan, a thrower has gone through
         // and walked off the far end by its end.
         auto sent = [&](const std::vector<Timed> &plan, double untilMs) {
-            s.foes.load(view);
-            s.foes.run(view.now + untilMs, [&](double clock) {
-                Step at = plan.front().cell;
-                for (const Timed &m : plan)
-                    if (view.now + m.t <= clock + 1e-6)
-                        at = m.cell;
-                return at;
-            });
+            playOut(s.foes, view, plan, untilMs);
             for (size_t i = 0; i < s.foes.foeCount(); i++) {
                 const Step c = s.foes.foeCell(i);
                 if (s.foes.throwsAtPlayer(i) && view.inside(c.u, c.v) && far[(size_t)c.v * W + c.u] &&
@@ -163,23 +151,14 @@ public:
                 return true;
             const Step bait{next->end.u, next->end.v};
             for (const double pause : FOLLOW_PAUSES) {
-                NavModel after = s.nav;
-                for (const Timed &m : o.schedule)
-                    after.arm(m.cell, m.t);
+                const NavModel after = armed(s.nav, o.schedule);
                 const Paths on(after, at.u, at.v, facingAfter(view.player.facing, o.script), o.cost + pause);
                 Option leg;
                 if (!walkTo(s, on, bait, 0, leg))
                     return false;
                 std::vector<Timed> plan = o.schedule;
                 plan.insert(plan.end(), leg.schedule.begin() + 1, leg.schedule.end());
-                s.foes.load(view);
-                s.foes.run(view.now + leg.cost + BAIT_WAIT_MS, [&](double clock) {
-                    Step c = plan.front().cell;
-                    for (const Timed &m : plan)
-                        if (view.now + m.t <= clock + 1e-6)
-                            c = m.cell;
-                    return c;
-                });
+                playOut(s.foes, view, plan, leg.cost + BAIT_WAIT_MS);
                 for (const Blast &b : s.foes.dropped())
                     if (b.from - FUSE_MS - view.now >= leg.cost - view.tickMs && spendsBlock(view, b))
                         return true;
@@ -192,9 +171,7 @@ public:
                 Option o;
                 if (!walk(at, o))
                     continue;
-                o.cost += wait;
-                o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost});
-                o.schedule.push_back({o.cost, at});
+                waitTill(view, o, o.cost + wait, at);
                 if (!sent(o.schedule, o.cost + SETTLE_MS) || !baited(o, at))
                     continue;
                 o.lingerMs = SETTLE_MS;
@@ -213,14 +190,7 @@ public:
         // How near the pad the foe model has a thrower by DRAW_AHEAD_MS past
         // the plan's end: 0 through it or on it.
         auto nearPad = [&](const std::vector<Timed> &plan, double untilMs) {
-            s.foes.load(view);
-            s.foes.run(view.now + untilMs, [&](double clock) {
-                Step at = plan.front().cell;
-                for (const Timed &m : plan)
-                    if (view.now + m.t <= clock + 1e-6)
-                        at = m.cell;
-                return at;
-            });
+            playOut(s.foes, view, plan, untilMs);
             int best = -1;
             for (size_t i = 0; i < s.foes.foeCount(); i++) {
                 if (!s.foes.throwsAtPlayer(i))
@@ -251,9 +221,7 @@ public:
             Option o;
             if (!walk(at, o))
                 continue;
-            o.cost += DRAW_MS;
-            o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost});
-            o.schedule.push_back({o.cost, at});
+            waitTill(view, o, o.cost + DRAW_MS, at);
             o.lingerMs = DRAW_MS;
             if (checkPlan(s.foes, view, o.schedule, o.lingerMs).hit)
                 continue;

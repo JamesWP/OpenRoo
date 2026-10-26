@@ -120,9 +120,7 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
         return;
     // The way away is found after the way there, which arms the falling
     // tiles it goes over.
-    NavModel after = s.nav;
-    for (const Timed &t : before.schedule)
-        after.arm(t.cell, t.t);
+    const NavModel after = armed(s.nav, before.schedule);
     const Paths away(after, site.u, site.v, facing, awayMs);
     std::vector<std::pair<double, Step>> cells;
     for (int v = 0; v < view.extentV; v++)
@@ -142,9 +140,7 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
         Option walk;
         if (!walkTo(s, away, at, 0, walk))
             continue;
-        o.script.insert(o.script.end(), walk.script.begin(), walk.script.end());
-        o.schedule.insert(o.schedule.end(), walk.schedule.begin() + 1, walk.schedule.end());
-        o.cost = walk.cost;
+        append(o, walk);
         o.blasts.push_back(blast);
         if (wait) {
             o.script.push_back({ScriptStep::Wait, 0, {}, blast.until + CLEAR_MARGIN_MS});

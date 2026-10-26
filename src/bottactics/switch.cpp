@@ -13,6 +13,7 @@
 #include <vector>
 #include <stdio.h>
 #include "action.h"
+#include "playout.h"
 #include "walk.h"
 
 namespace bot {
@@ -59,14 +60,7 @@ bool workedBack(Situation &s, const std::vector<Timed> &plan, double untilMs, si
     const BotView &view = s.view;
     if (view.foes.empty())
         return false;
-    s.foes.load(view);
-    s.foes.run(view.now + untilMs, [&](double clock) {
-        Step at = plan.front().cell;
-        for (const Timed &m : plan)
-            if (view.now + m.t <= clock + 1e-6)
-                at = m.cell;
-        return at;
-    });
+    playOut(s.foes, view, plan, untilMs);
     for (const FoeModel::Switched &w : s.foes.switched())
         if (w.bridge == k && w.byFoe)
             return true;
@@ -103,17 +97,7 @@ bool waitAt(const Situation &s, Step at, Step cell, double wait, Option &o)
     }
     o.cost += wait;
     o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + o.cost});
-    NavModel after = s.nav;
-    for (const Timed &m : o.schedule)
-        after.arm(m.cell, m.t);
-    const Paths on(after, at.u, at.v, facingAfter(s.view.player.facing, o.script), o.cost);
-    Option leg;
-    if (!walkTo(s, on, cell, 0, leg))
-        return false;
-    o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
-    o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
-    o.cost = leg.cost;
-    return true;
+    return walkOn(s, s.nav, o, at, cell);
 }
 
 /* The cells to wait on for a switch: the one before it on the way, then
@@ -251,20 +235,11 @@ public:
             for (const double wait : WAITS) {
                 Option o = first;
                 const double settled = o.cost + db.moveMs() + SETTLE_MS + wait;
-                o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + settled});
-                o.schedule.push_back({settled, decoy});
-                NavModel after = s.nav;
-                for (const Timed &m : o.schedule)
-                    after.arm(m.cell, m.t);
-                const Paths on(after, decoy.u, decoy.v, facingAfter(s.view.player.facing, o.script), settled);
-                Option leg;
-                if (!walkTo(s, on, cell, 0, leg))
+                waitTill(s.view, o, settled, decoy);
+                if (!walkOn(s, s.nav, o, decoy, cell))
                     break;
-                o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
-                o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
-                const double arrive = leg.cost;
-                o.script.push_back({ScriptStep::Wait, 0, {}, s.view.now + arrive + moveMs});
-                o.schedule.push_back({arrive + moveMs, cell});
+                const double arrive = o.cost;
+                waitTill(s.view, o, arrive + moveMs, cell);
                 o.stepMs = arrive + moveMs;
                 if (workedBack(s, o.schedule, arrive + moveMs + holdMs, (size_t)k))
                     continue;

@@ -17,6 +17,7 @@ add_library(bottactics OBJECT
     glide.cpp
     glider.cpp
     option.cpp
+    playout.cpp
     release.cpp
     switch.cpp
     decisionlog.cpp

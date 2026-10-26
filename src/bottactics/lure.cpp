@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "danger.h"
+#include "playout.h"
 #include "walk.h"
 
 namespace bot {
@@ -76,14 +77,7 @@ bool workable(const Board &board, Changes s, Place at, Step cell, Changes next)
 double lured(Situation &s, const std::vector<Timed> &plan, double untilMs, size_t k)
 {
     const BotView &view = s.view;
-    s.foes.load(view);
-    s.foes.run(view.now + untilMs, [&](double clock) {
-        Step at = plan.front().cell;
-        for (const Timed &m : plan)
-            if (view.now + m.t <= clock + 1e-6)
-                at = m.cell;
-        return at;
-    });
+    playOut(s.foes, view, plan, untilMs);
     double first = -1;
     int goes = 0;
     for (const FoeModel::Switched &w : s.foes.switched())
@@ -260,16 +254,8 @@ public:
                 const Step target = round[legs % round.size()];
                 if (target.u == at.u && target.v == at.v)
                     continue;
-                NavModel after = s.nav;
-                for (const Timed &t : o.schedule)
-                    after.arm(t.cell, t.t);
-                const Paths on(after, at.u, at.v, facingAfter(p.facing, o.script), o.cost);
-                Option leg;
-                if (!walkTo(s, on, target, 0, leg))
+                if (!walkOn(s, s.nav, o, at, target))
                     break;
-                o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
-                o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
-                o.cost = leg.cost;
                 ends.push_back({o.script.size(), o.schedule.size(), o.cost});
                 at = target;
             }

@@ -29,6 +29,39 @@ int facingAfter(int facing, const Script &script)
     return facing;
 }
 
+void append(Option &o, const Option &leg)
+{
+    o.script.insert(o.script.end(), leg.script.begin(), leg.script.end());
+    o.schedule.insert(o.schedule.end(), leg.schedule.begin() + 1, leg.schedule.end());
+    o.cost = leg.cost;
+}
+
+NavModel armed(const NavModel &nav, const std::vector<Timed> &schedule)
+{
+    NavModel after = nav;
+    for (const Timed &t : schedule)
+        after.arm(t.cell, t.t);
+    return after;
+}
+
+bool walkOn(const Situation &s, const NavModel &nav, Option &o, Step at, Step target, double wait)
+{
+    const NavModel after = armed(nav, o.schedule);
+    const Paths on(after, at.u, at.v, facingAfter(s.view.player.facing, o.script), o.cost);
+    Option leg;
+    if (!walkTo(s, on, target, wait, leg))
+        return false;
+    append(o, leg);
+    return true;
+}
+
+void waitTill(const BotView &view, Option &o, double ms, Step at)
+{
+    o.cost = ms;
+    o.script.push_back({ScriptStep::Wait, 0, {}, view.now + ms});
+    o.schedule.push_back({ms, at});
+}
+
 bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Option &o)
 {
     const double startMs = paths.startMs();

@@ -14,6 +14,22 @@ namespace bot {
  * target is unreachable. */
 bool walkTo(const Situation &s, const Paths &paths, Step target, double wait, Option &o);
 
+/* leg, a walk on from where o ends, appended to o, whose cost becomes
+ * leg's. */
+void append(Option &o, const Option &leg);
+
+/* nav with the falling tiles armed that the schedule steps on. */
+NavModel armed(const NavModel &nav, const std::vector<Timed> &schedule);
+
+/* A walk over nav, its falling tiles armed by o, from where o ends (at, its
+ * last cell, as it faces then) to target after a wait, appended to o.
+ * False, o as it was, if target is unreachable. */
+bool walkOn(const Situation &s, const NavModel &nav, Option &o, Step at, Step target,
+            double wait = 0);
+
+/* A wait on at, where o ends, until ms from now, which becomes o's cost. */
+void waitTill(const BotView &view, Option &o, double ms, Step at);
+
 /* The facing the player has after a script, from facing: each Turn's, and
  * after each Walk the motor's (Motor::facingAfter), which turns its own way
  * where the route's turns tie. */

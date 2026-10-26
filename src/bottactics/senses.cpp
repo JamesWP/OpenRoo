@@ -5,6 +5,7 @@
 #include "action.h"
 #include "board.h"
 #include "danger.h"
+#include "playout.h"
 #include "goap.h"
 #include "nav.h"
 
@@ -62,13 +63,7 @@ void follow(FoeModel &foes, const BotView &view, const std::vector<Timed> &way, 
             const std::function<void()> &each)
 {
     while (foes.now() + view.tickMs <= untilMs + 1e-6 && view.tickMs > 0) {
-        foes.runTick([&](double clock) {
-            Step at = way.front().cell;
-            for (const Timed &m : way)
-                if (view.now + m.t <= clock + 1e-6)
-                    at = m.cell;
-            return at;
-        });
+        foes.runTick(keepingTo(view, way));
         each();
     }
 }

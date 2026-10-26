@@ -28,12 +28,6 @@ const double BLOCK_AHEAD_MS = 3000.0;
 const int    PEN_CELLS    = 20;
 const double PEN_AHEAD_MS = 2000.0;
 
-int chebyshev(Step a, Step b)
-{
-    const int du = abs(a.u - b.u), dv = abs(a.v - b.v);
-    return du > dv ? du : dv;
-}
-
 /* The cells the player at rest on at, atMs from the view's clock, can come
  * to rest on, and whether from is one. */
 int reachable(const NavModel &nav, Step at, double atMs, Step from, bool *back)
@@ -111,14 +105,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
     const double start = view.now;
     const double arrives = start + plan.back().t;
     const double end     = arrives + lingerMs;
-    auto entryAt = [&](double clock) {
-        const Timed *at = &plan.front();
-        for (const Timed &m : plan)
-            if (start + m.t <= clock + 1e-6)
-                at = &m;
-        return *at;
-    };
-    auto playerAt = [&](double clock) { return entryAt(clock).cell; };
+    auto playerAt = [&](double clock) { return entryAt(plan, start, clock).cell; };
 
     // Aloft, the player is out of reach of the foes and the blasts below.
 
@@ -156,7 +143,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
         if (b.lost)
             return false;
         for (double t = b.from; t < b.until; t += view.tickMs > 0 ? view.tickMs : 400) {
-            const Timed e = entryAt(t);
+            const Timed e = entryAt(plan, start, t);
             const Step at = e.cell;
             if (!e.aloft && view.inside(at.u, at.v) && b.kills(at.u, at.v, heightAt(at, t), t)) {
                 d.hit = true;
@@ -194,7 +181,7 @@ Danger check(FoeModel &sim, const BotView &view, const std::vector<Timed> &plan,
     while (sim.now() < end) {
         const double prev = sim.now();
         sim.runTick(playerAt);
-        const Timed e = entryAt(sim.now());
+        const Timed e = entryAt(plan, start, sim.now());
         const Step p = e.cell;
         // A deck gone from under the player (a foe worked its switch), or
         // not out yet.
