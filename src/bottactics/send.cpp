@@ -20,6 +20,7 @@
 #include "bombmodel.h"
 #include "danger.h"
 #include "rules.h"
+#include "throwers.h"
 #include "walk.h"
 
 namespace bot {
@@ -140,17 +141,13 @@ public:
                 return true;
             const Step bait{next->end.u, next->end.v};
             for (const double pause : FOLLOW_PAUSES) {
-                const RoutesOn on(s.nav, o.schedule, at, facingAfter(view.player.facing, o.script),
-                                  o.cost + pause, Bound{-1, -1, bait});
-                Option leg;
-                if (!walkTo(s, on.paths(), bait, 0, leg))
+                Option after = o;
+                Blast blast;
+                waitTill(view, after, o.cost + pause);
+                if (!walkOn(s, s.nav, after, at, bait))
                     return false;
-                std::vector<Timed> plan = o.schedule;
-                plan.insert(plan.end(), leg.schedule.begin() + 1, leg.schedule.end());
-                follow(s.foes, view, plan, view.now + leg.cost + BAIT_WAIT_MS);
-                for (const Blast &b : s.foes.dropped())
-                    if (b.from - FUSE_MS - view.now >= leg.cost - view.tickMs && spendsBlock(view, b))
-                        return true;
+                if (baitedBomb(s, after, BAIT_WAIT_MS, &blast))
+                    return true;
             }
             return false;
         };

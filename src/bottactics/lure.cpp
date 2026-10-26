@@ -181,7 +181,7 @@ public:
             o.checked = true;
             o.stepMs  = done;
             o.cost    = done;
-            char buf[80];
+            char buf[128];
             snprintf(buf, sizeof(buf), "lure a foe to bridge %zu, %s (%d,%d)", k, how, c.u, c.v);
             o.what = buf;
             out.push_back(std::move(o));
