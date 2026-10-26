@@ -12,10 +12,12 @@ add_library(bottactics OBJECT
     freeze.cpp
     goad.cpp
     send.cpp
+    throwers.cpp
     lure.cpp
     drop.cpp
     glide.cpp
     glider.cpp
+    moves.cpp
     option.cpp
     playout.cpp
     release.cpp

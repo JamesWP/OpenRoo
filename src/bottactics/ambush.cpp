@@ -5,6 +5,7 @@
  * only where the foe model says the blast kills a foe (drops.h).  Not while
  * a follower can still be let out to the catchers (release.cpp). */
 #include "action.h"
+#include <algorithm>
 #include "drops.h"
 
 namespace bot {
@@ -15,6 +16,8 @@ namespace {
 const double AMBUSH_MS = 2500;
 /* And picking up the gem a carrier leaves. */
 const double FETCH_MS = 1000;
+/* PlanStep::arg: the foe the step kills, a carrier or another. */
+const int OTHER = 0, CARRIER = 1;
 
 class AmbushAction : public Action {
     /* The foe (a carrier, if so) nearest the place, as the foes stand: where
@@ -50,11 +53,13 @@ public:
         n.facts.unused = false;
         n.step.ms = AMBUSH_MS;
         n.step.heads = nearest(f, board, false);
+        n.step.arg = OTHER;
         if (f.foes > f.carriers)
             out.push_back(n);
         n.step.heads = nearest(f, board, true);
         // A carrier killed: its gem is left where it dies, near the player.
         if (f.carriers > 0) {
+            n.step.arg = CARRIER;
             n.facts.carriers--;
             if (n.facts.gemsNeeded > 0) {
                 n.facts.gemsNeeded--;
@@ -64,9 +69,23 @@ public:
         }
     }
 
-    void offer(Situation &s, const Board &, const Plan &, std::vector<Option> &out) const override
+    /* Where the plan counts on a carrier's gem, only an ambush that kills a
+     * carrier. */
+    void offer(Situation &s, const Board &, const Plan &plan, std::vector<Option> &out) const override
     {
+        const size_t first = out.size();
         offerAmbushes(s, out);
+        if (plan.steps.front().arg != CARRIER)
+            return;
+        const std::vector<FoeView> &foes = s.view.foes;
+        out.erase(std::remove_if(out.begin() + first, out.end(),
+                                 [&](const Option &o) {
+                                     return std::none_of(
+                                         o.killed.begin(), o.killed.end(), [&](const FoeModel::Kill &k) {
+                                             return k.foe < foes.size() && Board::carrier(foes[k.foe]);
+                                         });
+                                 }),
+                  out.end());
     }
 };
 

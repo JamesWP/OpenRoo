@@ -3,6 +3,7 @@
 #include <cmath>
 #include <stdio.h>
 #include "danger.h"
+#include "moves.h"
 #include "walk.h"
 
 namespace bot {
@@ -12,7 +13,7 @@ namespace {
 /* The cells to walk away to: within this many ms of the drop, the nearest
  * RETREATS of them. */
 const double RETREAT_MS = 2500;
-const size_t RETREATS = 16;
+const size_t RETREATS = 24;
 /* An ambush: the drop sites within this many ms of the player (the nearest
  * SITES of them, and where it stands), the waits before the drop, the few
  * cells to retreat to. */
@@ -122,19 +123,10 @@ void retreats(Situation &s, const Option &before, Step site, int facing, double 
     // tiles it goes over.
     const NavModel after = armed(s.nav, before.schedule);
     const Paths away(after, site.u, site.v, facing, awayMs);
-    std::vector<std::pair<double, Step>> cells;
-    for (int v = 0; v < view.extentV; v++)
-        for (int u = 0; u < view.extentU; u++) {
-            const double c = away.cost(u, v);
-            // Not onto a platform or a lift: it may carry the player along
-            // with the bomb.
-            if (c > 0 && c <= RETREAT_MS && !NavModel::moving(view.cell(u, v)))
-                cells.push_back({c, {u, v}});
-        }
-    std::sort(cells.begin(), cells.end(),
-              [](const auto &a, const auto &b) { return a.first < b.first; });
-    for (size_t i = 0; i < cells.size() && i < most; i++) {
-        const Step at = cells[i].second;
+    // Not onto a platform or a lift: it may carry the player along with the
+    // bomb.
+    for (const Near &n : nearCells(s, away, RETREAT_MS, most, {}, true)) {
+        const Step at = n.cell;
         Option o = before;
         o.script.push_back({ScriptStep::Drop, 0, {}, 0});
         Option walk;

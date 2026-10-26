@@ -84,6 +84,7 @@ public:
         double ms;
         int    u, v;
         bool   byAdded;
+        size_t foe;    // the view's foe it was (Foe::id): past them, one the model spawned
     };
     /* The foes killed by blasts since load(). */
     const std::vector<Kill> &kills() const { return kills_; }

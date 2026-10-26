@@ -1133,7 +1133,7 @@ void FoeModel::runTick(const std::function<Step(double)> &playerAt)
         }
         if (occ(f.u, f.v) == f.kind)
             setOcc(f.u, f.v, 0);
-        kills_.push_back({clock_, f.u, f.v, !byOther});
+        kills_.push_back({clock_, f.u, f.v, !byOther, f.id});
         foes_.erase(foes_.begin() + (long)i);
     }
 }

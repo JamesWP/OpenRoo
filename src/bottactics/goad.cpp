@@ -8,9 +8,8 @@
  * (danger.h). */
 #include "action.h"
 #include <algorithm>
-#include <stdio.h>
-#include <stdlib.h>
 #include "danger.h"
+#include "moves.h"
 #include "walk.h"
 
 namespace bot {
@@ -112,56 +111,34 @@ public:
                 carriers.push_back({foe.u, foe.v});
         if (carriers.empty())
             return;
-        const Step here{view.player.u, view.player.v};
-        std::vector<std::pair<double, Step>> cells{{0, here}}, leads;
-        for (int v = 0; v < view.extentV; v++)
-            for (int u = 0; u < view.extentU; u++) {
-                const double c = s.from.cost(u, v) - s.from.startMs();
-                if (c <= 0 || c > WALK_MS || NavModel::moving(view.cell(u, v)) || switchedBy(view, u, v))
-                    continue;
-                bool near = false;
-                for (const Step &k : carriers)
-                    near = near || chebyshev(k, {u, v}) <= NEAR;
-                if (near)
-                    cells.push_back({c, {u, v}});
-                else if (c <= LEAD_MS)
-                    leads.push_back({c, {u, v}});
-            }
-        auto nearest = [](auto &list, size_t first, size_t most) {
-            std::stable_sort(list.begin() + first, list.end(),
-                             [](const auto &a, const auto &b) { return a.first < b.first; });
-            if (list.size() > first + most)
-                list.resize(first + most);
+        auto nearCarrier = [&](Step c) {
+            return std::any_of(carriers.begin(), carriers.end(),
+                               [&](Step k) { return chebyshev(k, c) <= NEAR; });
         };
-        nearest(cells, 1, CELLS);
-        nearest(leads, 0, LEADS);
-        cells.insert(cells.end(), leads.begin(), leads.end());
-        for (const auto &[ms, at] : cells)
+        // Here, by a carrier, or near here, for one that follows the player.
+        std::vector<Near> cells{{0, {view.player.u, view.player.v}}};
+        for (const Near &n : nearCells(s, s.from, WALK_MS, CELLS, nearCarrier))
+            cells.push_back(n);
+        for (const Near &n : nearCells(s, s.from, LEAD_MS, LEADS, [&](Step c) { return !nearCarrier(c); }))
+            cells.push_back(n);
+        for (const Near &at : cells)
             for (const double wait : WAITS) {
                 Option o;
-                if (ms > 0) {
-                    if (!walkTo(s, s.from, at, 0, o))
-                        break;
-                } else {
-                    o.schedule.push_back({0, at});
-                    o.cost = s.from.startMs();
-                }
+                if (!goTo(s, at.cell, o))
+                    break;
                 if (wait > 0) {
                     o.cost += wait;
                     o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost});
                 }
-                o.lingerMs = LINGER_MS;
-                const Danger d = checkPlan(s.foes, view, o.schedule, o.lingerMs);
+                const Danger d = checkPlan(s.foes, view, o.schedule, LINGER_MS);
                 if (d.hit || d.foeKills <= 0)
                     continue;
-                o.checked = true;
-                o.stepMs  = o.cost + LINGER_MS;
-                o.cost    = o.stepMs;
+                o.lingerMs = LINGER_MS;
+                o.checked  = true;
+                o.stepMs   = o.cost + LINGER_MS;
+                o.cost     = o.stepMs;
                 o.script.push_back({ScriptStep::Wait, 0, {}, view.now + o.cost});
-                char buf[80];
-                snprintf(buf, sizeof(buf), "goad a thrower's bomb onto a carrier, waiting at (%d,%d)",
-                         at.u, at.v);
-                o.what = buf;
+                o.what = describe("goad a thrower's bomb onto a carrier, waiting at (%d,%d)", at.cell.u, at.cell.v);
                 out.push_back(std::move(o));
                 return;
             }

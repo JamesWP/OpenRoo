@@ -14,10 +14,11 @@
 #include "action.h"
 #include <algorithm>
 #include <string>
-#include <stdio.h>
 #include <stdlib.h>
 #include "bombmodel.h"
 #include "danger.h"
+#include "moves.h"
+#include "throwers.h"
 #include "playout.h"
 #include "walk.h"
 
@@ -31,6 +32,8 @@ const double SEND_MS = 8000;
  * them, with these waits there. */
 const int    NEAR = 3;
 const size_t CELLS = 12;
+/* No bound on the walk to them. */
+const double ANY_MS = 1e9;
 const double WAITS[] = {0, 1500, 3000, 5000, 8000};
 /* How long after the wait a thrower sent through must still be off the pad
  * and on the far side: one that comes straight back is not sent. */
@@ -100,22 +103,15 @@ public:
         // The cells about the pad, on its level (a step up or down), nearest
         // first.
         const Step here{view.player.u, view.player.v};
-        std::vector<std::pair<double, Step>> cells;
+        std::vector<Near> cells;
         if (chebyshev(here, pad.pad) <= NEAR)
             cells.push_back({0, here});
-        for (int v = pad.pad.v - NEAR; v <= pad.pad.v + NEAR; v++)
-            for (int u = pad.pad.u - NEAR; u <= pad.pad.u + NEAR; u++) {
-                if (!view.inside(u, v) || (u == here.u && v == here.v))
-                    continue;
-                const Cell &c = view.cell(u, v);
-                const double ms = s.from.cost(u, v) - s.from.startMs();
-                if (ms <= 0 || c.kind == padCell.kind || abs(c.height - padCell.height) > 1 ||
-                    NavModel::moving(c) || switchedBy(view, u, v))
-                    continue;
-                cells.push_back({ms, {u, v}});
-            }
-        std::stable_sort(cells.begin(), cells.end(),
-                         [](const auto &a, const auto &b) { return a.first < b.first; });
+        for (const Near &n : nearCells(s, s.from, ANY_MS, CELLS, [&](Step c) {
+                 const Cell &t = view.cell(c.u, c.v);
+                 return chebyshev(c, pad.pad) <= NEAR && t.kind != padCell.kind &&
+                        abs(t.height - padCell.height) <= 1;
+             }))
+            cells.push_back(n);
         if (cells.size() > CELLS)
             cells.resize(CELLS);
 
@@ -131,15 +127,6 @@ public:
             }
             return false;
         };
-        auto walk = [&](Step at, Option &o) {
-            if (at.u == here.u && at.v == here.v) {
-                o.schedule.push_back({0, here});
-                o.cost = s.from.startMs();
-                return true;
-            }
-            return walkTo(s, s.from, at, 0, o);
-        };
-
         // A bait to follow: the thrower must come out where the player,
         // following it, draws a bomb that spends a block, not straight back
         // through the pad after it.
@@ -151,38 +138,30 @@ public:
                 return true;
             const Step bait{next->end.u, next->end.v};
             for (const double pause : FOLLOW_PAUSES) {
-                const NavModel after = armed(s.nav, o.schedule);
-                const Paths on(after, at.u, at.v, facingAfter(view.player.facing, o.script), o.cost + pause);
-                Option leg;
-                if (!walkTo(s, on, bait, 0, leg))
+                Option follow = o;
+                Blast blast;
+                if (pause > 0)
+                    waitTill(view, follow, o.cost + pause, at);
+                if (!walkOn(s, s.nav, follow, at, bait))
                     return false;
-                std::vector<Timed> plan = o.schedule;
-                plan.insert(plan.end(), leg.schedule.begin() + 1, leg.schedule.end());
-                playOut(s.foes, view, plan, leg.cost + BAIT_WAIT_MS);
-                for (const Blast &b : s.foes.dropped())
-                    if (b.from - FUSE_MS - view.now >= leg.cost - view.tickMs && spendsBlock(view, b))
-                        return true;
+                if (baitedBomb(s, follow, BAIT_WAIT_MS, &blast))
+                    return true;
             }
             return false;
         };
 
         for (const double wait : WAITS)
-            for (const auto &[ms, at] : cells) {
+            for (const Near &n : cells) {
+                const Step at = n.cell;
                 Option o;
-                if (!walk(at, o))
+                if (!goTo(s, at, o))
                     continue;
                 waitTill(view, o, o.cost + wait, at);
-                if (!sent(o.schedule, o.cost + SETTLE_MS) || !baited(o, at))
+                if (!sent(o.schedule, o.cost + SETTLE_MS) || !baited(o, at) ||
+                    !commit(s, o, o.cost, SETTLE_MS,
+                            describe("send a thrower through (%d,%d), waiting at (%d,%d)", pad.pad.u,
+                                     pad.pad.v, at.u, at.v)))
                     continue;
-                o.lingerMs = SETTLE_MS;
-                if (checkPlan(s.foes, view, o.schedule, o.lingerMs).hit)
-                    continue;
-                o.checked = true;
-                o.stepMs  = o.cost;
-                char buf[80];
-                snprintf(buf, sizeof(buf), "send a thrower through (%d,%d), waiting at (%d,%d)",
-                         pad.pad.u, pad.pad.v, at.u, at.v);
-                o.what = buf;
                 out.push_back(std::move(o));
                 return;
             }
@@ -217,22 +196,18 @@ public:
             }
         Option best;
         int bestNear = -1;
-        for (const auto &[ms, at] : cells) {
+        for (const Near &n : cells) {
+            const Step at = n.cell;
             Option o;
-            if (!walk(at, o))
+            if (!goTo(s, at, o))
                 continue;
             waitTill(view, o, o.cost + DRAW_MS, at);
-            o.lingerMs = DRAW_MS;
-            if (checkPlan(s.foes, view, o.schedule, o.lingerMs).hit)
+            if (!commit(s, o, o.cost, DRAW_MS,
+                        describe("draw a thrower to (%d,%d), to (%d,%d)", pad.pad.u, pad.pad.v, at.u, at.v)))
                 continue;
             const int near = nearPad(o.schedule, o.cost + DRAW_AHEAD_MS);
-            if (near < 0 || (ms <= 0 && near >= nowNear) || (bestNear >= 0 && near >= bestNear))
+            if (near < 0 || (n.ms <= 0 && near >= nowNear) || (bestNear >= 0 && near >= bestNear))
                 continue;  // cells come nearest first: a tie keeps the nearer
-            o.checked = true;
-            o.stepMs  = o.cost;
-            char buf[80];
-            snprintf(buf, sizeof(buf), "draw a thrower to (%d,%d), to (%d,%d)", pad.pad.u, pad.pad.v, at.u, at.v);
-            o.what   = buf;
             best     = std::move(o);
             bestNear = near;
         }

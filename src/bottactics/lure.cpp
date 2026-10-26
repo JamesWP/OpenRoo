@@ -7,11 +7,8 @@
  * the switch; taken only where the player stays safe throughout (danger.h). */
 #include "action.h"
 #include <algorithm>
-#include <functional>
 #include <unordered_set>
-#include <stdio.h>
-#include <stdlib.h>
-#include "danger.h"
+#include "moves.h"
 #include "playout.h"
 #include "walk.h"
 
@@ -165,57 +162,29 @@ public:
         } remember{none, key, out, before};
 
         const Step here{p.u, p.v};
-        // The nearest CELLS a walk from paths ends on within withinMs, where
-        // keep says.
-        auto nearest = [&](const Paths &paths, double withinMs, const std::function<bool(Step)> &keep) {
-            std::vector<std::pair<double, Step>> cells;
-            for (int v = 0; v < view.extentV; v++)
-                for (int u = 0; u < view.extentU; u++) {
-                    const double c = paths.cost(u, v) - paths.startMs();
-                    if (c > 0 && c <= withinMs && !NavModel::moving(view.cell(u, v)) &&
-                        !switchedBy(view, u, v) && keep({u, v}))
-                        cells.push_back({c, {u, v}});
-                }
-            std::stable_sort(cells.begin(), cells.end(),
-                             [](const auto &a, const auto &b) { return a.first < b.first; });
-            if (cells.size() > CELLS)
-                cells.resize(CELLS);
-            return cells;
-        };
-        const auto any = [](Step) { return true; };
-        const std::vector<std::pair<double, Step>> near = nearest(s.from, NEAR_MS, any);
+        const std::vector<Near> near = nearCells(s, s.from, NEAR_MS, CELLS);
 
-        auto take = [&](Option o, double at, const char *how, Step c) {
+        // Waited out till the bridge is done, and checked.
+        auto take = [&](Option o, double at, std::string what) {
             const double done = at + moveMs;
             if (done > o.cost + 1)
                 o.script.push_back({ScriptStep::Wait, 0, {}, view.now + done});
-            o.lingerMs = std::max(LINGER_MS, done - o.schedule.back().t + LINGER_MS);
-            if (checkPlan(s.foes, view, o.schedule, o.lingerMs).hit)
+            if (!commit(s, o, done, std::max(LINGER_MS, done - o.schedule.back().t + LINGER_MS),
+                        describe("lure a foe to bridge %zu, %s", k, what.c_str())))
                 return false;
-            o.checked = true;
-            o.stepMs  = done;
-            o.cost    = done;
-            char buf[80];
-            snprintf(buf, sizeof(buf), "lure a foe to bridge %zu, %s (%d,%d)", k, how, c.u, c.v);
-            o.what = buf;
             out.push_back(std::move(o));
             return true;
         };
 
         // A wait, here or on a cell near.
-        std::vector<std::pair<double, Step>> cells{{0, here}};
+        std::vector<Near> cells{{0, here}};
         cells.insert(cells.end(), near.begin(), near.end());
-        for (const auto &[walkMs, at] : cells) {
+        for (const Near &at : cells) {
             Option o;
-            if (walkMs > 0) {
-                if (!walkTo(s, s.from, at, 0, o))
-                    continue;
-            } else {
-                o.schedule.push_back({0, at});
-                o.cost = s.from.startMs();
-            }
+            if (!goTo(s, at.cell, o))
+                continue;
             const double t = lured(s, o.schedule, o.cost + HORIZON_MS, k);
-            if (t >= 0 && take(o, std::max(t, o.cost), "waiting at", at))
+            if (t >= 0 && take(o, std::max(t, o.cost), describe("waiting at (%d,%d)", at.cell.u, at.cell.v)))
                 return;
         }
 
@@ -224,20 +193,20 @@ public:
         // near here, back and forth from here; and near a foe, back and forth
         // with each cell near that.
         std::vector<std::vector<Step>> rounds;
-        for (const auto &[ms, a] : near)
-            rounds.push_back({a, here});
-        std::vector<std::pair<double, Step>> pivots = near;
-        for (const auto &c : nearest(s.from, PIVOT_MS, [&](Step c) {
+        for (const Near &a : near)
+            rounds.push_back({a.cell, here});
+        std::vector<Near> pivots = near;
+        for (const Near &c : nearCells(s, s.from, PIVOT_MS, CELLS, [&](Step c) {
                  for (const FoeView &f : view.foes)
-                     if (f.atRest() && !f.dying && abs(f.u - c.u) <= FOE_NEAR && abs(f.v - c.v) <= FOE_NEAR)
+                     if (f.atRest() && !f.dying && chebyshev({f.u, f.v}, c) <= FOE_NEAR)
                          return true;
                  return false;
              }))
             pivots.push_back(c);
-        for (const auto &[ms, a] : pivots) {
-            const Paths fromA(s.nav, a.u, a.v, 1, 0);
-            for (const auto &[ms2, b] : nearest(fromA, NEAR_MS, any))
-                rounds.push_back({a, b});
+        for (const Near &a : pivots) {
+            const Paths fromA(s.nav, a.cell.u, a.cell.v, 1, 0);
+            for (const Near &b : nearCells(s, fromA, NEAR_MS, CELLS))
+                rounds.push_back({a.cell, b.cell});
         }
         for (const std::vector<Step> &round : rounds) {
             Option o;
@@ -272,9 +241,8 @@ public:
                     o.cost = e.ms;
                     break;
                 }
-            char how[48];
-            snprintf(how, sizeof(how), "to and fro (%d,%d) and", round[1].u, round[1].v);
-            if (take(o, std::max(t, o.cost), how, round.front()))
+            if (take(o, std::max(t, o.cost), describe("to and fro (%d,%d) and (%d,%d)", round[1].u,
+                                                       round[1].v, round[0].u, round[0].v)))
                 return;
         }
 
