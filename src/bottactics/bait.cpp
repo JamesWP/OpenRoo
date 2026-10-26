@@ -2,22 +2,21 @@
  * on c, where the thrower's bomb lands (board.h, baits): the blocks it spends,
  * no bomb of the player's.  Its cost is a guess: when the thrower comes up
  * only the foe model says.
- * Done as a walk to c, by way of a cell near the thrower if it has to be
- * drawn off first (and a wait there), a wait on c for the bomb the foe model
- * has the thrower drop, and a walk clear of it the moment it is dropped; the
- * walk is taken only where the foe model has a bomb spend a block and the
- * player stays safe through its blast (danger.h).  With such a bomb dropped
- * already, a walk clear of it and a wait for it to blow. */
+ * Done in three parts: the way to c (an Approach: set off after a wait, or
+ * by way of a cell near the thrower to draw it off, or leading it there,
+ * throwers.h); a wait on c for the bomb the foe model has the thrower drop;
+ * and a walk clear of it the moment it is dropped.  Taken only where the foe
+ * model has a bomb spend a block and the player stays safe through its
+ * blast (danger.h).  With such a bomb dropped already, the walk clear of it.
+ * With none to be had yet, a wait on c, the thrower following. */
 #include "action.h"
 #include <algorithm>
 #include <cmath>
-#include <functional>
 #include <map>
-#include <set>
 #include <stdio.h>
-#include <stdlib.h>
 #include "danger.h"
 #include "rules.h"
+#include "throwers.h"
 #include "walk.h"
 
 namespace bot {
@@ -30,22 +29,13 @@ const double BAIT_MS = 10000;
 /* How long the player waits on the cell for the thrower's bomb, at most. */
 const double WAIT_MS = 15000;
 /* The cells to draw a thrower off from: this many cells from it, the nearest
- * LURES of them, with these waits there. */
+ * LURES of them, with these waits there (or led on from there). */
 const int    LURE_NEAR = 3;
 const size_t LURES = 6;
 const double LURE_WAITS[] = {0, 2000};
 /* The waits before setting off for the bait, not drawing a thrower first. */
 const double SET_OFF_WAITS[] = {0, 1500, 3000, 5000};
-/* A thrower drawn off is led on to the bait a leg at a time, of this many of
- * the way's turning points (Paths::cellsTo), the player waiting after each
- * until one comes within LEAD_NEAR, for LEAD_WAIT_MS at most: the chase of a
- * player further off may give up (foe.cpp, the search's cap). */
-const int    LEAD_LEG = 3;
-const int    LEAD_NEAR = 4;
-const double LEAD_WAIT_MS = 6000;
-/* How long the player waits beside a teleporter for a thrower to go through. */
-const double SEND_WAIT_MS = 15000;
-/* A thrower led to the bait may be baited from a cell this near it instead. */
+/* A thrower come up may be baited from a cell this near the bait instead. */
 const int    BESIDE = 2;
 /* The cells to walk away to: the nearest RETREATS (walk.h). */
 const size_t RETREATS = 24;
@@ -55,7 +45,6 @@ const size_t RETREATS = 24;
 const double DRAW_MS = 800;
 const double DRAW_COME_MS = 40000;
 const int    DRAW_NEAR = 2;
-
 /* A teleporter's tile kind (TILE_TELEPORTER, tile.h). */
 const int TELEPORTER = 0x0f;
 
@@ -89,128 +78,68 @@ bool clearOf(Situation &s, const Option &before, Step at, int facing, double sta
     return false;
 }
 
-/* going walked on to end, from where it stands (Paths on), and a wait there
- * until the foe model has a thrower that bombs the player come within near of
- * by (waitMs at most).  False, going as it was, if not. */
-bool walkAndWait(Situation &s, Option &going, const Paths &on, Step end, Step by, int near,
-                 double waitMs)
+/* A way to come to the bait cell: from where the player stands, or from a
+ * cell near a thrower (from), after a wait there, or leading it on. */
+struct Approach {
+    Step   from{-1, -1};
+    double wait = 0;
+    bool   led = false;
+
+    bool drawn() const { return from.u >= 0; }
+    /* A thrower come up by the end may stand where its bomb at a cell beside
+     * the bait spends the block instead. */
+    bool beside() const { return led || (!drawn() && wait == 0); }
+};
+
+/* The approaches, in the order tried: setting off, then by each cell near a
+ * thrower, nearest first. */
+std::vector<Approach> approaches(const Situation &s)
 {
     const BotView &view = s.view;
-    Option o = going;
-    Option leg;
-    if (!walkTo(s, on, end, 0, leg))
+    std::vector<Approach> out;
+    for (const double wait : SET_OFF_WAITS)
+        out.push_back({{-1, -1}, wait, false});
+    for (const auto &[ms, c] : nearCells(view, s.from, INFINITY, LURES, [&](Step c) {
+             return std::any_of(view.foes.begin(), view.foes.end(), [&](const FoeView &f) {
+                 return f.kind == 3 && !f.held && chebyshev({f.u, f.v}, c) == LURE_NEAR;
+             });
+         })) {
+        for (const double wait : LURE_WAITS)
+            out.push_back({c, wait, false});
+        out.push_back({c, 0, true});
+    }
+    return out;
+}
+
+/* The walk to the bait cell by the approach a. */
+bool comeTo(Situation &s, const Approach &a, Step bait, Option &o)
+{
+    const BotView &view = s.view;
+    const Step from = a.drawn() ? a.from : Step{view.player.u, view.player.v};
+    if (!walkTo(s, s.from, from, 0, o))
         return false;
-    append(o, leg);
-    if (near >= 0) {
-        const double there = view.now + o.cost;
-        if (!follow(s.foes, view, o.schedule, there + waitMs,
-                    [&] { return s.foes.now() >= there && throwerNear(s.foes, by, near); }))
-            return false;
-        waitTill(view, o, s.foes.now() - view.now);
-    }
-    going = std::move(o);
-    return true;
+    waitTill(view, o, o.cost + a.wait);
+    if (a.led)
+        return leadThrower(s, o, from, bait);
+    return (from.u == bait.u && from.v == bait.v) || walkOn(s, s.nav, o, from, bait);
 }
 
-/* The cells around a cell, the four sides first. */
-const int AROUND_DU[8] = {0, 1, 0, -1, 1, 1, -1, -1}, AROUND_DV[8] = {-1, 0, 1, 0, -1, 1, 1, -1};
-
-/* going, which ends on from, walked on to bait leading a thrower (LEAD_LEG):
- * false if none keeps up. */
-bool leadOn(Situation &s, Option &going, Step from, Step bait)
-{
-    const BotView &view = s.view;
-    Step at = from;
-    std::set<std::pair<int, int>> sentThrough;
-    for (int legs = 0; at.u != bait.u || at.v != bait.v; legs++) {
-        if (legs > 64)
-            return false;
-        const RoutesOn routes(s.nav, going.schedule, at, facingAfter(view.player.facing, going.script),
-                              going.cost);
-        const Paths &on = routes.paths();
-        const std::vector<Step> cells = on.cellsTo(bait.u, bait.v);
-        if (cells.size() < 2)
-            return false;
-        // A teleporter on the way: the thrower sent through it first, the
-        // player standing beside it, where the thrower's chase goes over it
-        // (foemodel.h), and then the player after it.
-        bool through = false;
-        for (size_t i = 1; i + 1 < cells.size(); i++) {
-            const Cell &t = view.cell(cells[i].u, cells[i].v);
-            // Either end of a pad the thrower went through already: the
-            // player arriving at the other end is no new one.
-            if (t.kind != TELEPORTER || !sentThrough.insert({cells[i].u, cells[i].v}).second)
-                continue;
-            sentThrough.insert({t.teleU, t.teleV});
-            for (int d = 0; d < 8 && !through; d++) {
-                const Step b{cells[i].u + AROUND_DU[d], cells[i].v + AROUND_DV[d]};
-                if (!view.inside(b.u, b.v) || view.cell(b.u, b.v).kind == TELEPORTER ||
-                    view.cell(b.u, b.v).height != t.height || on.cost(b.u, b.v) < 0)
-                    continue;
-                Option o = going;
-                if (walkAndWait(s, o, on, b, {t.teleU, t.teleV}, 1, SEND_WAIT_MS)) {
-                    going = std::move(o);
-                    at = b;
-                    through = true;
-                }
-            }
-            break;
-        }
-        if (through)
-            continue;
-        const Step end = cells[std::min(cells.size() - 1, (size_t)LEAD_LEG)];
-        const bool last = end.u == bait.u && end.v == bait.v;
-        if (!walkAndWait(s, going, on, end, end, last ? -1 : LEAD_NEAR, LEAD_WAIT_MS))
-            return false;
-        at = end;
-    }
-    return true;
-}
-
-/* going: the walk to the bait cell, facing facing there.  The first bomb the
- * foe model has a thrower drop that spends a block, the player waiting on the
- * cell; false if none does in WAIT_MS, or it is dropped before the player is
- * there. */
-bool baitedBomb(Situation &s, const Option &going, Blast *out)
-{
-    const BotView &view = s.view;
-    const std::vector<Timed> &plan = going.schedule;
-    follow(s.foes, view, plan, view.now + going.cost + WAIT_MS);
-    for (const Blast &b : s.foes.dropped())
-        if (spendsBlock(view, b)) {
-            if (b.from - FUSE_MS - view.now < going.cost - view.tickMs)
-                return false;
-            *out = b;
-            return true;
-        }
-    return false;
-}
-
-/* For a thrower led to the bait, or come up already: a walk on from it to a
- * cell within BESIDE of it where the foe model has the thrower's bomb spend
- * a block (baitedBomb), appended to going, offered to take with the cell and
- * the blast, in turn until it takes one.  False if it takes none. */
-bool besideBait(Situation &s, const Option &going, Step bait,
-                const std::function<bool(const Option &, Step, const Blast &)> &take)
+/* A walk on from going, which ends on the bait cell, to a cell near it where
+ * the foe model has the thrower's bomb spend a block, taken. */
+template <typename Take>
+bool besideBait(Situation &s, const Option &going, Step bait, Take &take)
 {
     const BotView &view = s.view;
     const RoutesOn routes(s.nav, going.schedule, bait, facingAfter(view.player.facing, going.script),
                           going.cost);
-    const Paths &on = routes.paths();
-    for (int v = bait.v - BESIDE; v <= bait.v + BESIDE; v++)
-        for (int u = bait.u - BESIDE; u <= bait.u + BESIDE; u++) {
-            if (!view.inside(u, v) || (u == bait.u && v == bait.v) || on.cost(u, v) < 0 ||
-                view.cell(u, v).kind == TELEPORTER || NavModel::moving(view.cell(u, v)))
-                continue;
-            Option o = going;
-            Option leg;
-            if (!walkTo(s, on, {u, v}, 0, leg))
-                continue;
-            append(o, leg);
-            Blast blast;
-            if (baitedBomb(s, o, &blast) && take(o, {u, v}, blast))
-                return true;
-        }
+    for (const auto &[ms, c] : nearCells(view, routes.paths(), INFINITY, 24, [&](Step c) {
+             return chebyshev(c, bait) <= BESIDE && view.cell(c.u, c.v).kind != TELEPORTER;
+         })) {
+        Option o = going;
+        Blast blast;
+        if (walkOn(s, s.nav, o, bait, c) && baitedBomb(s, o, WAIT_MS, &blast) && take(o, c, blast))
+            return true;
+    }
     return false;
 }
 
@@ -270,77 +199,32 @@ public:
                 out.push_back(std::move(o));
             return;
         }
-        // The cells to draw a thrower off from first, if it is not coming.
-        std::vector<std::pair<double, Step>> lures{{0, {-1, -1}}};
-        {
-            const Near near = nearCells(view, s.from, INFINITY, LURES, [&](Step c) {
-                for (const FoeView &f : view.foes)
-                    if (f.kind == 3 && !f.held && chebyshev({f.u, f.v}, c) == LURE_NEAR)
-                        return true;
+        // On the cell till the bomb is dropped, then clear of it.
+        auto take = [&](const Option &on, Step stand, const Blast &blast) {
+            Option o = on;
+            waitTill(view, o, blast.from - FUSE_MS - view.now + view.tickMs);
+            Option cleared;
+            if (!clearOf(s, o, stand, facingAfter(p.facing, o.script), o.cost, blast, &cleared))
                 return false;
-            });
-            lures.insert(lures.end(), near.begin(), near.end());
-        }
-        // Each lure with each wait there, and led on from it.
-        std::vector<std::pair<double, bool>> ways;
-        for (const double wait : LURE_WAITS)
-            ways.push_back({wait, false});
-        ways.push_back({0, true});
-        // Not drawn: after a wait where the player stands, for a thrower
-        // just sent through a pad to walk off its far end (send.cpp).
-        std::vector<std::pair<double, bool>> waits;
-        for (const double wait : SET_OFF_WAITS)
-            waits.push_back({wait, false});
-        for (const auto &[lureMs, lure] : lures) {
-            const bool drawn = lure.u >= 0;
-            for (const auto &[wait, led] : drawn ? ways : waits) {
-                Option going;
-                char buf[96];
-                if (drawn) {
-                    if (!walkTo(s, s.from, lure, 0, going))
-                        continue;
-                    if (!led)
-                        waitTill(view, going, going.cost + wait);
-                    if (led) {
-                        if (!leadOn(s, going, lure, bait))
-                            continue;
-                    } else if ((bait.u != lure.u || bait.v != lure.v) && !walkOn(s, s.nav, going, lure, bait)) {
-                        continue;
-                    }
-                    snprintf(buf, sizeof(buf), "bait at (%d,%d), %s from (%d,%d) after %.0f ms",
-                             bait.u, bait.v, led ? "led" : "drawn", lure.u, lure.v, wait);
-                } else {
-                    if (wait > 0) {
-                        walkTo(s, s.from, here, 0, going);
-                        waitTill(view, going, going.cost + wait);
-                        if (!walkOn(s, s.nav, going, here, bait))
-                            continue;
-                    } else if (!walkTo(s, s.from, bait, 0, going)) {
-                        continue;
-                    }
-                    snprintf(buf, sizeof(buf), "bait at (%d,%d) after %.0f ms", bait.u, bait.v, wait);
-                }
-                // On the cell till the bomb is dropped, then clear of it.
-                going.what = buf;
-                auto take = [&](const Option &on, Step stand, const Blast &blast) {
-                    Option o = on;
-                    const double leave = blast.from - FUSE_MS - view.now + view.tickMs;
-                    waitTill(view, o, leave);
-                    Option cleared;
-                    if (!clearOf(s, o, stand, facingAfter(p.facing, o.script), o.cost,
-                                 blast, &cleared))
-                        return false;
-                    out.push_back(std::move(cleared));
-                    return true;
-                };
-                Blast blast;
-                if (baitedBomb(s, going, &blast) && take(going, bait, blast))
-                    return;
-                // Led there, or come up already, the thrower may stand where
-                // its bomb at a cell beside the bait spends the block instead.
-                if ((led || (!drawn && wait == 0)) && besideBait(s, going, bait, take))
-                    return;
-            }
+            out.push_back(std::move(cleared));
+            return true;
+        };
+        for (const Approach &a : approaches(s)) {
+            Option going;
+            if (!comeTo(s, a, bait, going))
+                continue;
+            char buf[96];
+            if (a.drawn())
+                snprintf(buf, sizeof(buf), "bait at (%d,%d), %s from (%d,%d) after %.0f ms", bait.u,
+                         bait.v, a.led ? "led" : "drawn", a.from.u, a.from.v, a.wait);
+            else
+                snprintf(buf, sizeof(buf), "bait at (%d,%d) after %.0f ms", bait.u, bait.v, a.wait);
+            going.what = buf;
+            Blast blast;
+            if (baitedBomb(s, going, WAIT_MS, &blast) && take(going, bait, blast))
+                return;
+            if (a.beside() && besideBait(s, going, bait, take))
+                return;
         }
         drawTo(s, bait, out);
     }
@@ -354,8 +238,8 @@ private:
         Option o;
         if (!walkTo(s, s.from, bait, 0, o))
             return;
-        if (!follow(s.foes, view, o.schedule, view.now + o.cost + DRAW_COME_MS,
-                    [&] { return throwerNear(s.foes, bait, DRAW_NEAR); }))
+        Option coming = o;
+        if (!drawThrower(s, coming, bait, DRAW_NEAR, DRAW_COME_MS))
             return;
         waitTill(view, o, o.cost + DRAW_MS);
         o.lingerMs = DRAW_MS;

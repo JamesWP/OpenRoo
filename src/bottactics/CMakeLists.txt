@@ -19,6 +19,7 @@ add_library(bottactics OBJECT
     option.cpp
     release.cpp
     switch.cpp
+    throwers.cpp
     decisionlog.cpp
     deliberate.cpp
     fallbacks.cpp
