@@ -134,7 +134,7 @@ Near nearCells(const BotView &view, const Paths &paths, double withinMs, size_t 
             if (c > 0 && c <= withinMs && !NavModel::moving(view.cell(u, v)) && (!keep || keep({u, v})))
                 cells.push_back({c, {u, v}});
         }
-    std::sort(cells.begin(), cells.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+    std::stable_sort(cells.begin(), cells.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
     if (cells.size() > most)
         cells.resize(most);
     return cells;
