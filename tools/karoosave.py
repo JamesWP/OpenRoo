@@ -115,8 +115,11 @@ def encipher(data, key):
 def load_levels(gam_path):
     """Return the list of level names from JJ.GAM, in index order."""
     with open(gam_path, "rb") as fh:
-        d = decipher(fh.read(), GAM_KEY)
-    count = d[3]
+        raw = fh.read()
+    # The count is stored plain, as the game reads it (session.cpp); only the
+    # name table is shifted.
+    count = raw[3]
+    d = decipher(raw, GAM_KEY)
     names = []
     for i in range(count):
         entry = d[4 + i * 256: 4 + (i + 1) * 256]

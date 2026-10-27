@@ -67,7 +67,7 @@ roll_log() {
 # every log and report -- and a symlink to each read-only data entry in
 # game/, so the game's relative paths resolve exactly as they did in an
 # install.  The executable is copied in, so its directory is the cwd too.
-[[ -d game ]] || { echo "ERROR: game/ missing — run tools/import_assets.py --from <your Ka'roo>" >&2; exit 1; }
+[[ -d game ]] || { echo "ERROR: game/ missing — run tools/import_assets.py --from <your Ka'roo>, or tools/gen_assets.py for placeholders" >&2; exit 1; }
 mkdir -p run/SavedGames run/highscores
 for _entry in game/*; do
   _name=$(basename "$_entry")

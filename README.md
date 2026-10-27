@@ -66,6 +66,21 @@ The game file defaults to `JJ`; name another on the command line.
 `game/` is your imported data and is never written. `run/` is where the game
 runs: your config, saves, high scores and logs.
 
+### Without a copy of Ka'roo
+
+```bash
+python3 tools/gen_assets.py                       # fills game/ with generated placeholders
+```
+
+`tools/gen_assets.py` makes every file the game needs from nothing: flat
+colours, boxes, beeps, a 5x7 font, and one theme, Basic, with six small
+levels (`tools/freeassets/levels.py`, drawn as text).  It writes under the
+names the original install used, so the game reads it unchanged.  It never
+deletes a `game/` it did not make; a `game/` that is a symlink (a worktree's)
+is replaced, link only, with `--force`.  The replay suite records the original
+data, so it does not pass on these; the bot plays them:
+`python3 tools/bot/backtest.py run`.
+
 ## RG35XX Plus (muOS)
 
 The Anbernic RG35XX Plus handheld is a cross-compiled target, built with the
