@@ -38,6 +38,8 @@ void BufferState::applyPosition()
 
 Buffer::Buffer() : state_(new BufferState())
 {
+    static unsigned made = 0;
+    state_->serial = made++;
 }
 
 Buffer::~Buffer()
@@ -148,17 +150,24 @@ void Buffer::setPosition(float x, float y, float z, bool immediate)
     state_->pos[0] = x;
     state_->pos[1] = y;
     state_->pos[2] = z;
+    if (FILE *f = soundLog())
+        fprintf(f, "move %u %.3f %.3f %.3f\n", state_->serial, x, y, z);
     if (immediate) state_->applyPosition();
 }
 
 void Buffer::play(bool loop)
 {
+    if (FILE *f = soundLog())
+        fprintf(f, "play %u %s %d %.3f %.3f %.3f\n", state_->serial, state_->filename.c_str(),
+                loop ? 1 : 0, state_->pos[0], state_->pos[1], state_->pos[2]);
     if (state_->track)
         playTrack(state_->track, loop);
 }
 
 void Buffer::stop()
 {
+    if (FILE *f = soundLog())
+        fprintf(f, "stop %u %s\n", state_->serial, state_->filename.c_str());
     if (state_->track)
         MIX_StopTrack(state_->track, 0);
 }
