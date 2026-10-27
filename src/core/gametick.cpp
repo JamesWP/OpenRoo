@@ -18,6 +18,7 @@
 #include <string.h>
 #include "sysdev.h"
 #include "windev.h"
+#include "audiodev.h"
 #include "logger.h"
 #include "game.h"
 #include "quitforward.h"
@@ -92,6 +93,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     }
 
     advance_clock(self, dt, now);
+    audiodev::logMark(self->world()->now());
 
     if (self->state() == GameState::MainMenu || self->state() == GameState::PauseMenu) {
         PROF_SCOPE("menus");

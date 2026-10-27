@@ -30,6 +30,14 @@ void setPathResolver(PathFn fn);
  * SDL_mixer call is made and nothing is heard.  Streams finish at once. */
 bool silent();
 
+/* The sound log, KAROO_SOUND_LOG=<file>: every play, stop and move of a
+ * buffer, in order, each with the buffer's number (in the order buffers were made) and
+ * file, and a play's loop flag and position; and a mark line where the
+ * caller puts one (a game tick).  What the game asks of the sound, heard or
+ * not, so a change that should not move it can be checked by diffing two
+ * runs' logs (docs/TESTING.md). */
+void logMark(double clockMs);
+
 /* The two volumes, each 0 (silent) to 1: the music, and every other sound.
  * They apply to this program's own output.  A fire-and-forget sound for the
  * launcher dialogs plays at the effects volume. */

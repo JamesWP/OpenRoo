@@ -251,9 +251,11 @@ def apply_headless(env, headless):
 
 
 def launch(entry, cfg, rec_path, dump_path,
-           headless=True, game_seconds=0, frames=0):
+           headless=True, game_seconds=0, frames=0, sound_log=None):
     """Returns (stuck, wall_seconds); on a stuck run the seconds are the budget."""
     env = apply_headless(apply_turbo(dict(os.environ)), headless)
+    if sound_log:
+        env["KAROO_SOUND_LOG"] = sound_log
     env["KAROO_REPLAY"] = rec_path
     env["KAROO_STATE_DUMP"] = dump_path
     env["KAROO_FIXED_DT"] = str(cfg.get("dt", ""))
@@ -363,7 +365,7 @@ def compare_state(expected, actual):
     return bad
 
 
-def run_one(m, entry, bless=False, headless=True, verbose=False):
+def run_one(m, entry, bless=False, headless=True, verbose=False, sound_dir=None):
     cfg = entry_defaults(m, entry)
     name = entry["name"]
     rec_path = os.path.join(RECORDINGS, entry["file"])
@@ -399,7 +401,8 @@ def run_one(m, entry, bless=False, headless=True, verbose=False):
 
     stuck, wall = launch(entry, cfg, rec_path, dump_path,
                          headless=headless, game_seconds=len(frames) * hdr["dt"],
-                         frames=len(frames))
+                         frames=len(frames),
+                         sound_log=os.path.join(sound_dir, name + ".log") if sound_dir else None)
     if stuck:
         print("  FAIL (STUCK): run exceeded the %ds stuck detector and was "
               "killed.\n"
@@ -628,6 +631,9 @@ def main():
     ap.add_argument("--bless", action="store_true",
                     help="write the run's own end state into the manifest as "
                          "the expectation — only after you believe the run")
+    ap.add_argument("--sound-log", metavar="DIR",
+                    help="write each run's sound log (KAROO_SOUND_LOG) to DIR/NAME.log, "
+                         "to diff against another build's")
     ap.add_argument("--verbose", "-v", dest="verbose", default=False, action="store_true")
     args = ap.parse_args()
 
@@ -641,8 +647,11 @@ def main():
     if args.bless and len(entries) != 1:
         sys.exit("--bless takes exactly one recording name")
 
+    if args.sound_log:
+        os.makedirs(args.sound_log, exist_ok=True)
     results = [(e["name"], run_one(m, e, bless=args.bless,
-                                   headless=args.headless, verbose=args.verbose))
+                                   headless=args.headless, verbose=args.verbose,
+                                   sound_dir=os.path.abspath(args.sound_log) if args.sound_log else None))
                for e in entries]
     if args.bless:
         save_manifest(m)

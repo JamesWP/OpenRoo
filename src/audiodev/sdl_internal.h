@@ -2,6 +2,7 @@
 #pragma once
 #include <SDL3/SDL.h>
 #include <SDL3_mixer/SDL_mixer.h>
+#include <stdio.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -10,6 +11,8 @@
 namespace audiodev {
 
 extern LogFn g_log;
+/* The sound log (logMark): open, or NULL when KAROO_SOUND_LOG is unset. */
+FILE *soundLog();
 #define AD_LOG(...) do { if (::audiodev::g_log) ::audiodev::g_log(__VA_ARGS__); } while (0)
 
 /* A mixer on the default output, with SDL and SDL_mixer brought up for it.
@@ -65,6 +68,7 @@ struct DeviceState {
 };
 
 struct BufferState {
+    unsigned                   serial = 0;       // the sound log's number for it
     std::string                filename;
     std::shared_ptr<AudioRef>  audio;
     MIX_Track                 *track = NULL;

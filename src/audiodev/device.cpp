@@ -10,6 +10,25 @@ void setLog(LogFn fn) { g_log = fn; }
 static PathFn g_resolve = NULL;
 void setPathResolver(PathFn fn) { g_resolve = fn; }
 
+FILE *soundLog()
+{
+    static FILE *log = NULL;
+    static bool  opened = false;
+    if (!opened) {
+        opened = true;
+        const char *path = SDL_getenv("KAROO_SOUND_LOG");
+        if (path && path[0] != '\0')
+            log = fopen(path, "w");
+    }
+    return log;
+}
+
+void logMark(double clockMs)
+{
+    if (FILE *f = soundLog())
+        fprintf(f, "tick %.3f\n", clockMs);
+}
+
 bool silent()
 {
     static int cached = -1;
