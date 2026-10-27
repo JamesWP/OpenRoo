@@ -16,7 +16,7 @@ class SoundVoice;
 class SoundLibrary;
 class Tile;
 
-class FallingTile {
+class FallingTile : public Listed {
 public:
      
 

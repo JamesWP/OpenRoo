@@ -13,7 +13,7 @@
 class SoundVoice;
 class SoundLibrary;
 
-class LiftObject {
+class LiftObject : public Listed {
 public:
      
 

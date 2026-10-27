@@ -98,6 +98,7 @@ BotView capture(const Game &game)
     for (const Foe &f : w->foes()) {
         FoeView fv;
         fill_mover(fv, f);
+        fv.id    = f.id();
         fv.kind  = (int)f.foeKind();
         fv.type  = f.type();
         fv.held  = f.held() != 0;
@@ -180,6 +181,7 @@ BotView capture(const Game &game)
     for (const Bomb &b : w->bombs()) {
         BombView bv;
         fill_mover(bv, b);
+        bv.id = b.id();
         bv.droppedAt = b.droppedAt();
         view.bombs.push_back(bv);
     }

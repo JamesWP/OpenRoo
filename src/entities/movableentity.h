@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include "entitylist.h"
+
  
 #include <stddef.h>
 #include "tickstep.h"
@@ -18,7 +20,7 @@ class LevelMap;
 class FoePath;
 
 /* One moving entity's shared state.  Foe, Bomb and Player derive from it. */
-class MovableEntity {
+class MovableEntity : public Listed {
 public:
      
 
