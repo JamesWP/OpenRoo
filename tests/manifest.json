@@ -1694,6 +1694,18 @@
       "playthrough": "Playthrough"
     },
     {
+      "name": "Playthrough-04",
+      "file": "Playthrough-04.rec",
+      "description": "Playthrough part 4: egypt",
+      "scenario": "continue the playthrough",
+      "expect": {
+        "crash": "none",
+        "state": {}
+      },
+      "notes": "Captured 70362 frames. No end-state assertions yet \u2014 run `replaytest.py --bless Playthrough-04` once a replay is trusted.",
+      "playthrough": "Playthrough"
+    },
+    {
       "name": "bomb-timing",
       "file": "bomb-timing.rec",
       "description": "Bomb timing on Castle\\Tower: collects bomb pickups and drops one; ends with one gem and five bombs",
