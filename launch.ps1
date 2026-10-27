@@ -21,7 +21,7 @@ if (-not $env:OPENROO_SKIP_BUILD) {
 }
 $exe = Join-Path $BuildDir "$Config\OpenRoo.exe"
 if (-not (Test-Path $exe)) { Write-Error "$exe missing after build"; exit 1 }
-if (-not (Test-Path game)) { Write-Error "game\ missing - run tools\import_assets.py --from <your Ka'roo>"; exit 1 }
+if (-not (Test-Path game)) { Write-Error "game\ missing - run tools\import_assets.py --from <your Ka'roo>, or tools\gen_assets.py for placeholders"; exit 1 }
 
 # run\ holds what the game writes plus links to each read-only entry in game\.
 New-Item -ItemType Directory -Force run, run\SavedGames, run\highscores | Out-Null
