@@ -2393,6 +2393,18 @@
       "playthrough": "Playthrough"
     },
     {
+      "name": "Playthrough-05",
+      "file": "Playthrough-05.rec",
+      "description": "Playthrough part 5: most of space with a bunch of failing on one level",
+      "scenario": "space",
+      "expect": {
+        "crash": "none",
+        "state": {}
+      },
+      "notes": "Captured 129649 frames. No end-state assertions yet \u2014 run `replaytest.py --bless Playthrough-05` once a replay is trusted.",
+      "playthrough": "Playthrough"
+    },
+    {
       "name": "bomb-timing",
       "file": "bomb-timing.rec",
       "description": "Bomb timing on Castle\\Tower: collects bomb pickups and drops one; ends with one gem and five bombs",
