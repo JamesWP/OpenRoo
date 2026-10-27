@@ -13,7 +13,7 @@
 class SoundVoice;
 class SoundLibrary;
 
-class PlatformObject {
+class PlatformObject : public Listed {
 public:
      
 

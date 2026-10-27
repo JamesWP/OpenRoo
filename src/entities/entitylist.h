@@ -7,13 +7,30 @@
  *
  * The objects are held by pointer so they stay put while the list changes.
  * During a walk that may remove the current object, use the indices: erase(i)
- * moves the next object down into i. */
+ * moves the next object down into i.
+ *
+ * Each object also has an id, given when it is added and never reused until
+ * the list is cleared: what names it from outside the list (a sound, an
+ * effect, the bot), where its index shifts as others are removed.  A kind
+ * kept in a list derives from Listed, which holds it. */
 #pragma once
 
 #include <cstddef>
 #include <iterator>
 #include <memory>
 #include <vector>
+
+template <class T> class EntityList;
+
+/* An object kept in an EntityList: its id there. */
+class Listed {
+public:
+    unsigned id() const { return id_; }
+
+private:
+    template <class T> friend class EntityList;
+    unsigned id_ = 0;
+};
 
 template <class T>
 class EntityList {
@@ -52,6 +69,7 @@ public:
     T       &operator[](std::size_t i)       { return *objs_[i]; }
     const T &operator[](std::size_t i) const { return *objs_[i]; }
 
+
     iterator       begin()       { return iterator(objs_.begin()); }
     iterator       end()         { return iterator(objs_.end()); }
     const_iterator begin() const { return const_iterator(objs_.begin()); }
@@ -60,12 +78,16 @@ public:
     /* Takes ownership of obj, appended at the end; returns it. */
     T &add(std::unique_ptr<T> obj)
     {
+        obj->id_ = nextId_++;
         objs_.push_back(std::move(obj));
         return *objs_.back();
     }
 
     /* Destroys the object at i; those after it move down one. */
-    void erase(std::size_t i) { objs_.erase(objs_.begin() + (std::ptrdiff_t)i); }
+    void erase(std::size_t i)
+    {
+        objs_.erase(objs_.begin() + (std::ptrdiff_t)i);
+    }
 
     /* Destroys every object, first to last. */
     void clear()
@@ -73,8 +95,10 @@ public:
         for (auto &o : objs_)
             o.reset();
         objs_.clear();
+        nextId_ = 0;
     }
 
 private:
-    Store objs_;
+    Store    objs_;
+    unsigned nextId_ = 0;
 };

@@ -33,7 +33,7 @@ struct BridgeExtent {
 
 class SwitchCells;
 
-class BridgeObject {
+class BridgeObject : public Listed {
 public:
      
 
