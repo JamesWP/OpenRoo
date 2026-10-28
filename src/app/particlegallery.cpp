@@ -60,14 +60,13 @@ const char *const kLookNames[THEME_OBJ_COUNT] = {
 const float kSpacing = 3.0f;       // between looks, in tiles
 const double kBurstEvery = 1500.0; // ms between a burst look's bursts
 const double kFireEvery = 3000.0;  // ms between a dying look's deaths
-const double kFireFor = 400.0;     // and how long each one fires
 
 /* How the game plays a look's particle systems. */
 enum class Play {
     Continuous,  // emitting wherever the look stands
     Burst,       // spawnBurst / bursts: a second's puff at a point
     Trail,       // the speed trail, behind a moving player
-    Fire,        // a dying or exploding look: emits while it dies
+    Fire,        // a dying or exploding look: emits as it dies
 };
 
 Play play_of(int look)
@@ -293,10 +292,17 @@ public:
         for (size_t i = 0; i < looks_.size(); i++)
             if (looks_[i] == THEME_OBJ_EXIT)
                 at[i].conditions = draw::COND_ACTIVE;  // open: it glows and emits
-        // A dying foe as Foe::draw has it: dead, its animation at the start.
+        // A dying foe as entitydraw has it: dead, its animation at the start.
         for (size_t i = 0; i < looks_.size(); i++)
             if (dying_foe(looks_[i]))
                 at[i].conditions = draw::COND_DEAD;
+        // A dying look dies again every kFireEvery, its effects by their age.
+        const double t = now_ - started_;
+        for (size_t i = 0; i < looks_.size(); i++)
+            if (play_of(looks_[i]) == Play::Fire) {
+                at[i].effectAge = (float)(fmod(t, kFireEvery) * 0.001);
+                at[i].seed = (unsigned)(t / kFireEvery);
+            }
 
         draw::beginPass(f, draw::Pass::Opaque);
         draw::fieldBuffer(f, THEME_OBJ_WALL, wallVb_, wallVertices_);
@@ -309,7 +315,6 @@ public:
         }
 
         draw::beginPass(f, draw::Pass::Particles);
-        const double t = now_ - started_;
         for (size_t i = 0; i < looks_.size(); i++) {
             const ThemeObjectType look = (ThemeObjectType)looks_[i];
             const draw::Instance &in = at[i];
@@ -331,9 +336,7 @@ public:
                 break;
             }
             case Play::Fire:
-                draw::fireEffects(f, look, fmod(t, kFireEvery) < kFireFor);
-                if (fmod(t, kFireEvery) < elapsed)
-                    draw::explode(f, look);
+                draw::fireEffects(f, look, in.effectAge);
                 draw::particles(f, look, &in);
                 break;
             }

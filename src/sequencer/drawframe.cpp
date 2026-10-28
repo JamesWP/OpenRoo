@@ -48,7 +48,6 @@ static draw::Frame frame_for(Game *g, Renderer *renderer, const FrameTime &t)
 static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
 {
     const World *world = g->world();
-    const unsigned deaths = renderer->deathsDrawn;
     LevelPlacements *level = &renderer->levelPlacements;
     RenderDevice *d3d = renderer->device;
     float *eye = g->camera()->pose()->eye();
@@ -56,8 +55,8 @@ static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
     draw::beginPass(f, draw::Pass::Opaque);
     {
         PROF_SCOPE("opaque");
-        level->draw(f, draw::Pass::Opaque, world->map());
-        drawWorld(f, draw::Pass::Opaque, *world, deaths);
+        level->draw(f, draw::Pass::Opaque, world->map(), world->now());
+        drawWorld(f, draw::Pass::Opaque, *world);
         // The scene objects are part of the opaque picture.  They set no depth
         // state of their own, and the last record drawn may have had none to
         // write, so the pass's state is set again.
@@ -67,24 +66,23 @@ static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
     draw::beginPass(f, draw::Pass::Effects);
     {
         PROF_SCOPE("effects");
-        drawWorld(f, draw::Pass::Effects, *world, deaths);
+        drawWorld(f, draw::Pass::Effects, *world);
     }
     /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
     if (d3d->hasStencil() && d3d->bitDepth() > 16 && f.opts.shadows > 0) {
         PROF_SCOPE("shadows");
         draw::beginPass(f, draw::Pass::Shadows);
-        drawWorld(f, draw::Pass::Shadows, *world, deaths);
-        level->draw(f, draw::Pass::Shadows, world->map());
+        drawWorld(f, draw::Pass::Shadows, *world);
+        level->draw(f, draw::Pass::Shadows, world->map(), world->now());
     }
     draw::beginPass(f, draw::Pass::Particles);
     {
         PROF_SCOPE("translucent");
-        level->draw(f, draw::Pass::Particles, world->map());
-        drawWorld(f, draw::Pass::Particles, *world, deaths);
+        level->draw(f, draw::Pass::Particles, world->map(), world->now());
+        drawWorld(f, draw::Pass::Particles, *world);
         Scene_DrawParticleSystems(&renderer->scene, renderer->showSplinePaths,
                                   renderer->showSplineControlPolygons, d3d, eye, dt, f.now);
     }
-    renderer->deathsDrawn = world->deaths();
 }
 
 void Seq_DrawFrame(Game *g, Renderer *renderer, const MenuArt *art, ProgableControl *progCtrl,

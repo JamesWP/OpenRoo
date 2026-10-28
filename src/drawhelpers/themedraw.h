@@ -71,6 +71,9 @@ struct Instance {
     uint8_t  conditions = 0;     // the Condition bits that hold here
     uint16_t animCode = 0;       // models: the animation to play (AnimCode)
     float    animTime = 0.0f;    // and how far through it, 0..1
+    float    effectAge = 0.0f;   // dying looks: seconds since the death or blast
+    uint32_t seed = 0;           // which of a look's effects this is: its debris
+                                 // and particles are drawn from it
 };
 
 /* A field record's quad: position, colour and one UV set. */
@@ -101,11 +104,12 @@ void shadows(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n = 
 /* A look's particle-system records at each instance. */
 void particles(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n = 1);
 
-/* A dying look's particle systems: they emit while fire is set. */
-void fireEffects(Frame &f, ThemeObjectType look, bool fire);
+/* How long a dying look's particle systems emit, from the death. */
+const float FIRE_SECONDS = 0.05f;
 
-/* A dying look's exploding records start their debris again. */
-void explode(Frame &f, ThemeObjectType look);
+/* A dying look's particle systems: they emit for FIRE_SECONDS from the death
+ * effectAge seconds ago. */
+void fireEffects(Frame &f, ThemeObjectType look, float effectAge);
 
 /* Bursts: one-shot particle effects that play at a point for a second.  A
  * look whose first record is a particle system holds a burst per system;

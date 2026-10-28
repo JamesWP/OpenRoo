@@ -142,7 +142,6 @@ public:
     /* Once a frame: true the first time it is asked at this frame clock, so a
      * look drawn at several instances advances its debris (or ticks its
      * particle systems) once, not once per instance. */
-    bool debrisDue(double now)    { return due(&debrisAt_, now); }
     bool particlesDue(double now) { return due(&particlesAt_, now); }
 
 private:
@@ -187,8 +186,7 @@ private:
     float  flOscillationFrequency_{};
     float  flOscillationPhase_{};
     float  flPump_[4]{};
-    double debrisAt_ = -1.0;     // the frame clock of the last debrisDue
-    double particlesAt_ = -1.0;  // and of the last particlesDue
+    double particlesAt_ = -1.0;  // the frame clock of the last particlesDue
 
     static bool due(double *at, double now)
     {

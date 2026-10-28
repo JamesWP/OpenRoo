@@ -1,10 +1,10 @@
 /* ExplodeDebris: the theme "explode" effect.  A model is shattered into its
  * triangles, which fly outward, tumbling, and thin out.  draw::explode begins
- * it when an object explodes; RenderSceneObjects advances and draws it, and
- * DrawObjectShadows draws its shadow, the debris flattened like any model.
+ * draws it, by the blast's seed and age, in place of a dying look's model, and
+ * its shadow, the debris flattened like any model.
  *
  * It all happens on the device (shardtypes.h): the mesh's first frame is
- * copied there once, and each draw hands it only the burst and its age.
+ * copied there once, and each draw hands it only the blast and its age.
  *
  * The object is embedded in ThemeLevelObject. */
 
@@ -31,16 +31,10 @@ public:
      * dropScale / 300 of them going each second. */
     void setup(AnimatedMesh *mesh, float speedMean, float speedVariance, float dropScale);
 
-    /* A new blast, away from `origin` (model coordinates).  Nothing without
-     * a mesh. */
-    void begin(const float *origin);
-
-    /* Ages the blast by dt seconds. */
-    void advance(float dt);
-
-    /* Draws the blast's shards twice (SRCALPHA, then DESTALPHA), if it has
-     * any left. */
-    void draw(RenderDevice *dev);
+    /* Draws blast `seed`, `age` seconds after it, flying away from `origin`
+     * (model coordinates): its shards twice (SRCALPHA, then DESTALPHA), if it
+     * has any left.  Nothing without a mesh. */
+    void draw(RenderDevice *dev, const float *origin, uint32_t seed, float age);
 
     int vertexCount() const { return vertexCount_; }
     float dropRate() const { return dropRate_; }
@@ -51,8 +45,4 @@ private:
     ShardBuffer  *buffer_ = nullptr;  // the mesh's first frame, made by the first draw
     float         speedMean_ = 0.0f, speedVariance_ = 0.0f;
     float         dropRate_ = 0.0f;   // triangles a second
-    float         origin_[3] = {};    // this blast's
-    float         age_ = 0.0f;        // seconds since it
-    bool          active_ = false;    // begun, and not every shard gone yet
-    uint32_t      blasts_ = 0;        // blasts begun: seeds each one's shards
 };

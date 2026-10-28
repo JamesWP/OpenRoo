@@ -151,7 +151,6 @@ void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs, PlayEvents &
     b.clock_    = ctx.clock;
     b.tickStep_ = ctx.tickStep;
     b.map_      = ctx.map;
-    b.deathCounter_ = ctx.deaths;
     b.facing_   = f;
 
     b.cellU_      = (signed char)u;

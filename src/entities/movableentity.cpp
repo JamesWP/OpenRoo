@@ -119,8 +119,6 @@ unsigned int MovableEntity::updateMovement(PlayEvents &events)
         if (dyingStarted_ == 0) {
             copy8(&dyingSince_, &now_);
             dyingStarted_ = 1;
-            if (deathCounter_ != nullptr)
-                deathNumber_ = ++*deathCounter_;
             pendingMove_ = 0;
             moveDir_ = 0;
             return 1;

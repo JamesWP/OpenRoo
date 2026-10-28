@@ -118,7 +118,7 @@ public:
     EntityContext entityContext()
     {
         return { &clock_, &tickStep_, &map_, &switchCells_,
-                 &switchMax_, levelName_, &crystalsInLevel_, &deaths_ };
+                 &switchMax_, levelName_, &crystalsInLevel_ };
     }
 
     /* Removes every object from the level and resets the switch counts. */
@@ -131,17 +131,12 @@ public:
     /* Ticks each bomb, removing those that asked to be. */
     void tickBombs(PlayEvents &events);
 
-    /* The foes and bombs that have started dying, counted from the start.
-     * Never reset, so a renderer can compare it across levels. */
-    unsigned deaths() const { return deaths_; }
-
 private:
     std::array<TimedSpawner, 256> timedSpawners_{};
     std::array<FreeBomb, 256>     freeBombs_{};
     LevelCensus   census_;
     unsigned char switchMax_{};
     unsigned short crystalsInLevel_{};
-    unsigned      deaths_{};
     ExtraObjects  extraObjects_;
     SwitchCells   switchCells_;
     double        clock_{};

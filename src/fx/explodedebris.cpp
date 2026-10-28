@@ -31,7 +31,6 @@ void ExplodeDebris::release()
     buffer_ = nullptr;
     mesh_ = nullptr;
     vertexCount_ = 0;
-    active_ = false;
 }
 
 void ExplodeDebris::setup(AnimatedMesh *mesh, float speedMean, float speedVariance,
@@ -45,30 +44,10 @@ void ExplodeDebris::setup(AnimatedMesh *mesh, float speedMean, float speedVarian
     dropRate_ = (float)vertexCount_ * dropScale / 300.0f;
 }
 
-void ExplodeDebris::begin(const float *origin)
+void ExplodeDebris::draw(RenderDevice *dev, const float *origin, uint32_t seed, float age)
 {
-    if (mesh_ == nullptr)
-        return;
-    for (int k = 0; k < 3; k++)
-        origin_[k] = origin[k];
-    blasts_++;
-    age_ = 0.0f;
-    active_ = true;
-}
-
-void ExplodeDebris::advance(float dt)
-{
-    if (!active_)
-        return;
-    age_ += dt;
-    // The last shard's time is the triangles over the rate.
-    if (dropRate_ > 0.0f && age_ * dropRate_ >= (float)(vertexCount_ / 3))
-        active_ = false;
-}
-
-void ExplodeDebris::draw(RenderDevice *dev)
-{
-    if (!active_)
+    // The last shard goes at the triangles over the rate.
+    if (mesh_ == nullptr || age < 0.0f || (dropRate_ > 0.0f && age * dropRate_ >= (float)(vertexCount_ / 3)))
         return;
     if (buffer_ == nullptr)
         buffer_ = dev->CreateShardBuffer(VertexFormat::Normal2, mesh_->vertexData(),
@@ -77,14 +56,14 @@ void ExplodeDebris::draw(RenderDevice *dev)
         return;
 
     ShardBurst burst;
-    burst.origin = { origin_[0], origin_[1], origin_[2] };
+    burst.origin = { origin[0], origin[1], origin[2] };
     burst.speedMean = speedMean_;
     burst.speedVariance = speedVariance_;
     burst.spin = kSpin;
     burst.dropRate = dropRate_;
     burst.shrink = kShrink;
-    burst.seed = blasts_ * 0x9E3779B9u;
-    burst.time = age_;
+    burst.seed = (seed + 1) * 0x9E3779B9u;
+    burst.time = age;
 
     const BlendState saved = dev->blend();
     BlendState pass = saved;
