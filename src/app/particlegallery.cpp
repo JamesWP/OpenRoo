@@ -4,6 +4,7 @@
 #include <math.h>
 #include <strings.h>
 #include <algorithm>
+#include <filesystem>
 #include <stdio.h>
 #include <string.h>
 #include <string>
@@ -24,9 +25,27 @@ using namespace input;
 
 namespace {
 
-/* The themes that have particle systems (FINAL has none). */
-const char *const kThemes[] = { "Forest", "Castle", "Egypt", "Space", "Water", "Candy" };
-const int kThemeCount = sizeof(kThemes) / sizeof(kThemes[0]);
+/* The themes: every themes\*.thm there is, by name, sorted.  Read once, the
+first time the gallery opens. */
+std::vector<std::string> s_themes;
+
+const std::vector<std::string> &themes()
+{
+    if (s_themes.empty()) {
+        std::error_code ec;
+        for (const auto &e : std::filesystem::directory_iterator(sysdev::nativePath("themes"), ec)) {
+            const std::filesystem::path f = e.path();
+            if (strcasecmp(f.extension().string().c_str(), ".thm") == 0)
+                s_themes.push_back(f.stem().string());
+        }
+        std::sort(s_themes.begin(), s_themes.end(), [](const std::string &a, const std::string &b) {
+            return strcasecmp(a.c_str(), b.c_str()) < 0;
+        });
+        if (s_themes.empty())
+            s_themes.push_back("");  // nothing to show, but an index to hold
+    }
+    return s_themes;
+}
 
 /* Each look's keyword in the theme file, in ThemeObjectType's order. */
 const char *const kLookNames[THEME_OBJ_COUNT] = {
@@ -70,35 +89,22 @@ Play play_of(int look)
     }
 }
 
-bool has_particles(ThemeAssetBlock &theme, int look)
-{
-    ThemeObjectTypeSlot *slot = theme.slot(look);
-    for (uint32_t r = 0; r < slot->instanceCount(); r++) {
-        ThemeLevelObject &rec = slot->records()[r];
-        if (rec.kind() == THEME_KIND_PARTICLESYSTEM && rec.particleSystems()[0])
-            return true;
-    }
-    return false;
-}
-
-/* Whether any of a look's records shatters (the theme's `explode`). */
-bool has_debris(ThemeAssetBlock &theme, int look)
+/* Whether the theme gives a look anything to draw: a model, field,
+ * billboard or particle system that loaded. */
+bool has_look(ThemeAssetBlock &theme, int look)
 {
     ThemeObjectTypeSlot *slot = theme.slot(look);
     for (uint32_t r = 0; r < slot->instanceCount(); r++)
-        if (slot->records()[r].explodes() != 0)
+        if (slot->records()[r].kind() != THEME_KIND_NONE)
             return true;
     return false;
 }
 
-/* The live look a dying foe's stands beside, to compare their sizes. */
-int living_foe(int look)
+/* A dying foe's look; it stands beside the living one, which comes first in
+ * ThemeObjectType's order, to compare their sizes. */
+bool dying_foe(int look)
 {
-    switch (look) {
-    case THEME_OBJ_FOE_CATCHER_DYING: return THEME_OBJ_FOE_CATCHER;
-    case THEME_OBJ_FOE_THROWER_DYING: return THEME_OBJ_FOE_THROWER;
-    default:                          return -1;
-    }
+    return look == THEME_OBJ_FOE_CATCHER_DYING || look == THEME_OBJ_FOE_THROWER_DYING;
 }
 
 /* What a look stands on: the floor plate, or nothing for a look that is a
@@ -211,22 +217,19 @@ public:
 
     void start(int theme)
     {
-        theme_ = (theme % kThemeCount + kThemeCount) % kThemeCount;
+        const int n = (int)themes().size();
+        theme_ = (theme % n + n) % n;
         char path[0x100];
-        snprintf(path, sizeof(path), "themes\\%s.thm", kThemes[theme_]);
+        snprintf(path, sizeof(path), "themes\\%s.thm", themes()[theme_].c_str());
         std::vector<ThemeSoundLine> sounds;
         if (!theme_block_.load(dev_, &textures_, &models_, path, sounds))
             g_logger.write("gallery: could not load %s\n", path);
         looks_.clear();
-        for (int look = 0; look < THEME_OBJ_COUNT; look++) {
-            if (!has_particles(theme_block_, look) && !has_debris(theme_block_, look))
-                continue;
-            const int living = living_foe(look);
-            if (living >= 0)
-                looks_.push_back(living);
-            looks_.push_back(look);
-        }
-        g_logger.write("gallery: %s, %u looks with particles or debris\n", kThemes[theme_],
+        // Every look but the floor and wall, which every tile has already.
+        for (int look = 0; look < THEME_OBJ_COUNT; look++)
+            if (look != THEME_OBJ_FLOOR && look != THEME_OBJ_WALL && has_look(theme_block_, look))
+                looks_.push_back(look);
+        g_logger.write("gallery: %s, %u looks\n", themes()[theme_].c_str(),
                        (unsigned)looks_.size());
         started_ = now_;
 
@@ -290,7 +293,7 @@ public:
                 at[i].conditions = draw::COND_ACTIVE;  // open: it glows and emits
         // A dying foe as Foe::draw has it: dead, its animation at the start.
         for (size_t i = 0; i < looks_.size(); i++)
-            if (living_foe(looks_[i]) >= 0)
+            if (dying_foe(looks_[i]))
                 at[i].conditions = draw::COND_DEAD;
 
         draw::beginPass(f, draw::Pass::Opaque);
@@ -358,7 +361,7 @@ private:
         const float cw = w * 0.012f, ch = w * 0.016f;
         char title[160];
         snprintf(title, sizeof(title), "%s  -  %u looks  -  left/right theme, up/down zoom",
-                 kThemes[theme_], (unsigned)looks_.size());
+                 themes()[theme_].c_str(), (unsigned)looks_.size());
         r_->fontMain.drawCentered(w * 0.5f, h * 0.03f, cw, ch, 0.75f, title, dev_, 0,
                                   0xffffffff, 0xffc0c0c0);
         for (size_t i = 0; i < looks_.size(); i++) {
@@ -396,10 +399,10 @@ public:
     /* The debug UI's controls, in the gallery's own section. */
     void panel()
     {
-        for (int i = 0; i < kThemeCount; i++) {
+        for (int i = 0; i < (int)themes().size(); i++) {
             if (i)
                 ImGui::SameLine();
-            if (ImGui::RadioButton(kThemes[i], theme_ == i) && theme_ != i)
+            if (ImGui::RadioButton(themes()[i].c_str(), theme_ == i) && theme_ != i)
                 start(i);
         }
         ImGui::Checkbox("pause orbit", &paused_);
@@ -434,8 +437,8 @@ bool s_fromEnv = false;
 
 int theme_named(const std::string &name)
 {
-    for (int i = 0; i < kThemeCount; i++)
-        if (strcasecmp(name.c_str(), kThemes[i]) == 0)
+    for (int i = 0; i < (int)themes().size(); i++)
+        if (strcasecmp(name.c_str(), themes()[i].c_str()) == 0)
             return i;
     return 0;
 }
