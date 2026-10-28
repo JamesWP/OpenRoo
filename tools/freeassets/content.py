@@ -257,6 +257,9 @@ def textures():
         int(255 * max(0.0, 1 - math.hypot(u - 0.5, v - 0.5) * 2) ** 2)))
     t[b + "block.tga"] = tile(0x8a6a4a, 0x5a3a1a, 32,
                               mark=lambda u, v: abs(u - v) < 0.06 or abs(u + v - 1) < 0.06)
+    # Spent glue: dried to a dull grey with cracks.
+    t[b + "glue_spent.tga"] = tile(0x6a6458, 0x403c34, mark=lambda u, v: abs(math.sin(u * 9 + 3 * math.sin(v * 7))) < 0.08
+                                   or abs(math.sin(v * 8 + 2 * math.sin(u * 5))) < 0.06)
     t[b + "glue.tga"] = tile(0x806030, 0x503010, mark=lambda u, v: (int(u * 8) + int(v * 8)) % 3 == 0)
     t[b + "falling.tga"] = tile(0xf0c020, 0x303030, mark=lambda u, v: int((u + v) * 4) % 2 == 0)
     t[b + "jumppad.tga"] = tile(0xe0e030, 0x808010, mark=lambda u, v: abs(math.hypot(u - .5, v - .5) - .25) < .05)
@@ -417,7 +420,10 @@ def theme():
         "Exit": field("exit", ("\t\tTexture %sexit_glow.tga" % b, "\t\t{", "\t\t\tSrcBlend One",
                                "\t\t\tDestBlend One", "\t\t\tCondition Active", "\t\t}"))
         + particles("exit", subextra=("Condition Active",)),
-        "Glue": field("glue"),
+        # Single use: wet and wobbling until it has held the player, then
+        # dried ("active": the tile is spent).
+        "Glue": field("glue", ("\t\t{", "\t\t\tWobble 0.0009 0.1 0.1", "\t\t\tCondition InActive", "\t\t}",
+                               "\t\tTexture %sglue_spent.tga" % b, "\t\t{", "\t\t\tCondition Active", "\t\t}")),
         # A fallen tile is "active" until it is back: only then is it drawn.
         "DestructField": model("falling", "falling", subextra=("Condition InActive",)),
         "DestructFieldFX": particles("dust", 5),
