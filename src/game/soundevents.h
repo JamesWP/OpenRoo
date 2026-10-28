@@ -16,6 +16,7 @@ public:
     /* The voice key's sound plays on; released when its entity is destroyed. */
     void attach(const SoundKey &key, SoundVoice *voice);
 
+    void soundPlay(const SoundKey &key, float x, float y, float z) override;
     void soundStart(const SoundKey &key, float x, float y, float z) override;
     void soundMove(const SoundKey &key, float x, float y, float z) override;
     void soundStop(const SoundKey &key) override;

@@ -10,13 +10,15 @@
  * entityDestroyed() reports it, and its sounds are released. */
 #pragma once
 
-enum class SoundSource : unsigned char { Lift, Platform, Bridge };
+enum class SoundSource : unsigned char { Lift, Platform, Bridge, Falling };
 
 /* Each source's sounds. */
 enum class Sfx : unsigned char {
     LiftMoving,      // a lift's loop while it rises or falls
     PlatformMoving,  // a platform's while it runs along its track
     BridgeMoving,    // a bridge's while its deck goes out or in
+    TileFalls,       // a falling tile's as it falls
+    TileRespawns,    // and as it comes back
 };
 
 struct SoundKey {
@@ -36,6 +38,8 @@ class PlayEvents {
 public:
     virtual ~PlayEvents() = default;
 
+    /* A one-shot plays at (x, y, z). */
+    virtual void soundPlay(const SoundKey &, float, float, float) {}
     /* A loop starts at (x, y, z), moves there, stops. */
     virtual void soundStart(const SoundKey &, float, float, float) {}
     virtual void soundMove(const SoundKey &, float, float, float) {}

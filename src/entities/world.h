@@ -132,7 +132,7 @@ public:
     /* Ticks every object of one kind, in list order. */
     void tickLifts(PlayEvents &events);
     void tickPlatforms(PlayEvents &events);
-    void tickFallings();
+    void tickFallings(PlayEvents &events);
     void tickBridges(PlayEvents &events);
     /* Ticks and debug-draws each bomb, removing those that asked to be. */
     void tickBombs();

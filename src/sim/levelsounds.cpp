@@ -101,15 +101,13 @@ Sim_InitLevelBasedSounds(Game *self)
         for (Foe &foe : game->world()->foes())
             Sim_AcquireFoeSounds(game, foe);
 
-        for (FallingTile &bt : game->world()->fallings()) {
-            if (game->audio()->themeSound(ThemeSound::DestructStart)->enabled != 0) {
-                audiodev::Buffer *p = acq(game, game->audio()->themeSound(ThemeSound::DestructStart));
-                bt.setFallSound(p);
-            }
-            if (game->audio()->themeSound(ThemeSound::DestructRegen)->enabled != 0) {
-                audiodev::Buffer *p = acq(game, game->audio()->themeSound(ThemeSound::DestructRegen));
-                bt.setRespawnSound(p);
-            }
+        for (const FallingTile &bt : game->world()->fallings()) {
+            if (game->audio()->themeSound(ThemeSound::DestructStart)->enabled != 0)
+                game->soundEvents()->attach({SoundSource::Falling, bt.id(), Sfx::TileFalls},
+                                            acq(game, game->audio()->themeSound(ThemeSound::DestructStart)));
+            if (game->audio()->themeSound(ThemeSound::DestructRegen)->enabled != 0)
+                game->soundEvents()->attach({SoundSource::Falling, bt.id(), Sfx::TileRespawns},
+                                            acq(game, game->audio()->themeSound(ThemeSound::DestructRegen)));
         }
         attachLoopSound(game, game->world()->lifts(), SoundSource::Lift, Sfx::LiftMoving,
                         game->audio()->themeSound(ThemeSound::Elevator));

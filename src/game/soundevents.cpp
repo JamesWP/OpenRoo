@@ -12,6 +12,14 @@ SoundVoice *SoundEvents::voice(const SoundKey &key) const
     return it == voices_.end() ? nullptr : it->second;
 }
 
+void SoundEvents::soundPlay(const SoundKey &key, float x, float y, float z)
+{
+    if (SoundVoice *v = voice(key)) {
+        v->setPosition(x, y, z, true);
+        v->play(false);
+    }
+}
+
 void SoundEvents::soundStart(const SoundKey &key, float x, float y, float z)
 {
     if (SoundVoice *v = voice(key)) {

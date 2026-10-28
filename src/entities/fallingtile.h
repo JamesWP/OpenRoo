@@ -7,13 +7,12 @@
 #pragma once
 #include "entitycontext.h"
 #include "entitylist.h"
+#include "playevents.h"
 #include "tickstep.h"
 #include "drawfwd.h"
 
  
 
-class SoundVoice;
-class SoundLibrary;
 class Tile;
 
 class FallingTile : public Listed {
@@ -24,15 +23,8 @@ public:
     static void spawn(const EntityContext &ctx, EntityList<FallingTile> &fallings, unsigned int uArg, unsigned int vArg,
                               unsigned int heightArg, unsigned int paramArg);
 
-    // Releases its sounds, before World destroys it.
-    void releaseSounds(SoundLibrary *sm);
-
-    // One tick.
-    void tick();
-
-    // The two sounds, attached by InitLevelBasedSounds (levelsounds.cpp).
-    void setFallSound(SoundVoice *p)    { fallSound_ = p; }
-    void setRespawnSound(SoundVoice *p) { respawnSound_ = p; }
+    // One tick; its sounds as it falls and comes back play through events.
+    void tick(PlayEvents &events);
 
     // Set for the tick it falls.
     int  justFell() const                      { return justFell_; }
@@ -60,8 +52,8 @@ private:
 
     // The tile it sits on: (cellU_, cellV_), read signed.
     Tile *tile() const;
-    // Positions the sound at the tile and triggers it.
-    void playAtTile(SoundVoice *snd, const Tile *t) const;
+    // Plays one of its sounds at the tile.
+    void playAtTile(PlayEvents &events, Sfx sfx, const Tile *t) const;
 
     double              now_;             // latched from *clock_
     double             *clock_;           // World::clock()
@@ -81,8 +73,6 @@ private:
     double              eventTime_;       // the clock at the last fall or respawn
     int                 respawnPending_;
     unsigned char       field_4c;
-    SoundVoice *fallSound_;       // may be NULL
-    SoundVoice *respawnSound_;    // may be NULL
     int                 armed_;
     int                 noRespawn_;       // the tile's param: nonzero never respawns
     double              armedAt_;
