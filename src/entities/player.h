@@ -116,18 +116,11 @@ public:
     // through the pointer.
     unsigned char *homeRef()                   { return &homeU_; }
 
-    // The world's sound variant (0 Egypt, 1 Candy, 2 Space); indexes the
-    // pickup sound bank.
+    // The world's sound variant (0 Egypt, 1 Candy, 2 Space); the paraglider's
+    // pickup sound is that take.
     int   worldSoundVariant() const                     { return worldSoundVariant_; }
     void  setWorldSoundVariant(int n)                   { worldSoundVariant_ = n; }
 
-    // The nine three-entry pickup sound banks.
-    enum PickupBank {
-        SND_15E, SND_16A, SND_176, SND_182, SND_18E,
-        SND_19A, SND_1A6, SND_1B2, SND_1BE,
-    };
-    SoundVoice *pickupSound(int bank, int i) const { return pickupSounds_[bank][i]; }
-    void  setPickupSound(int bank, int i, SoundVoice *p) { pickupSounds_[bank][i] = p; }
 
     double lastSecondsMark() const                    { return lastSecondsMark_; }
     void  setLastSecondsMark(double d)                { lastSecondsMark_ = d; }
@@ -190,15 +183,10 @@ public:
 
 private:
 
-    typedef SoundVoice *SoundRef;
-
-    int   soundVariant() const;
-    void  playAtCell(SoundVoice *buf) const;
-    void  pickupSound(const SoundRef *arr) const;
+    void  pickupSound(PlayEvents &events, Sfx sfx, int variant) const;
     void  endEffect(int code);
 
     int                 worldSoundVariant_{};
-    SoundRef            pickupSounds_[9][3] = {};
     double              lastSecondsMark_{};
     double              effectBStart_{};
     int                 effectBActive_{};
