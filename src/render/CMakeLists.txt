@@ -3,6 +3,7 @@
 add_library(render OBJECT
     camera.cpp
     dsoscene.cpp
+    entitydraw.cpp
     framepose.cpp
     levelplacements.cpp
     renderstate.cpp

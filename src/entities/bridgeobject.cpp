@@ -25,7 +25,6 @@
 #include "levelmap.h"
 #include "tile.h"
 #include "logger.h"
-#include "themedraw.h"
 
 /* The float nearest 0.01; widened where it is multiplied. */
 static const float K_MS_TO_TILE = 0.01f;
@@ -348,61 +347,7 @@ void BridgeObject::tick(PlayEvents &events)
     }
 }
 
-/* The deck: one quad, a unit wide, from the anchor to the live end, z
- * negated.  Its texture repeats every four units along it and scrolls along
- * it over time, a span's length a second. */
-bool BridgeObject::deck(draw::FieldVertex v[4], double t) const
-{
-    if (armed_ == 0 && phase_ == 0)
-        return false;
 
-    const float ax = restU_, ay = restY_, az = -restV_;
-    const float dx = posU_ - ax, dy = posY_ - ay, dz = -posV_ - az;
-    const float len = sqrtf(dx * dx + dy * dy + dz * dz);
-    const float tiles = len * 0.25f;
-    const float n = span_ != 0 ? (float)span_ : 1.0f;
-    const float scroll = (float)fmod(t * 0.001 / n, 1.0) * n;
-
-    // The deck's two ends along its axis, a and b, and the texture's v at each.
-    const bool fwd = step_ > 0;
-    float a, b;
-    if ((signed char)axis_ == 1) {
-        const float x0 = ax - 0.5f;
-        a = fwd ? x0 + len : x0;
-        b = fwd ? x0 : x0 - len;
-    } else {
-        const float z1 = az + 0.5f;
-        a = fwd ? z1 - len : z1;
-        b = fwd ? z1 : z1 + len;
-    }
-    const float va = fwd ? tiles - scroll : scroll + tiles;
-    const float vb = fwd ? -scroll : scroll;
-
-    const uint32_t white = 0xffffffff;
-    if ((signed char)axis_ == 1) {
-        const float lo = az - 0.5f, hi = az + 0.5f;
-        v[0] = { a, ay, lo, white, 0.0f, va };
-        v[1] = { b, ay, lo, white, 0.0f, vb };
-        v[2] = { a, ay, hi, white, 1.0f, va };
-        v[3] = { b, ay, hi, white, 1.0f, vb };
-    } else {
-        const float lo = ax - 0.5f, hi = ax + 0.5f;
-        v[0] = { hi, ay, a, white, 1.0f, va };
-        v[1] = { lo, ay, a, white, 0.0f, va };
-        v[2] = { hi, ay, b, white, 1.0f, vb };
-        v[3] = { lo, ay, b, white, 0.0f, vb };
-    }
-    return true;
-}
-
-void BridgeObject::draw(draw::Frame &f, draw::Pass pass) const
-{
-    draw::FieldVertex q[1][4];
-    if (pass != draw::Pass::Effects || !deck(q[0], f.now))
-        return;
-    const draw::Instance in;
-    draw::objects(f, THEME_OBJ_BRIDGE, &in, 1, q);
-}
 
 
 static void deck_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)

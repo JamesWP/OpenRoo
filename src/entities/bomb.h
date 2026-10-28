@@ -1,6 +1,6 @@
 /* Bomb: a dropped bomb.  A 2 s fuse during which it rolls forward, then a 3x3
  * kill zone for 0.4 s.  A MovableEntity plus its own fields.  The World's
- * bomb list holds only bombs.  It draws itself (draw()), and the
+ * bomb list holds only bombs.  entitydraw.cpp draws it, and the
  * movement code treats a bomb as a plain entity. */
 
 #pragma once
@@ -10,7 +10,6 @@
 #include "entitycontext.h"
 #include "entitylist.h"
 #include "movableentity.h"
-#include "drawfwd.h"
 
 class Tile;
 
@@ -34,11 +33,6 @@ public:
     // Draws it on the debug map; n is its place in the World's bomb list.
     void debugDraw(unsigned n) const;
 
-    // Draws the bomb for one pass of the frame: the bomb, or once it has
-    // gone off the explosion (firing its debris), and its particles.
-    // deathsDrawn is the level's death count at the last frame drawn: a
-    // newer death fires its effects.
-    void draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const;
 
     // When it was dropped, in clock ms; it blows 2 s later.  Read by the bot.
     double droppedAt() const { return droppedAt_; }

@@ -13,5 +13,5 @@ add_library(entities OBJECT
 target_include_directories(entities PUBLIC .)
 
 target_link_libraries(entities
-    PUBLIC  base level drawhelpers
+    PUBLIC  base level
     PRIVATE sysdev log prof dbg imgui)

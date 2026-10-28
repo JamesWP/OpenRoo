@@ -23,10 +23,6 @@ public:
     // Draws the player on the debug map and adds it to the tooltip.
     void debugDraw() const;
 
-    // Draws the player for one pass of the frame: its model, its auras, its
-    // shadow, its particles, its pickup bursts and its speed trail.
-    void draw(draw::Frame &f, draw::Pass pass) const;
-
     // The six actions DirectInputSetup registers as player controls.
     void actMoveForward(PlayEvents &events);
     void actMoveBack(PlayEvents &events);

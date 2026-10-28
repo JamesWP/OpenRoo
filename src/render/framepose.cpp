@@ -9,6 +9,7 @@
 #include "config.h"
 #include "player.h"
 #include "themedraw.h"
+#include "entitydraw.h"
 
 static const float K_SPIN = 0.001f;  // mode 2's yaw per ms
 
@@ -23,14 +24,14 @@ void FramePose_Player(const World *world, const CameraRig *camera, const Config 
                       double dt, CameraFocus *out)
 {
     const Player *p = world->player();
-    const draw::Instance pose = p->pose();
+    const draw::Instance in = pose(*p, world->now());
     float *f = out->f;
 
-    f[0] = pose.animTime;
-    f[1] = pose.rot.y;
-    f[2] = pose.pos.x;
-    f[3] = pose.pos.y;
-    f[4] = pose.pos.z;
+    f[0] = in.animTime;
+    f[1] = in.rot.y;
+    f[2] = in.pos.x;
+    f[3] = in.pos.y;
+    f[4] = in.pos.z;
 
     const unsigned char mode = camera->mode();
     if (mode == 2) {

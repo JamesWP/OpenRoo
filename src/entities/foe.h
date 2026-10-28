@@ -3,7 +3,7 @@
  * they are declared there (protected).
  *
  * The sound attachment, the cheats, the tile queries and the movement code
- * treat a foe as a plain entity; it draws itself (draw()).  Its pathfinder
+ * treat a foe as a plain entity; entitydraw.cpp draws it.  Its pathfinder
  * is FoePath (foepath.cpp). */
 
 #pragma once
@@ -14,7 +14,6 @@
 #include "entitylist.h"
 #include "bomb.h"
 #include "movableentity.h"
-#include "drawfwd.h"
 
 class Tile;
 
@@ -51,13 +50,6 @@ public:
     // Draws it on the debug map and adds it to the tooltip; n is its place
     // in the World's foe list.
     void debugDraw(unsigned n) const;
-
-    // Draws the foe for one pass of the frame: a catcher or thrower model
-    // (its dying look, firing its death effects, once it is dying), its
-    // shadow and its particles.
-    // deathsDrawn is the level's death count at the last frame drawn: a
-    // newer death fires its effects.
-    void draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const;
 
     // One tick, towards the player's cell (or whatever target GameTick chose).
     void step(unsigned char playerU, unsigned char playerV, PlayEvents &events);

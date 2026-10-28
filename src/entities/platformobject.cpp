@@ -25,7 +25,6 @@
 #include "levelmap.h"
 #include "tile.h"
 #include "logger.h"
-#include "themedraw.h"
 #include "animcode.h"
 #include <math.h>
 
@@ -362,16 +361,3 @@ void PlatformObject::tick(PlayEvents &events)
 }
 
 
-void PlatformObject::draw(draw::Frame &f, draw::Pass pass) const
-{
-    if (pass != draw::Pass::Opaque)
-        return;
-    draw::Instance in;
-    in.pos = { posU_, posY_, -posV_ };
-    if (kind_ == TILE_PLATFORM_U)
-        in.rot.y = 1.5707964f;
-    // The platform's walk cycle, every 500 ms.
-    in.animCode = ANIM_WALK_FORWARD;
-    in.animTime = (float)fmod(f.now * 0.002, 1.0);
-    draw::objects(f, THEME_OBJ_PLATFORM, &in);
-}

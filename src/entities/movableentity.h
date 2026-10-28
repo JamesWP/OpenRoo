@@ -14,7 +14,6 @@
 #include <stddef.h>
 #include "tickstep.h"
 #include "tile.h"
-#include "drawfwd.h"
 
 class LevelMap;
 class FoePath;
@@ -48,7 +47,7 @@ public:
     // Recomputed every movement tick: taking a stair or sliding this tick.
     // Stops UpdateViewTransform's camera lift while it holds.
     int   onStairOrSlide() const               { return onStairOrSlide_; }
-    // The step phase, which pose() turns into a 0..1 fraction.
+    // The step phase, which pose() (entitydraw.h) turns into a 0..1 fraction.
     unsigned char turnKind() const             { return turnKind_; }
     bool  onSwitch() const                     { return onSwitch_ != 0; }
     double animDuration() const                { return animDuration_; }
@@ -94,11 +93,6 @@ public:
     void  setMoveState(unsigned char s)        { moveState_ = s; }
     const FoePath *pathfinder() const          { return pathfinder_; }
     FoePath       *pathfinder()                { return pathfinder_; }
-
-    // Where it draws and how far through its step: (u, height, -v), turned
-    // to its facing and through any turn in progress, playing its animation
-    // at the step's fraction (0 when still).
-    draw::Instance pose() const;
 
     // Which of the sources of sound it is, and one of its sounds by name
     // (playevents.h).
