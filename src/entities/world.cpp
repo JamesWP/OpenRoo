@@ -3,6 +3,8 @@
 
 #include "world.h"
 #include "prof.h"
+#include "tile.h"
+#include "entitymath.h"
 
 BridgeObject *World::bridge(unsigned char switchSlot)
 {
@@ -20,6 +22,9 @@ const BridgeObject *World::bridge(unsigned char switchSlot) const
 /* Releases each object's sounds, then destroys them all, first to last. */
 void World::clearObjects(PlayEvents &events)
 {
+    effects_.clear();
+    playerPath_.clear();
+    effectsAt_ = -1.0;
     for (const LiftObject &lift : lifts_)
         events.entityDestroyed(SoundSource::Lift, lift.id());
     lifts_.clear();
@@ -84,3 +89,37 @@ void World::tickBombs(PlayEvents &events)
     }
 }
 
+
+void World::recordEffects()
+{
+    if (clock_ == effectsAt_)
+        return;
+    effectsAt_ = clock_;
+
+    while (!effects_.empty() && clock_ - effects_.front().startMs > EFFECT_MS)
+        effects_.erase(effects_.begin());
+    auto add = [this](EffectKind kind, float u, float y, float v) {
+        effects_.push_back({ kind, u, y, v, clock_, effectSeed_++ });
+    };
+    if (player_.pickedUp() == CONTENTS_CRYSTAL)
+        add(EffectKind::CrystalPickup, player_.posU(), player_.posY(), player_.posV());
+    else if (player_.pickedUp() != 0)
+        add(EffectKind::ItemPickup, player_.posU(), player_.posY(), player_.posV());
+    for (const Foe &foe : foes_)
+        if (foe.pickedUp() == CONTENTS_CRYSTAL)
+            add(EffectKind::CrystalPickup, foe.posU(), foe.posY(), foe.posV());
+    for (const FallingTile &t : fallings_)
+        if (t.justFell() != 0)
+            add(EffectKind::FallingDust, (float)t.cellU(), (float)t.heightCell(), (float)t.cellV());
+
+    while (!playerPath_.empty() && clock_ - playerPath_.front().timeMs > PATH_MS)
+        playerPath_.pop_front();
+    if (playerPath_.empty() || clock_ - playerPath_.back().timeMs >= PATH_STEP_MS) {
+        // Sped up, and moving along (or straight against) its facing.
+        const bool trail = player_.effectAActive() != 0 &&
+            ((unsigned)player_.moveDir() == player_.facing() ||
+             (unsigned)player_.moveDir() == Sim_GetTurnedDirection(player_.facing(), 2));
+        playerPath_.push_back({ clock_, player_.posU(), player_.posY(), player_.posV(),
+                                player_.facing(), trail });
+    }
+}

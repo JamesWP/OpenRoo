@@ -168,6 +168,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     }
 
     Play_TickFoes(self);
+    self->world()->recordEffects();
 
     Entities_DebugDrawMap(self->world());
     Game_DebugPanel(self);

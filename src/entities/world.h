@@ -26,6 +26,7 @@
 #include "platformobject.h"
 #include "bridgeobject.h"
 #include "fallingtile.h"
+#include "effects.h"
 
 
 class World {
@@ -130,6 +131,15 @@ public:
     void tickBridges(PlayEvents &events);
     /* Ticks each bomb, removing those that asked to be. */
     void tickBombs(PlayEvents &events);
+    /* Notes the effects this tick started (pickups, a tile falling) and the
+     * player's place on its path, and drops what can no longer be seen.  Once
+     * a tick: a tick that does not move the clock records nothing. */
+    void recordEffects();
+
+    /* The one-shot effects still to be seen, oldest first, and the player's
+     * recent path (effects.h). */
+    const std::vector<EffectStart> &effects() const    { return effects_; }
+    const std::deque<PathSample>   &playerPath() const { return playerPath_; }
 
 private:
     std::array<TimedSpawner, 256> timedSpawners_{};
@@ -148,6 +158,10 @@ private:
     EntityList<LiftObject>     lifts_;
     EntityList<FallingTile>    fallings_;
     EntityList<Bomb>           bombs_;
+    std::vector<EffectStart>   effects_;
+    std::deque<PathSample>     playerPath_;
+    unsigned                   effectSeed_{};
+    double                     effectsAt_ = -1.0;  // the clock recordEffects last ran at
     EntityList<Foe>            foes_;
     Player        player_;
     /* The map: header, grid and snapshot grid.  Its header holds the time limit (GameTick times the
