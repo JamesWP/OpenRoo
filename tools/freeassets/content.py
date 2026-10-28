@@ -122,12 +122,55 @@ def cube(w, d, h, z0=0.0):
     return F.mdl([F.box(-w / 2, -d / 2, z0, w / 2, d / 2, z0 + h)])
 
 
+def moved(tris, dx=0.0, dy=0.0, dz=0.0):
+    return [((x + dx, y + dy, z + dz), n, uv) for (x, y, z), n, uv in tris]
+
+
+def turned(tris, degrees):
+    """tris turned about the y axis (in the x-z plane)."""
+    c, s = math.cos(math.radians(degrees)), math.sin(math.radians(degrees))
+    return [((c * x - s * z, y, s * x + c * z), (c * n[0] - s * n[2], n[1], s * n[0] + c * n[2]), uv)
+            for (x, y, z), n, uv in tris]
+
+
+def bar(cx, cz, w, h, d=0.08):
+    """A thin upright slab centred on (cx, cz), facing y."""
+    return F.box(cx - w / 2, -d / 2, cz - h / 2, cx + w / 2, d / 2, cz + h / 2)
+
+
+# The pickups, each its own silhouette, all floating about 0.3 up.
+PICKUPS = {
+    # Bombs: a ball and its fuse.
+    "ammo.mdl":       F.mdl([F.sphere(0.14, 0.28) + F.box(-0.02, -0.02, 0.40, 0.02, 0.02, 0.50)]),
+    # Freeze: a six-armed flake, three crossed bars.
+    "freeze.mdl":     F.mdl([sum((moved(turned(bar(0, 0, 0.50, 0.07), a), dz=0.32) for a in (0, 60, 120)), [])]),
+    # Speed: a chevron pointing up, two slanted bars.
+    "speed.mdl":      F.mdl([moved(turned(bar(0, 0, 0.30, 0.08), 45), dx=-0.1, dz=0.30)
+                             + moved(turned(bar(0, 0, 0.30, 0.08), -45), dx=0.1, dz=0.30)]),
+    # Life: two lobes over a point, a rough heart.
+    "life.mdl":       F.mdl([moved(F.sphere(0.10, 0.36), dx=-0.08) + moved(F.sphere(0.10, 0.36), dx=0.08)
+                             + F.sphere(0.09, 0.26)]),
+    # Time: an hourglass, two blocks on a waist.
+    "time.mdl":       F.mdl([F.box(-0.13, -0.13, 0.42, 0.13, 0.13, 0.48)
+                             + F.box(-0.13, -0.13, 0.12, 0.13, 0.13, 0.18)
+                             + F.box(-0.08, -0.08, 0.18, 0.08, 0.08, 0.27)
+                             + F.box(-0.08, -0.08, 0.33, 0.08, 0.08, 0.42)
+                             + F.box(-0.03, -0.03, 0.27, 0.03, 0.03, 0.33)]),
+    # Protection: a shield, an upright plate with a boss.
+    "protection.mdl": F.mdl([bar(0, 0.32, 0.34, 0.40, 0.06) + moved(F.sphere(0.07, 0.32), dy=-0.04)]),
+    # Paraglider: a wing over a small body.
+    "paraglide.mdl":  F.mdl([F.box(-0.30, -0.08, 0.44, 0.30, 0.08, 0.48)
+                             + F.box(-0.05, -0.05, 0.16, 0.05, 0.05, 0.30)]),
+    # Surprise: a box, its faces marked "?".
+    "surprise.mdl":   cube(0.32, 0.32, 0.32, 0.14),
+}
+
+
 MODELS = {
     "player.mdl":    cube(0.40, 0.40, 0.70),
     "catcher.mdl":   cube(0.45, 0.45, 0.80),
     "thrower.mdl":   cube(0.55, 0.55, 0.45),
     "crystal.mdl":   F.mdl([F.sphere(0.16, 0.35)]),
-    "item.mdl":      cube(0.35, 0.35, 0.35, 0.05),
     "bomb.mdl":      cube(0.25, 0.25, 0.25),
     "obstacle.mdl":  cube(0.90, 0.90, 0.70),
     "block.mdl":     cube(0.96, 0.96, 0.80),
@@ -137,6 +180,7 @@ MODELS = {
     "stair.mdl":     F.mdl([[v for i in range(4)
                              for v in F.box(-0.5 + 0.25 * i, -0.5, -0.5, 0.5, 0.5, 0.25 * (i + 1))]]),
     "falling.mdl":   cube(1.00, 1.00, 0.10, -0.10),
+    **PICKUPS,
     # A canopy over the player, drawn while it glides.
     "glider.mdl":    F.mdl([F.box(-0.15, -0.45, 1.00, 0.15, 0.45, 1.06)]),
 }
@@ -162,6 +206,10 @@ PARTICLES = {
                         spread=(0.02, 0.1, 0.02), box=((-0.3, 0, -0.3), (0.3, 0.05, 0.3)), rate=30),
     "fuse":      F.par(60, 0.08, [(0xffe080, 2), (0xff4020, 1)], (0.25, 0.05), speed=(1.5, 0.3),
                        spread=(1, 1, 1), gravity=2, rate=150, fade_ms=200),
+    # A ring of sparks round the protected player, rising slowly.
+    "shield":    F.par(120, 0.10, [(0xffff80, 2), (0xffffff, 1)], (0.8, 0.1), speed=(0.4, 0.1),
+                       spread=(0.05, 0, 0.05), pos=(0, 0.1, 0), pos_spread=(0.35, 0.05, 0.35),
+                       rate=120, fade_ms=300),
     "speed":     F.par(80, 0.12, [(0xff8040, 1), (0xffe080, 1)], (0.6, 0.1),
                        pos_spread=(0.05, 0.05, 0.05), spread=(0.01, 0, 0.01), rate=50, fade_ms=150),
 }
@@ -184,9 +232,14 @@ def textures():
 
     b = "textures/basic/"
     t[b + "edge.tga"] = solid(0xffffff, 8)
-    for name, colour in (("freeze", 0x80c0ff), ("inverse", 0xff80ff), ("protection", 0xffff80),
-                         ("slow", 0x808080), ("speed", 0xff8040)):
-        t[b + "bonus_%s.tga" % name] = ring(colour)
+    # The active effects' HUD icons: a ring and a letter.
+    for name, colour, letter in (("freeze", 0x80c0ff, "F"), ("inverse", 0xff80ff, "R"),
+                                 ("protection", 0xffff80, "P"), ("slow", 0x808080, "S"),
+                                 ("speed", 0xff8040, ">")):
+        c = ui.Canvas(32, 32)
+        c.fill(ui.ring(16, 16, 12, 15), colour)
+        c.text(letter, 16, 16, 2, colour, outline=0x000000)
+        t[b + "bonus_%s.tga" % name] = c.tga()
     for face in ("UP", "DN", "FR", "BK", "LF", "RT"):
         top, bottom = {"UP": (0x4080e0, 0x4080e0), "DN": (0x203040, 0x203040)}.get(
             face, (0x4080e0, 0xa0c0e0))
@@ -221,6 +274,11 @@ def textures():
                          ("paraglide", 0x40e040), ("obstacle", 0x907050), ("lift", 0x8080a0),
                          ("stair", 0x909090)):
         t[b + "%s.tga" % name] = tile(colour, max(0, colour - 0x303030) & 0xffffff, 32)
+    c = ui.Canvas(32, 32)
+    c.fill(ui.rect(0, 0, 32, 32), 0xc040ff)
+    c.fill(ui.rect(2, 2, 30, 30, 3), 0xe090ff)
+    c.text("?", 16, 16, 3, 0xffffff, outline=0x400060)
+    t[b + "surprise.tga"] = c.tga()
     return t
 
 
@@ -371,15 +429,16 @@ def theme():
         "Crystal": model("crystal", "crystal", extra=spin + ("Oscillate 0.1 0.005 random", "Specular")),
         "CrystalFX": particles("crystalfx", 10),
         "CollFX": particles("collect", 10),
-        "Ammunition": model("item", "ammo", extra=spin),
-        "Freeze": model("item", "freeze", extra=spin),
-        "Speed": model("item", "speed", extra=spin),
-        "Life": model("item", "life", extra=spin),
-        "Time": model("item", "time", extra=spin),
-        "Protection": model("item", "protection", extra=spin),
-        "Paraglide": model("item", "paraglide", extra=spin),
+        "Ammunition": model("ammo", "ammo", extra=spin),
+        "Freeze": model("freeze", "freeze", extra=spin),
+        "Speed": model("speed", "speed", extra=spin),
+        "Life": model("life", "life", extra=spin),
+        "Time": model("time", "time", extra=spin),
+        "Protection": model("protection", "protection", extra=spin),
+        "Paraglide": model("paraglide", "paraglide", extra=spin),
         "ParaglideFX": model("glider", "paraglide"),
-        "Surprise": model("item", "plate", extra=spin),
+        "Surprise": model("surprise", "surprise", extra=spin),
+        "ProtectionFX": particles("shield", movable=True),
         "Bomb": model("bomb", "bomb") + particles("fuse", extra=("Position 0 0.3 0",)),
         "Explosion": model("bomb", "bomb", extra=(explode,)) + particles("explosion", 5),
         "SpeedFX": particles("speed", movable=True),
