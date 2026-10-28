@@ -35,7 +35,9 @@ void World::clearObjects(PlayEvents &events)
     for (const PlatformObject &platform : platforms_)
         events.entityDestroyed(SoundSource::Platform, platform.id());
     platforms_.clear();
-    purge(fallings_, sound_);
+    for (const FallingTile &falling : fallings_)
+        events.entityDestroyed(SoundSource::Falling, falling.id());
+    fallings_.clear();
     for (const BridgeObject &bridge : bridges_)
         events.entityDestroyed(SoundSource::Bridge, bridge.id());
     bridges_.clear();
@@ -50,32 +52,18 @@ void World::clearObjects(PlayEvents &events)
 
 /* Ticks every object in a list, in order; a tick does not add or remove. */
 template <class T>
-static void tickAll(EntityList<T> &list, const char *name)
+static void tickAll(EntityList<T> &list, const char *name, PlayEvents &events)
 {
     if (list.empty())
         return;
     PROF_SCOPE(name);
     for (T &obj : list)
-        obj.tick();
+        obj.tick(events);
 }
 
-void World::tickLifts(PlayEvents &events)
-{
-    if (lifts_.empty())
-        return;
-    PROF_SCOPE("lifts");
-    for (LiftObject &lift : lifts_)
-        lift.tick(events);
-}
-void World::tickPlatforms(PlayEvents &events)
-{
-    if (platforms_.empty())
-        return;
-    PROF_SCOPE("platforms");
-    for (PlatformObject &platform : platforms_)
-        platform.tick(events);
-}
-void World::tickFallings()  { tickAll(fallings_, "falling tiles"); }
+void World::tickLifts(PlayEvents &events) { tickAll(lifts_, "lifts", events); }
+void World::tickPlatforms(PlayEvents &events) { tickAll(platforms_, "platforms", events); }
+void World::tickFallings(PlayEvents &events) { tickAll(fallings_, "falling tiles", events); }
 
 void World::tickBridges(PlayEvents &events)
 {

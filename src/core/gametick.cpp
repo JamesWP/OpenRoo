@@ -75,7 +75,7 @@ static void tick_level_objects(Game *self)
         Cheat_TeleportPlayer(self, u, v);
     self->world()->tickLifts(*self->soundEvents());
     self->world()->tickPlatforms(*self->soundEvents());
-    self->world()->tickFallings();
+    self->world()->tickFallings(*self->soundEvents());
     self->world()->tickBridges(*self->soundEvents());
 }
 
