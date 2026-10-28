@@ -19,6 +19,7 @@ public:
     void attach(const SoundKey &key, SoundVoice *voice);
 
     void soundPlay(const SoundKey &key, float x, float y, float z) override;
+    void soundPlay(const SoundKey &key) override;
     void soundStart(const SoundKey &key, float x, float y, float z) override;
     void soundMove(const SoundKey &key, float x, float y, float z) override;
     void soundStop(const SoundKey &key) override;

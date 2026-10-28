@@ -10,7 +10,7 @@
  * entityDestroyed() reports it, and its sounds are released. */
 #pragma once
 
-enum class SoundSource : unsigned char { Lift, Platform, Bridge, Falling, Player, Foe, Bomb };
+enum class SoundSource : unsigned char { Lift, Platform, Bridge, Falling, Player, Foe, Bomb, Level };
 
 /* Each source's sounds. */
 enum class Sfx : unsigned char {
@@ -45,6 +45,10 @@ enum class Sfx : unsigned char {
     PickupBombs,     // three bombs
     PickupReversed,  // the controls reversed
     PickupShield,    // protection
+    // The level's (id 0), heard everywhere:
+    TimeOut,         // the time has run out
+    GemsDone,        // the last gem needed, in three takes
+    LevelComplete,   // the player home with the gems
 };
 
 struct SoundKey {
@@ -68,6 +72,8 @@ public:
 
     /* A one-shot plays at (x, y, z). */
     virtual void soundPlay(const SoundKey &, float, float, float) {}
+    /* A one-shot with no place: heard the same everywhere. */
+    virtual void soundPlay(const SoundKey &) {}
     /* A loop starts at (x, y, z), moves there, stops. */
     virtual void soundStart(const SoundKey &, float, float, float) {}
     virtual void soundMove(const SoundKey &, float, float, float) {}

@@ -196,19 +196,15 @@ void Play_CheckLevelEnd(Game *self)
     if (pl->moveState() != 3) {
         int t = self->world()->timeLimit() * 1000;
         if (t - (int)self->world()->timeElapsed() <= 0) {
-            void *snd = self->audio()->fixedSounds()->timeOut;
             self->world()->setTimeElapsed((unsigned int)t);
             pl->setMoveState(3);
-            if (snd != NULL)
-                ((audiodev::Buffer *)snd)->play(false);
+            self->soundEvents()->soundPlay({SoundSource::Level, 0, Sfx::TimeOut});
         }
     }
     if (pl->gemsCollected() >= self->world()->gemsRequired()) {
         if (self->gemsGoalReached() == 0 && self->state() != GameState::LevelComplete) {
             int r = (int)(long long)(self->world()->now());
-            void *snd = self->audio()->fixedSounds()->crystalBank[r % 3];
-            if (snd != NULL)
-                ((audiodev::Buffer *)snd)->play(false);
+            self->soundEvents()->soundPlay({SoundSource::Level, 0, Sfx::GemsDone, (unsigned char)(r % 3)});
             self->setGemsGoalReached(1);
         }
         self->world()->map()->tile((signed char)pl->markerCellU(), (signed char)pl->markerCellV())->setBusy(1);
@@ -217,8 +213,7 @@ void Play_CheckLevelEnd(Game *self)
             pl->moveState() == 0) {
             pl->setHeld(1);
             if ((unsigned int)pl->moveDir() == 0) {
-                if (self->audio()->fixedSounds()->levelCompleted != NULL)
-                    (self->audio()->fixedSounds()->levelCompleted)->play(false);
+                self->soundEvents()->soundPlay({SoundSource::Level, 0, Sfx::LevelComplete});
                 if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
                     self->setState(GameState::GameOver);
                     if (self->config()->musicOn() != 0)

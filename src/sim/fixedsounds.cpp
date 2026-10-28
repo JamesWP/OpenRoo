@@ -57,8 +57,8 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     for (unsigned int i = 0; i < 3; ++i) {
         char suffix[2] = { (char)('A' + i), 0 };
         Player *pl = self->world()->player();
-        FixedSounds *fs = self->audio()->fixedSounds();
-        fs->crystalBank[i] = bank(self, fs->crystalBank[i], "%s\\waves\\add02%s.wav", suffix);
+        SoundKey gems{SoundSource::Level, 0, Sfx::GemsDone, (unsigned char)i};
+        self->soundEvents()->attach(gems, bank(self, self->soundEvents()->voice(gems), "%s\\waves\\add02%s.wav", suffix));
         static const struct { Sfx sfx; const char *fmt; } pickups[] = {
             { Sfx::PickupFreeze,   "%s\\waves\\add08%s.wav" },
             { Sfx::PickupLife,     "%s\\waves\\add06%s.wav" },
@@ -82,7 +82,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     sp->setSoundManager(sm);
 
     snprintf(path, sizeof(path), "%s\134waves\134TimeOut.wav", self->gameDir());
-    self->audio()->fixedSounds()->timeOut = sm->acquireStatic(path, 0);
+    self->soundEvents()->attach({SoundSource::Level, 0, Sfx::TimeOut}, sm->acquireStatic(path, 0));
     snprintf(path, sizeof(path), "%s\134waves\134LastSeconds.wav", self->gameDir());
     self->audio()->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), "%s\134waves\134Count.wav", self->gameDir());
@@ -92,7 +92,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     snprintf(path, sizeof(path), "%s\134waves\134Switch.wav", self->gameDir());
     self->audio()->fixedSounds()->switchClick = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), "%s\134waves\134LevelCompleted.wav", self->gameDir());
-    self->audio()->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);
+    self->soundEvents()->attach({SoundSource::Level, 0, Sfx::LevelComplete}, sm->acquireStatic(path, 0));
     snprintf(path, sizeof(path), "%s\134waves\134splat.wav", self->gameDir());
     self->soundEvents()->attach(self->world()->player()->sound(Sfx::Splat), sm->acquireStatic(path, 1));
     sm->setup(self->config()->sound3D());
