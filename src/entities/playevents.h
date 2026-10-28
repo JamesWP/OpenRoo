@@ -35,18 +35,30 @@ enum class Sfx : unsigned char {
     Crystal,         // a gem picked up
     BombRoll,        // a bomb's fuse while it rolls
     BombBlast,       // and its blast
+    // The player's pickups, each in three variants:
+    PickupFreeze,    // the foes frozen
+    PickupLife,      // an extra life
+    PickupTime,      // five more seconds
+    PickupFast,      // speed up
+    PickupSlow,      // speed down
+    PickupGlider,    // a paraglider
+    PickupBombs,     // three bombs
+    PickupReversed,  // the controls reversed
+    PickupShield,    // protection
 };
 
 struct SoundKey {
     SoundSource source;
     unsigned    id;
     Sfx         sfx;
+    unsigned char variant = 0;  // which take, of a sound that has several
 
     bool operator<(const SoundKey &o) const
     {
         if (source != o.source) return source < o.source;
         if (id != o.id)         return id < o.id;
-        return sfx < o.sfx;
+        if (sfx != o.sfx)       return sfx < o.sfx;
+        return variant < o.variant;
     }
 };
 

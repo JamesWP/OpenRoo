@@ -59,17 +59,22 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
         Player *pl = self->world()->player();
         FixedSounds *fs = self->audio()->fixedSounds();
         fs->crystalBank[i] = bank(self, fs->crystalBank[i], "%s\\waves\\add02%s.wav", suffix);
-#define PBANK(k, fmt) pl->setPickupSound(Player::k, i, bank(self, pl->pickupSound(Player::k, i), fmt, suffix))
-        PBANK(SND_15E, "%s\\waves\\add08%s.wav");
-        PBANK(SND_16A, "%s\\waves\\add06%s.wav");
-        PBANK(SND_176, "%s\\waves\\add07%s.wav");
-        PBANK(SND_182, "%s\\waves\\add03%s.wav");
-        PBANK(SND_18E, "%s\\waves\\add05%s.wav");
-        PBANK(SND_1A6, "%s\\waves\\add04%s.wav");
-        PBANK(SND_1B2, "%s\\waves\\add10%s.wav");
-        PBANK(SND_1BE, "%s\\waves\\add09%s.wav");
-        PBANK(SND_19A, "%s\\waves\\add01%s.wav");
-#undef PBANK
+        static const struct { Sfx sfx; const char *fmt; } pickups[] = {
+            { Sfx::PickupFreeze,   "%s\\waves\\add08%s.wav" },
+            { Sfx::PickupLife,     "%s\\waves\\add06%s.wav" },
+            { Sfx::PickupTime,     "%s\\waves\\add07%s.wav" },
+            { Sfx::PickupFast,     "%s\\waves\\add03%s.wav" },
+            { Sfx::PickupSlow,     "%s\\waves\\add05%s.wav" },
+            { Sfx::PickupBombs,    "%s\\waves\\add04%s.wav" },
+            { Sfx::PickupReversed, "%s\\waves\\add10%s.wav" },
+            { Sfx::PickupShield,   "%s\\waves\\add09%s.wav" },
+            { Sfx::PickupGlider,   "%s\\waves\\add01%s.wav" },
+        };
+        for (const auto &p : pickups) {
+            SoundKey key = pl->sound(p.sfx);
+            key.variant  = (unsigned char)i;
+            self->soundEvents()->attach(key, bank(self, self->soundEvents()->voice(key), p.fmt, suffix));
+        }
     }
 
     ScriptPlayer *sp = self->scriptPlayer();

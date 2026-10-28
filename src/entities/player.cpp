@@ -61,28 +61,12 @@ const Tile *Player::curTile() const
     return map_->tile(cellU_, cellV_);
 }
 
-int Player::soundVariant() const
+/* One take of a pickup's sound, at the player's cell. */
+void Player::pickupSound(PlayEvents &events, Sfx sfx, int variant) const
 {
-    return (int)(long long)now_ % 3;
-}
-
-void Player::playAtCell(SoundVoice *buf) const
-{
-    buf->setPosition((float)(int)cellU_,
-                          (float)(int)heightCell_,
-                          -(float)(int)cellV_,
-                          1);
-}
-
-/* PRESERVED: the variant is computed twice, for the array and the trigger. */
-void Player::pickupSound(const SoundRef *arr) const
-{
-    SoundVoice *buf = arr[soundVariant()];
-
-    if (buf != NULL) {
-        playAtCell(buf);
-        (arr[soundVariant()])->play(false);
-    }
+    SoundKey key = sound(sfx);
+    key.variant  = (unsigned char)variant;
+    events.soundPlay(key, (float)(int)cellU_, (float)(int)heightCell_, -(float)(int)cellV_);
 }
 
 void Player::appendEffect(int code)
@@ -191,7 +175,7 @@ unsigned int Player::updateTileEffects(PlayEvents &events)
             itemsCollected_ += 1;
             lastSecondsMark_ = (double)(map->timeLimit() + 1);
 
-            pickupSound(pickupSounds_[SND_176]);
+            pickupSound(events, Sfx::PickupTime, (int)(long long)now_ % 3);
             pickedUp_ = 6;
         }
 
@@ -210,7 +194,7 @@ unsigned int Player::updateTileEffects(PlayEvents &events)
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_16A]);
+            pickupSound(events, Sfx::PickupLife, (int)(long long)now_ % 3);
             pickedUp_ = 7;
         }
 
@@ -219,13 +203,7 @@ unsigned int Player::updateTileEffects(PlayEvents &events)
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            {
-                SoundVoice *buf = pickupSounds_[SND_19A][worldSoundVariant_];
-                if (buf != NULL) {
-                    playAtCell(buf);
-                    pickupSounds_[SND_19A][worldSoundVariant_]->play(false);
-                }
-            }
+            pickupSound(events, Sfx::PickupGlider, worldSoundVariant_);
             pickedUp_ = 5;
         }
 
@@ -234,7 +212,7 @@ unsigned int Player::updateTileEffects(PlayEvents &events)
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_1A6]);
+            pickupSound(events, Sfx::PickupBombs, (int)(long long)now_ % 3);
             pickedUp_ = 9;
         }
 
@@ -246,7 +224,7 @@ unsigned int Player::updateTileEffects(PlayEvents &events)
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_15E]);
+            pickupSound(events, Sfx::PickupFreeze, (int)(long long)now_ % 3);
             pickedUp_ = 8;
         }
 
@@ -258,7 +236,7 @@ unsigned int Player::updateTileEffects(PlayEvents &events)
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_1B2]);
+            pickupSound(events, Sfx::PickupReversed, (int)(long long)now_ % 3);
             pickedUp_ = 0xb;
         }
 
@@ -271,7 +249,7 @@ unsigned int Player::updateTileEffects(PlayEvents &events)
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_182]);
+            pickupSound(events, Sfx::PickupFast, (int)(long long)now_ % 3);
             pickedUp_ = 0xa;
         }
 
@@ -284,7 +262,7 @@ unsigned int Player::updateTileEffects(PlayEvents &events)
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_18E]);
+            pickupSound(events, Sfx::PickupSlow, (int)(long long)now_ % 3);
             pickedUp_ = 0xc;
         }
 
@@ -302,7 +280,7 @@ unsigned int Player::updateTileEffects(PlayEvents &events)
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_1BE]);
+            pickupSound(events, Sfx::PickupShield, (int)(long long)now_ % 3);
             pickedUp_ = 0xd;
         }
     }

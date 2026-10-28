@@ -57,16 +57,9 @@ void Game::releaseAllSounds()
         if (fixed->levelCompleted)
             sm->releaseStaticForOwner(fixed->levelCompleted, 1);
         soundEvents_.entityDestroyed(SoundSource::Player, p->id());
-        // The crystal banks and the pickup banks, one entry of each per pass.
-        // PRESERVED: bank 5 is never released.
-        static const int banks[] = { 0, 1, 2, 3, 4, 6, 7, 8 };
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++)
             if (fixed->crystalBank[i])
                 sm->releaseStaticForOwner(fixed->crystalBank[i], 1);
-            for (int b : banks)
-                if (p->pickupSound(b, i))
-                    sm->releaseVoice(p->pickupSound(b, i), true);
-        }
     }
     fixed->loaded = 0;
 }
