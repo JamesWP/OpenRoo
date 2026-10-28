@@ -9,6 +9,7 @@ import math
 
 from . import formats as F
 from . import levels
+from . import ui
 from .font5x7 import glyph
 
 THEME = "Basic"
@@ -64,12 +65,6 @@ def ring(colour, size=32):
         d = math.hypot(u - 0.5, v - 0.5) * 2
         return (r, g, b, 255 if 0.7 < d < 0.95 else 0)
     return image(size, px)
-
-
-def panel(colour, size=256, a=160):
-    """A translucent panel with an opaque frame."""
-    c, e = rgb(colour, a), rgb(0xffffff)
-    return image(size, lambda u, v: e if min(u, v, 1 - u, 1 - v) < 0.02 else c)
 
 
 def gradient(top, bottom, size=64):
@@ -170,26 +165,15 @@ def textures():
     # The shadow pass draws each model flattened onto the ground with this
     # texture on the model's own UVs, so it must be the same all over.
     t["textures/shadow.tga"] = solid(0x000000, 2, a=110)
-    t["textures/karoo128.tga"] = disc(0x3060c0, 128)
-    for i in range(1, 5):
-        t["textures/menu_%d.tga" % i] = gradient(0x203050, 0x101820, 128)
-    t["textures/selector.tga"] = ring(0xffff00)
-    t["textures/knopf_ein.tga"] = disc(0x00e000)
-    t["textures/knopf_aus.tga"] = disc(0x606060)
-    t["textures/drehknopf.tga"] = disc(0xc0c0c0)
-    t["textures/scale.tga"] = solid(0xa0a0a0, 32)
     # The fonts' atlases (fonts/*.fon name them).
     t["textures/font2.tga"] = font_atlas(256, 16, 16, [chr(i) for i in range(256)], 2)
     t["textures/numbers.tga"] = font_atlas(128, 4, 3, list("0123456789:."), 4)
 
+    # The HUD, menu panels and widgets (ui.py).
+    t.update(ui.textures())
+
     b = "textures/basic/"
-    t[b + "hud.tga"] = panel(0x204080)
-    t[b + "menu.tga"] = panel(0x102040, a=200)
     t[b + "edge.tga"] = solid(0xffffff, 8)
-    # The vitality needle: drawn rotated about the texture's centre.
-    t[b + "pointer.tga"] = image(128, lambda u, v: (255, 64, 64, 255)
-                                 if abs(u - 0.5) < 0.02 and v < 0.5 else (0, 0, 0, 0))
-    t[b + "radar.tga"] = ring(0x40ff40, 128)
     for name, colour in (("freeze", 0x80c0ff), ("inverse", 0xff80ff), ("protection", 0xffff80),
                          ("slow", 0x808080), ("speed", 0xff8040)):
         t[b + "bonus_%s.tga" % name] = ring(colour)
