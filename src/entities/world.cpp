@@ -32,9 +32,13 @@ void World::clearObjects(PlayEvents &events)
     for (const LiftObject &lift : lifts_)
         events.entityDestroyed(SoundSource::Lift, lift.id());
     lifts_.clear();
-    purge(platforms_, sound_);
+    for (const PlatformObject &platform : platforms_)
+        events.entityDestroyed(SoundSource::Platform, platform.id());
+    platforms_.clear();
     purge(fallings_, sound_);
-    purge(bridges_, sound_);
+    for (const BridgeObject &bridge : bridges_)
+        events.entityDestroyed(SoundSource::Bridge, bridge.id());
+    bridges_.clear();
 
     // The 256 switch counts.
     switchCells_.clearCounts();
@@ -63,16 +67,23 @@ void World::tickLifts(PlayEvents &events)
     for (LiftObject &lift : lifts_)
         lift.tick(events);
 }
-void World::tickPlatforms() { tickAll(platforms_, "platforms"); }
+void World::tickPlatforms(PlayEvents &events)
+{
+    if (platforms_.empty())
+        return;
+    PROF_SCOPE("platforms");
+    for (PlatformObject &platform : platforms_)
+        platform.tick(events);
+}
 void World::tickFallings()  { tickAll(fallings_, "falling tiles"); }
 
-void World::tickBridges()
+void World::tickBridges(PlayEvents &events)
 {
     if (bridges_.empty())
         return;
     PROF_SCOPE("bridges");
     for (BridgeObject &b : bridges_) {
-        b.tick();
+        b.tick(events);
         b.debugDraw(switchCells_);
     }
 }

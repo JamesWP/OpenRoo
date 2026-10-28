@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "platformobject.h"
-#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
 #include "logger.h"
@@ -53,7 +52,6 @@ PlatformObject::PlatformObject()
     posU_ = 0.0f;
     posY_ = 0.0f;
     posV_ = 0.0f;
-    sound_  = 0;
 }
 
 PlatformObject::~PlatformObject()
@@ -165,16 +163,9 @@ void PlatformObject::spawn(const EntityContext &ctx, EntityList<PlatformObject> 
     //     // and this subtracts two uninitialised bytes.  The one caller passes only
     //     // 0x0a or 0x0b.
     obj->span_  = (unsigned char)(obj->limit_ - obj->trackStart_);
-    obj->sound_ = 0;
 
 }
 
-void PlatformObject::releaseSounds(SoundLibrary *sm)
-{
-    if (sm->active() && sound_ != 0)
-        sm->releaseVoice(sound_, true);
-    sound_ = 0;
-}
 
 /* DETERMINISM: truncates toward zero, keeping the low byte.  Each branch below
  * truncates twice with different arguments: the unrounded double decides
@@ -203,8 +194,9 @@ void PlatformObject::vacate()
     map_->tile( cellU_, cellV_)->setOccupant(0);
 }
 
-void PlatformObject::tick()
+void PlatformObject::tick(PlayEvents &events)
 {
+    const SoundKey moving{SoundSource::Platform, id(), Sfx::PlatformMoving};
     Tile *t;
 
     diag_init();
@@ -267,8 +259,7 @@ void PlatformObject::tick()
         }
 
         if (done) {
-            if (sound_ != 0)
-                sound_->stop();
+            events.soundStop(moving);
 
             if (s_diag_block && !s_logged_advance) {
                 s_logged_advance = 1;
@@ -278,9 +269,7 @@ void PlatformObject::tick()
             }
         }
 
-        if (sound_ != 0)
-            sound_->setPosition((float)(int)cellU_, posY_,
-                                  -(float)(int)cellV_, 1);
+        events.soundMove(moving, (float)(int)cellU_, posY_, -(float)(int)cellV_);
     }
 
     if (state_ == 2) {
@@ -326,8 +315,7 @@ void PlatformObject::tick()
 
         if (done) {
             atLimit_ = 0;
-            if (sound_ != 0)
-                sound_->stop();
+            events.soundStop(moving);
 
             if (s_diag_block && !s_logged_retreat) {
                 s_logged_retreat = 1;
@@ -336,9 +324,7 @@ void PlatformObject::tick()
             }
         }
 
-        if (sound_ != 0)
-            sound_->setPosition((float)(int)cellU_, posY_,
-                                  -(float)(int)cellV_, 1);
+        events.soundMove(moving, (float)(int)cellU_, posY_, -(float)(int)cellV_);
     }
 
     if (state_ == 0) {
@@ -347,8 +333,6 @@ void PlatformObject::tick()
         t->setPlatformDwell(K_PARK_DWELL);
 
         if (now_ - phaseStart_ >= K_PARK_DWELL) {
-            //             // PRESERVED: unlike the lift, a departing platform restarts its
-            //             // sound without setting its 3D position.
             map_->tile( cellU_, cellV_)->setObjectMarker(0);
 
             phaseStart_ = now_;
@@ -361,8 +345,7 @@ void PlatformObject::tick()
                           (int)cellU_, (int)cellV_, atLimit_, (int)state_);
             }
 
-            if (sound_ != 0)
-                sound_->play(true);
+            events.soundStart(moving, (float)(int)cellU_, posY_, -(float)(int)cellV_);
         }
     }
 

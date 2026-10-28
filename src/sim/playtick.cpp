@@ -116,7 +116,7 @@ void Play_PlayerSwitch(Game *self)
         g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
         trigger_switch_tile(br, self->world()->map()->tile(pl->cellU(), pl->cellV()));
         br->arm(self->world()->now());
-        br->playArmSound();
+        br->playArmSound(*self->soundEvents());
         Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(), br->phase(), sw);
         pl->setSwitchSlot(0xff);
     }

@@ -51,12 +51,12 @@ static SoundVoice *reslot(Game *game, SoundVoice *cur,
 
 /* Gives every object in one list its moving-loop sound. */
 template <class T>
-static void attachLoopSound(Game *game, EntityList<T> &list,
+static void attachLoopSound(Game *game, const EntityList<T> &list, SoundSource source, Sfx sfx,
                             const SoundAssetName *asset)
 {
-    for (T &obj : list) {
+    for (const T &obj : list) {
         if (asset->enabled != 0)
-            obj.setSound(acq(game, asset));
+            game->soundEvents()->attach({source, obj.id(), sfx}, acq(game, asset));
     }
 }
 
@@ -111,13 +111,11 @@ Sim_InitLevelBasedSounds(Game *self)
                 bt.setRespawnSound(p);
             }
         }
-        if (game->audio()->themeSound(ThemeSound::Elevator)->enabled != 0)
-            for (const LiftObject &lift : game->world()->lifts())
-                game->soundEvents()->attach({SoundSource::Lift, lift.id(), Sfx::LiftMoving},
-                                            acq(game, game->audio()->themeSound(ThemeSound::Elevator)));
-        attachLoopSound(game, game->world()->platforms(),
-                        game->audio()->themeSound(ThemeSound::Platform));
-        attachLoopSound(game, game->world()->bridges(),
+        attachLoopSound(game, game->world()->lifts(), SoundSource::Lift, Sfx::LiftMoving,
+                        game->audio()->themeSound(ThemeSound::Elevator));
+        attachLoopSound(game, game->world()->platforms(), SoundSource::Platform,
+                        Sfx::PlatformMoving, game->audio()->themeSound(ThemeSound::Platform));
+        attachLoopSound(game, game->world()->bridges(), SoundSource::Bridge, Sfx::BridgeMoving,
                         game->audio()->themeSound(ThemeSound::Bridge));
 
         if (game->session()->restartCount() == 0 && game->config()->sound3D() != 0) {

@@ -5,13 +5,12 @@
 #pragma once
 #include "entitycontext.h"
 #include "entitylist.h"
+#include "playevents.h"
 #include "tickstep.h"
 #include "drawfwd.h"
 
  
 
-class SoundVoice;
-class SoundLibrary;
 
 class PlatformObject : public Listed {
 public:
@@ -21,11 +20,8 @@ public:
     static void spawn(const EntityContext &ctx, EntityList<PlatformObject> &platforms, unsigned int uArg, unsigned int vArg,
                       unsigned int heightArg, unsigned int kindArg);
 
-    // Releases its sounds, before World destroys it.
-    void releaseSounds(SoundLibrary *sm);
-
-    // One tick.
-    void tick();
+    // One tick; its moving loop starts, follows it and stops through events.
+    void tick(PlayEvents &events);
 
     // Where it stands, and its axis: kind 0x0a runs along U, any other
     // along V.
@@ -47,10 +43,6 @@ public:
 
     // Draws the platform, in the opaque pass.
     void draw(draw::Frame &f, draw::Pass pass) const;
-
-    // The moving-loop sound, attached by InitLevelBasedSounds
-    // (levelsounds.cpp).
-    void setSound(SoundVoice *p) { sound_ = p; }
 
     ~PlatformObject();
 
@@ -77,7 +69,6 @@ private:
     signed char         heightCell_;
     unsigned char       field_34[4];    // never written
     unsigned char       span_;          // limit - trackStart
-    SoundVoice *sound_;         // the moving loop; may be NULL
     signed char         originU_;
     signed char         originV_;
     signed char         originHeight_;
