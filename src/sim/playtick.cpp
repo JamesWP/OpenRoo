@@ -158,7 +158,6 @@ void Play_TickFoes(Game *self)
             PROF_SCOPE("step");
             foe.step(tu, tv, *self->soundEvents());
         }
-        foe.debugDraw((unsigned)i);
         foe.dropBomb(self->world()->entityContext(), self->world()->bombs(), *self->soundEvents());
         foe.checkPlayerContact(pl->moveStateRef(), pl->posU(), pl->posY(), pl->posV());
         if (foe.finishDespawn(self->world()->map())) {

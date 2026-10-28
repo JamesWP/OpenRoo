@@ -30,9 +30,6 @@ public:
     // One tick: the fuse, the roll and the blast.
     void tick(PlayEvents &events);
 
-    // Draws it on the debug map; n is its place in the World's bomb list.
-    void debugDraw(unsigned n) const;
-
 
     // When it was dropped, in clock ms; it blows 2 s later.  Read by the bot.
     double droppedAt() const { return droppedAt_; }

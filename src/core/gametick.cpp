@@ -27,6 +27,7 @@
 #include "scoretally.h"
 #include "prof.h"
 #include "tiledebug.h"
+#include "entitydebug.h"
 #include "cheats.h"
 #include "gamedebug.h"
 #include "keys.h"
@@ -168,7 +169,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 
     Play_TickFoes(self);
 
-    pl->debugDraw();  // last, so it sits over the foes
+    Entities_DebugDrawMap(self->world());
     Game_DebugPanel(self);
     Cheat_DebugPanel(self);
 
