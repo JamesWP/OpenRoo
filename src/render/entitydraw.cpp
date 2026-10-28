@@ -13,8 +13,8 @@
 #include "liftobject.h"
 #include "platformobject.h"
 #include "bridgeobject.h"
-#include "fallingtile.h"
-#include "entitymath.h"
+#include "effects.h"
+#include "particletypes.h"
 #include "animcode.h"
 #include "tile.h"
 
@@ -60,10 +60,33 @@ static uint8_t player_conditions(const Player &p)
     return c;
 }
 
-/* The player: its model, its auras, its shadow, its particles, its pickup
- * bursts and its speed trail. */
-static void draw_player(draw::Frame &f, draw::Pass pass, const Player &p, double now)
+/* The player's path as a particle emitter's, newest first, every other
+ * sample (the path keeps more than an emitter takes): where it was, the way
+ * it faced and, for the speed trail, whether that emitted then.  A trail
+ * streams out behind, and a little up. */
+static void emitter_path(ParticlePath &out, const World &world, bool trailOnly)
 {
+    const std::deque<PathSample> &path = world.playerPath();
+    out.count = 0;
+    for (size_t i = path.size(); i > 0 && out.count < PARTICLE_PATH; i -= std::min<size_t>(i, 2)) {
+        const PathSample &s = path[i - 1];
+        const float yaw = facing_yaw(s.facing);
+        const Vec3 dir = { sinf(yaw), 0.1f, -cosf(yaw) };
+        const float len = sqrtf(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+        out.age[out.count] = (float)((world.now() - s.timeMs) * 0.001);
+        out.pos[out.count] = { s.u, s.y, -s.v };
+        out.dir[out.count] = { dir.x / len, dir.y / len, dir.z / len };
+        out.on[out.count] = !trailOnly || s.trail;
+        out.count++;
+    }
+}
+
+/* The player: its model, its auras, its shadow, its particles and its speed
+ * trail. */
+static void draw_player(draw::Frame &f, draw::Pass pass, const World &world)
+{
+    const Player &p = *world.player();
+    const double now = world.now();
     draw::Instance in = pose(p, now);
     in.conditions = player_conditions(p);
     // Dead or respawning, its animation holds on its first frame.
@@ -87,26 +110,24 @@ static void draw_player(draw::Frame &f, draw::Pass pass, const Player &p, double
         if (!dead)
             draw::shadows(f, THEME_OBJ_PLAYER, &in);
         break;
-    case draw::Pass::Particles:
-        if (f.opts.particles > 0)
+    case draw::Pass::Particles: {
+        static ParticlePath path;
+        if (f.opts.particles > 0) {
+            emitter_path(path, world, false);
+            in.path = &path;
             draw::particles(f, THEME_OBJ_PLAYER, &in);
+            in.path = nullptr;
+        }
         if (f.opts.particles > 1) {
-            if (p.pickedUp() == CONTENTS_CRYSTAL)
-                draw::spawnBurst(f, THEME_OBJ_CRYSTAL_PICKUP, in.pos);
-            else if (p.pickedUp() != 0)
-                draw::spawnBurst(f, THEME_OBJ_ITEM_PICKUP, in.pos);
-            // The speed trail, while sped up and moving along (or straight
-            // against) its facing.
-            const bool trail = p.effectAActive() != 0 &&
-                ((unsigned)p.moveDir() == p.facing() ||
-                 (unsigned)p.moveDir() == Sim_GetTurnedDirection(p.facing(), 2));
-            draw::trail(f, THEME_OBJ_PLAYER_SPEED_TRAIL, trail, in.pos, in.rot.y);
+            emitter_path(path, world, true);
+            draw::trail(f, THEME_OBJ_PLAYER_SPEED_TRAIL, path);
         }
         if (aura)
             draw::particles(f, THEME_OBJ_PLAYER_PROTECTED, &in);
         if (gliding)
             draw::particles(f, THEME_OBJ_PLAYER_GLIDING, &in);
         break;
+    }
     }
 }
 
@@ -132,8 +153,6 @@ static void draw_foe(draw::Frame &f, draw::Pass pass, const Foe &e, double now)
 
     switch (pass) {
     case draw::Pass::Opaque:
-        if (dying)
-            draw::fireEffects(f, look, in.effectAge);
         draw::objects(f, look, &in);
         break;
     case draw::Pass::Shadows:
@@ -143,8 +162,6 @@ static void draw_foe(draw::Frame &f, draw::Pass pass, const Foe &e, double now)
     case draw::Pass::Particles:
         if (f.opts.particles > 0)
             draw::particles(f, look, &in);
-        if (f.opts.particles > 1 && e.pickedUp() == CONTENTS_CRYSTAL)
-            draw::spawnBurst(f, THEME_OBJ_CRYSTAL_PICKUP, in.pos);
         break;
     default:
         break;
@@ -166,8 +183,6 @@ static void draw_bomb(draw::Frame &f, draw::Pass pass, const Bomb &b, double now
 
     switch (pass) {
     case draw::Pass::Opaque:
-        if (exploded)
-            draw::fireEffects(f, look, in.effectAge);
         draw::objects(f, look, &in);
         break;
     case draw::Pass::Particles:
@@ -202,15 +217,6 @@ static void draw_platform(draw::Frame &f, draw::Pass pass, const PlatformObject 
     in.animCode = ANIM_WALK_FORWARD;
     in.animTime = (float)fmod(f.now * 0.002, 1.0);
     draw::objects(f, THEME_OBJ_PLATFORM, &in);
-}
-
-/* A falling tile: the tick it falls, a burst of dust on its cell. */
-static void draw_falling(draw::Frame &f, draw::Pass pass, const FallingTile &t)
-{
-    if (pass != draw::Pass::Particles || t.justFell() == 0 || f.opts.particles == 0)
-        return;
-    draw::spawnBurst(f, THEME_OBJ_FALLING_DUST,
-                     { (float)t.cellU(), (float)t.heightCell(), -(float)t.cellV() });
 }
 
 /* A bridge's deck: one quad, a unit wide, from the anchor to the live end, z
@@ -280,21 +286,32 @@ void drawWorld(draw::Frame &f, draw::Pass pass, const World &world)
         draw_platform(f, pass, p);
     for (const BridgeObject &b : world.bridges())
         draw_bridge(f, pass, b);
-    for (const FallingTile &t : world.fallings())
-        draw_falling(f, pass, t);
-    draw_player(f, pass, *world.player(), now);
+    draw_player(f, pass, world);
     for (const Bomb &b : world.bombs())
         draw_bomb(f, pass, b, now);
     for (const Foe &e : world.foes())
         draw_foe(f, pass, e, now);
 
-    if (pass == draw::Pass::Particles) {
-        if (f.opts.particles > 0)
-            draw::bursts(f, THEME_OBJ_FALLING_DUST);
-        if (f.opts.particles > 1) {
-            const BlendState additive = BlendState::additive();
-            draw::bursts(f, THEME_OBJ_CRYSTAL_PICKUP, &additive);
-            draw::bursts(f, THEME_OBJ_ITEM_PICKUP, &additive);
+    // The pickups' bursts and the falling tiles' dust, by their age.
+    if (pass != draw::Pass::Particles)
+        return;
+    const BlendState additive = BlendState::additive();
+    for (const EffectStart &e : world.effects()) {
+        const float age = (float)((now - e.startMs) * 0.001);
+        const Vec3 at = { e.u, e.y, -e.v };
+        switch (e.kind) {
+        case EffectKind::FallingDust:
+            if (f.opts.particles > 0)
+                draw::burst(f, THEME_OBJ_FALLING_DUST, at, age, e.seed);
+            break;
+        case EffectKind::CrystalPickup:
+            if (f.opts.particles > 1)
+                draw::burst(f, THEME_OBJ_CRYSTAL_PICKUP, at, age, e.seed, &additive);
+            break;
+        case EffectKind::ItemPickup:
+            if (f.opts.particles > 1)
+                draw::burst(f, THEME_OBJ_ITEM_PICKUP, at, age, e.seed, &additive);
+            break;
         }
     }
 }

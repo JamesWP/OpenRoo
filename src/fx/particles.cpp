@@ -1,9 +1,9 @@
-/* ParticleSystem: the slots, the tick and render that drive the device's
- * simulation (particletypes.h), the Face and XFace shapes, and every
- * class's lifecycle and serialisation (particles.h).
+/* ParticleSystem: the render that hands the device a draw's emission
+ * (particletypes.h), the Face and XFace shapes, and every class's lifecycle
+ * and serialisation (particles.h).
  *
- * The random choices loading makes -- XFace's shapes and which slot takes
- * which -- draw from the effects' own random numbers (fxrand.h). */
+ * The random choices loading makes -- XFace's shapes -- draw from the
+ * effects' own random numbers (fxrand.h). */
 
 #include <stdint.h>
 #include "particles.h"
@@ -23,58 +23,57 @@
 #include <memory>
 #include <iterator>
 
-/* ─── Tick and render ──────────────────────────────────────────────────────
+/* ─── Render ───────────────────────────────────────────────────────────────
  */
-void ParticleSystem::tick(float dt)
+void ParticleSystem::render(RenderDevice *dev, const ParticleClock &clock, uint32_t seed)
 {
-    if (pGenerator_)
-        pGenerator_->tick(dt);
-    if (pEnvironment_)
-        pEnvironment_->tick(dt);
-    pendingDt_ += dt;
-    age_ += dt;
+    ParticleInstance one = { dev->world(), {}, seed, {} };
+    cornerTransform(one.corners.m);
+    render(dev, clock, &one, 1);
 }
 
-void ParticleSystem::render(RenderDevice *dev)
+/* Particle k (from 0) is emitted (k + 1) intervals after the start, as the
+ * rate's whole particles come due. */
+static void emission(ParticleEmit &out, float rate, const ParticleClock &clock)
 {
-    ParticleInstance one = { dev->world(), {} };
-    cornerTransform(one.corners.m);
-    render(dev, &one, 1);
+    out.path = clock.path;
+    const double upTo = std::min(clock.time, clock.end) - clock.start;
+    if (!(rate > 0.0f) || !(upTo > 0.0))
+        return;
+    const double interval = 1.0 / rate;
+    const double emitted = std::min(floor(upTo * rate), 2147483647.0);
+    if (emitted < 1.0)
+        return;
+    out.newest = (int32_t)(emitted - 1.0);
+    out.newestAge = (float)(clock.time - (clock.start + emitted * interval));
+    out.interval = (float)interval;
 }
 
 /* The buffer is made at the first render: the device is only to be had
- * here.  The step is everything ticked since the last render, so it runs
- * once however many times the system is drawn. */
-void ParticleSystem::render(RenderDevice *dev, const ParticleInstance *instances, uint32_t count)
+ * here. */
+void ParticleSystem::render(RenderDevice *dev, const ParticleClock &clock,
+                            const ParticleInstance *instances, uint32_t count)
 {
-    if (slots_.count == 0 || count == 0)
+    if (count_ == 0 || count == 0)
         return;
     if (!buffer_) {
-        buffer_ = dev->CreateParticleBuffer(
-            slots_.count, slots_.shapes.empty() ? nullptr : slots_.shapes.data());
+        buffer_ = dev->CreateParticleBuffer(count_);
         if (!buffer_)
             return;
         uploadShapes(dev);
-        nextSlot_ = 0;
     }
 
-    ParticleStep step;
-    step.dt = pendingDt_;
-    if (pGenerator_)
-        pGenerator_->takeEmit(step.emit);
+    ParticleEmit emit;
+    ParticleField field;
+    if (pGenerator_) {
+        pGenerator_->describe(emit);
+        emission(emit, pGenerator_->rate(), clock);
+    }
     if (pEnvironment_)
-        pEnvironment_->takeField(step.field);
-    if (step.dt > 0.0f || step.emit.count > 0) {
-        step.emit.count = std::min(step.emit.count, slots_.count);
-        step.emit.firstSlot = nextSlot_;
-        nextSlot_ = (nextSlot_ + step.emit.count) % slots_.count;
-        dev->StepParticles(buffer_, step);
-    }
-    pendingDt_ = 0.0f;
-
+        pEnvironment_->describe(field);
     ParticleLook l;
     look(l);
-    dev->DrawParticles(buffer_, l, instances, count);
+    dev->DrawParticles(buffer_, emit, field, l, instances, count);
 }
 
 void ParticleSystem::cornerTransform(float out[16]) const
@@ -158,33 +157,11 @@ void FaceParticleSystem::cornerTransform(float out[16]) const
     std::copy(corners_, corners_ + 16, out);
 }
 
-/* ─── The slots and the ParticleSystem lifecycle ───────────────────────────
+/* ─── The ParticleSystem lifecycle ─────────────────────────────────────────
  */
 static bool ps_read(void *dst, unsigned size, std::istream &in)
 {
     return readBytes(in, dst, size);
-}
-
-void ParticleSlots::release()
-{
-    shapes.clear();
-    count = 0;
-}
-
-void ParticleSlots::assignShapes(uint32_t nShapes)
-{
-    shapes.resize(count);
-    for (uint32_t &shape : shapes)
-        shape = fx_index(nShapes);
-}
-
-int ParticleSlots::alloc(uint32_t n)
-{
-    release();
-    if (n < 2)
-        return false;
-    count = n;
-    return true;
 }
 
 /* ─── ParticleSystem, the base class ───────────────────────────────────────
@@ -210,8 +187,7 @@ void ParticleSystem::release(int flags)
     pEnvironment_ = NULL;
     RenderDevice::DestroyParticleBuffer(buffer_);
     buffer_ = nullptr;
-    pendingDt_ = 0.0f;
-    slots_.release();
+    count_ = 0;
 }
 
 int ParticleSystem::setGenerator(Generator *gen)
@@ -233,7 +209,7 @@ int ParticleSystem::setEnvironment(Environment *env)
 }
 
 /* Releases self (virtually, so a subclass frees its own too), refuses a
- * source of a different class, re-makes the slots at the source's count,
+ * source of a different class, takes the source's count,
  * then clones the generator and the environment.  Every failure releases
  * again. */
 int ParticleSystem::copyFrom(const ParticleSystem *src)
@@ -241,8 +217,7 @@ int ParticleSystem::copyFrom(const ParticleSystem *src)
     release(1);
     if (strcmp(src->pName_, pName_) != 0)
         return false;
-    if (!slots_.alloc(src->slots_.count))
-        return false;
+    count_ = src->count_;
 
     if (src->pGenerator_) {
         Generator *gen = src->pGenerator_->clone();
@@ -305,8 +280,8 @@ static int ps_load_sub_object(std::istream &in, T **out,
     return true;
 }
 
-/* Release, re-make the slots at the stored count, then load and attach each
- * sub-object. */
+/* Release, read the count (fewer than two is refused), then load and attach
+ * each sub-object. */
 int ParticleSystem::load(std::istream &in)
 {
     release(1);
@@ -316,10 +291,11 @@ int ParticleSystem::load(std::istream &in)
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle count could not be read");
         return false;
     }
-    if (!slots_.alloc(count)) {
+    if (count < 2) {
         g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: error while loading the particle system, because the particle list could not be created");
         return false;
     }
+    count_ = count;
 
     Generator *gen;
     if (!ps_load_sub_object(in, &gen, "PS: Error while loading Particlesystem, because could not read GeneratorclassName", "PS: Error while loading Particlesystem, because Generator of Typ: '%s' coud not created",
@@ -357,7 +333,6 @@ void FaceParticleSystem::look(ParticleLook &out) const
 void XFaceParticleSystem::look(ParticleLook &out) const
 {
     out.tumbling = true;
-    out.time = age_;
     std::copy(&XFACE_UV[0][0], &XFACE_UV[0][0] + 12, &out.uv[0][0]);
 }
 
@@ -448,8 +423,7 @@ int XFaceParticleSystem::buildCorners()
     return true;
 }
 
-/* The ranges come from the source; the corner entries and the slots' shapes
- * are drawn afresh. */
+/* The ranges come from the source; the corner entries are drawn afresh. */
 int XFaceParticleSystem::copyFrom(const ParticleSystem *src)
 {
     if (!ParticleSystem::copyFrom(src))
@@ -457,7 +431,6 @@ int XFaceParticleSystem::copyFrom(const ParticleSystem *src)
     const XFaceParticleSystem *x = static_cast<const XFaceParticleSystem *>(src);
     dwCornerTableCount_ = x->dwCornerTableCount_;
     std::copy(std::begin(x->ranges), std::end(x->ranges), ranges);
-    slots_.assignShapes(dwCornerTableCount_);
     if (!buildCorners()) {
         ParticleSystem::release(1);
         return false;
@@ -469,11 +442,9 @@ int XFaceParticleSystem::load(std::istream &in)
 {
     if (!ParticleSystem::load(in))
         return false;
-    if (ps_read(&dwCornerTableCount_, 4, in) && ps_read(ranges, sizeof(ranges), in)) {
-        slots_.assignShapes(dwCornerTableCount_);
-        if (buildCorners())
-            return true;
-    }
+    if (ps_read(&dwCornerTableCount_, 4, in) && ps_read(ranges, sizeof(ranges), in)
+        && buildCorners())
+        return true;
     release(1);
     g_logger.logSourceLocation(4, "src/render/particles.cpp", __LINE__, "PS: loading XFaceParticleSystem failed, because the attributes could not be read");
     return false;
@@ -492,17 +463,6 @@ Generator * ParticleSystem::getGenerator(const char *name)
         return NULL;
     return gen;
 }
-
-/* The generator's enable flag. */
-void ParticleSystem::setRenderNode(uint32_t enabled)
-{
-    if (pGenerator_)
-        pGenerator_->setEnabled(enabled);
-}
-
-void ParticleSystem::enableRenderNode()              { setRenderNode(1); }
-
-void ParticleSystem::disableRenderNode()             { setRenderNode(0); }
 
 /* ─── Construction and the factory ─────────────────────────────────────────
  *

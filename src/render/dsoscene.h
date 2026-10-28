@@ -11,4 +11,4 @@ void Scene_DrawSceneObjects(Renderer *renderer, RenderDevice *dev, float *cam, d
  * showSplineControlPolygons). */
   void  
 Scene_DrawParticleSystems(Scene *scene, bool showPaths, bool showControlPolygons,
-                          RenderDevice *dev, float *cam, double dt_ms, double t);
+                          RenderDevice *dev, float *cam, double t);

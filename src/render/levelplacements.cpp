@@ -296,7 +296,6 @@ void LevelPlacements::bombables(draw::Frame &f, const LevelMap *map, double cloc
         }
         in.effectAge = (float)((clock - t->blastTime()) * 0.001);
         in.seed = c.v * 256u + c.u;
-        draw::fireEffects(f, THEME_OBJ_BOMBABLE_EXPLODING, in.effectAge);
         draw::objects(f, THEME_OBJ_BOMBABLE_EXPLODING, &in);
     }
 }

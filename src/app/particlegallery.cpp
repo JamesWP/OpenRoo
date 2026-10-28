@@ -16,6 +16,7 @@
 #include "renderer.h"
 #include "sysdev.h"
 #include "themedraw.h"
+#include "particletypes.h"
 #include "windev.h"
 #include "clock.h"
 #include "dbg.h"
@@ -284,7 +285,6 @@ public:
         f.target = centre;
         f.opts = { true, true, 0, 2 };
         f.now = now_;
-        f.elapsed = elapsed;
 
         std::vector<draw::Instance> at(looks_.size());
         for (size_t i = 0; i < looks_.size(); i++)
@@ -323,20 +323,30 @@ public:
                 draw::particles(f, look, &in);
                 break;
             case Play::Burst: {
-                if (fmod(t, kBurstEvery) < elapsed)
-                    draw::spawnBurst(f, look, in.pos);
+                // A burst every kBurstEvery, while the last plays out.
                 const BlendState additive = BlendState::additive();
-                draw::bursts(f, look, look == THEME_OBJ_FALLING_DUST ? nullptr : &additive);
+                draw::burst(f, look, in.pos, (float)(fmod(t, kBurstEvery) * 0.001),
+                            (uint32_t)(t / kBurstEvery),
+                            look == THEME_OBJ_FALLING_DUST ? nullptr : &additive);
                 break;
             }
             case Play::Trail: {
-                const float a = (float)(t * 0.002);
-                const Vec3 p = { in.pos.x + sinf(a), 0.3f, in.pos.z + cosf(a) };
-                draw::trail(f, look, true, p, a + 1.5707964f);
+                // Round a circle, a turn every pi seconds, on half of it.
+                static ParticlePath path;
+                path.count = PARTICLE_PATH;
+                for (uint32_t s = 0; s < PARTICLE_PATH; s++) {
+                    const double back = s * (2.0 / PARTICLE_PATH);
+                    const float a = (float)((t * 0.001 - back) * 2.0);
+                    path.age[s] = (float)back;
+                    path.pos[s] = { in.pos.x + sinf(a), 0.3f, in.pos.z + cosf(a) };
+                    const float yaw = a + 1.5707964f;
+                    path.dir[s] = { sinf(yaw) * 0.995f, 0.0995f, -cosf(yaw) * 0.995f };
+                    path.on[s] = sinf(a * 0.5f) > 0.0f;
+                }
+                draw::trail(f, look, path);
                 break;
             }
             case Play::Fire:
-                draw::fireEffects(f, look, in.effectAge);
                 draw::particles(f, look, &in);
                 break;
             }

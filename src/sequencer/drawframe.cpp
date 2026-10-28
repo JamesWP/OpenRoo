@@ -40,12 +40,11 @@ static draw::Frame frame_for(Game *g, Renderer *renderer, const FrameTime &t)
     f.opts    = { c->videoReflection() != 0, c->videoHighlights() != 0,
                   (int)c->videoShadows(), (int)c->videoParticles() };
     f.now     = t.now;
-    f.elapsed = t.elapsed;
     return f;
 }
 
 /* The scene, pass by pass. */
-static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
+static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f)
 {
     const World *world = g->world();
     LevelPlacements *level = &renderer->levelPlacements;
@@ -81,7 +80,7 @@ static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
         level->draw(f, draw::Pass::Particles, world->map(), world->now());
         drawWorld(f, draw::Pass::Particles, *world);
         Scene_DrawParticleSystems(&renderer->scene, renderer->showSplinePaths,
-                                  renderer->showSplineControlPolygons, d3d, eye, dt, f.now);
+                                  renderer->showSplineControlPolygons, d3d, eye, f.now);
     }
 }
 
@@ -119,7 +118,7 @@ void Seq_DrawFrame(Game *g, Renderer *renderer, const MenuArt *art, ProgableCont
     renderer->showSplineControlPolygons = input::down(input::KEY_F4);
 
     draw::Frame f = frame_for(g, renderer, t);
-    draw_scene(g, renderer, f, t.dt);
+    draw_scene(g, renderer, f);
 
     set_depth(d3d, false, true);
     d3d->SetSamplerAddress(0, AddressMode::Clamp, AddressMode::Clamp);
