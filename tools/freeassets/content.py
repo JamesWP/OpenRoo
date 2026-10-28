@@ -27,6 +27,11 @@ def image(size, fn):
                               for y in range(size)])
 
 
+def blend(a, b, t):
+    """The colour t of the way from a to b (0xRRGGBB)."""
+    return sum(int(((a >> k) & 255) * (1 - t) + ((b >> k) & 255) * t + 0.5) << k for k in (16, 8, 0))
+
+
 def solid(colour, size=8, a=255):
     c = rgb(colour, a)
     return image(size, lambda u, v: c)
@@ -132,6 +137,8 @@ MODELS = {
     "stair.mdl":     F.mdl([[v for i in range(4)
                              for v in F.box(-0.5 + 0.25 * i, -0.5, -0.5, 0.5, 0.5, 0.25 * (i + 1))]]),
     "falling.mdl":   cube(1.00, 1.00, 0.10, -0.10),
+    # A canopy over the player, drawn while it glides.
+    "glider.mdl":    F.mdl([F.box(-0.15, -0.45, 1.00, 0.15, 0.45, 1.06)]),
 }
 
 
@@ -203,7 +210,8 @@ def textures():
     t[b + "slide.tga"] = tile(0x40c0c0, 0x106060, mark=lambda u, v: abs(v - 0.5) < 0.3 and abs(u - 0.5) < 0.05)
     t[b + "ice.tga"] = tile(0xd0f0ff, 0x80b0d0)
     t[b + "switch.tga"] = tile(0xc03030, 0x601010, mark=lambda u, v: math.hypot(u - .5, v - .5) < .15)
-    t[b + "bridge.tga"] = tile(0xa06030, 0x603010, mark=lambda u, v: abs(v * 6 - round(v * 6)) < 0.1)
+    # A smooth band, periodic in u so the theme's Flash can roll it along.
+    t[b + "bridge.tga"] = image(64, lambda u, v: rgb(blend(0x3060c0, 0xa0e0ff, 0.5 + 0.5 * math.cos(2 * math.pi * u))))
     # Object skins.
     for name, colour in (("player", 0x3070e0), ("player_dead", 0x808080), ("catcher", 0xe03030),
                          ("thrower", 0x902020), ("crystal", 0x40ffff), ("ammo", 0x404040),
@@ -355,7 +363,8 @@ def theme():
         "Slide": field("slide"),
         "Ice": field("ice"),
         "Switch": field("switch"),
-        "Bridge": field("bridge"),
+        # Fields scroll by Flash (scale, rate per ms, direction 1 = along u).
+        "Bridge": field("bridge", ("\t\t{", "\t\t\tTextureAdress Wrap", "\t\t\tFlash 1 0.0005 1", "\t\t}")),
         "Stair": model("stair", "stair"),
         "Elevator": model("lift", "lift"),
         "Platform": model("lift", "lift"),
@@ -369,6 +378,7 @@ def theme():
         "Time": model("item", "time", extra=spin),
         "Protection": model("item", "protection", extra=spin),
         "Paraglide": model("item", "paraglide", extra=spin),
+        "ParaglideFX": model("glider", "paraglide"),
         "Surprise": model("item", "plate", extra=spin),
         "Bomb": model("bomb", "bomb") + particles("fuse", extra=("Position 0 0.3 0",)),
         "Explosion": model("bomb", "bomb", extra=(explode,)) + particles("explosion", 5),
