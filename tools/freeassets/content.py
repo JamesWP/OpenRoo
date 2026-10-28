@@ -126,7 +126,7 @@ MODELS = {
     "player.mdl":    cube(0.40, 0.40, 0.70),
     "catcher.mdl":   cube(0.45, 0.45, 0.80),
     "thrower.mdl":   cube(0.55, 0.55, 0.45),
-    "crystal.mdl":   F.mdl([F.octahedron(0.16, 0.18, 0.15)]),
+    "crystal.mdl":   F.mdl([F.sphere(0.16, 0.35)]),
     "item.mdl":      cube(0.35, 0.35, 0.35, 0.05),
     "bomb.mdl":      cube(0.25, 0.25, 0.25),
     "obstacle.mdl":  cube(0.90, 0.90, 0.70),
@@ -335,14 +335,15 @@ def theme():
             out += ["\t\t{", *("\t\t\t" + e for e in subextra), "\t\t}"]
         return out + ["\t}"]
 
-    def particles(par, count=None, extra=(), movable=False):
-        """A particle system record: drawn additively with the spark."""
+    def particles(par, count=None, extra=(), subextra=(), movable=False):
+        """A particle system record: drawn additively with the spark.  extra
+        is the record's placement, subextra the texture's state (Condition)."""
         head = "\tParticleSystem %s%s.par %s" % (m, par, "movable" if movable else "notMovable")
         if count:
             head += " %d" % count
         return [head, "\t{", *("\t\t" + e for e in extra),
                 "\t\tTexture %sspark.tga" % b, "\t\t{", "\t\t\tSrcBlend One",
-                "\t\t\tDestBlend One", "\t\t}", "\t}"]
+                "\t\t\tDestBlend One", *("\t\t\t" + e for e in subextra), "\t\t}", "\t}"]
 
     explode = "Explode 2 0.1 200 0 0.4 0"
     spin = ("RandomYAngle", "Rotate 0 0.001 0")
@@ -357,7 +358,7 @@ def theme():
         "Side": field("side", ("\t\t{", "\t\t\tTextureAdress Wrap", "\t\t}")),
         "Exit": field("exit", ("\t\tTexture %sexit_glow.tga" % b, "\t\t{", "\t\t\tSrcBlend One",
                                "\t\t\tDestBlend One", "\t\t\tCondition Active", "\t\t}"))
-        + particles("exit", extra=("Condition Active",)),
+        + particles("exit", subextra=("Condition Active",)),
         "Glue": field("glue"),
         # A fallen tile is "active" until it is back: only then is it drawn.
         "DestructField": model("falling", "falling", subextra=("Condition InActive",)),

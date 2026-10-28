@@ -118,21 +118,22 @@ def box(x0, y0, z0, x1, y1, z1):
     return tris
 
 
-def octahedron(r, h, z0=0.0):
-    """A gem: four faces up to a point h above the girdle and four down to
-    one h below, the girdle r out and z0 + h up, flat-shaded."""
-    top, bottom, mid = (0, 0, z0 + 2 * h), (0, 0, z0), z0 + h
-    ring = [(r, 0, mid), (0, r, mid), (-r, 0, mid), (0, -r, mid)]
+def sphere(r, zc, rings=8, segments=12):
+    """An orb of radius r centred zc up, smooth-shaded, the texture wrapped
+    once around it."""
+    def point(i, j):
+        th, ph = math.pi * i / rings, 2 * math.pi * j / segments
+        n = (math.sin(th) * math.cos(ph), math.sin(th) * math.sin(ph), math.cos(th))
+        return ((r * n[0], r * n[1], zc + r * n[2]), n, (j / segments, i / rings))
     tris = []
-    for i in range(4):
-        a, b = ring[i], ring[(i + 1) % 4]
-        for tri in ((a, b, top), (b, a, bottom)):
-            u = [tri[1][k] - tri[0][k] for k in range(3)]
-            w = [tri[2][k] - tri[0][k] for k in range(3)]
-            n = (u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0])
-            ln = math.sqrt(sum(c * c for c in n))
-            n = tuple(c / ln for c in n)
-            tris += [(tri[0], n, (0, 1)), (tri[1], n, (1, 1)), (tri[2], n, (0.5, 0))]
+    for i in range(rings):
+        for j in range(segments):
+            a, b = point(i, j), point(i + 1, j)
+            c, d = point(i + 1, j + 1), point(i, j + 1)
+            if i > 0:
+                tris += [a, b, d]          # the cap rows are triangles only
+            if i < rings - 1:
+                tris += [b, c, d]
     return tris
 
 
