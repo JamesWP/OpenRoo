@@ -184,11 +184,9 @@ unsigned model_frame(ThemeLevelObject *rec, const Instance &in, double now)
 }
 
 /* An exploding record draws its debris instead of its mesh. */
-void draw_debris(Frame &f, ThemeLevelObject *rec)
+void draw_debris(Frame &f, ThemeLevelObject *rec, const Instance &in)
 {
-    if (rec->debrisDue(f.now))
-        rec->explodeDebris().advance((float)(f.elapsed * 0.001));
-    rec->explodeDebris().draw(f.dev);
+    rec->explodeDebris().draw(f.dev, rec->explodeDir(), in.seed, in.effectAge);
 }
 
 void draw_model(Frame &f, ThemeLevelObject *rec, const SceneSubObject &sub, const Instance &in)
@@ -207,7 +205,7 @@ void draw_model(Frame &f, ThemeLevelObject *rec, const SceneSubObject &sub, cons
     }
 
     if (rec->explodes() != 0)
-        draw_debris(f, rec);
+        draw_debris(f, rec, in);
     else if (rec->lit() != 0)
         rec->mesh()->drawFramedModel(f.dev, frame);
     else
@@ -436,7 +434,7 @@ void shadows(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n)
                 Mat4 m = mul(model_placement(rec, inst[k], f.now), shadow_matrix(inst[k].pos));
                 f.dev->SetWorld(mul(m, translation(0.0f, SHADOW_LIFT, 0.0f)));
                 if (rec->explodes() != 0)
-                    draw_debris(f, rec);
+                    draw_debris(f, rec, inst[k]);
                 else
                     rec->mesh()->drawMeshBuffer(f.dev, model_frame(rec, inst[k], f.now));
             }
@@ -498,8 +496,9 @@ void particles(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n)
     }
 }
 
-void fireEffects(Frame &f, ThemeObjectType look, bool fire)
+void fireEffects(Frame &f, ThemeObjectType look, float effectAge)
 {
+    const bool fire = effectAge >= 0.0f && effectAge < FIRE_SECONDS;
     ThemeObjectTypeSlot *slot = f.theme->slot(look);
     for (uint32_t r = 0; r < slot->instanceCount(); r++) {
         ThemeLevelObject *rec = &slot->records()[r];
@@ -509,16 +508,6 @@ void fireEffects(Frame &f, ThemeObjectType look, bool fire)
             else
                 ps->disableRenderNode();
         }
-    }
-}
-
-void explode(Frame &f, ThemeObjectType look)
-{
-    ThemeObjectTypeSlot *slot = f.theme->slot(look);
-    for (uint32_t r = 0; r < slot->instanceCount(); r++) {
-        ThemeLevelObject *rec = &slot->records()[r];
-        if (rec->explodes() != 0)
-            rec->explodeDebris().begin(rec->explodeDir());
     }
 }
 

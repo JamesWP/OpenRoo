@@ -217,7 +217,6 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
     }
 
     p->map_ = ctx.map;
-    p->deathCounter_ = ctx.deaths;
     p->type_     = type;
 
     if (type > FOE_FACING_BASE) {

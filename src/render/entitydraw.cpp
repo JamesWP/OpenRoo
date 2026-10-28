@@ -110,9 +110,9 @@ static void draw_player(draw::Frame &f, draw::Pass pass, const Player &p, double
     }
 }
 
-/* A foe: a catcher or thrower model (its dying look, firing its death effects,
- * once it is dying), its shadow and its particles. */
-static void draw_foe(draw::Frame &f, draw::Pass pass, const Foe &e, double now, unsigned deathsDrawn)
+/* A foe: a catcher or thrower model (its dying look, with its death effects
+ * by their age, once it is dying), its shadow and its particles. */
+static void draw_foe(draw::Frame &f, draw::Pass pass, const Foe &e, double now)
 {
     // Kind 2 is a catcher, 3 a thrower; any other kind has no look.
     if (!e.isCatcher() && !e.isThrower())
@@ -126,16 +126,14 @@ static void draw_foe(draw::Frame &f, draw::Pass pass, const Foe &e, double now, 
         in.conditions = draw::COND_DEAD;
         in.animCode = 0;
         in.animTime = 0.0f;
+        in.effectAge = (float)((now - e.dyingSince()) * 0.001);
+        in.seed = e.id();
     }
 
     switch (pass) {
     case draw::Pass::Opaque:
-        if (dying) {
-            const bool fire = e.deathNumber() > deathsDrawn;
-            draw::fireEffects(f, look, fire);
-            if (fire)
-                draw::explode(f, look);
-        }
+        if (dying)
+            draw::fireEffects(f, look, in.effectAge);
         draw::objects(f, look, &in);
         break;
     case draw::Pass::Shadows:
@@ -153,23 +151,23 @@ static void draw_foe(draw::Frame &f, draw::Pass pass, const Foe &e, double now, 
     }
 }
 
-/* A bomb: the bomb, or once it has gone off the explosion (firing its
- * debris), and its particles. */
-static void draw_bomb(draw::Frame &f, draw::Pass pass, const Bomb &b, unsigned deathsDrawn)
+/* A bomb: the bomb, or once it has gone off the explosion (its debris by
+ * their age), and its particles. */
+static void draw_bomb(draw::Frame &f, draw::Pass pass, const Bomb &b, double now)
 {
     const bool exploded = b.dyingStarted() != 0;
     const ThemeObjectType look = exploded ? THEME_OBJ_BOMB_EXPLODING : THEME_OBJ_BOMB;
     draw::Instance in;
     in.pos = { b.posU(), b.posY(), -b.posV() };
+    if (exploded) {
+        in.effectAge = (float)((now - b.dyingSince()) * 0.001);
+        in.seed = b.id();
+    }
 
     switch (pass) {
     case draw::Pass::Opaque:
-        if (exploded) {
-            const bool fire = b.deathNumber() > deathsDrawn;
-            draw::fireEffects(f, look, fire);
-            if (fire)
-                draw::explode(f, look);
-        }
+        if (exploded)
+            draw::fireEffects(f, look, in.effectAge);
         draw::objects(f, look, &in);
         break;
     case draw::Pass::Particles:
@@ -273,7 +271,7 @@ static void draw_bridge(draw::Frame &f, draw::Pass pass, const BridgeObject &b)
     draw::objects(f, THEME_OBJ_BRIDGE, &in, 1, q);
 }
 
-void drawWorld(draw::Frame &f, draw::Pass pass, const World &world, unsigned deathsDrawn)
+void drawWorld(draw::Frame &f, draw::Pass pass, const World &world)
 {
     const double now = world.now();
     for (const LiftObject &l : world.lifts())
@@ -286,9 +284,9 @@ void drawWorld(draw::Frame &f, draw::Pass pass, const World &world, unsigned dea
         draw_falling(f, pass, t);
     draw_player(f, pass, *world.player(), now);
     for (const Bomb &b : world.bombs())
-        draw_bomb(f, pass, b, deathsDrawn);
+        draw_bomb(f, pass, b, now);
     for (const Foe &e : world.foes())
-        draw_foe(f, pass, e, now, deathsDrawn);
+        draw_foe(f, pass, e, now);
 
     if (pass == draw::Pass::Particles) {
         if (f.opts.particles > 0)
