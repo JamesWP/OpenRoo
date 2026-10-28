@@ -115,7 +115,8 @@ int ground_of(int look)
     case THEME_OBJ_EXIT: case THEME_OBJ_STICKY: case THEME_OBJ_FALLING:
     case THEME_OBJ_JUMP_PAD: case THEME_OBJ_SLIDE: case THEME_OBJ_STAIRS:
     case THEME_OBJ_TELEPORTER: case THEME_OBJ_SWITCH: case THEME_OBJ_ICE:
-    case THEME_OBJ_BOMBABLE:
+    case THEME_OBJ_BOMBABLE: case THEME_OBJ_BOMBABLE_EXPLODING:
+    case THEME_OBJ_LIFT: case THEME_OBJ_PLATFORM: case THEME_OBJ_BRIDGE:
         return -1;
     case THEME_OBJ_FALLING_DUST:
         return THEME_OBJ_FALLING;
@@ -130,6 +131,7 @@ bool walled(int look)
 {
     switch (ground_of(look) < 0 ? look : ground_of(look)) {
     case THEME_OBJ_STAIRS: case THEME_OBJ_SLIDE: case THEME_OBJ_FALLING:
+    case THEME_OBJ_LIFT: case THEME_OBJ_PLATFORM: case THEME_OBJ_BRIDGE:
         return false;
     default:
         return true;

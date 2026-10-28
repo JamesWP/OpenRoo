@@ -14,6 +14,8 @@ ring of cells after reading it, so every map keeps a border of '.'.
     #  impassable block   B  bombs   L  extra life   F  freeze   +  time
     ^ > v <  stairs, climbing one height toward the side the arrow points
     =  a lift, between the lowest and highest floor beside it
+    P  a platform, riding along +u over the holes ahead to the ground beyond
+    p  a paraglider: step off an edge with it and glide down over holes
     - |  a bridge along u or v, over the holes on its open side to the
          ground beyond, worked by the switch s
 
@@ -50,6 +52,8 @@ CELLS = {
     "L": (0x01, 0, 0x07),
     "F": (0x01, 0, 0x08),
     "+": (0x01, 0, 0x06),
+    "p": (0x01, 0, 0x05),       # a paraglider: one glide, opened 3 below an edge
+    "P": (0x0a, 0, 0x00),       # a platform shuttling +u over the holes ahead
     "s": (0x11, 1, 0x00),       # param: the switch's number
     "-": (0x12, 1, 0x00),       # param: the switch that works it
     "|": (0x13, 1, 0x00),
@@ -128,6 +132,19 @@ LEVELS = [
 .111111ddd1.
 .F1iiiii11E.
 ............
+"""),
+    ("Air", "Ride and glide", 240, """
+.....................
+.S11P....1111111.....
+.1*1.....1*11111=999.
+.111.....11111111999.
+.........1111111.9*9.
+.........11111T1.9p9.
+.................999.
+.....................
+.................11E.
+.................1*1.
+.....................
 """),
     ("Bombs", "Clear the way", 180, """
 ...........
