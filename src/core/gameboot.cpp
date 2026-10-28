@@ -122,7 +122,7 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
 void Game_Shutdown(Game *g)
 {
     g_logger.logMessage(1, "GAME: starting destructor");
-    g->world()->clearObjects();
+    g->world()->clearObjects(*g->soundEvents());
     g->world()->setSwitchMax(0);
     g->config_.setCameraDistanceSetting(g->camera()->zoomDistance());
     if (g->frontEnd()->highScores()->writeFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY))
