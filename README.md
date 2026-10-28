@@ -73,8 +73,9 @@ python3 tools/gen_assets.py                       # fills game/ with generated p
 ```
 
 `tools/gen_assets.py` makes every file the game needs from nothing: flat
-colours, boxes, beeps, a 5x7 font, and one theme, Basic, with six small
-levels (`tools/freeassets/levels.py`, drawn as text).  It writes under the
+colours, boxes, beeps, particle effects, a 5x7 font, and one theme, Basic,
+with six small levels (`tools/freeassets/levels.py`, drawn as text, with a
+`.leo` block on each impassable cell).  It writes under the
 names the original install used, so the game reads it unchanged.  It never
 deletes a `game/` it did not make; a `game/` that is a symlink (a worktree's)
 is replaced, link only, with `--force`.  The replay suite records the original

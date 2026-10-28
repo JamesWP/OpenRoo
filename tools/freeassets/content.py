@@ -1,8 +1,8 @@
 """The placeholder content: every file the game needs, made from nothing.
 
 files() returns {path under game/: bytes}.  It is deterministic, so two runs
-make identical files.  The look is deliberately plain -- flat colours, boxes
-and beeps -- and every name is one the game opens itself or one Basic.thm or
+make identical files.  The look is deliberately plain -- flat colours, boxes,
+beeps and sparks -- and every name is one the game opens itself or one Basic.thm or
 the levels name; nothing is copied or derived from the original game's data.
 """
 import math
@@ -126,13 +126,39 @@ MODELS = {
     "player.mdl":    cube(0.40, 0.40, 0.70),
     "catcher.mdl":   cube(0.45, 0.45, 0.80),
     "thrower.mdl":   cube(0.55, 0.55, 0.45),
-    "crystal.mdl":   cube(0.25, 0.25, 0.25, 0.20),
+    "crystal.mdl":   F.mdl([F.octahedron(0.16, 0.18, 0.15)]),
     "item.mdl":      cube(0.35, 0.35, 0.35, 0.05),
     "bomb.mdl":      cube(0.25, 0.25, 0.25),
     "obstacle.mdl":  cube(0.90, 0.90, 0.70),
+    "block.mdl":     cube(0.96, 0.96, 0.80),
     "lift.mdl":      cube(1.00, 1.00, 0.20, -0.20),
     "stair.mdl":     cube(1.00, 1.00, 0.50, -0.50),
     "falling.mdl":   cube(1.00, 1.00, 0.10, -0.10),
+}
+
+
+# ─── Particle systems ────────────────────────────────────────────────────────
+
+PARTICLES = {
+    # Bursts: the whole count at once (the default rate).
+    "explosion": F.par(120, 0.35, [(0xffa040, 2), (0xffe080, 1), (0xff4020, 1)], (0.5, 0.1),
+                       speed=(3.0, 0.5), spread=(30, 10, 30), fade_ms=400, floor=True),
+    "crystalfx": F.par(24, 0.15, [(0x40ffff, 2), (0xffffff, 1)], (0.5, 0.1), speed=(4.0, 0.5),
+                       spread=(1, 0.2, 1), pos=(0, 0.4, 0), gravity=10, fade_ms=250),
+    "collect":   F.par(30, 0.15, [(0xffff60, 1), (0xff80ff, 1), (0x80ff80, 1)], (0.6, 0.2),
+                       speed=(6.0, 0.5), spread=(0.3, 0.2, 0.3), pos=(0, 0.4, 0), gravity=20),
+    "dust":      F.par(30, 0.25, [(0x909090, 2), (0x605040, 1)], (0.6, 0.15),
+                       speed=(0.0, 0.5), spread=(1, 1, 1), box=((-0.45, -0.4, -0.45), (0.45, 0.05, 0.45)),
+                       gravity=8, fade_ms=300),
+    # Streams: a few a second, for as long as the object is there.
+    "exit":      F.par(60, 0.12, [(0x60ff60, 2), (0xffffff, 1)], (1.0, 0.3), speed=(1.0, 0.2),
+                       spread=(0.05, 0.1, 0.05), box=((-0.4, 0, -0.4), (0.4, 0.05, 0.4)), rate=40),
+    "teleporter": F.par(40, 0.10, [(0xff60ff, 2), (0xffffff, 1)], (0.8, 0.2), speed=(1.5, 0.2),
+                        spread=(0.02, 0.1, 0.02), box=((-0.3, 0, -0.3), (0.3, 0.05, 0.3)), rate=30),
+    "fuse":      F.par(60, 0.08, [(0xffe080, 2), (0xff4020, 1)], (0.25, 0.05), speed=(1.5, 0.3),
+                       spread=(1, 1, 1), gravity=2, rate=150, fade_ms=200),
+    "speed":     F.par(80, 0.12, [(0xff8040, 1), (0xffe080, 1)], (0.6, 0.1),
+                       pos_spread=(0.05, 0.05, 0.05), spread=(0.01, 0, 0.01), rate=50, fade_ms=150),
 }
 
 
@@ -141,7 +167,9 @@ MODELS = {
 def textures():
     t = {}
     # Opened by name in the code (render/renderstate.cpp, screens/menuscreens.cpp).
-    t["textures/shadow.tga"] = disc(0x000000, 32, soft=True)
+    # The shadow pass draws each model flattened onto the ground with this
+    # texture on the model's own UVs, so it must be the same all over.
+    t["textures/shadow.tga"] = solid(0x000000, 2, a=110)
     t["textures/karoo128.tga"] = disc(0x3060c0, 128)
     for i in range(1, 5):
         t["textures/menu_%d.tga" % i] = gradient(0x203050, 0x101820, 128)
@@ -175,8 +203,14 @@ def textures():
     t[b + "side.tga"] = tile(0x707070, 0x505050)
     t[b + "exit.tga"] = tile(0x30c030, 0x106010, mark=lambda u, v: abs(u - 0.5) + abs(v - 0.5) < 0.2)
     t[b + "exit_glow.tga"] = disc(0x60ff60, 64, soft=True)
+    # Particles: white, tinted by each particle's colour, drawn additively.
+    # Additive blending ignores alpha, so the glow fades in the colour too.
+    t[b + "spark.tga"] = image(32, lambda u, v: (lambda a: (a, a, a, a))(
+        int(255 * max(0.0, 1 - math.hypot(u - 0.5, v - 0.5) * 2) ** 2)))
+    t[b + "block.tga"] = tile(0x8a6a4a, 0x5a3a1a, 32,
+                              mark=lambda u, v: abs(u - v) < 0.06 or abs(u + v - 1) < 0.06)
     t[b + "glue.tga"] = tile(0x806030, 0x503010, mark=lambda u, v: (int(u * 8) + int(v * 8)) % 3 == 0)
-    t[b + "falling.tga"] = tile(0xe08030, 0x804010, mark=lambda u, v: abs(u - v) < 0.04)
+    t[b + "falling.tga"] = tile(0xf0c020, 0x303030, mark=lambda u, v: int((u + v) * 4) % 2 == 0)
     t[b + "jumppad.tga"] = tile(0xe0e030, 0x808010, mark=lambda u, v: abs(math.hypot(u - .5, v - .5) - .25) < .05)
     t[b + "teleporter.tga"] = tile(0xc040c0, 0x601060, mark=lambda u, v: math.hypot(u - .5, v - .5) < .2)
     t[b + "slide.tga"] = tile(0x40c0c0, 0x106060, mark=lambda u, v: abs(v - 0.5) < 0.3 and abs(u - 0.5) < 0.05)
@@ -301,6 +335,15 @@ def theme():
             out += ["\t\t{", *("\t\t\t" + e for e in subextra), "\t\t}"]
         return out + ["\t}"]
 
+    def particles(par, count=None, extra=(), movable=False):
+        """A particle system record: drawn additively with the spark."""
+        head = "\tParticleSystem %s%s.par %s" % (m, par, "movable" if movable else "notMovable")
+        if count:
+            head += " %d" % count
+        return [head, "\t{", *("\t\t" + e for e in extra),
+                "\t\tTexture %sspark.tga" % b, "\t\t{", "\t\t\tSrcBlend One",
+                "\t\t\tDestBlend One", "\t\t}", "\t}"]
+
     explode = "Explode 2 0.1 200 0 0.4 0"
     spin = ("RandomYAngle", "Rotate 0 0.001 0")
     objects = {
@@ -313,11 +356,14 @@ def theme():
         "Plate": field("plate"),
         "Side": field("side", ("\t\t{", "\t\t\tTextureAdress Wrap", "\t\t}")),
         "Exit": field("exit", ("\t\tTexture %sexit_glow.tga" % b, "\t\t{", "\t\t\tSrcBlend One",
-                               "\t\t\tDestBlend One", "\t\t\tCondition Active", "\t\t}")),
+                               "\t\t\tDestBlend One", "\t\t\tCondition Active", "\t\t}"))
+        + particles("exit", extra=("Condition Active",)),
         "Glue": field("glue"),
-        "DestructField": model("falling", "plate"),
+        # A fallen tile is "active" until it is back: only then is it drawn.
+        "DestructField": model("falling", "falling", subextra=("Condition InActive",)),
+        "DestructFieldFX": particles("dust", 5),
         "JumpPad": field("jumppad"),
-        "Teleporter": field("teleporter"),
+        "Teleporter": field("teleporter") + particles("teleporter"),
         "Slide": field("slide"),
         "Ice": field("ice"),
         "Switch": field("switch"),
@@ -325,7 +371,9 @@ def theme():
         "Stair": model("stair", "stair"),
         "Elevator": model("lift", "lift"),
         "Platform": model("lift", "lift"),
-        "Crystal": model("crystal", "crystal", extra=spin + ("Oscillate 0.1 0.005 random",)),
+        "Crystal": model("crystal", "crystal", extra=spin + ("Oscillate 0.1 0.005 random", "Specular")),
+        "CrystalFX": particles("crystalfx", 10),
+        "CollFX": particles("collect", 10),
         "Ammunition": model("item", "ammo", extra=spin),
         "Freeze": model("item", "freeze", extra=spin),
         "Speed": model("item", "speed", extra=spin),
@@ -334,8 +382,9 @@ def theme():
         "Protection": model("item", "protection", extra=spin),
         "Paraglide": model("item", "paraglide", extra=spin),
         "Surprise": model("item", "plate", extra=spin),
-        "Bomb": model("bomb", "bomb"),
-        "Explosion": model("bomb", "bomb", extra=(explode,)),
+        "Bomb": model("bomb", "bomb") + particles("fuse", extra=("Position 0 0.3 0",)),
+        "Explosion": model("bomb", "bomb", extra=(explode,)) + particles("explosion", 5),
+        "SpeedFX": particles("speed", movable=True),
         "Obstacle": field("plate") + model("obstacle", "obstacle", subextra=("Condition InActive",)),
         "ObstacleFX": field("plate") + model("obstacle", "obstacle", extra=("Explode 3 0.3 200 0 0.3 0",)),
     }
@@ -352,6 +401,8 @@ def files():
     out.update(sounds())
     for name, data in MODELS.items():
         out["models/basic/" + name] = data
+    for name, data in PARTICLES.items():
+        out["models/basic/%s.par" % name] = data
     out["themes/%s.thm" % THEME] = theme()
     out["fonts/FONT1.FON"] = F.fon("textures\\font2.tga", 16, 16)
     out["fonts/NUMBERS.FON"] = F.fon("textures\\numbers.tga", 4, 3)
