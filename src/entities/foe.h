@@ -16,7 +16,6 @@
 #include "movableentity.h"
 #include "drawfwd.h"
 
-class SoundLibrary;
 class Tile;
 
 /* What a foe is (MovableEntity::kind()): a catcher chases and touches, a

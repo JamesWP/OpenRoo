@@ -28,7 +28,6 @@
 #include "fallingtile.h"
 #include "drawfwd.h"
 
-class SoundLibrary;
 
 class World {
 public:
@@ -119,13 +118,9 @@ public:
     /* What the entities are given at spawn, and the tables they fill. */
     EntityContext entityContext()
     {
-        return { &clock_, &tickStep_, &map_, sound_, &switchCells_,
+        return { &clock_, &tickStep_, &map_, &switchCells_,
                  &switchMax_, levelName_, &crystalsInLevel_, &deaths_ };
     }
-
-    /* The sound library the entities acquire their sounds from, set by Game
-     * when it is built (it stays Game's). */
-    void setSoundLibrary(SoundLibrary *s) { sound_ = s; }
 
     /* Removes every object from the level and resets the switch counts. */
     void clearObjects(PlayEvents &events);
@@ -171,6 +166,4 @@ private:
      * pays the unused seconds) and the gem quota (CalculateLevelScore
      * pays 5 a gem up to it and 10 per gem beyond). */
     LevelMap      map_;
-    /* The sound library the entities acquire from; Game sets it. */
-    SoundLibrary *sound_{};
 };

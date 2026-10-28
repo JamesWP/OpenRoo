@@ -16,7 +16,6 @@
 #include <string.h>
 #include <math.h>
 
-#include "soundvoice.h"
 #include "tile.h"
 #include "levelmap.h"
 #include "crtrand.h"

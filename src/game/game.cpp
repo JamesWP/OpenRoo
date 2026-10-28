@@ -33,7 +33,6 @@
 
 Game::Game()
 {
-    world_.setSoundLibrary(audio_.soundManager());
 }
 
 Game::~Game() {}

@@ -9,7 +9,6 @@
  
 #include "movableentity.h"
 
-class SoundVoice;
 #include <vector>
 class Tile;
 
