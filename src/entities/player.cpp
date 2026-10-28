@@ -102,7 +102,7 @@ void Player::endEffect(int code)
         effectList_.erase(it);
 }
 
-unsigned int Player::updateTileEffects()
+unsigned int Player::updateTileEffects(PlayEvents &events)
 {
 
     copy8(&tickStepCopy_, tickStep_);
@@ -111,7 +111,7 @@ unsigned int Player::updateTileEffects()
     pendingMove_ = 0;
 
     if ((signed char)anim_ != 10)
-        updateMovement();
+        updateMovement(events);
 
     if (moveState_ != 0) {
         curTile()->setOccupant(0);
@@ -200,13 +200,8 @@ unsigned int Player::updateTileEffects()
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            if (pool_9f_ != NULL) {
-                pool_9f_->setPosition((float)(int)cellU_,
-                    (float)(int)heightCell_,
-                    -(float)(int)cellV_,
-                    1);
-                pool_9f_->play(0);
-            }
+            events.soundPlay(sound(Sfx::Crystal), (float)(int)cellU_, (float)(int)heightCell_,
+                             -(float)(int)cellV_);
             pickedUp_ = 1;
         }
 
@@ -363,7 +358,7 @@ expire:
  * and 4 a right and left turn (whose pendingMove_ is the new facing + 10).
  * While effect 0xb is active, forward and back, left and right swap.  A turn
  * pressed while moving is queued unless one is already queued or under way. */
-void Player::actMoveForward()
+void Player::actMoveForward(PlayEvents &events)
 {
     if (moveDir_ != 0)
         return;
@@ -374,10 +369,10 @@ void Player::actMoveForward()
         pendingMove_ = Sim_GetTurnedDirection(facing_, 2);
         turnKind_ = 3;
     }
-    updateMovement();
+    updateMovement(events);
 }
 
-void Player::actMoveBack()
+void Player::actMoveBack(PlayEvents &events)
 {
     if (moveDir_ != 0)
         return;
@@ -388,7 +383,7 @@ void Player::actMoveBack()
         pendingMove_ = facing_;
         turnKind_ = 1;
     }
-    updateMovement();
+    updateMovement(events);
 }
 
 /* `delta` 3 turns left, 1 right. */
@@ -397,7 +392,7 @@ static inline unsigned char turned_plus_10(unsigned char facing, unsigned char d
     return (unsigned char)(Sim_GetTurnedDirection(facing, delta) + 10);
 }
 
-void Player::actTurnLeft()
+void Player::actTurnLeft(PlayEvents &events)
 {
     if (moveDir_ != 0) {
         if (turnKind_ == 2 || turnKind_ == 4 || queuedTurn_ != 0)
@@ -415,10 +410,10 @@ void Player::actTurnLeft()
         pendingMove_ = turned_plus_10(facing_, 1);
         turnKind_ = 2;
     }
-    updateMovement();
+    updateMovement(events);
 }
 
-void Player::actTurnRight()
+void Player::actTurnRight(PlayEvents &events)
 {
     if (moveDir_ != 0) {
         if (turnKind_ == 4 || turnKind_ == 2 || queuedTurn_ != 0)
@@ -436,7 +431,7 @@ void Player::actTurnRight()
         pendingMove_ = turned_plus_10(facing_, 3);
         turnKind_ = 4;
     }
-    updateMovement();
+    updateMovement(events);
 }
 
 /* Only while standing still. */
@@ -459,19 +454,9 @@ void Player::actReleaseBomb()
     bombsCarried_--;
 }
 
- 
-  void   Player_ActMoveForward(int, int, void *p) { ((Player *)p)->actMoveForward(); }
-  void   Player_ActMoveBack(int, int, void *p)    { ((Player *)p)->actMoveBack(); }
-  void   Player_ActTurnLeft(int, int, void *p)    { ((Player *)p)->actTurnLeft(); }
-  void   Player_ActTurnRight(int, int, void *p)   { ((Player *)p)->actTurnRight(); }
-  void   Player_ActHarakiri(int, int, void *p)    { ((Player *)p)->actHarakiri(); }
-  void   Player_ActReleaseBomb(int, int, void *p) { ((Player *)p)->actReleaseBomb(); }
 
-/* PRESERVED: zeroSoundSlots() runs twice. */
 Player::Player()
 {
-    pool_9f_ = NULL;
-    zeroSoundSlots();
     stuckSince_      = 0.0;
     stepDuration_  = 200.0;
     field_156      = 1;
@@ -483,7 +468,6 @@ Player::Player()
     sliding_      = 0;
     falling_       = 0;
     moveState_     = 0;
-    zeroSoundSlots();
     stepGrace_     = 20.0;
     pathfinder_    = NULL;
 }

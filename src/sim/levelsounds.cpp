@@ -37,16 +37,25 @@ static VoicePool *acq_pool(Game *game, int count, const SoundAssetName *asset)
     return game->audio()->soundManager()->acquirePool(count, name, 1);
 }
 
-/* Resets the old buffer if there is one, then loads the named asset if it is
- * set.  The caller stores the result: the new buffer, or the reset one. */
-static SoundVoice *reslot(Game *game, SoundVoice *cur,
-                          const SoundAssetName *asset)
+/* Resets the player's old buffer if there is one, then loads the named asset
+ * in its place if it is set; otherwise the reset one stays. */
+static void reslot(Game *game, const SoundKey &key, ThemeSound sound)
 {
-    if (cur != NULL)
+    const SoundAssetName *asset = game->audio()->themeSound(sound);
+    if (SoundVoice *cur = game->soundEvents()->voice(key))
         static_cast<audiodev::Buffer *>(cur)->reset();
     if (asset->enabled != 0)
-        return acq(game, asset);
-    return cur;
+        game->soundEvents()->attach(key, acq(game, asset));
+}
+
+/* The same for a pool, which is wiped. */
+static void reslotPool(Game *game, const SoundKey &key, int count, ThemeSound sound)
+{
+    const SoundAssetName *asset = game->audio()->themeSound(sound);
+    if (SoundVoice *cur = game->soundEvents()->voice(key))
+        static_cast<VoicePool *>(cur)->wipe();
+    if (asset->enabled != 0)
+        game->soundEvents()->attach(key, acq_pool(game, count, asset));
 }
 
 /* Gives every object in one list its moving-loop sound. */
@@ -77,26 +86,20 @@ Sim_InitLevelBasedSounds(Game *self)
         if (strcmp(world, "Candy") == 0)
             pl->setWorldSoundVariant(1);
 
-        if (pl->pool9f() != NULL)
-            static_cast<VoicePool *>(pl->pool9f())->wipe();
-        if (game->audio()->themeSound(ThemeSound::Crystal)->enabled != 0)
-            pl->setPool9f(acq_pool(game, 3, game->audio()->themeSound(ThemeSound::Crystal)));
-        if (pl->poolCf() != NULL)
-            static_cast<VoicePool *>(pl->poolCf())->wipe();
-        if (game->audio()->themeSound(ThemeSound::MoveJJ)->enabled != 0)
-            pl->setPoolCf(acq_pool(game, 10, game->audio()->themeSound(ThemeSound::MoveJJ)));
+        reslotPool(game, pl->sound(Sfx::Crystal), 3, ThemeSound::Crystal);
+        reslotPool(game, pl->sound(Sfx::Step), 10, ThemeSound::MoveJJ);
 
-        pl->setSoundC3(reslot(game, pl->soundC3(), game->audio()->themeSound(ThemeSound::FallJJ)));
-        pl->setSoundBf(reslot(game, pl->soundBf(), game->audio()->themeSound(ThemeSound::Glue)));
-        pl->setSoundB3(reslot(game, pl->soundB3(), game->audio()->themeSound(ThemeSound::MoveJumpPad)));
-        pl->setSoundC7(reslot(game, pl->soundC7(), game->audio()->themeSound(ThemeSound::MoveParagliding)));
-        pl->setSoundA3(reslot(game, pl->soundA3(), game->audio()->themeSound(ThemeSound::MoveParaglidingStart)));
-        pl->setSoundB7(reslot(game, pl->soundB7(), game->audio()->themeSound(ThemeSound::Teleporter)));
-        pl->setSoundBb(reslot(game, pl->soundBb(), game->audio()->themeSound(ThemeSound::Teleporter)));
-        pl->setSoundAb(reslot(game, pl->soundAb(), game->audio()->themeSound(ThemeSound::MoveIceSliding)));
-        pl->setSoundAf(reslot(game, pl->soundAf(), game->audio()->themeSound(ThemeSound::MoveSliding)));
-        pl->setSoundCb(reslot(game, pl->soundCb(), game->audio()->themeSound(ThemeSound::Switch)));
-        pl->setSoundA7(reslot(game, pl->soundA7(), game->audio()->themeSound(ThemeSound::SplatJJ)));
+        reslot(game, pl->sound(Sfx::Fall), ThemeSound::FallJJ);
+        reslot(game, pl->sound(Sfx::Glue), ThemeSound::Glue);
+        reslot(game, pl->sound(Sfx::JumpPad), ThemeSound::MoveJumpPad);
+        reslot(game, pl->sound(Sfx::Glide), ThemeSound::MoveParagliding);
+        reslot(game, pl->sound(Sfx::GlideStart), ThemeSound::MoveParaglidingStart);
+        reslot(game, pl->sound(Sfx::Teleport), ThemeSound::Teleporter);
+        reslot(game, pl->sound(Sfx::Teleported), ThemeSound::Teleporter);
+        reslot(game, pl->sound(Sfx::Ice), ThemeSound::MoveIceSliding);
+        reslot(game, pl->sound(Sfx::Slide), ThemeSound::MoveSliding);
+        reslot(game, pl->sound(Sfx::Switch), ThemeSound::Switch);
+        reslot(game, pl->sound(Sfx::Splat), ThemeSound::SplatJJ);
 
         for (Foe &foe : game->world()->foes())
             Sim_AcquireFoeSounds(game, foe);

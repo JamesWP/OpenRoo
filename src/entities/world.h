@@ -135,7 +135,7 @@ public:
     void tickFallings(PlayEvents &events);
     void tickBridges(PlayEvents &events);
     /* Ticks and debug-draws each bomb, removing those that asked to be. */
-    void tickBombs();
+    void tickBombs(PlayEvents &events);
 
     /* Draws every object in the level for one pass of the frame, each as it
      * draws itself, then the bursts they started.  deathsDrawn is deaths()

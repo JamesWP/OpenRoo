@@ -11,37 +11,25 @@
 #include "entitylist.h"
 #include "movableentity.h"
 #include "drawfwd.h"
-#include "soundasset.h"
 
-class SoundVoice;
-class SoundLibrary;
 class Tile;
-
-/* The theme's sounds a bomb attaches when it is dropped. */
-struct BombSounds {
-    const SoundAssetName *b3, *b7bb, *blast, *c3, *roll;
-};
 
 class Bomb : public MovableEntity {
 public:
      
 
-    // Spawns a bomb at (u, v, h); the arguments are masked to bytes.
-    static void spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,
-                      const BombSounds &sounds, unsigned int uArg,
-                      unsigned int vArg, unsigned int hArg,
+    // Spawns a bomb at (u, v, h), reporting it created; the arguments
+    // are masked to bytes.
+    static void spawn(const EntityContext &ctx, EntityList<Bomb> &bombs, PlayEvents &events,
+                      unsigned int uArg, unsigned int vArg, unsigned int hArg,
                       unsigned int flagArg);
 
-    // Releases the sounds of bombs[i] and destroys it; those after it move
+    // Destroys bombs[i], reporting it destroyed; those after it move
     // down one.
-    static void remove(const EntityContext &ctx, EntityList<Bomb> &bombs,
-                       std::size_t i);
-
-    // Releases its sounds (remove, and World::clearObjects).
-    void releaseSounds(SoundLibrary *sm);
+    static void remove(EntityList<Bomb> &bombs, std::size_t i, PlayEvents &events);
 
     // One tick: the fuse, the roll and the blast.
-    void tick();
+    void tick(PlayEvents &events);
 
     // Draws it on the debug map; n is its place in the World's bomb list.
     void debugDraw(unsigned n) const;
@@ -60,11 +48,6 @@ private:
 
     // The cell (u, v) from this bomb's tile base, both read signed.
     Tile *tile(int u, int v) const;
-    void acquireInto(SoundLibrary *sm, const SoundAssetName *asset, SoundVoice *Bomb::*field);
-    void releaseField(SoundLibrary *sm, SoundVoice *Bomb::*field);
-
-    SoundVoice *rollSound_;         // may be NULL
-    SoundVoice *blastSound_;        // may be NULL
     int                 blastSoundPlayed_;
     int                 zoneCleared_;
     double              droppedAt_;

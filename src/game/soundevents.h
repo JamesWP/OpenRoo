@@ -5,13 +5,15 @@
 
 #include <map>
 #include "playevents.h"
+#include "themesounds.h"
 
+class GameAudio;
 class SoundLibrary;
 class SoundVoice;
 
 class SoundEvents : public PlayEvents {
 public:
-    explicit SoundEvents(SoundLibrary *library) : library_(library) {}
+    explicit SoundEvents(GameAudio *audio);
 
     /* The voice key's sound plays on; released when its entity is destroyed. */
     void attach(const SoundKey &key, SoundVoice *voice);
@@ -20,11 +22,16 @@ public:
     void soundStart(const SoundKey &key, float x, float y, float z) override;
     void soundMove(const SoundKey &key, float x, float y, float z) override;
     void soundStop(const SoundKey &key) override;
+    void entityCreated(SoundSource source, unsigned id) override;
     void entityDestroyed(SoundSource source, unsigned id) override;
 
-private:
+    /* The voice key's sound plays on, or null. */
     SoundVoice *voice(const SoundKey &key) const;
 
+private:
+    void acquire(const SoundKey &key, ThemeSound sound);
+
+    GameAudio                        *audio_;
     SoundLibrary                     *library_;
     std::map<SoundKey, SoundVoice *> voices_;
 };

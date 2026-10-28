@@ -18,7 +18,6 @@
 #include "movableentity.h"
 #include "entitymath.h"
 #include "foepath.h"
-#include "soundvoice.h"
 #include "bomb.h"
 #include "tilequery.h"
 #include "logger.h"
@@ -51,7 +50,7 @@ Tile *Foe::tile(int u, int v) const
 
 Foe::Foe()
 {
-    zeroSoundSlots();
+    soundSource_ = SoundSource::Foe;
     dyingStarted_         = 0;
     removeRequested_ = 0;
     dying_         = 0;
@@ -77,17 +76,6 @@ Foe::Foe()
     gliding_         = 0;
     onSwitch_        = 0;
     onLift_         = 0;
-    pool_9f_         = 0;
-    sound_ab_        = 0;
-    sound_af_        = 0;
-    sound_b3_        = 0;
-    sound_b7_        = 0;
-    sound_bb_        = 0;
-    sound_bf_        = 0;
-    sound_c3_        = 0;
-    sound_c7_        = 0;
-    sound_cb_        = 0;
-    sound_cf_        = 0;
     anim_         = 0;
     idleStarted_         = 0;
     pickedUp_         = 0;
@@ -276,22 +264,8 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
 
 static unsigned long s_removals       = 0;
 static int           s_logged_remove  = 0;
-static int           s_logged_release = 0;
 
-static void release(SoundLibrary *sm, void *obj, SoundVoice *buf)
-{
-    if (buf == 0)
-        return;
-
-    if (s_diag_remove && !s_logged_release) {
-        s_logged_release = 1;
-        g_logger.write("foe: first sound release -- obj=%p buf=%p\n", obj, (void *)buf);
-    }
-
-    sm->releaseVoice(buf, true);
-}
-
-void Foe::remove(const EntityContext &ctx, EntityList<Foe> &foes, std::size_t i)
+void Foe::remove(EntityList<Foe> &foes, std::size_t i, PlayEvents &events)
 {
     diag_init();
 
@@ -306,23 +280,14 @@ void Foe::remove(const EntityContext &ctx, EntityList<Foe> &foes, std::size_t i)
             g_logger.write("foe: %lu removals\n", s_removals);
     }
 
-    foes[i].releaseSounds(ctx.sound);
+    foes[i].despawn(events);
     foes.erase(i);
 }
 
-void Foe::releaseSounds(SoundLibrary *sm)
+void Foe::despawn(PlayEvents &events) const
 {
-    if (!sm->active())
-        return;
-    if (sound_c3_ != 0)
-        sound_c3_->stop();
-    // In a fixed order; the pools as well as the single voices.
-    SoundVoice **voices[] = { &pool_9f_, &sound_b3_, &sound_c7_, &sound_b7_, &sound_bb_, &sound_c3_,
-                              &sound_ab_, &sound_af_, &sound_cb_, &sound_cf_, &sound_a7_ };
-    for (SoundVoice **v : voices) {
-        release(sm, this, *v);
-        *v = 0;
-    }
+    events.soundStop(sound(Sfx::Fall));
+    events.entityDestroyed(SoundSource::Foe, id());
 }
 
 static inline int ftol_i(double v)
@@ -345,7 +310,7 @@ static int           s_logged_turn    = 0;
 static int           s_logged_repost  = 0;
 static int           s_logged_frozen  = 0;
 
-void Foe::step(unsigned char playerU, unsigned char playerV)
+void Foe::step(unsigned char playerU, unsigned char playerV, PlayEvents &events)
 {
     diag_init();
 
@@ -401,13 +366,8 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
                           (int)cellU_, (int)cellV_);
             }
 
-            if (pool_9f_ != 0) {
-                pool_9f_->setPosition((float)(int)cellU_,
-                                                  (float)(int)heightCell_,
-                                                  -(float)(int)cellV_,
-                                                  1);
-                pool_9f_->play(0);
-            }
+            events.soundPlay(sound(Sfx::Crystal), (float)(int)cellU_, (float)(int)heightCell_,
+                             -(float)(int)cellV_);
             pickedUp_ = 1;
         }
     }
@@ -421,7 +381,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
         }
     }
     if (moveDir_ != 0) {
-        updateMovement();
+        updateMovement(events);
         return;
     }
 
@@ -437,7 +397,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
         // only when the chase above found no move.
         targetU_ = playerU;
         targetV_ = playerV;
-        updateMovement();
+        updateMovement(events);
         return;
     }
 
@@ -487,7 +447,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
         chase(targetU_, targetV_, chaseSpeed_);
     }
 
-    updateMovement();
+    updateMovement(events);
 }
 
 static inline unsigned ftol32(double v)
@@ -680,8 +640,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
     *pv = tv;
 }
 
-void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs,
-                   const BombSounds &sounds)
+void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs, PlayEvents &events)
 {
     if (bombDropRequest_ == 0 || type_ == FOE_SWITCH_RUNNER)
         return;
@@ -696,12 +655,12 @@ void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs,
     if (!spawn)
         return;
     if (offset)
-        Bomb::spawn(ctx, bombs, sounds, (unsigned char)((unsigned char)cellU_ - (unsigned char)stepU_),
+        Bomb::spawn(ctx, bombs, events, (unsigned char)((unsigned char)cellU_ - (unsigned char)stepU_),
                           (unsigned char)((unsigned char)cellV_ - (unsigned char)stepV_),
                           (unsigned char)((unsigned char)heightCell_ - (unsigned char)field_141),
                           facing_);
     else
-        Bomb::spawn(ctx, bombs, sounds, (unsigned char)cellU_, (unsigned char)cellV_,
+        Bomb::spawn(ctx, bombs, events, (unsigned char)cellU_, (unsigned char)cellV_,
                           (unsigned char)heightCell_, facing_);
     bombDropRequest_ = 0;
 }

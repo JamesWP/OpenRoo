@@ -10,7 +10,7 @@
  * entityDestroyed() reports it, and its sounds are released. */
 #pragma once
 
-enum class SoundSource : unsigned char { Lift, Platform, Bridge, Falling };
+enum class SoundSource : unsigned char { Lift, Platform, Bridge, Falling, Player, Foe, Bomb };
 
 /* Each source's sounds. */
 enum class Sfx : unsigned char {
@@ -19,6 +19,22 @@ enum class Sfx : unsigned char {
     BridgeMoving,    // a bridge's while its deck goes out or in
     TileFalls,       // a falling tile's as it falls
     TileRespawns,    // and as it comes back
+    // A mover's (player, foe, bomb; movableentity.h):
+    Step,            // a step taken, or a landing
+    Switch,          // coming onto a switch
+    Glue,            // caught by a sticky pad
+    Slide,           // the loop while on a slide
+    Ice,             // the loop while on ice
+    Teleport,        // a teleporter taking it
+    Teleported,      // and setting it down
+    Splat,           // killed by a drop
+    Fall,            // a fall, following it down
+    Glide,           // the loop while gliding
+    GlideStart,      // the paraglider opening
+    JumpPad,         // a jump pad's launch, following it up
+    Crystal,         // a gem picked up
+    BombRoll,        // a bomb's fuse while it rolls
+    BombBlast,       // and its blast
 };
 
 struct SoundKey {
@@ -44,6 +60,8 @@ public:
     virtual void soundStart(const SoundKey &, float, float, float) {}
     virtual void soundMove(const SoundKey &, float, float, float) {}
     virtual void soundStop(const SoundKey &) {}
+    /* An entity was created, and may want its sounds loaded (a bomb, dropped mid-tick). */
+    virtual void entityCreated(SoundSource, unsigned) {}
     /* An entity was destroyed; its sounds are released. */
     virtual void entityDestroyed(SoundSource, unsigned) {}
 };

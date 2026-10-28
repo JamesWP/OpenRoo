@@ -1,5 +1,5 @@
 /* MovableEntity: the base Bomb, Foe and Player share -- a position on the
- * grid, the step and animation in progress, and twelve sound handles.
+ * grid, the step and animation in progress, and which source of sound it is.
  * updateMovement() is the step every entity tick ends in.
  *
  * A field whose meaning is unsettled is named field_<hex>, after where the
@@ -8,6 +8,7 @@
 #pragma once
 
 #include "entitylist.h"
+#include "playevents.h"
 
  
 #include <stddef.h>
@@ -15,7 +16,6 @@
 #include "tile.h"
 #include "drawfwd.h"
 
-class SoundVoice;
 class LevelMap;
 class FoePath;
 
@@ -27,9 +27,6 @@ public:
     // The level's map, copied in at spawn from World::map().
     const LevelMap *map() const { return map_; }
 
-    // Zero the twelve sound handles.
-    void zeroSoundSlots();
-
     // Nonzero once this tick should remove the entity.  Read by GameTick after
     // a bomb's tick.
     int removeRequested() const { return removeRequested_; }
@@ -37,7 +34,7 @@ public:
     // The movement step every entity tick ends in (player, foe, bomb).
     // Returns 1 on the two early outs taken while the entity is dying, 0
     // otherwise.
-    unsigned int updateMovement();
+    unsigned int updateMovement(PlayEvents &events);
 
     // Readers shared by every entity.  Meaning is noted below only where the
     // name does not already say it.
@@ -103,35 +100,10 @@ public:
     // at the step's fraction (0 when still).
     draw::Instance pose() const;
 
-    // The sound handles: soundobj.cpp writes them for foes, levelsounds.cpp
-    // and fixedsounds.cpp for the Player.
-    SoundVoice *pool9f() const                  { return pool_9f_; }
-    void  setPool9f(SoundVoice *p)              { pool_9f_ = p; }
-    SoundVoice *soundA3() const        { return sound_a3_; }
-    void  setSoundA3(SoundVoice *p)    { sound_a3_ = p; }
-    SoundVoice *soundA7() const        { return sound_a7_; }
-    void  setSoundA7(SoundVoice *p)    { sound_a7_ = p; }
-    SoundVoice *soundAb() const        { return sound_ab_; }
-    void  setSoundAb(SoundVoice *p)    { sound_ab_ = p; }
-    SoundVoice *soundAf() const        { return sound_af_; }
-    void  setSoundAf(SoundVoice *p)    { sound_af_ = p; }
-    SoundVoice *soundB3() const        { return sound_b3_; }
-    void  setSoundB3(SoundVoice *p)    { sound_b3_ = p; }
-    SoundVoice *soundB7() const        { return sound_b7_; }
-    void  setSoundB7(SoundVoice *p)    { sound_b7_ = p; }
-    SoundVoice *soundBb() const        { return sound_bb_; }
-    void  setSoundBb(SoundVoice *p)    { sound_bb_ = p; }
-    SoundVoice *soundBf() const        { return sound_bf_; }
-    void  setSoundBf(SoundVoice *p)    { sound_bf_ = p; }
-    SoundVoice *soundC3() const        { return sound_c3_; }
-    void  setSoundC3(SoundVoice *p)    { sound_c3_ = p; }
-    SoundVoice *soundC7() const        { return sound_c7_; }
-    void  setSoundC7(SoundVoice *p)    { sound_c7_ = p; }
-    SoundVoice *soundCb() const        { return sound_cb_; }
-    void  setSoundCb(SoundVoice *p)    { sound_cb_ = p; }
-    // Also holds a voice pool, on both the Player and a foe.
-    SoundVoice *poolCf() const                  { return sound_cf_; }
-    void  setPoolCf(SoundVoice *p)              { sound_cf_ = p; }
+    // Which of the sources of sound it is, and one of its sounds by name
+    // (playevents.h).
+    SoundSource soundSource() const             { return soundSource_; }
+    SoundKey    sound(Sfx sfx) const            { return {soundSource_, id(), sfx}; }
 
 protected:
     // Our own subclasses use only the base's field work, the three zeroed
@@ -198,19 +170,7 @@ protected:
     // carry the height curves updateMovement() interpolates between.
     unsigned char       anim_{};
     int                 onLift_{};  // Riding a lift (kind 9).
-    SoundVoice         *pool_9f_{};
-    SoundVoice *sound_a3_;
-    SoundVoice *sound_a7_;
-    SoundVoice *sound_ab_;
-    SoundVoice *sound_af_;
-    SoundVoice *sound_b3_;
-    SoundVoice *sound_b7_;
-    SoundVoice *sound_bb_;
-    SoundVoice *sound_bf_;
-    SoundVoice *sound_c3_;
-    SoundVoice *sound_c7_;
-    SoundVoice *sound_cb_;
-    SoundVoice *sound_cf_;
+    SoundSource         soundSource_ = SoundSource::Player;
     int                 onSwitch_{};    // Has stood on a switch and worked it; cleared by the next step forward or back.
     unsigned char       switchSlot_{};  // The switch stepped on and not yet acted on; 0xff for none.
     int                 field_d8{};

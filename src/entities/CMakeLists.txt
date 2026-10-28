@@ -13,5 +13,5 @@ add_library(entities OBJECT
 target_include_directories(entities PUBLIC .)
 
 target_link_libraries(entities
-    PUBLIC  base level soundapi drawhelpers
-    PRIVATE sysdev log prof dbg imgui)
+    PUBLIC  base level drawhelpers
+    PRIVATE soundapi sysdev log prof dbg imgui)

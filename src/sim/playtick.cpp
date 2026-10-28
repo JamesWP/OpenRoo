@@ -94,12 +94,12 @@ void Play_DropPlayerBomb(Game *self)
         }
         if (spawn) {
             if (offset)
-                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), self->bombSounds(), (unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
+                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), *self->soundEvents(), (unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
                                     (unsigned char)((unsigned char)pl->cellV() - (unsigned char)pl->stepV()),
                                     (unsigned char)((unsigned char)pl->heightCell() - (unsigned char)pl->field141()),
                                     pl->facing());
             else
-                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), self->bombSounds(), (unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
+                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), *self->soundEvents(), (unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
                                     pl->facing());
             pl->setBombDropRequest(0);
         }
@@ -156,13 +156,13 @@ void Play_TickFoes(Game *self)
         }
         {
             PROF_SCOPE("step");
-            foe.step(tu, tv);
+            foe.step(tu, tv, *self->soundEvents());
         }
         foe.debugDraw((unsigned)i);
-        foe.dropBomb(self->world()->entityContext(), self->world()->bombs(), self->bombSounds());
+        foe.dropBomb(self->world()->entityContext(), self->world()->bombs(), *self->soundEvents());
         foe.checkPlayerContact(pl->moveStateRef(), pl->posU(), pl->posY(), pl->posV());
         if (foe.finishDespawn(self->world()->map())) {
-            Foe::remove(self->world()->entityContext(), foes, i);  // the next moves into i
+            Foe::remove(foes, i, *self->soundEvents());  // the next moves into i
             self->session()->setFoesKilled((unsigned char)(self->session()->foesKilled() + 1));
         } else {
             ++i;
