@@ -9,6 +9,7 @@ import math
 
 from . import formats as F
 from . import levels
+from . import scripts
 from . import ui
 from .font5x7 import glyph
 
@@ -469,4 +470,5 @@ def files():
     out["bitmaps/LOADING.BMP"] = screen("LOADING", 0x102040)
     out["bitmaps/%s.bmp" % THEME.upper()] = screen(THEME.upper(), 0x204060)
     out.update(levels.files(THEME))
+    out.update(scripts.files(THEME))
     return out
