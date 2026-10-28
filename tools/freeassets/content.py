@@ -274,6 +274,9 @@ def textures():
                          ("paraglide", 0x40e040), ("obstacle", 0x907050), ("lift", 0x8080a0),
                          ("stair", 0x909090)):
         t[b + "%s.tga" % name] = tile(colour, max(0, colour - 0x303030) & 0xffffff, 32)
+    # The platform: orange with chevrons, so it reads apart from a lift.
+    t[b + "platform.tga"] = tile(0xe08020, 0x804010, 32,
+                                 mark=lambda u, v: abs(abs(v - 0.5) - (u * 3 % 1) * 0.5) < 0.07)
     c = ui.Canvas(32, 32)
     c.fill(ui.rect(0, 0, 32, 32), 0xc040ff)
     c.fill(ui.rect(2, 2, 30, 30, 3), 0xe090ff)
@@ -425,7 +428,7 @@ def theme():
         "Bridge": field("bridge", ("\t\t{", "\t\t\tTextureAdress Wrap", "\t\t}")),
         "Stair": model("stair", "stair"),
         "Elevator": model("lift", "lift"),
-        "Platform": model("lift", "lift"),
+        "Platform": model("lift", "platform"),
         "Crystal": model("crystal", "crystal", extra=spin + ("Oscillate 0.1 0.005 random", "Specular")),
         "CrystalFX": particles("crystalfx", 10),
         "CollFX": particles("collect", 10),
