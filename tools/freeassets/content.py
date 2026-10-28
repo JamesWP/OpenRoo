@@ -127,7 +127,10 @@ MODELS = {
     "obstacle.mdl":  cube(0.90, 0.90, 0.70),
     "block.mdl":     cube(0.96, 0.96, 0.80),
     "lift.mdl":      cube(1.00, 1.00, 0.20, -0.20),
-    "stair.mdl":     cube(1.00, 1.00, 0.50, -0.50),
+    # Four steps up toward +x, from the cell's own height to one above; the
+    # game turns it to face each stair's way (render/levelplacements.cpp).
+    "stair.mdl":     F.mdl([[v for i in range(4)
+                             for v in F.box(-0.5 + 0.25 * i, -0.5, -0.5, 0.5, 0.5, 0.25 * (i + 1))]]),
     "falling.mdl":   cube(1.00, 1.00, 0.10, -0.10),
 }
 
