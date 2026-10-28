@@ -27,9 +27,11 @@ static void purge(EntityList<T> &list, SoundLibrary *sound)
     list.clear();
 }
 
-void World::clearObjects()
+void World::clearObjects(PlayEvents &events)
 {
-    purge(lifts_, sound_);
+    for (const LiftObject &lift : lifts_)
+        events.entityDestroyed(SoundSource::Lift, lift.id());
+    lifts_.clear();
     purge(platforms_, sound_);
     purge(fallings_, sound_);
     purge(bridges_, sound_);
@@ -53,7 +55,14 @@ static void tickAll(EntityList<T> &list, const char *name)
         obj.tick();
 }
 
-void World::tickLifts()     { tickAll(lifts_, "lifts"); }
+void World::tickLifts(PlayEvents &events)
+{
+    if (lifts_.empty())
+        return;
+    PROF_SCOPE("lifts");
+    for (LiftObject &lift : lifts_)
+        lift.tick(events);
+}
 void World::tickPlatforms() { tickAll(platforms_, "platforms"); }
 void World::tickFallings()  { tickAll(fallings_, "falling tiles"); }
 

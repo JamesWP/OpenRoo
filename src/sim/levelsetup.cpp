@@ -218,7 +218,7 @@ Sim_SetupLevelObjects(Game *self)
     self->world()->player()->setIceDir(0);
 
     // Tear down the previous level.
-    self->world()->clearObjects();
+    self->world()->clearObjects(*self->soundEvents());
     self->world()->setSwitchMax(0);
     self->world()->player()->setLastRoll(0);
 

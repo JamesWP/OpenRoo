@@ -94,5 +94,5 @@ Sim_ClearGameState(Game *self)
         self->requestQuit(1);
     }
 
-    self->world()->clearObjects();
+    self->world()->clearObjects(*self->soundEvents());
 }

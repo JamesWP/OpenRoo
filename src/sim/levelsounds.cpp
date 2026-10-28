@@ -111,8 +111,10 @@ Sim_InitLevelBasedSounds(Game *self)
                 bt.setRespawnSound(p);
             }
         }
-        attachLoopSound(game, game->world()->lifts(),
-                        game->audio()->themeSound(ThemeSound::Elevator));
+        if (game->audio()->themeSound(ThemeSound::Elevator)->enabled != 0)
+            for (const LiftObject &lift : game->world()->lifts())
+                game->soundEvents()->attach({SoundSource::Lift, lift.id(), Sfx::LiftMoving},
+                                            acq(game, game->audio()->themeSound(ThemeSound::Elevator)));
         attachLoopSound(game, game->world()->platforms(),
                         game->audio()->themeSound(ThemeSound::Platform));
         attachLoopSound(game, game->world()->bridges(),

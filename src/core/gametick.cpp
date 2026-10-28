@@ -73,7 +73,7 @@ static void tick_level_objects(Game *self)
     unsigned char u, v;
     if (Tile_DebugDrawMap(self->world(), &u, &v))
         Cheat_TeleportPlayer(self, u, v);
-    self->world()->tickLifts();
+    self->world()->tickLifts(*self->soundEvents());
     self->world()->tickPlatforms();
     self->world()->tickFallings();
     self->world()->tickBridges();

@@ -9,6 +9,7 @@
  * planning its moves -- takes a const World &.
  */
 #pragma once
+#include "playevents.h"
 
 #include <array>
 #include "levelmap.h"
@@ -127,9 +128,9 @@ public:
     void setSoundLibrary(SoundLibrary *s) { sound_ = s; }
 
     /* Removes every object from the level and resets the switch counts. */
-    void clearObjects();
+    void clearObjects(PlayEvents &events);
     /* Ticks every object of one kind, in list order. */
-    void tickLifts();
+    void tickLifts(PlayEvents &events);
     void tickPlatforms();
     void tickFallings();
     void tickBridges();
