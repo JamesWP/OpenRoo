@@ -6,12 +6,13 @@ ring of cells after reading it, so every map keeps a border of '.'.
     .  nothing (a hole)
     1..9  floor at height 5..13: a step up of one needs stairs, two or more
           up is a wall the player falls under, three or more down a fatal drop
+    B L F +  bombs, a life, freeze, time    o  protection   z  speed   ? surprise
     S  the player's start        E  the exit        *  a crystal
     C  a catcher                 T  a thrower
     a b  teleporter pads, paired by letter: arriving at one carries the
          player on one step past the other, so leave floor beyond each
     j  jump pad   g  glue   i  ice   d  falling floor   x  bombable block
-    #  impassable block   B  bombs   L  extra life   F  freeze   +  time
+    #  impassable block
     ^ > v <  stairs, climbing one height toward the side the arrow points
     =  a lift, between the lowest and highest floor beside it
     P  a platform, riding along +u over the holes ahead to the ground beyond
@@ -52,6 +53,9 @@ CELLS = {
     "L": (0x01, 0, 0x07),
     "F": (0x01, 0, 0x08),
     "+": (0x01, 0, 0x06),
+    "o": (0x01, 0, 0x0d),       # protection
+    "z": (0x01, 0, 0x0a),       # speed up
+    "?": (0x01, 0, 0xff),       # a surprise: rolls its contents when taken
     "p": (0x01, 0, 0x05),       # a paraglider: one glide, opened 3 below an edge
     "P": (0x0a, 0, 0x00),       # a platform shuttling +u over the holes ahead
     "s": (0x11, 1, 0x00),       # param: the switch's number
@@ -145,6 +149,18 @@ LEVELS = [
 .................11E.
 .................1*1.
 .....................
+"""),
+    ("Bonus", "Help yourself", 180, """
+.............
+.S1B1L1F1+1*.
+.11111111111.
+.1o1z1?1p1*1.
+.11111111111.
+.1?1?1?1*11C.
+.11111111111.
+.*1111111111.
+.11111E11111.
+.............
 """),
     ("Bombs", "Clear the way", 180, """
 ...........
