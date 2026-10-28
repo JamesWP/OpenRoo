@@ -3,8 +3,9 @@
 
 The counterpart of import_assets.py for when there is no copy of Ka'roo: every
 file is generated here (tools/freeassets/), so the game runs from the source
-tree alone.  The content is deliberately plain -- flat colours, boxes, beeps --
-and holds one theme, Basic, with a handful of levels.
+tree alone.  The content is deliberately plain -- flat colours, boxes, beeps,
+simple particle effects -- and holds one theme, Basic, with a handful of
+levels.
 
     python3 tools/gen_assets.py                # fill game/
     python3 tools/gen_assets.py --out DIR      # somewhere else

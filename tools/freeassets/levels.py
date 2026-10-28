@@ -11,7 +11,9 @@ ring of cells after reading it, so every map keeps a border of '.'.
     j  jump pad   g  glue   i  ice   d  falling floor   x  bombable block
     #  impassable block   B  bombs   L  extra life   F  freeze   +  time
 
-Kinds and contents are level/tile.h's.
+Kinds and contents are level/tile.h's.  An impassable cell is drawn as
+nothing by the map; what stands on it is the level's .leo object there, so
+each '#' gets a block in Level3DExtraObjects.
 """
 from . import formats as F
 
@@ -89,9 +91,9 @@ LEVELS = [
 ............
 .S11iiii1*1.
 .1111111111.
-.1gg1111dd1.
-.1*g1111d*1.
-.1111111111.
+.1gg111ddd1.
+.1*g111d*d1.
+.111111ddd1.
 .F1iiiii11E.
 ............
 """),
@@ -134,6 +136,10 @@ def files(theme):
     for name, title, limit, text in LEVELS:
         cells, gems = compile_map(text)
         out["Levels/%s/%s.jjm" % (theme, name)] = F.jjm(cells, gems, limit, theme, title)
+        blocks = [("models\\basic\\block.mdl", (u, v, c[0]), "textures\\basic\\block.tga")
+                  for v, row in enumerate(cells) for u, c in enumerate(row) if c[1] == 0x16]
+        if blocks:
+            out["Level3DExtraObjects/%s/%s.leo" % (theme, name)] = F.leo(blocks)
         names.append("%s\\%s" % (theme, name))
     for name, text in BACKDROPS.items():
         cells, _ = compile_map(text)

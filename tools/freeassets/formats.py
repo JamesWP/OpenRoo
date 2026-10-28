@@ -10,6 +10,8 @@ the content is.  The layouts are the game's own loaders':
     JJM   src/level/levelmap.cpp      the level map and its trailer
     GAM   src/session/session.cpp     the binary form (tools/karoosave.py reads it)
     FON   src/gfx/textrenderer.cpp    three lines: atlas path, columns, rows
+    PAR   src/fx/particles.cpp        a serialised FaceParticleSystem
+    LEO   src/level/extraobjects.cpp  text: one ';'-terminated object a line
 """
 import math
 import struct
@@ -114,6 +116,72 @@ def box(x0, y0, z0, x1, y1, z1):
         for i in (0, 1, 2, 0, 2, 3):
             tris.append((c[i], n, uvs[i]))
     return tris
+
+
+def octahedron(r, h, z0=0.0):
+    """A gem: four faces up to a point h above the girdle and four down to
+    one h below, the girdle r out and z0 + h up, flat-shaded."""
+    top, bottom, mid = (0, 0, z0 + 2 * h), (0, 0, z0), z0 + h
+    ring = [(r, 0, mid), (0, r, mid), (-r, 0, mid), (0, -r, mid)]
+    tris = []
+    for i in range(4):
+        a, b = ring[i], ring[(i + 1) % 4]
+        for tri in ((a, b, top), (b, a, bottom)):
+            u = [tri[1][k] - tri[0][k] for k in range(3)]
+            w = [tri[2][k] - tri[0][k] for k in range(3)]
+            n = (u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0])
+            ln = math.sqrt(sum(c * c for c in n))
+            n = tuple(c / ln for c in n)
+            tris += [(tri[0], n, (0, 1)), (tri[1], n, (1, 1)), (tri[2], n, (0.5, 0))]
+    return tris
+
+
+# ─── Particle systems ────────────────────────────────────────────────────────
+#
+# Particle space is Y-up.  The file is read in text mode (sysdev::TextFile):
+# a CR LF pair folds to LF and a 0x1a byte ends the file, so every LF is
+# written as CR LF and a 0x1a anywhere is refused.
+
+def _name(s):
+    b = s.encode("ascii") + b"\0"
+    return struct.pack("<I", len(b)) + b
+
+
+def par(count, scale, colours, life, speed=0.0, rate=1e6, direction=(0, 1, 0),
+        spread=(0, 0, 0), pos=(0, 0, 0), pos_spread=(0, 0, 0), box=None,
+        gravity=0.0, fade_ms=200.0, floor=False):
+    """A FaceParticleSystem of count particles, each a scale-sized quad.
+
+    colours  [(0xRRGGBB, weight)], picked at random by weight
+    life     (mean, variance) in seconds; speed is (mean, variance) or a mean
+    rate     particles a second; a huge one bursts the whole count at once
+    direction, spread  the launch direction and its per-axis variance
+    pos, pos_spread    where they start (a point mode), or box=(lo, hi)
+    gravity  pull along -Y; fade_ms how long a particle takes to fade out
+    floor    clip them at Y 0 rather than fall through the ground
+    """
+    speed = speed if isinstance(speed, tuple) else (speed, 0.0)
+    out = _name("FaceParticleSystem") + struct.pack("<I", count)
+    lo, hi = box if box else ((0, 0, 0), (0, 0, 0))
+    out += _name("StdGenerator")
+    out += struct.pack("<I3f3f3f3f", 1 if box else 0, *hi, *lo, *pos, *pos_spread)
+    out += struct.pack("<3f3f4ff", *direction, *spread, speed[0], speed[1], life[0], life[1], rate)
+    out += struct.pack("<I", len(colours)) + b"".join(struct.pack("<II", c, w) for c, w in colours)
+    out += _name("GravityEnvironment")
+    out += struct.pack("<3ffIfI", 0, -1, 0, gravity, 0, fade_ms, 10)
+    out += struct.pack("<3I3f3f", 0, 1 if floor else 0, 0, 0, 100 if floor else 0, 0, 0, 0, 0)
+    out += struct.pack("<f", scale)
+    if b"\x1a" in out:
+        raise ValueError("a 0x1a byte would end the particle file early; nudge a value")
+    return out.replace(b"\n", b"\r\n")
+
+
+def leo(objects):
+    """objects: (model, (u, v, height), texture) -- an unlit-blend, lit model
+    standing on that cell."""
+    lines = ["Model\t%s\t%g,%g,%g\t0,0,0\tNONE\tNONE\tLIT\t%s;" % (m, u, v, h, t)
+             for m, (u, v, h), t in objects]
+    return ("\r\n".join(lines) + "\r\n").encode("ascii")
 
 
 # ─── Levels ──────────────────────────────────────────────────────────────────
