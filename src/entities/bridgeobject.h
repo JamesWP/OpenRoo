@@ -1,7 +1,7 @@
 /* BridgeObject: a switch-operated bridge.  A switch arms it, and while armed
  * it extends, or retracts, one deck cell at a time, stamping each cell it
  * covers.  Every function that touches a BridgeObject field is in
- * bridgeobject.cpp: the spawn, tick and sound release, the drawing of its deck, and
+ * bridgeobject.cpp: the spawn, tick and sound release, and
  * the switch accessors GameTick and tilequery.cpp use. */
 
 #pragma once
@@ -10,11 +10,9 @@
 #include "entitylist.h"
 #include "playevents.h"
 #include "tickstep.h"
-#include "drawfwd.h"
 
  
 
-struct Diffuse1Vertex;
 
 /* A bridge's extent for the debug map, in cell-edge coordinates: the deck
  * runs along its axis from `rest` (the anchor) towards `rest + step * span`,
@@ -61,8 +59,17 @@ public:
     // The player's switch also starts the moving loop.
     void playArmSound(PlayEvents &events);
 
-    // Draws the bridge's deck, in the effects pass.
-    void draw(draw::Frame &f, draw::Pass pass) const;
+    // The deck's live far point, its anchor, its length in cells, its
+    // direction (+1 or -1 cell a step) and its axis (1 along U, 2 along V).
+    float posU() const               { return posU_; }
+    float posY() const               { return posY_; }
+    float posV() const               { return posV_; }
+    float restU() const              { return restU_; }
+    float restY() const              { return restY_; }
+    float restV() const              { return restV_; }
+    signed char span() const         { return span_; }
+    signed char step() const         { return step_; }
+    unsigned char axis() const       { return axis_; }
 
     // A read-only view for the debug map.
     BridgeExtent extent() const
@@ -73,10 +80,6 @@ public:
     ~BridgeObject();
 
 private:
-    // The deck quad (draw::FieldVertex) for clock t, ms; false while there
-    // is no deck, never armed and in phase 0.
-    bool deck(Diffuse1Vertex v[4], double t) const;
-
     BridgeObject();
     BridgeObject(const BridgeObject &) = delete;
     BridgeObject &operator=(const BridgeObject &) = delete;

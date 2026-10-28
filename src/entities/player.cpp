@@ -28,7 +28,6 @@
 
 #include "movableentity.h"
 #include "animcode.h"
-#include "themedraw.h"
 
 /* Durations in ms; the rise rate is per ms. */
 static const float  K_LAND_Y      = 1.0f;
@@ -486,63 +485,4 @@ void Player::debugDraw() const
     }
 }
 
-/* The theme conditions the player's own state meets. */
-static uint8_t player_conditions(const Player *p)
-{
-    if (p->anim() == ANIM_GHOST)
-        return draw::COND_DEAD;
-    uint8_t c = 0;
-    if (p->glides() != 0 || p->gliding() != 0)
-        c |= draw::COND_GLIDING;
-    if (p->protectionActive() != 0)
-        c |= draw::COND_PROTECTED;
-    return c;
-}
 
-void Player::draw(draw::Frame &f, draw::Pass pass) const
-{
-    draw::Instance in = pose();
-    in.conditions = player_conditions(this);
-    // Dead or respawning, its animation holds on its first frame.
-    if (moveState_ != 0)
-        in.animTime = 0.0f;
-    const bool dead = anim() == ANIM_GHOST;
-    const bool aura = protectionActive() != 0 && !dead;
-    const bool gliding = anim() == ANIM_PARAGLIDE;
-
-    switch (pass) {
-    case draw::Pass::Opaque:
-        draw::objects(f, THEME_OBJ_PLAYER, &in);
-        break;
-    case draw::Pass::Effects:
-        if (aura)
-            draw::objects(f, THEME_OBJ_PLAYER_PROTECTED, &in);
-        if (gliding)
-            draw::objects(f, THEME_OBJ_PLAYER_GLIDING, &in);
-        break;
-    case draw::Pass::Shadows:
-        if (!dead)
-            draw::shadows(f, THEME_OBJ_PLAYER, &in);
-        break;
-    case draw::Pass::Particles:
-        if (f.opts.particles > 0)
-            draw::particles(f, THEME_OBJ_PLAYER, &in);
-        if (f.opts.particles > 1) {
-            if (pickedUp() == CONTENTS_CRYSTAL)
-                draw::spawnBurst(f, THEME_OBJ_CRYSTAL_PICKUP, in.pos);
-            else if (pickedUp() != 0)
-                draw::spawnBurst(f, THEME_OBJ_ITEM_PICKUP, in.pos);
-            // The speed trail, while sped up and moving along (or straight
-            // against) its facing.
-            const bool trail = effectAActive() != 0 &&
-                ((unsigned)moveDir() == facing() ||
-                 (unsigned)moveDir() == Sim_GetTurnedDirection(facing(), 2));
-            draw::trail(f, THEME_OBJ_PLAYER_SPEED_TRAIL, trail, in.pos, in.rot.y);
-        }
-        if (aura)
-            draw::particles(f, THEME_OBJ_PLAYER_PROTECTED, &in);
-        if (gliding)
-            draw::particles(f, THEME_OBJ_PLAYER_GLIDING, &in);
-        break;
-    }
-}

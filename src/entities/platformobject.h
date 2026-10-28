@@ -7,7 +7,6 @@
 #include "entitylist.h"
 #include "playevents.h"
 #include "tickstep.h"
-#include "drawfwd.h"
 
  
 
@@ -41,8 +40,6 @@ public:
     bool   atLimit() const    { return atLimit_ != 0; }
     double phaseStart() const { return phaseStart_; }
 
-    // Draws the platform, in the opaque pass.
-    void draw(draw::Frame &f, draw::Pass pass) const;
 
     ~PlatformObject();
 

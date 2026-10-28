@@ -2,7 +2,7 @@
  * drawn as a theme object -- the pads, stairs, switches, the exit, the
  * bombable blocks -- and the items lying about.  Built on level entry from the
  * map; drawn every frame from the cells' live state (busy, blasting, what lies
- * there).  The level's moving objects draw themselves (World::draw).
+ * there).  The level's moving objects are entitydraw.h's.
  *
  * Positions are (u, height, -v). */
 #pragma once

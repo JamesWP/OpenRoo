@@ -7,7 +7,7 @@
  *   3. the HUD and the menus, EndFrame, the present.
  *
  * Each pass sets the device state its draws share; the level (render's
- * LevelPlacements) and its objects (World::draw) draw themselves in it.
+ * LevelPlacements) and its objects (entitydraw.h) are drawn in it.
  */
 #include "prof.h"
 #include "drawframe.h"
@@ -23,6 +23,7 @@
 #include "scoreoverlay.h"
 #include "textrenderer.h"
 #include "renderer.h"
+#include "entitydraw.h"
 #include "keys.h"
 
 /* What every draw needs of this frame. */
@@ -56,7 +57,7 @@ static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
     {
         PROF_SCOPE("opaque");
         level->draw(f, draw::Pass::Opaque, world->map());
-        world->draw(f, draw::Pass::Opaque, deaths);
+        drawWorld(f, draw::Pass::Opaque, *world, deaths);
         // The scene objects are part of the opaque picture.  They set no depth
         // state of their own, and the last record drawn may have had none to
         // write, so the pass's state is set again.
@@ -66,20 +67,20 @@ static void draw_scene(Game *g, Renderer *renderer, draw::Frame &f, double dt)
     draw::beginPass(f, draw::Pass::Effects);
     {
         PROF_SCOPE("effects");
-        world->draw(f, draw::Pass::Effects, deaths);
+        drawWorld(f, draw::Pass::Effects, *world, deaths);
     }
     /* Stencil shadows: a stencil buffer, more than 16 bpp, and the option. */
     if (d3d->hasStencil() && d3d->bitDepth() > 16 && f.opts.shadows > 0) {
         PROF_SCOPE("shadows");
         draw::beginPass(f, draw::Pass::Shadows);
-        world->draw(f, draw::Pass::Shadows, deaths);
+        drawWorld(f, draw::Pass::Shadows, *world, deaths);
         level->draw(f, draw::Pass::Shadows, world->map());
     }
     draw::beginPass(f, draw::Pass::Particles);
     {
         PROF_SCOPE("translucent");
         level->draw(f, draw::Pass::Particles, world->map());
-        world->draw(f, draw::Pass::Particles, deaths);
+        drawWorld(f, draw::Pass::Particles, *world, deaths);
         Scene_DrawParticleSystems(&renderer->scene, renderer->showSplinePaths,
                                   renderer->showSplineControlPolygons, d3d, eye, dt, f.now);
     }

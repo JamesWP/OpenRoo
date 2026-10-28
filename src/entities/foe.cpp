@@ -21,7 +21,6 @@
 #include "bomb.h"
 #include "tilequery.h"
 #include "logger.h"
-#include "themedraw.h"
 
 
 /* KAROO_SPAWN_DIAG, KAROO_REMOVE_DIAG and
@@ -739,43 +738,3 @@ void Foe::debugDraw(unsigned n) const
     }
 }
 
-void Foe::draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const
-{
-    // Kind 2 is a catcher, 3 a thrower; any other kind has no look.
-    if (!isCatcher() && !isThrower())
-        return;
-    const bool dying = dyingStarted_ != 0;
-    ThemeObjectType look = isCatcher() ? THEME_OBJ_FOE_CATCHER : THEME_OBJ_FOE_THROWER;
-    if (dying)
-        look = isCatcher() ? THEME_OBJ_FOE_CATCHER_DYING : THEME_OBJ_FOE_THROWER_DYING;
-    draw::Instance in = pose();
-    if (dying) {
-        in.conditions = draw::COND_DEAD;
-        in.animCode = 0;
-        in.animTime = 0.0f;
-    }
-
-    switch (pass) {
-    case draw::Pass::Opaque:
-        if (dying) {
-            const bool fire = deathNumber_ > deathsDrawn;
-            draw::fireEffects(f, look, fire);
-            if (fire)
-                draw::explode(f, look);
-        }
-        draw::objects(f, look, &in);
-        break;
-    case draw::Pass::Shadows:
-        if (!dying)
-            draw::shadows(f, look, &in);
-        break;
-    case draw::Pass::Particles:
-        if (f.opts.particles > 0)
-            draw::particles(f, look, &in);
-        if (f.opts.particles > 1 && pickedUp_ == CONTENTS_CRYSTAL)
-            draw::spawnBurst(f, THEME_OBJ_CRYSTAL_PICKUP, in.pos);
-        break;
-    default:
-        break;
-    }
-}

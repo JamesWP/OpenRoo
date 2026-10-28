@@ -47,7 +47,6 @@
 #include <stdlib.h>
 #include "movableentity.h"
 #include "logger.h"
-#include "themedraw.h"
 
 
 static const double K_FUSE_MS   = 2000.0;
@@ -348,28 +347,3 @@ void Bomb::debugDraw(unsigned n) const
     }
 }
 
-void Bomb::draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const
-{
-    const bool exploded = dyingStarted_ != 0;
-    const ThemeObjectType look = exploded ? THEME_OBJ_BOMB_EXPLODING : THEME_OBJ_BOMB;
-    draw::Instance in;
-    in.pos = { posU_, posY_, -posV_ };
-
-    switch (pass) {
-    case draw::Pass::Opaque:
-        if (exploded) {
-            const bool fire = deathNumber_ > deathsDrawn;
-            draw::fireEffects(f, look, fire);
-            if (fire)
-                draw::explode(f, look);
-        }
-        draw::objects(f, look, &in);
-        break;
-    case draw::Pass::Particles:
-        if (f.opts.particles > 0)
-            draw::particles(f, look, &in);
-        break;
-    default:
-        break;
-    }
-}

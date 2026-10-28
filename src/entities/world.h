@@ -26,7 +26,6 @@
 #include "platformobject.h"
 #include "bridgeobject.h"
 #include "fallingtile.h"
-#include "drawfwd.h"
 
 
 class World {
@@ -131,11 +130,6 @@ public:
     void tickBridges(PlayEvents &events);
     /* Ticks and debug-draws each bomb, removing those that asked to be. */
     void tickBombs(PlayEvents &events);
-
-    /* Draws every object in the level for one pass of the frame, each as it
-     * draws itself, then the bursts they started.  deathsDrawn is deaths()
-     * as it was at the last frame drawn: newer deaths fire their effects. */
-    void draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const;
 
     /* The foes and bombs that have started dying, counted from the start.
      * Never reset, so a renderer can compare it across levels. */

@@ -6,7 +6,6 @@
 #include "movableentity.h"
 #include "sysdev.h"
 #include "animcode.h"
-#include "themedraw.h"
 #include <stdlib.h>
 
 MovableEntity::MovableEntity()
@@ -24,34 +23,7 @@ MovableEntity::~MovableEntity()
 {
 }
 
-/* The yaw each facing draws at: 1 looks along -V, and each turn right a
- * quarter turn clockwise from there. */
-static float facing_yaw(unsigned char facing)
-{
-    switch (facing) {
-    case 2:  return -1.5707964f;
-    case 3:  return 3.1415927f;
-    case 4:  return 1.5707964f;
-    default: return 0.0f;
-    }
-}
 
-draw::Instance MovableEntity::pose() const
-{
-    draw::Instance in;
-    in.pos = { posU_, posY_, -posV_ };
-    in.rot.y = facing_yaw(facing_);
-    in.animCode = anim_;
-    if (moveDir_ != 0 || anim_ >= ANIM_IDLE1) {
-        in.animTime = (float)((*clock_ - animStart_) / animDuration_);
-        // A turn on the spot (moveDir past 10) swings the yaw as it plays.
-        if (moveDir_ > 10 && turnKind_ == 2)
-            in.rot.y -= in.animTime * 1.5707964f;
-        else if (moveDir_ > 10 && turnKind_ == 4)
-            in.rot.y += in.animTime * 1.5707964f;
-    }
-    return in;
-}
 
 /* MovableEntity::updateMovement(): the movement integrator every entity
  * (player, foe or bomb) ticks through -- grid stepping, falling, gliding,

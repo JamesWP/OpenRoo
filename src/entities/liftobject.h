@@ -7,7 +7,6 @@
 #include "entitylist.h"
 #include "playevents.h"
 #include "tickstep.h"
-#include "drawfwd.h"
 
  
 
@@ -37,9 +36,6 @@ public:
     int    state() const      { return state_; }
     bool   atTop() const      { return atTop_ != 0; }
     double phaseStart() const { return phaseStart_; }
-
-    // Draws the lift, in the opaque pass.
-    void draw(draw::Frame &f, draw::Pass pass) const;
 
     ~LiftObject();
 

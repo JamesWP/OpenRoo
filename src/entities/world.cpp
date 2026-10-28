@@ -3,7 +3,6 @@
 
 #include "world.h"
 #include "prof.h"
-#include "themedraw.h"
 
 BridgeObject *World::bridge(unsigned char switchSlot)
 {
@@ -88,29 +87,3 @@ void World::tickBombs(PlayEvents &events)
     }
 }
 
-void World::draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const
-{
-    for (const LiftObject &l : lifts_)
-        l.draw(f, pass);
-    for (const PlatformObject &p : platforms_)
-        p.draw(f, pass);
-    for (const BridgeObject &b : bridges_)
-        b.draw(f, pass);
-    for (const FallingTile &t : fallings_)
-        t.draw(f, pass);
-    player_.draw(f, pass);
-    for (const Bomb &b : bombs_)
-        b.draw(f, pass, deathsDrawn);
-    for (const Foe &e : foes_)
-        e.draw(f, pass, deathsDrawn);
-
-    if (pass == draw::Pass::Particles) {
-        if (f.opts.particles > 0)
-            draw::bursts(f, THEME_OBJ_FALLING_DUST);
-        if (f.opts.particles > 1) {
-            const BlendState additive = BlendState::additive();
-            draw::bursts(f, THEME_OBJ_CRYSTAL_PICKUP, &additive);
-            draw::bursts(f, THEME_OBJ_ITEM_PICKUP, &additive);
-        }
-    }
-}
