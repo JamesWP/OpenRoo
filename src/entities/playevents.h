@@ -10,11 +10,13 @@
  * entityDestroyed() reports it, and its sounds are released. */
 #pragma once
 
-enum class SoundSource : unsigned char { Lift };
+enum class SoundSource : unsigned char { Lift, Platform, Bridge };
 
 /* Each source's sounds. */
 enum class Sfx : unsigned char {
-    LiftMoving,  // a lift's loop while it rises or falls
+    LiftMoving,      // a lift's loop while it rises or falls
+    PlatformMoving,  // a platform's while it runs along its track
+    BridgeMoving,    // a bridge's while its deck goes out or in
 };
 
 struct SoundKey {

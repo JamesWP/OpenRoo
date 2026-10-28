@@ -131,9 +131,9 @@ public:
     void clearObjects(PlayEvents &events);
     /* Ticks every object of one kind, in list order. */
     void tickLifts(PlayEvents &events);
-    void tickPlatforms();
+    void tickPlatforms(PlayEvents &events);
     void tickFallings();
-    void tickBridges();
+    void tickBridges(PlayEvents &events);
     /* Ticks and debug-draws each bomb, removing those that asked to be. */
     void tickBombs();
 

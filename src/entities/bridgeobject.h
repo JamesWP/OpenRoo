@@ -8,13 +8,12 @@
 #include <stdint.h>
 #include "entitycontext.h"
 #include "entitylist.h"
+#include "playevents.h"
 #include "tickstep.h"
 #include "drawfwd.h"
 
  
 
-class SoundVoice;
-class SoundLibrary;
 struct Diffuse1Vertex;
 
 /* A bridge's extent for the debug map, in cell-edge coordinates: the deck
@@ -42,11 +41,8 @@ public:
                       unsigned int heightArg, unsigned int slotArg,
                       unsigned int axisArg);
 
-    // Releases its sounds, before World destroys it.
-    void releaseSounds(SoundLibrary *sm);
-
-    // One tick.
-    void tick();
+    // One tick; its moving loop follows it and stops through events.
+    void tick(PlayEvents &events);
 
     // Draws it on the debug map, with its switch links (dbg.h).
     void debugDraw(const SwitchCells &sc) const;
@@ -62,8 +58,8 @@ public:
     unsigned char switchSlot() const { return slot_; }
     // A switch fires: arm, and start the phase at the clock.
     void arm(double now)             { armed_ = 1; phaseStart_ = now; }
-    // The player's switch also starts the moving-loop sound.
-    void playArmSound();
+    // The player's switch also starts the moving loop.
+    void playArmSound(PlayEvents &events);
 
     // Draws the bridge's deck, in the effects pass.
     void draw(draw::Frame &f, draw::Pass pass) const;
@@ -73,10 +69,6 @@ public:
     {
         return { axis_, restU_, restV_, step_, span_, posU_, posV_, slot_, armed_ != 0, phase_, height_ };
     }
-
-    // The moving-loop sound, attached by InitLevelBasedSounds
-    // (levelsounds.cpp).
-    void setSound(SoundVoice *p) { sound_ = p; }
 
     ~BridgeObject();
 
@@ -108,7 +100,6 @@ private:
     float               restV_;
     signed char         span_;        // the deck's length, in cells
     unsigned char       slot_;        // the switch slot, stamped into cells
-    SoundVoice *sound_;       // the moving loop; may be NULL
     double              phaseStart_;
     int                 armed_;
     signed char         step_;        // +1 or -1 cell per 100 ms

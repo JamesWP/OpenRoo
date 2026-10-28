@@ -22,7 +22,6 @@
 #include "dbg.h"
 #include "switchcells.h"
 #include <algorithm>
-#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
 #include "logger.h"
@@ -169,7 +168,6 @@ void BridgeObject::spawn(const EntityContext &ctx, EntityList<BridgeObject> &bri
     tile->setBridgeAxis((unsigned char)axis);
     tile->setField1f6(0);
 
-    obj->sound_ = 0;
 
     if (s_diag_place)
         g_logger.write("bridgeobject:   bridge done -- +0x38=%u +0x45=%u +0x57=%d "
@@ -178,20 +176,10 @@ void BridgeObject::spawn(const EntityContext &ctx, EntityList<BridgeObject> &bri
                   (int)obj->step_, (unsigned)obj->endU_, (unsigned)obj->endV_);
 }
 
-void BridgeObject::releaseSounds(SoundLibrary *sm)
+void BridgeObject::playArmSound(PlayEvents &events)
 {
-    if (sm->active() && sound_ != 0)
-        sm->releaseVoice(sound_, true);
-    sound_ = 0;
-}
-
-void BridgeObject::playArmSound()
-{
-    if (sound_ != 0) {
-        sound_->setPosition((float)(int)cellU_, (float)(int)heightCell_,
-                              -(float)(int)cellV_, 1);
-        sound_->play(true);
-    }
+    events.soundStart({SoundSource::Bridge, id(), Sfx::BridgeMoving}, (float)(int)cellU_,
+                      (float)(int)heightCell_, -(float)(int)cellV_);
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte. */
@@ -205,8 +193,9 @@ static int s_logged_first   = 0;
 static int s_logged_stamp   = 0;
 static int s_logged_unstamp = 0;
 
-void BridgeObject::tick()
+void BridgeObject::tick(PlayEvents &events)
 {
+    const SoundKey moving{SoundSource::Bridge, id(), Sfx::BridgeMoving};
     unsigned char axis;
     double elapsed;
     double span100;
@@ -243,8 +232,7 @@ void BridgeObject::tick()
         if (!((double)span100 > elapsed)) {
             //             // Snaps to (int)(step * span) + rest, never the live coordinate:
             //             // one cell index, then both floats.
-            if (sound_ != 0)
-                sound_->stop();
+            events.soundStop(moving);
             armed_ = 0;
             phase_ = 1;
 
@@ -261,10 +249,7 @@ void BridgeObject::tick()
         }
 
         //         // The sound is placed from last frame's cell, before the move.
-        if (sound_ != 0)
-            sound_->setPosition((float)(int)cellU_,
-                                  (float)(int)heightCell_,
-                                  -(float)(int)cellV_, 1);
+        events.soundMove(moving, (float)(int)cellU_, (float)(int)heightCell_, -(float)(int)cellV_);
 
         //         // DETERMINISM: double, associated as written; a one-ulp change
         //         // moves a whole cell.
@@ -309,8 +294,7 @@ void BridgeObject::tick()
 
     if (!((double)span100 > elapsed)) {
         //             // Snaps back to rest.
-        if (sound_ != 0)
-            sound_->stop();
+        events.soundStop(moving);
         armed_ = 0;
         phase_ = 0;
 
@@ -324,10 +308,7 @@ void BridgeObject::tick()
         return;
     }
 
-    if (sound_ != 0)
-        sound_->setPosition((float)(int)cellU_,
-                              (float)(int)heightCell_,
-                              -(float)(int)cellV_, 1);
+    events.soundMove(moving, (float)(int)cellU_, (float)(int)heightCell_, -(float)(int)cellV_);
 
     //         // DETERMINISM: the destination first, then the travel subtracted;
     //         // not re-associated.
