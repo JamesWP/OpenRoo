@@ -24,6 +24,12 @@ void SoundEvents::soundPlay(const SoundKey &key, float x, float y, float z)
     }
 }
 
+void SoundEvents::soundPlay(const SoundKey &key)
+{
+    if (SoundVoice *v = voice(key))
+        v->play(false);
+}
+
 void SoundEvents::soundStart(const SoundKey &key, float x, float y, float z)
 {
     if (SoundVoice *v = voice(key)) {

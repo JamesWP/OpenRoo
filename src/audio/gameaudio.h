@@ -15,15 +15,10 @@
 namespace audiodev { class Buffer; }
 class VoicePool;
 struct FixedSounds {
-    audiodev::Buffer *timeOut;
     audiodev::Buffer *switchClick;      /* menu select */
     VoicePool          *menuUpDown;       /* 5 voices */
     audiodev::Buffer *count;
     audiodev::Buffer *lastSeconds;      /* the countdown */
-    audiodev::Buffer *levelCompleted;
-    /* Three banks, 'A'..'C'; GameTick picks one by rand()%3 when the
-     * crystals are complete. */
-    audiodev::Buffer *crystalBank[3];
     /* Set once the load has run (or found no sound); it never runs again. */
     unsigned int        loaded;
 };

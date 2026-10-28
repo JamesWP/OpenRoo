@@ -47,19 +47,15 @@ void Game::releaseAllSounds()
     if (audio()->soundCreated() != 0) {
         Player *p = world()->player();
         audiodev::Buffer *statics1[] = {
-            fixed->timeOut, fixed->lastSeconds,
+            fixed->lastSeconds,
             fixed->count,   fixed->switchClick,
         };
         for (audiodev::Buffer *s : statics1)
             if (s) sm->releaseStaticForOwner(s, 1);
         if (fixed->menuUpDown)
             sm->releasePooledForOwner(fixed->menuUpDown, 1);
-        if (fixed->levelCompleted)
-            sm->releaseStaticForOwner(fixed->levelCompleted, 1);
         soundEvents_.entityDestroyed(SoundSource::Player, p->id());
-        for (int i = 0; i < 3; i++)
-            if (fixed->crystalBank[i])
-                sm->releaseStaticForOwner(fixed->crystalBank[i], 1);
+        soundEvents_.entityDestroyed(SoundSource::Level, 0);
     }
     fixed->loaded = 0;
 }

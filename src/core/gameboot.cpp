@@ -42,10 +42,6 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g->audio()->fixedSounds()->menuUpDown     = NULL;
     g->audio()->fixedSounds()->count          = NULL;
     g->audio()->fixedSounds()->lastSeconds    = NULL;
-    g->audio()->fixedSounds()->timeOut        = NULL;
-    g->audio()->fixedSounds()->crystalBank[0] = NULL;
-    g->audio()->fixedSounds()->crystalBank[1] = NULL;
-    g->audio()->fixedSounds()->crystalBank[2] = NULL;
     strcpy(g->menuLevelName_, "DemoLevelForest");
     g->frontEnd()->setCreditsRestart(0);
     g->frontEnd()->setCreditsLatch(0);
