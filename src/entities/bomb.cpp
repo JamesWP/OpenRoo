@@ -42,7 +42,6 @@
 
 #include "bomb.h"
 #include "dbg.h"
-#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
 #include <stdlib.h>
@@ -73,15 +72,12 @@ static void diag_init(void)
 }
 
 /* Construction: the MovableEntity base, then the bomb's own stores in a fixed
- * order.  PRESERVED: the sound slots +0xab..+0xcb are cleared a second time
- * after zeroSoundSlots().  The timing fields are zeroed (see below), which the
- * original left as allocated.  */
+ * order.  The timing fields are zeroed (see below), which the original left as
+ * allocated.  */
 Bomb::Bomb()
 {
     // The MovableEntity constructor has run.
-    rollSound_        = 0;
-    blastSound_       = 0;
-    zeroSoundSlots();
+    soundSource_      = SoundSource::Bomb;
     dyingStarted_          = 0;
     removeRequested_  = 0;
     dying_          = 0;
@@ -107,15 +103,6 @@ Bomb::Bomb()
     onLift_          = 0;
     kind_             = 9;
     blastSoundPlayed_ = 0;
-    sound_ab_         = 0;  // the second clear
-    sound_af_         = 0;
-    sound_b3_         = 0;
-    sound_b7_         = 0;
-    sound_bb_         = 0;
-    sound_bf_         = 0;
-    sound_c3_         = 0;
-    sound_c7_         = 0;
-    sound_cb_         = 0;
     field_d8          = 0;
     stepGrace_          = 50.0;
 
@@ -138,36 +125,9 @@ Bomb::Bomb()
 
 static unsigned long s_spawns       = 0;
 static int           s_logged_spawn = 0;
-static int           s_logged_sound = 0;
 
-/* Unbounded, including the terminator: see the file comment. */
-static void spawn_strcpy(char *dst, const char *src)
-{
-    while ((*dst++ = *src++) != '\0')
-        ;
-}
-
-/* One "if enabled: copy the name, acquire, store" block. */
-void Bomb::acquireInto(SoundLibrary *sm, const SoundAssetName *asset, SoundVoice *Bomb::*field)
-{
-    char name[256];
-
-    if (asset->enabled == 0)
-        return;
-
-    spawn_strcpy(name, asset->name);
-
-    if (s_diag_spawn && !s_logged_sound) {
-        s_logged_sound = 1;
-        g_logger.write("bomb: first sound acquire -- '%s'\n", name);
-    }
-
-    this->*field = sm->acquireVoice(name, true);
-}
-
-void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,
-                 const BombSounds &sounds, unsigned int uArg,
-                 unsigned int vArg, unsigned int hArg, unsigned int flagArg)
+void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs, PlayEvents &events,
+                 unsigned int uArg, unsigned int vArg, unsigned int hArg, unsigned int flagArg)
 {
     unsigned char u = (unsigned char)(uArg & 0xff);
     unsigned char v = (unsigned char)(vArg & 0xff);
@@ -207,57 +167,13 @@ void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,
 
     b.droppedAt_ = *ctx.clock;
 
-    if (ctx.sound->active()) {
-        b.acquireInto(ctx.sound, sounds.b3, &Bomb::sound_b3_);
-        if (sounds.b7bb->enabled != 0) {
-            b.acquireInto(ctx.sound, sounds.b7bb, &Bomb::sound_b7_);
-            b.acquireInto(ctx.sound, sounds.b7bb, &Bomb::sound_bb_);
-        }
-        b.acquireInto(ctx.sound, sounds.blast, &Bomb::blastSound_);
-        b.acquireInto(ctx.sound, sounds.c3, &Bomb::sound_c3_);
-        b.acquireInto(ctx.sound, sounds.roll, &Bomb::rollSound_);
-    }
+    events.entityCreated(SoundSource::Bomb, b.id());
 }
 
 static unsigned long s_removals        = 0;
 static int           s_logged_remove   = 0;
-static int           s_logged_release  = 0;
 
-/* Releases one sound field.  Owner flag 0: a bomb never destroys a shared
- * buffer. */
-void Bomb::releaseField(SoundLibrary *sm, SoundVoice *Bomb::*field)
-{
-    SoundVoice *buf = this->*field;
-
-    if (buf == 0)
-        return;
-
-    if (s_diag_remove && !s_logged_release) {
-        s_logged_release = 1;
-        g_logger.write("bomb: first sound release -- obj=%p buf=%p\n",
-                  (void *)this, (void *)buf);
-    }
-
-    sm->releaseVoice(buf, false);
-    this->*field = 0;
-}
-
-void Bomb::releaseSounds(SoundLibrary *sm)
-{
-    if (!sm->active())
-        return;
-    // In a fixed order.
-    releaseField(sm, &Bomb::blastSound_);
-    releaseField(sm, &Bomb::sound_b3_);
-    releaseField(sm, &Bomb::sound_b7_);
-    releaseField(sm, &Bomb::sound_bb_);
-    releaseField(sm, &Bomb::sound_c3_);
-    releaseField(sm, &Bomb::rollSound_);
-    releaseField(sm, &Bomb::sound_ab_);
-    releaseField(sm, &Bomb::sound_af_);
-}
-
-void Bomb::remove(const EntityContext &ctx, EntityList<Bomb> &bombs, std::size_t i)
+void Bomb::remove(EntityList<Bomb> &bombs, std::size_t i, PlayEvents &events)
 {
     diag_init();
 
@@ -272,7 +188,7 @@ void Bomb::remove(const EntityContext &ctx, EntityList<Bomb> &bombs, std::size_t
             g_logger.write("bomb: %lu removals\n", s_removals);
     }
 
-    bombs[i].releaseSounds(ctx.sound);
+    events.entityDestroyed(SoundSource::Bomb, bombs[i].id());
     bombs.erase(i);
 }
 
@@ -285,7 +201,7 @@ Tile *Bomb::tile(int u, int v) const
     return map_->tile( u, v);
 }
 
-void Bomb::tick()
+void Bomb::tick(PlayEvents &events)
 {
     double diff;
 
@@ -306,22 +222,20 @@ void Bomb::tick()
     now_        = *clock_;
 
     // The roll sound, on the grid cell: (u, h, -v).
-    if (rollSound_ != 0) {
-        rollSound_->setPosition((float)(int)cellU_,
-                              (float)(int)heightCell_,
-                              -(float)(int)cellV_,
-                              1);
-        if (dying_ == 0)  // raised by the blast below
-            rollSound_->play(false);
-        else
-            rollSound_->stop();
+    if (dying_ == 0) {  // raised by the blast below
+        events.soundPlay(sound(Sfx::BombRoll), (float)(int)cellU_, (float)(int)heightCell_,
+                         -(float)(int)cellV_);
+    } else {
+        events.soundMove(sound(Sfx::BombRoll), (float)(int)cellU_, (float)(int)heightCell_,
+                         -(float)(int)cellV_);
+        events.soundStop(sound(Sfx::BombRoll));
     }
 
     // Roll: still fusing.
     diff = now_ - droppedAt_;
     if (!(diff >= K_FUSE_MS)) {
         pendingMove_ = facing_;
-        updateMovement();
+        updateMovement(events);
         if (moveDir_ != 0)
             held_ = 1;
         return;
@@ -335,11 +249,8 @@ void Bomb::tick()
     pendingMove_ = 0;
 
     if (blastSoundPlayed_ == 0) {
-        if (blastSound_ != 0) {
-            // From the float position, not the grid bytes.
-            blastSound_->setPosition(posU_, posY_, -posV_, 1);
-            blastSound_->play(false);
-        }
+        // From the float position, not the grid bytes.
+        events.soundPlay(sound(Sfx::BombBlast), posU_, posY_, -posV_);
         blastSoundPlayed_ = 1;
     }
 
@@ -400,12 +311,12 @@ void Bomb::tick()
     if (diff >= K_REMOVE_MS && zoneCleared_ == 0) {
         zoneCleared_ = 1;
         moveState_   = 4;  // despawn
-        updateMovement();
+        updateMovement(events);
         return;
     }
 
     zoneCleared_ = 0;
-    updateMovement();
+    updateMovement(events);
 }
 
 

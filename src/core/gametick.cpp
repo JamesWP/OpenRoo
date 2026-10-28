@@ -124,7 +124,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     if ((self->state() == GameState::Playing || self->state() == GameState::Flythrough) && input::pressed(input::KEY_ESCAPE))
         Flow_OpenPauseMenu(self);
 
-    self->world()->tickBombs();
+    self->world()->tickBombs(*self->soundEvents());
 
     {
         unsigned char pct = completion_percent((unsigned int)pl->completionNumerator(), self->session()->playingTime());
@@ -135,7 +135,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 
     {
         PROF_SCOPE("player");
-        pl->updateTileEffects();
+        pl->updateTileEffects(*self->soundEvents());
     }
 
     if (self->state() == GameState::Playing)

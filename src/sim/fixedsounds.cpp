@@ -89,7 +89,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     snprintf(path, sizeof(path), "%s\134waves\134LevelCompleted.wav", self->gameDir());
     self->audio()->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), "%s\134waves\134splat.wav", self->gameDir());
-    self->world()->player()->setSoundA7(sm->acquireStatic(path, 1));
+    self->soundEvents()->attach(self->world()->player()->sound(Sfx::Splat), sm->acquireStatic(path, 1));
     sm->setup(self->config()->sound3D());
 
     self->audio()->fixedSounds()->loaded = 1;

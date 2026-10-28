@@ -54,19 +54,9 @@ void Game::releaseAllSounds()
             if (s) sm->releaseStaticForOwner(s, 1);
         if (fixed->menuUpDown)
             sm->releasePooledForOwner(fixed->menuUpDown, 1);
-        if (p->soundC3()) sm->releaseVoice(p->soundC3(), true);
-        if (p->soundBf()) sm->releaseVoice(p->soundBf(), true);
-        if (p->poolCf())  sm->releaseVoice(p->poolCf(), true);
         if (fixed->levelCompleted)
             sm->releaseStaticForOwner(fixed->levelCompleted, 1);
-        SoundVoice *statics2[] = {
-            p->soundC7(), p->soundA3(), p->soundB3(), p->soundB7(),
-            p->soundBb(), p->soundAb(), p->soundAf(), p->soundCb(), p->soundA7(),
-        };
-        for (SoundVoice *s : statics2)
-            if (s) sm->releaseVoice(s, true);
-        if (p->pool9f())
-            sm->releaseVoice(p->pool9f(), true);
+        soundEvents_.entityDestroyed(SoundSource::Player, p->id());
         // The crystal banks and the pickup banks, one entry of each per pass.
         // PRESERVED: bank 5 is never released.
         static const int banks[] = { 0, 1, 2, 3, 4, 6, 7, 8 };

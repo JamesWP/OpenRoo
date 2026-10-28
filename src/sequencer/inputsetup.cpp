@@ -14,21 +14,32 @@ Input_TrySaveSettings(ProgableControl *progCtrl)
     g_logger.logMessage(1, "CONTROL: saved settings\n");
 }
 
-/* The player actions get the Player as their context, the camera actions
- * the Game.  Default keys are bound first; openroo.ini then overrides the actions it lists. */
+/* The player's actions (progctrl.h's ActionCallback: key, strength and
+ * context, here the Game), each done with the game's events. */
+static Player *player_of(void *game) { return static_cast<Game *>(game)->world()->player(); }
+static PlayEvents &events_of(void *game) { return *static_cast<Game *>(game)->soundEvents(); }
+
+static void act_move_forward(int, int, void *g) { player_of(g)->actMoveForward(events_of(g)); }
+static void act_move_back(int, int, void *g)    { player_of(g)->actMoveBack(events_of(g)); }
+static void act_turn_left(int, int, void *g)    { player_of(g)->actTurnLeft(events_of(g)); }
+static void act_turn_right(int, int, void *g)   { player_of(g)->actTurnRight(events_of(g)); }
+static void act_harakiri(int, int, void *g)     { player_of(g)->actHarakiri(); }
+static void act_release_bomb(int, int, void *g) { player_of(g)->actReleaseBomb(); }
+
+/* The actions all get the Game as their context.  Default keys are bound
+ * first; openroo.ini then overrides the actions it lists. */
   void
 Input_Setup(Game *game, ProgableControl *progCtrl)
 {
     ProgableControl *pc = progCtrl;
-    void *player = game->world()->player();
-    pc->registerAction(1, "John_Turn_Left",    Player_ActTurnLeft,    player);
-    pc->registerAction(1, "John_Turn_Right",   Player_ActTurnRight,   player);
-    pc->registerAction(1, "John_Move_Forward", Player_ActMoveForward, player);
-    pc->registerAction(1, "John_Move_Back",    Player_ActMoveBack,    player);
+    pc->registerAction(1, "John_Turn_Left",    act_turn_left,         game);
+    pc->registerAction(1, "John_Turn_Right",   act_turn_right,        game);
+    pc->registerAction(1, "John_Move_Forward", act_move_forward,      game);
+    pc->registerAction(1, "John_Move_Back",    act_move_back,         game);
     pc->registerAction(1, "John_Zoom_In",      Camera_ZoomIn,         game);
     pc->registerAction(1, "John_Zoom_Out",     Camera_ZoomOut,        game);
-    pc->registerAction(1, "John_Release_Bomb", Player_ActReleaseBomb, player);
-    pc->registerAction(1, "John_Harakiri",     Player_ActHarakiri,    player);
+    pc->registerAction(1, "John_Release_Bomb", act_release_bomb,      game);
+    pc->registerAction(1, "John_Harakiri",     act_harakiri,          game);
     pc->registerAction(1, "John_OverView",     Camera_Overview,       game);
     pc->registerAction(1, "CamModeRight",    Camera_RotateRight,    game);
     pc->registerAction(1, "CamModeLeft",     Camera_RotateLeft,     game);

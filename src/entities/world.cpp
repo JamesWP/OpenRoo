@@ -19,14 +19,6 @@ const BridgeObject *World::bridge(unsigned char switchSlot) const
 }
 
 /* Releases each object's sounds, then destroys them all, first to last. */
-template <class T>
-static void purge(EntityList<T> &list, SoundLibrary *sound)
-{
-    for (T &obj : list)
-        obj.releaseSounds(sound);
-    list.clear();
-}
-
 void World::clearObjects(PlayEvents &events)
 {
     for (const LiftObject &lift : lifts_)
@@ -46,8 +38,12 @@ void World::clearObjects(PlayEvents &events)
     switchCells_.clearCounts();
 
     // A foe frees its tile claims as it goes.
-    purge(foes_, sound_);
-    purge(bombs_, sound_);
+    for (Foe &foe : foes_)
+        foe.despawn(events);
+    foes_.clear();
+    for (const Bomb &bomb : bombs_)
+        events.entityDestroyed(SoundSource::Bomb, bomb.id());
+    bombs_.clear();
 }
 
 /* Ticks every object in a list, in order; a tick does not add or remove. */
@@ -76,17 +72,17 @@ void World::tickBridges(PlayEvents &events)
     }
 }
 
-void World::tickBombs()
+void World::tickBombs(PlayEvents &events)
 {
     if (bombs_.empty())
         return;
     PROF_SCOPE("bombs");
     for (std::size_t i = 0; i < bombs_.size();) {
         Bomb &b = bombs_[i];
-        b.tick();
+        b.tick(events);
         b.debugDraw((unsigned)i);
         if (b.removeRequested() != 0)
-            Bomb::remove(entityContext(), bombs_, i);  // the next moves into i
+            Bomb::remove(bombs_, i, events);  // the next moves into i
         else
             ++i;
     }

@@ -19,7 +19,7 @@ public:
 
     // Latches the clock, moves the player, drops a respawning player back in,
     // and consumes the tile underfoot.  See player.cpp.
-    unsigned int updateTileEffects();
+    unsigned int updateTileEffects(PlayEvents &events);
 
     // Draws the player on the debug map and adds it to the tooltip.
     void debugDraw() const;
@@ -29,10 +29,10 @@ public:
     void draw(draw::Frame &f, draw::Pass pass) const;
 
     // The six actions DirectInputSetup registers as player controls.
-    void actMoveForward();
-    void actMoveBack();
-    void actTurnLeft();
-    void actTurnRight();
+    void actMoveForward(PlayEvents &events);
+    void actMoveBack(PlayEvents &events);
+    void actTurnLeft(PlayEvents &events);
+    void actTurnRight(PlayEvents &events);
     void actHarakiri();
     void actReleaseBomb();
 
@@ -222,14 +222,4 @@ private:
     int                 gemsCollected_{};
 };
 
- 
-/* The ActionCallback shims for the six actions (progctrl.h's  (key,
- * strength, context), context = the Player). */
- 
-  void   Player_ActMoveForward(int key, int strength, void *player);
-  void   Player_ActMoveBack(int key, int strength, void *player);
-  void   Player_ActTurnLeft(int key, int strength, void *player);
-  void   Player_ActTurnRight(int key, int strength, void *player);
-  void   Player_ActHarakiri(int key, int strength, void *player);
-  void   Player_ActReleaseBomb(int key, int strength, void *player);
 
