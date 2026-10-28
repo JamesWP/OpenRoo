@@ -128,7 +128,7 @@ public:
     void tickPlatforms(PlayEvents &events);
     void tickFallings(PlayEvents &events);
     void tickBridges(PlayEvents &events);
-    /* Ticks and debug-draws each bomb, removing those that asked to be. */
+    /* Ticks each bomb, removing those that asked to be. */
     void tickBombs(PlayEvents &events);
 
     /* The foes and bombs that have started dying, counted from the start.

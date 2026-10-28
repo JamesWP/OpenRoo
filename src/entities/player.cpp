@@ -20,7 +20,6 @@
 #include "levelmap.h"
 #include "crtrand.h"
 #include "player.h"
-#include "dbg.h"
 #include "entitymath.h"
 #include "foepath.h"
 #include <stdlib.h>
@@ -430,7 +429,6 @@ void Player::actReleaseBomb()
     bombsCarried_--;
 }
 
-
 Player::Player()
 {
     stuckSince_      = 0.0;
@@ -453,36 +451,4 @@ Player::~Player()
     if (pathfinder_ != NULL)
         FoePath::destroy(pathfinder_);
 }
-
-
-static void player_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
-{
-    dl->AddCircleFilled(ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f), (b.x - a.x) * 0.4f,
-                        IM_COL32(255, 255, 255, 255));
-}
-
-void Player::debugDraw() const
-{
-    if (!dbg::active())
-        return;
-    dbg::MapLayer layer;
-    if (!layer)
-        return;
-    const dbg::MapView &m = *layer;
-    if (!m.asLoaded) {
-        // With a tick for its facing.
-        const ImVec2 p = m.centre(posU(), posV());
-        m.dl->AddCircleFilled(p, m.cell * 0.4f, IM_COL32(255, 255, 255, 255));
-        const int f = facing();
-        if (f >= DIR_MIN && f <= DIR_MAX)
-            m.dl->AddLine(p, ImVec2(p.x + DIR_DU[f] * m.cell * 0.6f, p.y + DIR_DV[f] * m.cell * 0.6f),
-                          IM_COL32(0, 0, 0, 255), 2);
-        m.legend(2, "player", player_swatch);
-    }
-    if (m.hovered((uint8_t)cellU(), (uint8_t)cellV())) {
-        m.separator();
-        m.tip("player at H%u, facing %u%s", (uint8_t)heightCell(), facing(), moveDir() ? ", moving" : "");
-    }
-}
-
 

@@ -65,10 +65,8 @@ void World::tickBridges(PlayEvents &events)
     if (bridges_.empty())
         return;
     PROF_SCOPE("bridges");
-    for (BridgeObject &b : bridges_) {
+    for (BridgeObject &b : bridges_)
         b.tick(events);
-        b.debugDraw(switchCells_);
-    }
 }
 
 void World::tickBombs(PlayEvents &events)
@@ -79,7 +77,6 @@ void World::tickBombs(PlayEvents &events)
     for (std::size_t i = 0; i < bombs_.size();) {
         Bomb &b = bombs_[i];
         b.tick(events);
-        b.debugDraw((unsigned)i);
         if (b.removeRequested() != 0)
             Bomb::remove(bombs_, i, events);  // the next moves into i
         else

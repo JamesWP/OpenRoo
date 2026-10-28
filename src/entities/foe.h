@@ -47,10 +47,6 @@ public:
     // Frees its tile claims and its path-finder.
     ~Foe() override;
 
-    // Draws it on the debug map and adds it to the tooltip; n is its place
-    // in the World's foe list.
-    void debugDraw(unsigned n) const;
-
     // One tick, towards the player's cell (or whatever target GameTick chose).
     void step(unsigned char playerU, unsigned char playerV, PlayEvents &events);
 

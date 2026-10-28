@@ -42,9 +42,6 @@ public:
     // One tick; its moving loop follows it and stops through events.
     void tick(PlayEvents &events);
 
-    // Draws it on the debug map, with its switch links (dbg.h).
-    void debugDraw(const SwitchCells &sc) const;
-
     // When the move under way began, clock ms.
     double phaseStart() const        { return phaseStart_; }
     // The switch (GameTick, tilequery.cpp).

@@ -10,7 +10,6 @@
 
 #include "foe.h"
 #include "foetype.h"
-#include "dbg.h"
 #include "tilenames.h"
 #include "levelmap.h"
 #include "switchcells.h"
@@ -21,7 +20,6 @@
 #include "bomb.h"
 #include "tilequery.h"
 #include "logger.h"
-
 
 /* KAROO_SPAWN_DIAG, KAROO_REMOVE_DIAG and
  * KAROO_FOESTEP_DIAG log periodic counts and first-occurrence events for the
@@ -696,45 +694,5 @@ bool Foe::finishDespawn(LevelMap *map)
     if ((double)posY_ > 0.0)
         tile(cellU_, cellV_)->setContents(dropContents_);
     return true;
-}
-
-static void foe_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
-{
-    dl->AddCircleFilled(ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f), (b.x - a.x) * 0.35f,
-                        IM_COL32(230, 50, 50, 255));
-}
-
-void Foe::debugDraw(unsigned n) const
-{
-    if (!dbg::active())
-        return;
-    if (pathfinder())  // its route goes under it
-        pathfinder()->debugDraw(posU(), posV());
-    dbg::MapLayer layer;
-    if (!layer)
-        return;
-    const dbg::MapView &m = *layer;
-    if (!m.asLoaded) {
-        const ImVec2 p = m.centre(posU(), posV());
-        m.dl->AddCircleFilled(p, m.cell * 0.35f,
-                              dyingStarted() ? IM_COL32(120, 60, 60, 255) : IM_COL32(230, 50, 50, 255));
-        // A tick for its facing, as the player's.
-        const int f = facing();
-        if (f >= DIR_MIN && f <= DIR_MAX)
-            m.dl->AddLine(p, ImVec2(p.x + DIR_DU[f] * m.cell * 0.5f, p.y + DIR_DV[f] * m.cell * 0.5f),
-                          IM_COL32(0, 0, 0, 255), 2);
-        m.legend(2, "foe", foe_swatch);
-    }
-    if (m.hovered((uint8_t)cellU(), (uint8_t)cellV())) {
-        m.separator();
-        m.tip("foe #%u at U%u V%u H%u", n, (uint8_t)cellU(), (uint8_t)cellV(), (uint8_t)heightCell());
-        m.tip("kind %u, behaviour %u, facing %u%s", kind(), type(), facing(), moveDir() ? ", moving" : "");
-        const char *drops = Tile_ContentsName(dropContents());
-        m.tip("home U%u V%u H%u, drops %s", homeU(), homeV(), homeH(), drops ? drops : "nothing");
-        if (held())
-            m.tip("frozen");
-        if (dyingStarted())
-            m.tip("dying");
-    }
 }
 
