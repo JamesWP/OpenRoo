@@ -1,8 +1,7 @@
 /* The particle gallery: a test scene, not part of the game.  With
  * KAROO_PARTICLE_GALLERY set, the game runs no level; instead it shows one
- * theme at a time with every look that has a particle system in a row, each
- * on a floor tile with its models, drawn through the same theme draws a level
- * uses.  Bursts and dying effects fire again every few seconds, and the
+ * theme at a time (every themes\*.thm) with each look it defines in a grid,
+ * each on a floor tile, drawn through the same theme draws a level uses.  Bursts and dying effects fire again every few seconds, and the
  * speed trail runs in a circle.
  *
  *   KAROO_PARTICLE_GALLERY=1        start at the first theme
