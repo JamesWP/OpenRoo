@@ -7,6 +7,7 @@
  * Matrices are row-major with row vectors (v * M), so a placement composes
  * left to right: scale, then rotation, then translation. */
 #include <math.h>
+#include <string.h>
 #include "themedraw.h"
 #include "particletypes.h"
 #include <vector>
@@ -28,7 +29,6 @@ const float PHASE_SCALE = 4.0f;     // a random phase's share of a record's bob
 const float LIGHT_OFF   = 1000.0f;  // the shadow light, this far off along (-1, +1, -1)
 const float SHADOW_LIFT = 0.02f;    // shadows sit this far above the ground
 const float QUAD_HALF   = 0.4f;     // a turning field's UV radius
-const int   BURST_MS    = 1000;     // a burst's life
 
 // A particle record's movableType: how its system follows an instance.
 enum { MOVE_TRANSLATE = 1, MOVE_GENERATOR = 2 };
@@ -443,26 +443,52 @@ void shadows(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n)
     }
 }
 
+/* An instance's seed, or one from where it is: placements that share a look
+ * do not emit alike. */
+static uint32_t instance_seed(const Instance &in)
+{
+    if (in.seed != 0)
+        return in.seed;
+    uint32_t h = 2166136261u;
+    for (float c : { in.pos.x, in.pos.y, in.pos.z }) {
+        uint32_t bits;
+        memcpy(&bits, &c, sizeof(bits));
+        h = (h ^ bits) * 16777619u;
+    }
+    return h;
+}
+
+/* A one-shot's clock: emitting for FIRE_SECONDS, `age` seconds ago. */
+static ParticleClock fired(float age)
+{
+    ParticleClock c;
+    c.time = age;
+    c.end = FIRE_SECONDS;
+    return c;
+}
+
 void particles(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n)
 {
     const Vec3 view = view_dir(f);
+    ParticleClock running;
+    running.time = f.now * 0.001;
     ThemeObjectTypeSlot *slot = f.theme->slot(look);
     for (uint32_t r = 0; r < slot->instanceCount(); r++) {
         ThemeLevelObject *rec = &slot->records()[r];
         ParticleSystem *ps = rec->particleSystems()[0];
         if (rec->kind() != THEME_KIND_PARTICLESYSTEM || ps == nullptr)
             continue;
-        if (rec->particlesDue(f.now))
-            ps->tick((float)(f.elapsed * 0.001));
         f.dev->SetSpecular(rec->specular() != 0 && f.opts.highlights);
 
-        // Every instance a sub-object shows at is one placement of one draw.
+        // The instances on the frame clock are placements of one draw; a
+        // one-shot, or one emitting along its path, is a draw of its own.
         ps->setVector(view.x, view.y, view.z);
         Generator *gen = ps->getGenerator(NULL);
         for (uint32_t s = 0; s < rec->subObjectCount(); s++) {
             const SceneSubObject &sub = rec->subObjects()[s];
             std::vector<ParticleInstance> &at = scratch_instances();
             at.clear();
+            bool bound = false;
             for (unsigned k = 0; k < n; k++) {
                 const Instance &in = inst[k];
                 if (!visible(sub.dwVisibilityGate, in.conditions))
@@ -471,68 +497,51 @@ void particles(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n)
                                   + (rec->randomYAngle() != 0 ? in.phase : 0.0f) + in.rot.y;
                 const Vec3 pos = { rec->posX(), bob(rec, in, f.now, rec->posY()), rec->posZ() };
                 // Turn the camera-facing corners back against the world's spin.
-                ParticleInstance pi = { identity(), rot_y(-spinY) };
+                ParticleInstance pi = { identity(), rot_y(-spinY), instance_seed(in), {} };
+                ParticleClock clock = in.effectAge >= 0.0f ? fired(in.effectAge) : running;
                 if (rec->movableType() == MOVE_TRANSLATE) {
                     pi.world = translation(in.pos.x, in.pos.y, in.pos.z);
                     if (gen)
                         gen->setPosition(pos.x, pos.y, pos.z);
                 } else if (rec->movableType() == MOVE_GENERATOR) {
                     // The particles stay where they were emitted: only the
-                    // generator moves (to the last instance, if several).
-                    pi.corners = identity();
+                    // generator moves, along the instance's path.
                     if (gen)
-                        gen->setPosition(pos.x + in.pos.x, pos.y + in.pos.y, pos.z + in.pos.z);
+                        gen->setPosition(pos.x, pos.y, pos.z);
+                    if (in.path) {
+                        pi.corners = identity();
+                        clock.path = in.path;
+                    } else {
+                        pi.world = translation(in.pos.x, in.pos.y, in.pos.z);
+                    }
                 } else {
                     pi.world = placement(rec, in, f.now, { 1.0f, 1.0f, 1.0f }, 0.0f);
                 }
-                at.push_back(pi);
+                if (in.effectAge < 0.0f && clock.path == nullptr) {
+                    at.push_back(pi);
+                    continue;
+                }
+                if (!bound)
+                    bind(f, sub);
+                bound = true;
+                ps->render(f.dev, clock, &pi, 1);
             }
             if (at.empty())
                 continue;
-            bind(f, sub);
-            ps->render(f.dev, at.data(), (uint32_t)at.size());
+            if (!bound)
+                bind(f, sub);
+            ps->render(f.dev, running, at.data(), (uint32_t)at.size());
         }
         end_record(f);
     }
 }
 
-void fireEffects(Frame &f, ThemeObjectType look, float effectAge)
-{
-    const bool fire = effectAge >= 0.0f && effectAge < FIRE_SECONDS;
-    ThemeObjectTypeSlot *slot = f.theme->slot(look);
-    for (uint32_t r = 0; r < slot->instanceCount(); r++) {
-        ThemeLevelObject *rec = &slot->records()[r];
-        if (ParticleSystem *ps = rec->particleSystems()[0]) {
-            if (fire)
-                ps->enableRenderNode();
-            else
-                ps->disableRenderNode();
-        }
-    }
-}
-
-void spawnBurst(Frame &f, ThemeObjectType look, const Vec3 &at)
+void burst(Frame &f, ThemeObjectType look, const Vec3 &at, float age, uint32_t seed,
+           const BlendState *blend)
 {
     ThemeLevelObject *rec = burst_record(f, look);
-    if (rec == nullptr)
-        return;
-    for (uint32_t j = 0; j < rec->instanceCount(); ++j) {
-        FxBurst *b = &rec->bursts()[j];
-        if (b->active)
-            continue;
-        if (rec->particleSystems()[j] != nullptr)
-            rec->particleSystems()[j]->enableRenderNode();
-        b->msLeft = BURST_MS;
-        b->pos[0] = at.x;  b->pos[1] = at.y;  b->pos[2] = at.z;
-        b->active = 1;
-        return;
-    }
-}
-
-void bursts(Frame &f, ThemeObjectType look, const BlendState *blend)
-{
-    ThemeLevelObject *rec = burst_record(f, look);
-    if (rec == nullptr)
+    ParticleSystem *ps = rec ? rec->particleSystems()[0] : nullptr;
+    if (ps == nullptr)
         return;
     const Vec3 view = view_dir(f);
     const SceneSubObject &sub = rec->subObjects()[0];
@@ -540,55 +549,32 @@ void bursts(Frame &f, ThemeObjectType look, const BlendState *blend)
     f.dev->SetBlend(blend ? *blend
                           : BlendState::on(blendFactorFromTheme(sub.dwBlendSrc),
                                            blendFactorFromTheme(sub.dwBlendDst)));
-    for (uint32_t j = 0; j < rec->instanceCount(); ++j) {
-        FxBurst *b = &rec->bursts()[j];
-        ParticleSystem *ps = rec->particleSystems()[j];
-        if (b->msLeft <= 0 || ps == nullptr) {
-            b->active = 0;
-            continue;
-        }
-        f.dev->SetWorld(translation(b->pos[0], b->pos[1], b->pos[2]));
-        ps->tick((float)(f.elapsed * 0.001));
-        ps->setVector(view.x, view.y, view.z);
-        if (rec->rotRateY() != 0.0f)
-            ps->transformCorners(rot_y((float)(-rec->rotRateY() * f.now)).m);
-        ps->render(f.dev);
-        b->msLeft -= (int)f.elapsed;
-        ps->disableRenderNode();
-    }
+    f.dev->SetWorld(translation(at.x, at.y, at.z));
+    ps->setVector(view.x, view.y, view.z);
+    if (rec->rotRateY() != 0.0f)
+        ps->transformCorners(rot_y((float)(-rec->rotRateY() * f.now)).m);
+    ps->render(f.dev, fired(age), seed);
     f.dev->SetBlend(BlendState::off());
 }
 
-void trail(Frame &f, ThemeObjectType look, bool on, const Vec3 &at, float yaw)
+void trail(Frame &f, ThemeObjectType look, const ParticlePath &path)
 {
     ThemeLevelObject *rec = burst_record(f, look);
     ParticleSystem *ps = rec ? rec->particleSystems()[0] : nullptr;
     if (ps == nullptr)
         return;
-    FxBurst &b = rec->bursts()[0];
-    if (on) {
-        if (!b.active) {
-            ps->enableRenderNode();
-            b.active = 1;
-        }
-        b.pos[0] = at.x;  b.pos[1] = at.y;  b.pos[2] = at.z;
-    } else {
-        ps->disableRenderNode();
-        b.active = 0;
-    }
-
-    if (Generator *gen = ps->getGenerator(NULL)) {
-        gen->setPosition(b.pos[0], b.pos[1], b.pos[2]);
-        // (0, 0.1, -1) turned by yaw: streaming out behind.
-        gen->setDirection(sinf(yaw), 0.1f, -cosf(yaw));
-    }
+    // The path says where it was; the generator's own place is that.
+    if (Generator *gen = ps->getGenerator(NULL))
+        gen->setPosition(0.0f, 0.0f, 0.0f);
     const Vec3 view = view_dir(f);
     f.dev->SetWorld(identity());
     bindTexture(f.dev, 0, rec->subObjects()[0].pTexture);
     f.dev->SetBlend(BlendState::additive());
-    ps->tick((float)(f.elapsed * 0.001));
     ps->setVector(view.x, view.y, view.z);
-    ps->render(f.dev);
+    ParticleClock clock;
+    clock.time = f.now * 0.001;
+    clock.path = &path;
+    ps->render(f.dev, clock);
     f.dev->SetBlend(BlendState::off());
 }
 

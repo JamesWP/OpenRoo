@@ -322,7 +322,7 @@ static void draw_control_polygon(RenderDevice *dev, const SplinePath &sp,
 
   void  
 Scene_DrawParticleSystems(Scene *scene, bool showPaths, bool showControlPolygons, RenderDevice *dev,
-                          float *cam, double dt_ms, double t)
+                          float *cam, double t)
 {
     dev->SetSpecular(false);
 
@@ -390,9 +390,10 @@ Scene_DrawParticleSystems(Scene *scene, bool showPaths, bool showControlPolygons
 
         dev->SetWorld(world);
 
-        ps->tick((float)(dt_ms * K_ANIM_SCALE));
         Vec3 dir = { cam[3] - cam[0], cam[4] - cam[1], cam[5] - cam[2] };
         ps->setVector(dir.x, dir.y, dir.z);
-        ps->render(dev);
+        ParticleClock clock;
+        clock.time = t * K_ANIM_SCALE;
+        ps->render(dev, clock, (uint32_t)oi + 1);
     }
 }

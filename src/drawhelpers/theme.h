@@ -66,14 +66,6 @@ enum ThemeObjectKind : uint32_t {
     THEME_KIND_PARTICLESYSTEM = 4,
 };
 
-/* A short-lived particle burst: a position, the milliseconds left and whether
- * it is live. */
-struct FxBurst {
-    float pos[3]{};
-    int   msLeft{};  // 1000 at spawn
-    uint8_t  active{};
-};
-
 /* One `model`, `field`, `billboard` or `particlesystem` entry. */
 class ThemeLevelObject {
 public:
@@ -104,8 +96,6 @@ public:
  
  
  
-    FxBurst *bursts() { return bursts_; }
-    const FxBurst *bursts() const { return bursts_; }
  
     uint32_t instanceCount() const { return dwInstanceCount_; }
     uint32_t movableType() const { return dwMovableType_; }
@@ -139,11 +129,6 @@ public:
     float *pump() { return flPump_; }
     const float *pump() const { return flPump_; }
 
-    /* Once a frame: true the first time it is asked at this frame clock, so a
-     * look drawn at several instances advances its debris (or ticks its
-     * particle systems) once, not once per instance. */
-    bool particlesDue(double now) { return due(&particlesAt_, now); }
-
 private:
     friend class ThemeParser;          // theme.cpp fills the records
     friend class ThemeObjectTypeSlot;  // and releases them
@@ -157,9 +142,6 @@ private:
     AnimTable    animTable_;
     float        flBillboardScale_{};
     ParticleSystem *pParticleSystems_[16]{};
-    // Sixteen bursts of this record's particle systems, one per system,
-    // spawned and aged by the frame renderer.
-    FxBurst      bursts_[16];
 
     uint32_t  dwInstanceCount_{};
     uint32_t  dwMovableType_{};
@@ -186,15 +168,6 @@ private:
     float  flOscillationFrequency_{};
     float  flOscillationPhase_{};
     float  flPump_[4]{};
-    double particlesAt_ = -1.0;  // the frame clock of the last particlesDue
-
-    static bool due(double *at, double now)
-    {
-        if (*at == now)
-            return false;
-        *at = now;
-        return true;
-    }
 
      
 };

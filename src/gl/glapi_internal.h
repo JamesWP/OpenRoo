@@ -44,7 +44,7 @@ namespace windev { class Window; }
     X(BindVertexArray, BINDVERTEXARRAY) \
     X(EnableVertexAttribArray, ENABLEVERTEXATTRIBARRAY) \
     X(DisableVertexAttribArray, DISABLEVERTEXATTRIBARRAY) \
-    X(VertexAttribPointer, VERTEXATTRIBPOINTER) X(VertexAttrib4f, VERTEXATTRIB4F) \
+    X(VertexAttribPointer, VERTEXATTRIBPOINTER) X(VertexAttribIPointer, VERTEXATTRIBIPOINTER) X(VertexAttrib4f, VERTEXATTRIB4F) \
     X(CreateShader, CREATESHADER) X(DeleteShader, DELETESHADER) \
     X(ShaderSource, SHADERSOURCE) X(CompileShader, COMPILESHADER) \
     X(GetShaderiv, GETSHADERIV) X(GetShaderInfoLog, GETSHADERINFOLOG) \
@@ -58,9 +58,6 @@ namespace windev { class Window; }
     X(Uniform1f, UNIFORM1F) X(Uniform1fv, UNIFORM1FV) X(Uniform2fv, UNIFORM2FV) \
     X(Uniform3fv, UNIFORM3FV) X(Uniform4fv, UNIFORM4FV) \
     X(Uniform4iv, UNIFORM4IV) X(UniformMatrix4fv, UNIFORMMATRIX4FV) \
-    X(TransformFeedbackVaryings, TRANSFORMFEEDBACKVARYINGS) \
-    X(BeginTransformFeedback, BEGINTRANSFORMFEEDBACK) \
-    X(EndTransformFeedback, ENDTRANSFORMFEEDBACK) \
     X(VertexAttribDivisor, VERTEXATTRIBDIVISOR) \
     X(DrawArraysInstanced, DRAWARRAYSINSTANCED) \
     X(Scissor, SCISSOR) X(DrawArrays, DRAWARRAYS) X(DrawElements, DRAWELEMENTS)

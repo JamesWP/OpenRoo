@@ -18,6 +18,7 @@
 class RenderDevice;
 class Texture;
 struct VertexBuffer;
+struct ParticlePath;
 
 namespace draw {
 
@@ -48,7 +49,6 @@ struct Frame {
     Vec3             target;   // along target - eye
     Options          opts;
     double           now;      // ms, the frame clock
-    double           elapsed;  // ms since the previous frame
 };
 
 /* The visibility conditions a theme sub-object can name (the theme file's
@@ -71,9 +71,12 @@ struct Instance {
     uint8_t  conditions = 0;     // the Condition bits that hold here
     uint16_t animCode = 0;       // models: the animation to play (AnimCode)
     float    animTime = 0.0f;    // and how far through it, 0..1
-    float    effectAge = 0.0f;   // dying looks: seconds since the death or blast
+    float    effectAge = -1.0f;  // dying looks: seconds since the death or blast
     uint32_t seed = 0;           // which of a look's effects this is: its debris
                                  // and particles are drawn from it
+    const ParticlePath *path = nullptr;  // where it was lately: a particle record
+                                         // that moves only its generator emits
+                                         // along it
 };
 
 /* A field record's quad: position, colour and one UV set. */
@@ -101,26 +104,22 @@ void fieldBuffer(Frame &f, ThemeObjectType look, const VertexBuffer *vb, unsigne
  * instance.  The caller sets the stencil state. */
 void shadows(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n = 1);
 
-/* A look's particle-system records at each instance. */
-void particles(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n = 1);
-
-/* How long a dying look's particle systems emit, from the death. */
+/* How long a one-shot effect's particle systems emit, from its start. */
 const float FIRE_SECONDS = 0.05f;
 
-/* A dying look's particle systems: they emit for FIRE_SECONDS from the death
- * effectAge seconds ago. */
-void fireEffects(Frame &f, ThemeObjectType look, float effectAge);
+/* A look's particle-system records at each instance.  They emit all the
+ * while on the frame clock; or, for an instance with an effectAge, for
+ * FIRE_SECONDS from that many seconds ago. */
+void particles(Frame &f, ThemeObjectType look, const Instance *inst, unsigned n = 1);
 
-/* Bursts: one-shot particle effects that play at a point for a second.  A
- * look whose first record is a particle system holds a burst per system;
- * spawnBurst starts the first free one, bursts() draws the live ones, with
- * the given blend or (NULL) the look's own. */
-void spawnBurst(Frame &f, ThemeObjectType look, const Vec3 &at);
-void bursts(Frame &f, ThemeObjectType look, const BlendState *blend = nullptr);
+/* A burst: a look's first particle system, emitting at a point for
+ * FIRE_SECONDS from `age` seconds ago, with the given blend or (NULL) the
+ * look's own.  `seed` tells it from every other burst. */
+void burst(Frame &f, ThemeObjectType look, const Vec3 &at, float age, uint32_t seed,
+           const BlendState *blend = nullptr);
 
-/* A trail: a look's first particle system emitting from `at`, streaming out
- * behind something facing `yaw`, while on.  Drawn every frame either way, so
- * what it has emitted plays out. */
-void trail(Frame &f, ThemeObjectType look, bool on, const Vec3 &at, float yaw);
+/* A trail: a look's first particle system emitting along `path` where it was
+ * on, streaming out the way it faced. */
+void trail(Frame &f, ThemeObjectType look, const ParticlePath &path);
 
 }  // namespace draw

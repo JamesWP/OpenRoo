@@ -262,21 +262,19 @@ public:
 
     // ── Particles (particletypes.h) ──
 
-    /* A buffer of `count` particle slots, all dead.  shapes[i] is the
-     * ParticleShape slot i tumbles with, or NULL for none.  NULL if the device
+    /* A buffer for draws of up to `count` particles.  NULL if the device
      * could not make it; a headless device makes one that holds nothing. */
-    virtual ParticleBuffer *CreateParticleBuffer(uint32_t count, const uint32_t *shapes) = 0;
+    virtual ParticleBuffer *CreateParticleBuffer(uint32_t count) = 0;
 
-    /* The shapes pb's slots tumble with; replaces any earlier ones. */
+    /* The shapes pb's particles tumble with; replaces any earlier ones. */
     virtual void SetParticleShapes(ParticleBuffer *pb, const ParticleShape *shapes,
                                    uint32_t count) = 0;
 
-    /* Advances every slot of pb by one step, on the device. */
-    virtual void StepParticles(ParticleBuffer *pb, const ParticleStep &step) = 0;
-
-    /* Draws pb's live particles at each of `count` instances, in one draw,
-     * with the current state; the device's world transform is not used. */
-    virtual bool DrawParticles(const ParticleBuffer *pb, const ParticleLook &look,
+    /* Draws the particles `emit` names, as they are now, at each of `count`
+     * instances, in one draw, with the current state; the device's world
+     * transform is not used. */
+    virtual bool DrawParticles(const ParticleBuffer *pb, const ParticleEmit &emit,
+                               const ParticleField &field, const ParticleLook &look,
                                const ParticleInstance *instances, uint32_t count) = 0;
 
     /* NULL is ignored.  Needs no device, like DestroyVertexBuffer. */
