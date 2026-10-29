@@ -24,11 +24,9 @@
 #include <string.h>
 
 #include "fallingtile.h"
-#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
 #include "logger.h"
-#include "themedraw.h"
 
 static const double FALL_DELAY_MS    = 1500.0;
 static const double RESPAWN_DELAY_MS = 5000.0;
@@ -51,8 +49,6 @@ FallingTile::FallingTile()
     posU_ = 0.0f;
     posY_ = 0.0f;
     posV_ = 0.0f;
-    fallSound_      = 0;
-    respawnSound_   = 0;
     armed_          = 0;
     respawnPending_ = 0;
     justFell_       = 0;
@@ -113,31 +109,18 @@ void FallingTile::spawn(const EntityContext &ctx, EntityList<FallingTile> &falli
     ctx.map->tile( (int)u, (int)v)->setObjectMarker(TILE_FALLING);
 }
 
-void FallingTile::releaseSounds(SoundLibrary *sm)
-{
-    if (sm->active() && fallSound_ != 0)
-        sm->releaseVoice(fallSound_, true);
-    fallSound_ = 0;
-    if (sm->active() && respawnSound_ != 0)
-        sm->releaseVoice(respawnSound_, true);
-    respawnSound_ = 0;
-}
-
 Tile *FallingTile::tile() const
 {
     return map_->tile( (int)cellU_, (int)cellV_);
 }
 
-void FallingTile::playAtTile(SoundVoice *snd, const Tile *t) const
+void FallingTile::playAtTile(PlayEvents &events, Sfx sfx, const Tile *t) const
 {
-    snd->setPosition((float)(int)cellU_,
-                          (float)t->height(),
-                          -(float)(int)cellV_,
-                          1);
-    snd->play(false);
+    events.soundPlay({SoundSource::Falling, id(), sfx}, (float)(int)cellU_, (float)t->height(),
+                     -(float)(int)cellV_);
 }
 
-void FallingTile::tick()
+void FallingTile::tick(PlayEvents &events)
 {
     diag_init();
     const double fallDelay = FALL_DELAY_MS;
@@ -167,8 +150,8 @@ void FallingTile::tick()
             justFell_  = 1;
 
             //             // PRESERVED: silent on the second fall of a re-armed tile.
-            if (respawnPending_ == 0 && fallSound_ != 0)
-                playAtTile(fallSound_, t);
+            if (respawnPending_ == 0)
+                playAtTile(events, Sfx::TileFalls, t);
 
             t->setObjectMarker(TILE_EMPTY);
             if (noRespawn_ == 0)
@@ -184,8 +167,7 @@ void FallingTile::tick()
             eventTime_     = now;
             justRespawned_ = 1;
 
-            if (respawnSound_ != 0)
-                playAtTile(respawnSound_, t);
+            playAtTile(events, Sfx::TileRespawns, t);
 
             t->setObjectMarker(TILE_FALLING);
             armed_          = 0;
@@ -196,10 +178,3 @@ void FallingTile::tick()
 }
 
 
-void FallingTile::draw(draw::Frame &f, draw::Pass pass) const
-{
-    if (pass != draw::Pass::Particles || justFell_ == 0 || f.opts.particles == 0)
-        return;
-    draw::spawnBurst(f, THEME_OBJ_FALLING_DUST,
-                     { (float)cellU_, (float)heightCell_, -(float)cellV_ });
-}

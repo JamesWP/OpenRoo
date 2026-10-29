@@ -1,19 +1,17 @@
 /* What the level's entities need of the game around them, handed to them at
  * spawn so they know nothing of Game: the shared clock, tick step, map,
- * sound manager and switches.  The list each kind lives in (entitylist.h) is
+ * and switches.  The list each kind lives in (entitylist.h) is
  * passed beside it. */
 #pragma once
 
 struct TickStep;
 class  LevelMap;
-class  SoundLibrary;
 class  SwitchCells;
 
 struct EntityContext {
     double       *clock;
     TickStep     *tickStep;
     LevelMap     *map;
-    SoundLibrary *sound;
     /* The switch cells and the highest switch slot in use (a view of the
      * World's, so it follows the level being built). */
     SwitchCells         *switches;
@@ -22,7 +20,4 @@ struct EntityContext {
      * crystalsInLevel), which spawning a foe of type 0x0b raises. */
     const char     *levelName;
     unsigned short *crystalsInLevel;
-    /* The level's death counter (World::deaths), which a foe or bomb that
-     * starts dying advances. */
-    unsigned       *deaths;
 };

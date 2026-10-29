@@ -1,13 +1,14 @@
-/* The vocabulary of the device's particle simulation (renderdevice.h): a
- * ParticleBuffer holds a fixed number of particle slots on the device, and
- * StepParticles advances every slot at once -- emitting into dead slots,
- * moving live ones through a force field, fading and retiring them -- with
- * nothing read back.  DrawParticles then draws the live ones as quads, at any
- * number of placements in one draw.
+/* The vocabulary of the device's particles (renderdevice.h).  Nothing is
+ * simulated or kept between draws: a draw names which particles have been
+ * emitted and how long ago, and the device works out each one -- where it
+ * started, how it has moved, faded and turned, and whether it is still alive
+ * -- from the distributions it was emitted with, the field it moves through
+ * and its age, with random numbers taken afresh from a hash of its number
+ * and the placement's seed.  The same draw at the same time always gives the
+ * same particles.
  *
- * Nothing about a new particle is decided on the CPU: a step carries the
- * distributions it is drawn from (ParticleEmit), and the device draws from
- * them with random numbers of its own. */
+ * A ParticleBuffer holds what does not change between draws: how many
+ * particles a draw shows at most, and the shapes they tumble with. */
 
 #pragma once
 #include <stdint.h>
@@ -26,9 +27,23 @@ enum class ParticleSpawn { Gauss, Box, Circle };
 /* Up to this many colours to choose new particles' from. */
 constexpr unsigned PARTICLE_COLOURS = 8;
 
-/* One step's emission: `count` particles into the slots from `firstSlot`
- * (wrapping), each into its slot only if that slot is dead.  Every value is
- * drawn afresh for each particle, on the device, from `seed`.
+/* Where a moving emitter was: samples newest first, each `age` seconds
+ * before the draw, with the way it faced and whether it was emitting then.  A
+ * particle starts from the emitter as it was when it was emitted. */
+constexpr unsigned PARTICLE_PATH = 64;
+
+struct ParticlePath {
+    uint32_t count = 0;
+    float    age[PARTICLE_PATH] = {};
+    Vec3     pos[PARTICLE_PATH] = {};
+    Vec3     dir[PARTICLE_PATH] = {};  // unit; replaces velOffset's direction
+    bool     on[PARTICLE_PATH] = {};
+};
+
+/* The particles a draw shows and how they were emitted.  They are numbered
+ * from 0 in the order they were emitted, `interval` seconds apart; the
+ * newest, number `newest`, `newestAge` seconds ago.  The draw shows that one
+ * and those before it, up to the buffer's count, while they live.
  *
  * A "gauss(mean, variance)" draw is normal about mean with that variance, cut
  * off at about 2.45 standard deviations; a variance that is not positive
@@ -40,11 +55,15 @@ constexpr unsigned PARTICLE_COLOURS = 8;
  *             gauss(speedMean, speedVariance), + velOffset;
  *   life      gauss(lifeMean, lifeVariance) seconds;
  *   colour    one of `colours`, picked in proportion to its weight; white if
- *             there are none. */
+ *             there are none.
+ * With a path, the position adds where the emitter was when the particle was
+ * emitted, velOffset points the way it faced then, and a particle emitted
+ * while the emitter was off is not drawn. */
 struct ParticleEmit {
-    uint32_t count = 0;
-    uint32_t firstSlot = 0;
-    uint32_t seed = 0;
+    int32_t  newest = -1;      // none emitted yet
+    float    newestAge = 0.0f;
+    float    interval = 1.0f;
+    const ParticlePath *path = nullptr;  // where a moving emitter was; null: it stands still
     ParticleSpawn spawn = ParticleSpawn::Gauss;
     Vec3     posA = { 0, 0, 0 }, posB = { 0, 0, 0 };
     float    posScale = 1.0f;
@@ -65,9 +84,9 @@ enum class ParticleFieldKind {
     Magnet,   // a pull toward a centre, which kills what reaches it
 };
 
-/* What acts on live particles for one step.  Every live particle ages by the
- * step's dt and dies when its life goes below zero; its rgb then moves toward
- * fadeRGB by up to fadeStep (0..255 units). */
+/* What acts on particles once emitted.  A particle dies once its age passes
+ * its life, except in no field, where nothing moves or ages; its rgb moves
+ * toward fadeRGB at fadeRate units (0..255) a second. */
 struct ParticleField {
     ParticleFieldKind kind = ParticleFieldKind::None;
     Vec3     accel = { 0, 0, 0 };                     // Gravity, per second^2
@@ -77,17 +96,11 @@ struct ParticleField {
     Vec3     force = { 0, 0, 0 };                     // Magnet, per axis
     Vec3     halfExtent = { 0, 0, 0 };                // Magnet: arrival box
     uint32_t fadeRGB = 0;                             // 0x00RRGGBB
-    float    fadeStep = 0.0f;
-};
-
-struct ParticleStep {
-    float         dt = 0.0f;  // seconds
-    ParticleEmit  emit;
-    ParticleField field;
+    float    fadeRate = 0.0f;
 };
 
 /* A tumbling particle's shape: a quad's six corners, which turn about
- * `axis` (unit length) at `rate` radians a second. */
+ * `axis` (unit length) at `rate` radians a second of the particle's age. */
 struct ParticleShape {
     float corners[6][3] = {};
     Vec3  axis = { 0, 1, 0 };
@@ -95,10 +108,14 @@ struct ParticleShape {
 };
 
 /* One placement of a buffer's particles: they are drawn through `world`, and
- * each quad's corners through `corners` first (row vectors, as Mat4 is). */
+ * each quad's corners through `corners` first (row vectors, as Mat4 is).
+ * Its particles are drawn from `seed`: placements with different seeds show
+ * different particles. */
 struct ParticleInstance {
-    Mat4 world;
-    Mat4 corners;
+    Mat4     world;
+    Mat4     corners;
+    uint32_t seed = 0;
+    uint32_t pad[3] = {};
 };
 
 /* How DrawParticles draws: every live particle as a quad of six corners (two
@@ -106,12 +123,12 @@ struct ParticleInstance {
  * (not at all), with the corners' texture coordinates `uv`.
  *
  * A billboard's quad is `size` across each way, square to `facing`.  A
- * tumbling particle's is the ParticleShape its slot was made with
- * (SetParticleShapes), turned for `time` seconds; it is two-sided. */
+ * tumbling particle's is one of the buffer's ParticleShapes
+ * (SetParticleShapes), picked by its hash and turned for its age; it is
+ * two-sided. */
 struct ParticleLook {
     bool  tumbling = false;
     Vec3  facing = { 0, 0, 1 };
     float size = 1.0f;
-    float time = 0.0f;
     float uv[6][2] = {};
 };

@@ -87,9 +87,9 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
     if (pl->moveState() != 0) {
         self->camera()->setOverviewActive(0);
         self->camera()->setDistance(self->camera()->zoomDistance());
-        if (pl->soundAf() != NULL) pl->soundAf()->stop();
-        if (pl->soundAb() != NULL) pl->soundAb()->stop();
-        if (pl->soundC7() != NULL) pl->soundC7()->stop();
+        self->soundEvents()->soundStop(pl->sound(Sfx::Slide));
+        self->soundEvents()->soundStop(pl->sound(Sfx::Ice));
+        self->soundEvents()->soundStop(pl->sound(Sfx::Glide));
     }
 
     if ((unsigned int)pl->gliding() != 0) {

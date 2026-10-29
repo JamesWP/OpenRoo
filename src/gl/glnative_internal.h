@@ -101,22 +101,11 @@ struct GLTexture : DeviceTexture {
     PixelFormat format;   // what the game's pixels were converted to first
 };
 
-/* Slots to a row of a GLParticleBuffer's texture. */
-static const unsigned PARTICLE_ROW_SLOTS = 64;
-
-/* Two buffers of slots, each slot three vec4s: position and life, velocity
- * and shape index, colour (0..255).  A step reads one and writes the other by
- * transform feedback (`current` is the one last written), then copies it into
- * `slots`, PARTICLE_ROW_SLOTS slots of three texels to a row, for the draw to
- * read.  The buffers hold whole rows; the slots past `count` stay dead. */
+/* How many particles a draw shows at most, and the shapes they tumble with. */
 struct GLParticleBuffer : ParticleBuffer {
     ~GLParticleBuffer() override;
     uint32_t count = 0;
-    uint32_t rows = 0;
-    GLuint   buffers[2] = { 0, 0 };  // 0 when headless
-    int      current = 0;
-    GLuint   slots = 0;              // RGBA32F
-    GLuint   shapes = 0;             // RGBA32F, seven texels a ParticleShape
+    GLuint   shapes = 0;             // RGBA32F, seven texels a ParticleShape; 0 when headless
     uint32_t shapeCount = 0;
 };
 
@@ -205,11 +194,11 @@ public:
     bool DrawBuffer(Prim prim, const VertexBuffer *vb, uint32_t first,
         uint32_t count, uint32_t flags) override;
     void LogState(const char *tag) override;
-    ParticleBuffer *CreateParticleBuffer(uint32_t count, const uint32_t *shapes) override;
+    ParticleBuffer *CreateParticleBuffer(uint32_t count) override;
     void SetParticleShapes(ParticleBuffer *pb, const ParticleShape *shapes,
         uint32_t count) override;
-    void StepParticles(ParticleBuffer *pb, const ParticleStep &step) override;
-    bool DrawParticles(const ParticleBuffer *pb, const ParticleLook &look,
+    bool DrawParticles(const ParticleBuffer *pb, const ParticleEmit &emit,
+        const ParticleField &field, const ParticleLook &look,
         const ParticleInstance *instances, uint32_t count) override;
     ShardBuffer *CreateShardBuffer(VertexFormat format, const void *verts,
                                    uint32_t count) override;
@@ -243,8 +232,8 @@ struct GLRenderDevice::Native {
     size_t indexStreamSize = 0, indexStreamUsed = 0;
 
     // The particle programs (particles.cpp); 0 if they did not build.
-    GLuint particleSim = 0, particleDraw = 0;
-    GLuint particleSimVao = 0, particleDrawVao = 0;
+    GLuint particleDraw = 0;
+    GLuint particleDrawVao = 0;
     GLuint particleInstances = 0;       // DrawParticles' ParticleInstances
     // The shattered-mesh program and its vertex array (shards.cpp), which has
     // no attributes: the vertex shader reads the ShardBuffer's texture.
@@ -273,7 +262,7 @@ GLuint gl_build_program(char *error, size_t errorSize);
 
 /* The particle programs: the step, by transform feedback, and the draw.
  * False, with a message in `error`, if either did not build. */
-bool gl_build_particle_programs(GLuint *sim, GLuint *draw, char *error, size_t errorSize);
+bool gl_build_particle_program(GLuint *draw, char *error, size_t errorSize);
 void gl_create_particle_objects(GLRenderDevice::Native *n);
 void gl_release_particle_objects(GLRenderDevice::Native *n);
 

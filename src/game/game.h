@@ -15,6 +15,7 @@
 #include "themesounds.h"
 #include "bomb.h"
 #include "world.h"
+#include "soundevents.h"
 #include "session.h"
 #include "playstate.h"
 
@@ -52,6 +53,7 @@ public:
     /* ── the level in play (world.h) ─────────────────────────────────── */
     /* The level in play: its map, objects and player (world.h). */
     World        *world()       { return &world_; }
+    SoundEvents  *soundEvents() { return &soundEvents_; }
     const World  *world() const { return &world_; }
 
     /* ── time ───────────────────────────────────────────────────────── */
@@ -121,12 +123,6 @@ public:
      * script player and checkpoints, and its live pose. */
     CameraRig      *camera()                         { return &camera_; }
     const CameraRig *camera() const                  { return &camera_; }
-    BombSounds bombSounds() const
-    {
-        return { audio_.themeSound(ThemeSound::MoveJumpPad), audio_.themeSound(ThemeSound::Teleporter),
-                 audio_.themeSound(ThemeSound::ExplosionBomb), audio_.themeSound(ThemeSound::FallCatcher),
-                 audio_.themeSound(ThemeSound::BombTick) };
-    }
 
     bool initialised() const {return initialised_; }
 
@@ -166,6 +162,8 @@ private:
     /* The level in play (world.h).  Declared after the game's sound, so it
      * is torn down before it. */
     World         world_;
+    /* The rules' sounds, hooked to the sound (soundevents.h). */
+    SoundEvents   soundEvents_{audio_.soundManager()};
     /* The front end (frontend.h): the menu, the text entries, the save slots
      * and the high-score table.  Declared after World, so it is torn down
      * before it and the game's sound. */

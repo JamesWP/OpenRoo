@@ -1,12 +1,12 @@
 /* The level builder: clears the run's per-level state, tears down the previous
- * level's objects, finds the player start, seeds rand(), then walks the whole
+ * level's objects, finds the player start, seeds the random numbers, then walks the whole
  * map once (v outer, u inner), dispatching on each cell's kind: spawning
  * lifts, platforms, falling tiles, bridges and foes, filing switch cells and
  * teleport pairs, and counting what the score and the HUD need.
  *
  * DETERMINISM: the seed is time() through hooks_GameTime, so KAROO_SEED
- * governs the run, and it is stored in the game's single rand() seed
- * (crtrand.h), which every rand() caller shares.
+ * governs the run, and it seeds the World's random numbers (crtrand.h),
+ * which the setup and then the random pickups draw from.
  *
  * PRESERVED:
  *   - The marker-4 lookup's result is ignored and its output is written
@@ -155,15 +155,15 @@ Sim_FindTileByTypeMarker(LevelMap *map, unsigned int markerArg,
     return 0;
 }
 
-/* KAROO_CRT_DIAG=1 logs the value in the game's seed global right after it is
- * stored: a read-back, which costs no rand() call. */
-static void levelsetup_seed_diag(unsigned int seed)
+/* KAROO_CRT_DIAG=1 logs the World's seed right after it is stored: a
+ * read-back, which draws no number. */
+static void levelsetup_seed_diag(unsigned int seed, const CrtRand &random)
 {
     if (!sysdev::envFlag("KAROO_CRT_DIAG"))
         return;
 
-    g_logger.write("levelsetup: crt_srand(%u) -> CRT seed = %u\n",
-              seed, CRT_RAND_SEED);
+    g_logger.write("levelsetup: random seed %u -> World seed = %u\n",
+              seed, random.seed);
 }
 
   unsigned int  
@@ -218,7 +218,7 @@ Sim_SetupLevelObjects(Game *self)
     self->world()->player()->setIceDir(0);
 
     // Tear down the previous level.
-    self->world()->clearObjects();
+    self->world()->clearObjects(*self->soundEvents());
     self->world()->setSwitchMax(0);
     self->world()->player()->setLastRoll(0);
 
@@ -249,13 +249,13 @@ Sim_SetupLevelObjects(Game *self)
     self->world()->player()->setKind(4);
     self->world()->player()->setStepDuration(200.0);  // 200.0
 
-    // DETERMINISM: time() through the seed hook, stored in the shared rand()
-    // seed.
+    // DETERMINISM: time() through the seed hook seeds the World's random
+    // numbers.
     {
         const unsigned int seed =
             (unsigned int)hooks_GameTime(0);
-        crt_srand(seed);
-        levelsetup_seed_diag(seed);
+        self->world()->random().seed = seed;
+        levelsetup_seed_diag(seed, self->world()->random());
     }
 
     // Pass 1: clear one word per cell.
@@ -381,7 +381,7 @@ Sim_SetupLevelObjects(Game *self)
 
                 // A cell holding an item gets a random phase.
                 if (t->contents() != CONTENTS_NONE) {
-                    double ph = (double)(int)crt_rand();
+                    double ph = (double)(int)self->world()->random().next();
                     ph = ph * (double)K_TWO_PI;
                     ph = ph * (double)K_INV_32K;
                     t->setItemPhase((float)ph);

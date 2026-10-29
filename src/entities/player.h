@@ -7,9 +7,9 @@
 #pragma once
 
  
+#include "crtrand.h"
 #include "movableentity.h"
 
-class SoundVoice;
 #include <vector>
 class Tile;
 
@@ -19,20 +19,13 @@ public:
 
     // Latches the clock, moves the player, drops a respawning player back in,
     // and consumes the tile underfoot.  See player.cpp.
-    unsigned int updateTileEffects();
-
-    // Draws the player on the debug map and adds it to the tooltip.
-    void debugDraw() const;
-
-    // Draws the player for one pass of the frame: its model, its auras, its
-    // shadow, its particles, its pickup bursts and its speed trail.
-    void draw(draw::Frame &f, draw::Pass pass) const;
+    unsigned int updateTileEffects(PlayEvents &events, CrtRand &random);
 
     // The six actions DirectInputSetup registers as player controls.
-    void actMoveForward();
-    void actMoveBack();
-    void actTurnLeft();
-    void actTurnRight();
+    void actMoveForward(PlayEvents &events);
+    void actMoveBack(PlayEvents &events);
+    void actTurnLeft(PlayEvents &events);
+    void actTurnRight(PlayEvents &events);
     void actHarakiri();
     void actReleaseBomb();
 
@@ -116,18 +109,11 @@ public:
     // through the pointer.
     unsigned char *homeRef()                   { return &homeU_; }
 
-    // The world's sound variant (0 Egypt, 1 Candy, 2 Space); indexes the
-    // pickup sound bank.
+    // The world's sound variant (0 Egypt, 1 Candy, 2 Space); the paraglider's
+    // pickup sound is that take.
     int   worldSoundVariant() const                     { return worldSoundVariant_; }
     void  setWorldSoundVariant(int n)                   { worldSoundVariant_ = n; }
 
-    // The nine three-entry pickup sound banks.
-    enum PickupBank {
-        SND_15E, SND_16A, SND_176, SND_182, SND_18E,
-        SND_19A, SND_1A6, SND_1B2, SND_1BE,
-    };
-    SoundVoice *pickupSound(int bank, int i) const { return pickupSounds_[bank][i]; }
-    void  setPickupSound(int bank, int i, SoundVoice *p) { pickupSounds_[bank][i] = p; }
 
     double lastSecondsMark() const                    { return lastSecondsMark_; }
     void  setLastSecondsMark(double d)                { lastSecondsMark_ = d; }
@@ -190,15 +176,10 @@ public:
 
 private:
 
-    typedef SoundVoice *SoundRef;
-
-    int   soundVariant() const;
-    void  playAtCell(SoundVoice *buf) const;
-    void  pickupSound(const SoundRef *arr) const;
+    void  pickupSound(PlayEvents &events, Sfx sfx, int variant) const;
     void  endEffect(int code);
 
     int                 worldSoundVariant_{};
-    SoundRef            pickupSounds_[9][3] = {};
     double              lastSecondsMark_{};
     double              effectBStart_{};
     int                 effectBActive_{};
@@ -222,14 +203,4 @@ private:
     int                 gemsCollected_{};
 };
 
- 
-/* The ActionCallback shims for the six actions (progctrl.h's  (key,
- * strength, context), context = the Player). */
- 
-  void   Player_ActMoveForward(int key, int strength, void *player);
-  void   Player_ActMoveBack(int key, int strength, void *player);
-  void   Player_ActTurnLeft(int key, int strength, void *player);
-  void   Player_ActTurnRight(int key, int strength, void *player);
-  void   Player_ActHarakiri(int key, int strength, void *player);
-  void   Player_ActReleaseBomb(int key, int strength, void *player);
 

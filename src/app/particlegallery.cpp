@@ -16,6 +16,7 @@
 #include "renderer.h"
 #include "sysdev.h"
 #include "themedraw.h"
+#include "particletypes.h"
 #include "windev.h"
 #include "clock.h"
 #include "dbg.h"
@@ -60,14 +61,13 @@ const char *const kLookNames[THEME_OBJ_COUNT] = {
 const float kSpacing = 3.0f;       // between looks, in tiles
 const double kBurstEvery = 1500.0; // ms between a burst look's bursts
 const double kFireEvery = 3000.0;  // ms between a dying look's deaths
-const double kFireFor = 400.0;     // and how long each one fires
 
 /* How the game plays a look's particle systems. */
 enum class Play {
     Continuous,  // emitting wherever the look stands
     Burst,       // spawnBurst / bursts: a second's puff at a point
     Trail,       // the speed trail, behind a moving player
-    Fire,        // a dying or exploding look: emits while it dies
+    Fire,        // a dying or exploding look: emits as it dies
 };
 
 Play play_of(int look)
@@ -285,7 +285,6 @@ public:
         f.target = centre;
         f.opts = { true, true, 0, 2 };
         f.now = now_;
-        f.elapsed = elapsed;
 
         std::vector<draw::Instance> at(looks_.size());
         for (size_t i = 0; i < looks_.size(); i++)
@@ -293,10 +292,17 @@ public:
         for (size_t i = 0; i < looks_.size(); i++)
             if (looks_[i] == THEME_OBJ_EXIT)
                 at[i].conditions = draw::COND_ACTIVE;  // open: it glows and emits
-        // A dying foe as Foe::draw has it: dead, its animation at the start.
+        // A dying foe as entitydraw has it: dead, its animation at the start.
         for (size_t i = 0; i < looks_.size(); i++)
             if (dying_foe(looks_[i]))
                 at[i].conditions = draw::COND_DEAD;
+        // A dying look dies again every kFireEvery, its effects by their age.
+        const double t = now_ - started_;
+        for (size_t i = 0; i < looks_.size(); i++)
+            if (play_of(looks_[i]) == Play::Fire) {
+                at[i].effectAge = (float)(fmod(t, kFireEvery) * 0.001);
+                at[i].seed = (unsigned)(t / kFireEvery);
+            }
 
         draw::beginPass(f, draw::Pass::Opaque);
         draw::fieldBuffer(f, THEME_OBJ_WALL, wallVb_, wallVertices_);
@@ -309,7 +315,6 @@ public:
         }
 
         draw::beginPass(f, draw::Pass::Particles);
-        const double t = now_ - started_;
         for (size_t i = 0; i < looks_.size(); i++) {
             const ThemeObjectType look = (ThemeObjectType)looks_[i];
             const draw::Instance &in = at[i];
@@ -318,22 +323,30 @@ public:
                 draw::particles(f, look, &in);
                 break;
             case Play::Burst: {
-                if (fmod(t, kBurstEvery) < elapsed)
-                    draw::spawnBurst(f, look, in.pos);
+                // A burst every kBurstEvery, while the last plays out.
                 const BlendState additive = BlendState::additive();
-                draw::bursts(f, look, look == THEME_OBJ_FALLING_DUST ? nullptr : &additive);
+                draw::burst(f, look, in.pos, (float)(fmod(t, kBurstEvery) * 0.001),
+                            (uint32_t)(t / kBurstEvery),
+                            look == THEME_OBJ_FALLING_DUST ? nullptr : &additive);
                 break;
             }
             case Play::Trail: {
-                const float a = (float)(t * 0.002);
-                const Vec3 p = { in.pos.x + sinf(a), 0.3f, in.pos.z + cosf(a) };
-                draw::trail(f, look, true, p, a + 1.5707964f);
+                // Round a circle, a turn every pi seconds, on half of it.
+                static ParticlePath path;
+                path.count = PARTICLE_PATH;
+                for (uint32_t s = 0; s < PARTICLE_PATH; s++) {
+                    const double back = s * (2.0 / PARTICLE_PATH);
+                    const float a = (float)((t * 0.001 - back) * 2.0);
+                    path.age[s] = (float)back;
+                    path.pos[s] = { in.pos.x + sinf(a), 0.3f, in.pos.z + cosf(a) };
+                    const float yaw = a + 1.5707964f;
+                    path.dir[s] = { sinf(yaw) * 0.995f, 0.0995f, -cosf(yaw) * 0.995f };
+                    path.on[s] = sinf(a * 0.5f) > 0.0f;
+                }
+                draw::trail(f, look, path);
                 break;
             }
             case Play::Fire:
-                draw::fireEffects(f, look, fmod(t, kFireEvery) < kFireFor);
-                if (fmod(t, kFireEvery) < elapsed)
-                    draw::explode(f, look);
                 draw::particles(f, look, &in);
                 break;
             }

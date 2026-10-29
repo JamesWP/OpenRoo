@@ -16,12 +16,9 @@
 #include <string.h>
 #include <math.h>
 
-#include "soundvoice.h"
 #include "tile.h"
 #include "levelmap.h"
-#include "crtrand.h"
 #include "player.h"
-#include "dbg.h"
 #include "entitymath.h"
 #include "foepath.h"
 #include <stdlib.h>
@@ -29,7 +26,6 @@
 
 #include "movableentity.h"
 #include "animcode.h"
-#include "themedraw.h"
 
 /* Durations in ms; the rise rate is per ms. */
 static const float  K_LAND_Y      = 1.0f;
@@ -61,28 +57,12 @@ const Tile *Player::curTile() const
     return map_->tile(cellU_, cellV_);
 }
 
-int Player::soundVariant() const
+/* One take of a pickup's sound, at the player's cell. */
+void Player::pickupSound(PlayEvents &events, Sfx sfx, int variant) const
 {
-    return (int)(long long)now_ % 3;
-}
-
-void Player::playAtCell(SoundVoice *buf) const
-{
-    buf->setPosition((float)(int)cellU_,
-                          (float)(int)heightCell_,
-                          -(float)(int)cellV_,
-                          1);
-}
-
-/* PRESERVED: the variant is computed twice, for the array and the trigger. */
-void Player::pickupSound(const SoundRef *arr) const
-{
-    SoundVoice *buf = arr[soundVariant()];
-
-    if (buf != NULL) {
-        playAtCell(buf);
-        (arr[soundVariant()])->play(false);
-    }
+    SoundKey key = sound(sfx);
+    key.variant  = (unsigned char)variant;
+    events.soundPlay(key, (float)(int)cellU_, (float)(int)heightCell_, -(float)(int)cellV_);
 }
 
 void Player::appendEffect(int code)
@@ -102,7 +82,7 @@ void Player::endEffect(int code)
         effectList_.erase(it);
 }
 
-unsigned int Player::updateTileEffects()
+unsigned int Player::updateTileEffects(PlayEvents &events, CrtRand &random)
 {
 
     copy8(&tickStepCopy_, tickStep_);
@@ -111,7 +91,7 @@ unsigned int Player::updateTileEffects()
     pendingMove_ = 0;
 
     if ((signed char)anim_ != 10)
-        updateMovement();
+        updateMovement(events);
 
     if (moveState_ != 0) {
         curTile()->setOccupant(0);
@@ -174,10 +154,10 @@ unsigned int Player::updateTileEffects()
         if (!onTile)
             goto expire;
 
-        //         // DETERMINISM: a random pickup rolls rand() here, inside the
-        //         // simulation: codes 5 to 13, written back to the tile.
+        // A random pickup rolls here, from the World's random numbers: codes
+        // 5 to 13, written back to the tile.
         if ((signed char)t->contents() == CONTENTS_RANDOM) {
-            int r = (int)crt_rand() * 8;
+            int r = (int)random.next() * 8;
             signed char rolled = (signed char)((char)(r / 0x7FFF) + 5);  // An 8-bit add.
 
             lastRoll_ = rolled;
@@ -191,7 +171,7 @@ unsigned int Player::updateTileEffects()
             itemsCollected_ += 1;
             lastSecondsMark_ = (double)(map->timeLimit() + 1);
 
-            pickupSound(pickupSounds_[SND_176]);
+            pickupSound(events, Sfx::PickupTime, (int)(long long)now_ % 3);
             pickedUp_ = 6;
         }
 
@@ -200,13 +180,8 @@ unsigned int Player::updateTileEffects()
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            if (pool_9f_ != NULL) {
-                pool_9f_->setPosition((float)(int)cellU_,
-                    (float)(int)heightCell_,
-                    -(float)(int)cellV_,
-                    1);
-                pool_9f_->play(0);
-            }
+            events.soundPlay(sound(Sfx::Crystal), (float)(int)cellU_, (float)(int)heightCell_,
+                             -(float)(int)cellV_);
             pickedUp_ = 1;
         }
 
@@ -215,7 +190,7 @@ unsigned int Player::updateTileEffects()
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_16A]);
+            pickupSound(events, Sfx::PickupLife, (int)(long long)now_ % 3);
             pickedUp_ = 7;
         }
 
@@ -224,13 +199,7 @@ unsigned int Player::updateTileEffects()
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            {
-                SoundVoice *buf = pickupSounds_[SND_19A][worldSoundVariant_];
-                if (buf != NULL) {
-                    playAtCell(buf);
-                    pickupSounds_[SND_19A][worldSoundVariant_]->play(false);
-                }
-            }
+            pickupSound(events, Sfx::PickupGlider, worldSoundVariant_);
             pickedUp_ = 5;
         }
 
@@ -239,7 +208,7 @@ unsigned int Player::updateTileEffects()
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_1A6]);
+            pickupSound(events, Sfx::PickupBombs, (int)(long long)now_ % 3);
             pickedUp_ = 9;
         }
 
@@ -251,7 +220,7 @@ unsigned int Player::updateTileEffects()
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_15E]);
+            pickupSound(events, Sfx::PickupFreeze, (int)(long long)now_ % 3);
             pickedUp_ = 8;
         }
 
@@ -263,7 +232,7 @@ unsigned int Player::updateTileEffects()
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_1B2]);
+            pickupSound(events, Sfx::PickupReversed, (int)(long long)now_ % 3);
             pickedUp_ = 0xb;
         }
 
@@ -276,7 +245,7 @@ unsigned int Player::updateTileEffects()
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_182]);
+            pickupSound(events, Sfx::PickupFast, (int)(long long)now_ % 3);
             pickedUp_ = 0xa;
         }
 
@@ -289,7 +258,7 @@ unsigned int Player::updateTileEffects()
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_18E]);
+            pickupSound(events, Sfx::PickupSlow, (int)(long long)now_ % 3);
             pickedUp_ = 0xc;
         }
 
@@ -307,7 +276,7 @@ unsigned int Player::updateTileEffects()
             curTile()->setContents(0);
             itemsCollected_ += 1;
 
-            pickupSound(pickupSounds_[SND_1BE]);
+            pickupSound(events, Sfx::PickupShield, (int)(long long)now_ % 3);
             pickedUp_ = 0xd;
         }
     }
@@ -363,7 +332,7 @@ expire:
  * and 4 a right and left turn (whose pendingMove_ is the new facing + 10).
  * While effect 0xb is active, forward and back, left and right swap.  A turn
  * pressed while moving is queued unless one is already queued or under way. */
-void Player::actMoveForward()
+void Player::actMoveForward(PlayEvents &events)
 {
     if (moveDir_ != 0)
         return;
@@ -374,10 +343,10 @@ void Player::actMoveForward()
         pendingMove_ = Sim_GetTurnedDirection(facing_, 2);
         turnKind_ = 3;
     }
-    updateMovement();
+    updateMovement(events);
 }
 
-void Player::actMoveBack()
+void Player::actMoveBack(PlayEvents &events)
 {
     if (moveDir_ != 0)
         return;
@@ -388,7 +357,7 @@ void Player::actMoveBack()
         pendingMove_ = facing_;
         turnKind_ = 1;
     }
-    updateMovement();
+    updateMovement(events);
 }
 
 /* `delta` 3 turns left, 1 right. */
@@ -397,7 +366,7 @@ static inline unsigned char turned_plus_10(unsigned char facing, unsigned char d
     return (unsigned char)(Sim_GetTurnedDirection(facing, delta) + 10);
 }
 
-void Player::actTurnLeft()
+void Player::actTurnLeft(PlayEvents &events)
 {
     if (moveDir_ != 0) {
         if (turnKind_ == 2 || turnKind_ == 4 || queuedTurn_ != 0)
@@ -415,10 +384,10 @@ void Player::actTurnLeft()
         pendingMove_ = turned_plus_10(facing_, 1);
         turnKind_ = 2;
     }
-    updateMovement();
+    updateMovement(events);
 }
 
-void Player::actTurnRight()
+void Player::actTurnRight(PlayEvents &events)
 {
     if (moveDir_ != 0) {
         if (turnKind_ == 4 || turnKind_ == 2 || queuedTurn_ != 0)
@@ -436,7 +405,7 @@ void Player::actTurnRight()
         pendingMove_ = turned_plus_10(facing_, 3);
         turnKind_ = 4;
     }
-    updateMovement();
+    updateMovement(events);
 }
 
 /* Only while standing still. */
@@ -459,19 +428,8 @@ void Player::actReleaseBomb()
     bombsCarried_--;
 }
 
- 
-  void   Player_ActMoveForward(int, int, void *p) { ((Player *)p)->actMoveForward(); }
-  void   Player_ActMoveBack(int, int, void *p)    { ((Player *)p)->actMoveBack(); }
-  void   Player_ActTurnLeft(int, int, void *p)    { ((Player *)p)->actTurnLeft(); }
-  void   Player_ActTurnRight(int, int, void *p)   { ((Player *)p)->actTurnRight(); }
-  void   Player_ActHarakiri(int, int, void *p)    { ((Player *)p)->actHarakiri(); }
-  void   Player_ActReleaseBomb(int, int, void *p) { ((Player *)p)->actReleaseBomb(); }
-
-/* PRESERVED: zeroSoundSlots() runs twice. */
 Player::Player()
 {
-    pool_9f_ = NULL;
-    zeroSoundSlots();
     stuckSince_      = 0.0;
     stepDuration_  = 200.0;
     field_156      = 1;
@@ -483,7 +441,6 @@ Player::Player()
     sliding_      = 0;
     falling_       = 0;
     moveState_     = 0;
-    zeroSoundSlots();
     stepGrace_     = 20.0;
     pathfinder_    = NULL;
 }
@@ -494,94 +451,3 @@ Player::~Player()
         FoePath::destroy(pathfinder_);
 }
 
-
-static void player_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
-{
-    dl->AddCircleFilled(ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f), (b.x - a.x) * 0.4f,
-                        IM_COL32(255, 255, 255, 255));
-}
-
-void Player::debugDraw() const
-{
-    if (!dbg::active())
-        return;
-    dbg::MapLayer layer;
-    if (!layer)
-        return;
-    const dbg::MapView &m = *layer;
-    if (!m.asLoaded) {
-        // With a tick for its facing.
-        const ImVec2 p = m.centre(posU(), posV());
-        m.dl->AddCircleFilled(p, m.cell * 0.4f, IM_COL32(255, 255, 255, 255));
-        const int f = facing();
-        if (f >= DIR_MIN && f <= DIR_MAX)
-            m.dl->AddLine(p, ImVec2(p.x + DIR_DU[f] * m.cell * 0.6f, p.y + DIR_DV[f] * m.cell * 0.6f),
-                          IM_COL32(0, 0, 0, 255), 2);
-        m.legend(2, "player", player_swatch);
-    }
-    if (m.hovered((uint8_t)cellU(), (uint8_t)cellV())) {
-        m.separator();
-        m.tip("player at H%u, facing %u%s", (uint8_t)heightCell(), facing(), moveDir() ? ", moving" : "");
-    }
-}
-
-/* The theme conditions the player's own state meets. */
-static uint8_t player_conditions(const Player *p)
-{
-    if (p->anim() == ANIM_GHOST)
-        return draw::COND_DEAD;
-    uint8_t c = 0;
-    if (p->glides() != 0 || p->gliding() != 0)
-        c |= draw::COND_GLIDING;
-    if (p->protectionActive() != 0)
-        c |= draw::COND_PROTECTED;
-    return c;
-}
-
-void Player::draw(draw::Frame &f, draw::Pass pass) const
-{
-    draw::Instance in = pose();
-    in.conditions = player_conditions(this);
-    // Dead or respawning, its animation holds on its first frame.
-    if (moveState_ != 0)
-        in.animTime = 0.0f;
-    const bool dead = anim() == ANIM_GHOST;
-    const bool aura = protectionActive() != 0 && !dead;
-    const bool gliding = anim() == ANIM_PARAGLIDE;
-
-    switch (pass) {
-    case draw::Pass::Opaque:
-        draw::objects(f, THEME_OBJ_PLAYER, &in);
-        break;
-    case draw::Pass::Effects:
-        if (aura)
-            draw::objects(f, THEME_OBJ_PLAYER_PROTECTED, &in);
-        if (gliding)
-            draw::objects(f, THEME_OBJ_PLAYER_GLIDING, &in);
-        break;
-    case draw::Pass::Shadows:
-        if (!dead)
-            draw::shadows(f, THEME_OBJ_PLAYER, &in);
-        break;
-    case draw::Pass::Particles:
-        if (f.opts.particles > 0)
-            draw::particles(f, THEME_OBJ_PLAYER, &in);
-        if (f.opts.particles > 1) {
-            if (pickedUp() == CONTENTS_CRYSTAL)
-                draw::spawnBurst(f, THEME_OBJ_CRYSTAL_PICKUP, in.pos);
-            else if (pickedUp() != 0)
-                draw::spawnBurst(f, THEME_OBJ_ITEM_PICKUP, in.pos);
-            // The speed trail, while sped up and moving along (or straight
-            // against) its facing.
-            const bool trail = effectAActive() != 0 &&
-                ((unsigned)moveDir() == facing() ||
-                 (unsigned)moveDir() == Sim_GetTurnedDirection(facing(), 2));
-            draw::trail(f, THEME_OBJ_PLAYER_SPEED_TRAIL, trail, in.pos, in.rot.y);
-        }
-        if (aura)
-            draw::particles(f, THEME_OBJ_PLAYER_PROTECTED, &in);
-        if (gliding)
-            draw::particles(f, THEME_OBJ_PLAYER_GLIDING, &in);
-        break;
-    }
-}

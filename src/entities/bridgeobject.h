@@ -1,21 +1,18 @@
 /* BridgeObject: a switch-operated bridge.  A switch arms it, and while armed
  * it extends, or retracts, one deck cell at a time, stamping each cell it
  * covers.  Every function that touches a BridgeObject field is in
- * bridgeobject.cpp: the spawn, tick and sound release, the drawing of its deck, and
+ * bridgeobject.cpp: the spawn, tick and sound release, and
  * the switch accessors GameTick and tilequery.cpp use. */
 
 #pragma once
 #include <stdint.h>
 #include "entitycontext.h"
 #include "entitylist.h"
+#include "playevents.h"
 #include "tickstep.h"
-#include "drawfwd.h"
 
  
 
-class SoundVoice;
-class SoundLibrary;
-struct Diffuse1Vertex;
 
 /* A bridge's extent for the debug map, in cell-edge coordinates: the deck
  * runs along its axis from `rest` (the anchor) towards `rest + step * span`,
@@ -33,7 +30,7 @@ struct BridgeExtent {
 
 class SwitchCells;
 
-class BridgeObject {
+class BridgeObject : public Listed {
 public:
      
 
@@ -42,14 +39,8 @@ public:
                       unsigned int heightArg, unsigned int slotArg,
                       unsigned int axisArg);
 
-    // Releases its sounds, before World destroys it.
-    void releaseSounds(SoundLibrary *sm);
-
-    // One tick.
-    void tick();
-
-    // Draws it on the debug map, with its switch links (dbg.h).
-    void debugDraw(const SwitchCells &sc) const;
+    // One tick; its moving loop follows it and stops through events.
+    void tick(PlayEvents &events);
 
     // When the move under way began, clock ms.
     double phaseStart() const        { return phaseStart_; }
@@ -62,11 +53,20 @@ public:
     unsigned char switchSlot() const { return slot_; }
     // A switch fires: arm, and start the phase at the clock.
     void arm(double now)             { armed_ = 1; phaseStart_ = now; }
-    // The player's switch also starts the moving-loop sound.
-    void playArmSound();
+    // The player's switch also starts the moving loop.
+    void playArmSound(PlayEvents &events);
 
-    // Draws the bridge's deck, in the effects pass.
-    void draw(draw::Frame &f, draw::Pass pass) const;
+    // The deck's live far point, its anchor, its length in cells, its
+    // direction (+1 or -1 cell a step) and its axis (1 along U, 2 along V).
+    float posU() const               { return posU_; }
+    float posY() const               { return posY_; }
+    float posV() const               { return posV_; }
+    float restU() const              { return restU_; }
+    float restY() const              { return restY_; }
+    float restV() const              { return restV_; }
+    signed char span() const         { return span_; }
+    signed char step() const         { return step_; }
+    unsigned char axis() const       { return axis_; }
 
     // A read-only view for the debug map.
     BridgeExtent extent() const
@@ -74,17 +74,9 @@ public:
         return { axis_, restU_, restV_, step_, span_, posU_, posV_, slot_, armed_ != 0, phase_, height_ };
     }
 
-    // The moving-loop sound, attached by InitLevelBasedSounds
-    // (levelsounds.cpp).
-    void setSound(SoundVoice *p) { sound_ = p; }
-
     ~BridgeObject();
 
 private:
-    // The deck quad (draw::FieldVertex) for clock t, ms; false while there
-    // is no deck, never armed and in phase 0.
-    bool deck(Diffuse1Vertex v[4], double t) const;
-
     BridgeObject();
     BridgeObject(const BridgeObject &) = delete;
     BridgeObject &operator=(const BridgeObject &) = delete;
@@ -108,7 +100,6 @@ private:
     float               restV_;
     signed char         span_;        // the deck's length, in cells
     unsigned char       slot_;        // the switch slot, stamped into cells
-    SoundVoice *sound_;       // the moving loop; may be NULL
     double              phaseStart_;
     int                 armed_;
     signed char         step_;        // +1 or -1 cell per 100 ms

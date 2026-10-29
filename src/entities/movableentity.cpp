@@ -6,7 +6,6 @@
 #include "movableentity.h"
 #include "sysdev.h"
 #include "animcode.h"
-#include "themedraw.h"
 #include <stdlib.h>
 
 MovableEntity::MovableEntity()
@@ -24,50 +23,7 @@ MovableEntity::~MovableEntity()
 {
 }
 
-void MovableEntity::zeroSoundSlots()
-{
-    sound_a7_ = 0;
-    sound_ab_ = 0;
-    sound_af_ = 0;
-    sound_b3_ = 0;
-    sound_b7_ = 0;
-    sound_bb_ = 0;
-    sound_bf_ = 0;
-    sound_c3_ = 0;
-    sound_c7_ = 0;
-    sound_a3_ = 0;
-    sound_cb_ = 0;
-    sound_cf_ = 0;
-}
 
-/* The yaw each facing draws at: 1 looks along -V, and each turn right a
- * quarter turn clockwise from there. */
-static float facing_yaw(unsigned char facing)
-{
-    switch (facing) {
-    case 2:  return -1.5707964f;
-    case 3:  return 3.1415927f;
-    case 4:  return 1.5707964f;
-    default: return 0.0f;
-    }
-}
-
-draw::Instance MovableEntity::pose() const
-{
-    draw::Instance in;
-    in.pos = { posU_, posY_, -posV_ };
-    in.rot.y = facing_yaw(facing_);
-    in.animCode = anim_;
-    if (moveDir_ != 0 || anim_ >= ANIM_IDLE1) {
-        in.animTime = (float)((*clock_ - animStart_) / animDuration_);
-        // A turn on the spot (moveDir past 10) swings the yaw as it plays.
-        if (moveDir_ > 10 && turnKind_ == 2)
-            in.rot.y -= in.animTime * 1.5707964f;
-        else if (moveDir_ > 10 && turnKind_ == 4)
-            in.rot.y += in.animTime * 1.5707964f;
-    }
-    return in;
-}
 
 /* MovableEntity::updateMovement(): the movement integrator every entity
  * (player, foe or bomb) ticks through -- grid stepping, falling, gliding,
@@ -84,7 +40,6 @@ draw::Instance MovableEntity::pose() const
  * otherwise. */
 #include <string.h>
 #include <math.h>
-#include "soundvoice.h"
 #include "logger.h"
 #include "entitymath.h"
 #include "tile.h"
@@ -133,15 +88,6 @@ static inline double load_double(const void *p)
 #define GH           heightCell_
 #define CUR          TILE(GU, GV)
 
-/* Positions a sound at (x, y, z) and triggers it; a null sound is skipped. */
-static inline void snd_at(SoundVoice *s, float x, float y, float z, uint32_t loop)
-{
-    if (s == 0)
-        return;
-    s->setPosition(x, y, z, 1);
-    s->play(loop);
-}
-
 /* Is direction `d` the entity's facing, or its reverse? The second check runs
  * only when the first fails; GetTurnedDirection is pure, so the short-circuit
  * is unobservable either way. */
@@ -160,7 +106,7 @@ static inline unsigned ftol32(double v)
     return (unsigned)(long long)v;
 }
 
-unsigned int MovableEntity::updateMovement()
+unsigned int MovableEntity::updateMovement(PlayEvents &events)
 {
     if (moveDir_ == 0 && ((signed char)moveState_) == 0)
         anim_ = 0;
@@ -173,8 +119,6 @@ unsigned int MovableEntity::updateMovement()
         if (dyingStarted_ == 0) {
             copy8(&dyingSince_, &now_);
             dyingStarted_ = 1;
-            if (deathCounter_ != nullptr)
-                deathNumber_ = ++*deathCounter_;
             pendingMove_ = 0;
             moveDir_ = 0;
             return 1;
@@ -239,11 +183,8 @@ unsigned int MovableEntity::updateMovement()
 
             if (((signed char)kind_) != 9) {
                 unsigned char a = anim_;
-                if (((a > 0x13 && a < 0x1c && moveDir_ != 0) || turned) &&
-                    sound_cf_ != 0 && a != 3 && a != 5) {
-                    sound_cf_->setPosition((float)(int)GU, (float)(int)GH, -(float)(int)GV, 1);
-                    sound_cf_->play(0);
-                }
+                if (((a > 0x13 && a < 0x1c && moveDir_ != 0) || turned) && a != 3 && a != 5)
+                    events.soundPlay(sound(Sfx::Step), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
             }
 
             moveDir_ = 0;
@@ -280,7 +221,7 @@ unsigned int MovableEntity::updateMovement()
         if ((signed char)t->objectMarker() == TILE_SWITCH && (unsigned)t->height() == (unsigned)(int)GH &&
             ((signed char)kind_) != 9 && onSwitch_ == 0) {
             switchSlot_ = t->field1f3();
-            snd_at(sound_cb_, (float)(int)GU, (float)(int)GH, -(float)(int)GV, 0);
+            events.soundPlay(sound(Sfx::Switch), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
             onSwitch_ = 1;
         }
 
@@ -292,8 +233,7 @@ unsigned int MovableEntity::updateMovement()
                 if (stuckSince_ == K_ZERO) {
                     copy8(&stuckSince_, &now_);
                     if (field_156 != 0)
-                        snd_at(sound_bf_, (float)(int)GU, (float)(int)GH,
-                               -(float)(int)GV, 0);
+                        events.soundPlay(sound(Sfx::Glue), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
                     anim_ = 9;
                 }
                 if (now_ - stuckSince_ <= K_STICKY_MS) {
@@ -311,8 +251,7 @@ unsigned int MovableEntity::updateMovement()
             if ((signed char)c->objectMarker() == TILE_SLIDE) {
                 unsigned char dir = c->slideDir();
                 if (sliding_ == 0)
-                    snd_at(sound_af_, (float)(int)GU, (float)(int)GH,
-                           -(float)(int)GV, 1);
+                    events.soundStart(sound(Sfx::Slide), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
                 facing_  = dir;
                 sliding_ = 1;
                 pendingMove_ = dir;
@@ -320,8 +259,7 @@ unsigned int MovableEntity::updateMovement()
             } else {
                 copy8(&animDuration_, &stepDuration_);
                 sliding_ = 0;
-                if (sound_af_ != 0)
-                    sound_af_->stop();
+                events.soundStop(sound(Sfx::Slide));
             }
 
             // Teleporter tile.
@@ -345,15 +283,13 @@ unsigned int MovableEntity::updateMovement()
                     posY_ = (float)(int)dh;
                     posV_ = (float)(int)dv;
                     CUR->setBusy(1);
-                    snd_at(sound_bb_, (float)(int)GU, (float)(int)GH,
-                           -(float)(int)GV, 0);
+                    events.soundPlay(sound(Sfx::Teleported), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
                 }
                 if (((signed char)teleportPhase_) == 0) {
                     copy8(&teleportSince_, &now_);
                     teleportPhase_ = 1;
                     CUR->setBusy(1);
-                    snd_at(sound_b7_, (float)(int)GU, (float)(int)GH,
-                           -(float)(int)GV, 0);
+                    events.soundPlay(sound(Sfx::Teleport), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
                 }
                 if (((signed char)teleportPhase_) == 2 && K_HALF_SEC_MS <= now_ - teleportSince_) {
                     teleportPhase_ = 0;
@@ -385,8 +321,7 @@ unsigned int MovableEntity::updateMovement()
                 if (iceDir_ == 0) {
                     pendingMove_ = lastMoveDir_;
                     turnKind_ = 0;
-                    snd_at(sound_ab_, (float)(int)GU, (float)(int)GH,
-                           -(float)(int)GV, 1);
+                    events.soundStart(sound(Sfx::Ice), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
                 } else {
                     unsigned char d = (unsigned char)iceDir_;
                     pendingMove_ = d;
@@ -403,8 +338,7 @@ unsigned int MovableEntity::updateMovement()
         Tile *t2 = CUR;
         if ((signed char)t2->objectMarker() != TILE_ICE ||
             (unsigned)t2->height() != (unsigned)(int)GH) {
-            if (sound_ab_ != 0)
-                sound_ab_->stop();
+            events.soundStop(sound(Sfx::Ice));
             iceDir_ = 0;
         }
     }
@@ -487,26 +421,21 @@ unsigned int MovableEntity::updateMovement()
                     if ((signed char)CUR->objectMarker() == TILE_JUMP_PAD ||
                         ((int)((unsigned)fallStartH_ - (int)h2) < 3 && h2 > 1)) {
                         moveState_ = 0;  // survived
-                        if (sound_cf_ != 0 && ((signed char)kind_) == 4) {
-                            sound_cf_->setPosition((float)(int)GU, (float)(int)GH,
-                                -(float)(int)GV, 1);
-                            sound_cf_->play(0);
-                        }
+                        if (((signed char)kind_) == 4)
+                            events.soundPlay(sound(Sfx::Step), (float)(int)GU, (float)(int)GH,
+                                             -(float)(int)GV);
                     } else if (((signed char)kind_) == 9 && h2 > 1) {
                         moveState_ = 0;
                         pendingMove_ = 0;
                     } else {
                         moveState_ = 2;  // killed by the drop
                         if (field_156 != 0 || ((signed char)kind_) == 2 || ((signed char)kind_) == 3)
-                            snd_at(sound_a7_, (float)(int)GU, (float)(int)GH,
-                                   -(float)(int)GV, 0);
-                        if (sound_c3_ != 0)
-                            sound_c3_->stop();
+                            events.soundPlay(sound(Sfx::Splat), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
+                        events.soundStop(sound(Sfx::Fall));
                         pendingMove_ = 0;
                     }
                 }
-                if (sound_c7_ != 0)
-                    sound_c7_->stop();
+                events.soundStop(sound(Sfx::Glide));
                 gliding_  = 0;
                 anim_   = 0;
                 falling_ = 0;
@@ -525,8 +454,7 @@ unsigned int MovableEntity::updateMovement()
                 // not falling yet: start the fall
                 copy8(&animDuration_, &stepDuration_);
                 sliding_ = 0;
-                if (sound_af_ != 0)
-                    sound_af_->stop();
+                events.soundStop(sound(Sfx::Slide));
                 if (onLift_ == 0) {
                     fallSpeed_   = -3.0f;                         // starts at -3.0
                     fallStartH_  = ((unsigned char)heightCell_);  // fall start height
@@ -544,9 +472,7 @@ unsigned int MovableEntity::updateMovement()
 
                 if (gliding_ == 0) {
                     // Free fall.
-                    if (sound_c3_ != 0)
-                        sound_c3_->setPosition(posU_, posY_,
-                                              -posV_, 1);
+                    events.soundMove(sound(Sfx::Fall), posU_, posY_, -posV_);
                     if (facing_or_reverse((unsigned)pendingMove_, facing_))
                         pendingMove_ = 0;
 
@@ -562,14 +488,14 @@ unsigned int MovableEntity::updateMovement()
                         // the paraglider opens: costs one charge
                         glides_ = (signed char)(((signed char)glides_) - 1);
                         gliding_ = 1;
-                        snd_at(sound_a3_, posU_, posY_, -posV_, 0);
-                        snd_at(sound_c7_, posU_, posY_, -posV_, 1);
+                        events.soundPlay(sound(Sfx::GlideStart), posU_, posY_, -posV_);
+                        events.soundStart(sound(Sfx::Glide), posU_, posY_, -posV_);
                     }
 
                     int drop = (int)((unsigned)fallStartH_ - (int)GH);
                     if (drop > 2 && gliding_ == 0 && drop < 6 && ((signed char)kind_) != 9) {
                         anim_ = 8;
-                        snd_at(sound_c3_, posU_, posY_, -posV_, 0);
+                        events.soundPlay(sound(Sfx::Fall), posU_, posY_, -posV_);
                     }
 
                     if (gliding_ != 0 ||
@@ -579,9 +505,7 @@ unsigned int MovableEntity::updateMovement()
                     }
                 } else {
                     // Gliding.
-                    if (sound_c7_ != 0)
-                        sound_c7_->setPosition(posU_, posY_,
-                                              -posV_, 1);
+                    events.soundMove(sound(Sfx::Glide), posU_, posY_, -posV_);
                     unsigned char th = CUR->height();
                     if ((float)th < posY_ || posY_ < (float)th - K_HALF_F) {
                         double h = (double)posY_ - load_double(&tickStepCopy_) * (double)K_GLIDE_RATE;
@@ -621,8 +545,7 @@ unsigned int MovableEntity::updateMovement()
 
             if (launched_ == 0) {
                 if ((unsigned)CUR->height() == (unsigned)(int)GH) {
-                    snd_at(sound_b3_, (float)(int)GU, (float)(int)GH,
-                           -(float)(int)GV, 0);
+                    events.soundPlay(sound(Sfx::JumpPad), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
                     copy8(&fallStart_, &now_);  // the pad launch clock
                     launched_ = 1;
                     posY_ = (float)(int)GH;
@@ -636,9 +559,7 @@ unsigned int MovableEntity::updateMovement()
                                       + (double)K_ARC_BIAS) * (double)K_GRAVITY_TWO);
                     posY_ = (float)((v0 - ts * (double)K_GRAVITY_HALF) * ts
                                       + (double)(int)GH);
-                    if (sound_b3_ != 0)
-                        sound_b3_->setPosition((float)(int)GU,
-                                              (float)(int)GH, -(float)(int)GV, 1);
+                    events.soundMove(sound(Sfx::JumpPad), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
                     anim_ = 0x0b;
                 } else {
                     if (((signed char)kind_) != 9)

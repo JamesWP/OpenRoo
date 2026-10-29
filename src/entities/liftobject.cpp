@@ -19,11 +19,9 @@
 #include <string.h>
 
 #include "liftobject.h"
-#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
 #include "logger.h"
-#include "themedraw.h"
 
 static const float  K_MS_TO_HEIGHT = 0.005f;
 static const double K_PARK_DWELL   = 1500.0;
@@ -52,7 +50,6 @@ LiftObject::LiftObject()
     posV_   = 0.0f;
     state_  = 1;
     atTop_  = 1;
-    sound_  = 0;
 }
 
 LiftObject::~LiftObject()
@@ -103,20 +100,12 @@ void LiftObject::spawn(const EntityContext &ctx, EntityList<LiftObject> &lifts, 
     obj->topHeight_  = (signed char)top;
     tile->setLiftSlot(n);
 
-    obj->sound_ = 0;
     tile->clearLiftMovingSince();
 
     obj->phaseStart_ = *ctx.clock;
 
     obj->atTop_ = 0;
     obj->state_ = 1;
-}
-
-void LiftObject::releaseSounds(SoundLibrary *sm)
-{
-    if (sm->active() && sound_ != 0)
-        sm->releaseVoice(sound_, true);
-    sound_ = 0;
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte.  The tick passes
@@ -133,8 +122,9 @@ static int s_logged_rise   = 0;
 static int s_logged_fall   = 0;
 static int s_logged_depart = 0;
 
-void LiftObject::tick()
+void LiftObject::tick(PlayEvents &events)
 {
+    const SoundKey moving{SoundSource::Lift, id(), Sfx::LiftMoving};
     Tile *t;
 
     diag_init();
@@ -176,13 +166,10 @@ void LiftObject::tick()
             atTop_  = 1;
             state_  = 0;
 
-            if (sound_ != 0)
-                sound_->stop();
+            events.soundStop(moving);
         }
 
-        if (sound_ != 0)
-            sound_->setPosition((float)(int)cellU_, height_,
-                                  -(float)(int)cellV_, 1);
+        events.soundMove(moving, (float)(int)cellU_, height_, -(float)(int)cellV_);
     }
 
     if (state_ == 2) {
@@ -212,14 +199,11 @@ void LiftObject::tick()
                 atTop_  = 0;
                 state_  = 0;
 
-                if (sound_ != 0)
-                    sound_->stop();
+                events.soundStop(moving);
             }
         }
 
-        if (sound_ != 0)
-            sound_->setPosition((float)(int)cellU_, height_,
-                                  -(float)(int)cellV_, 1);
+        events.soundMove(moving, (float)(int)cellU_, height_, -(float)(int)cellV_);
     }
 
     t = map_->tile( cellU_, cellV_);
@@ -243,11 +227,7 @@ void LiftObject::tick()
                           (int)cellU_, (int)cellV_, latch, (int)state_);
             }
 
-            if (sound_ != 0) {
-                sound_->setPosition((float)(int)cellU_, height_,
-                                      -(float)(int)cellV_, 1);
-                sound_->play(true);
-            }
+            events.soundStart(moving, (float)(int)cellU_, height_, -(float)(int)cellV_);
         }
 
         //         // Cleared after the departure test, so a departing lift's moving-since
@@ -265,11 +245,3 @@ void LiftObject::tick()
 }
 
 
-void LiftObject::draw(draw::Frame &f, draw::Pass pass) const
-{
-    if (pass != draw::Pass::Opaque)
-        return;
-    draw::Instance in;
-    in.pos = { posU_, height_, -posV_ };
-    draw::objects(f, THEME_OBJ_LIFT, &in);
-}

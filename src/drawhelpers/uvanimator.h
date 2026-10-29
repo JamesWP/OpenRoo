@@ -53,8 +53,8 @@ public:
     void applySineWave(unsigned int ticks, float rate, float amplitude,
                        float skew);
 
-    // Scrolls one texture axis: u when axisU is nonzero, else v.  The offset
-    // accumulates, every call, until flush.
+    // Scrolls one texture axis: u when axisU is nonzero, else v, by speed
+    // texture units a millisecond of ticks.
     void scrollUVs(unsigned int ticks, int axisU, float speed);
 
     // Spherical environment map: UVs from each vertex normal, transformed by

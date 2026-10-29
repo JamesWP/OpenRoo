@@ -62,6 +62,23 @@ pointer at all. `tools/drawtrace.py` uses it too.
 Exit code 0 means every selected recording behaved exactly as `manifest.json`
 says it should. Non-zero means one did not, and the output names the field.
 
+## `--sound-log` -- checking the sound did not move
+
+The suite asserts game state, not sound.  For a change that should leave the
+sound alone (moving the sound calls out of the tick, say), write each run's
+sound log from both builds and diff them:
+
+```bash
+python3 tools/replaytest.py --sound-log run/sound-before   # on the old build
+python3 tools/replaytest.py --sound-log run/sound-after    # on the new
+diff -r run/sound-before run/sound-after
+```
+
+`KAROO_SOUND_LOG=<file>` (`src/audiodev/audiodev.h`) logs every play, stop and
+move the game asks of a sound buffer, heard or not (headless runs are silent but
+still ask), with the buffer's number, file, loop flag and position, and a
+`tick` line at the start of each game tick.
+
 ## What is here
 
 | Path | What it is |

@@ -3,7 +3,7 @@
  * they are declared there (protected).
  *
  * The sound attachment, the cheats, the tile queries and the movement code
- * treat a foe as a plain entity; it draws itself (draw()).  Its pathfinder
+ * treat a foe as a plain entity; entitydraw.cpp draws it.  Its pathfinder
  * is FoePath (foepath.cpp). */
 
 #pragma once
@@ -14,9 +14,7 @@
 #include "entitylist.h"
 #include "bomb.h"
 #include "movableentity.h"
-#include "drawfwd.h"
 
-class SoundLibrary;
 class Tile;
 
 /* What a foe is (MovableEntity::kind()): a catcher chases and touches, a
@@ -38,30 +36,19 @@ public:
                       unsigned int hArg, unsigned int kindArg,
                       unsigned int typeArg);
 
-    // Releases the sounds of foes[i] and destroys it; those after it move
-    // down one.
-    static void remove(const EntityContext &ctx, EntityList<Foe> &foes,
-                       std::size_t i);
+    // Destroys foes[i], reporting it destroyed; those after it move down
+    // one.
+    static void remove(EntityList<Foe> &foes, std::size_t i, PlayEvents &events);
 
-    // Releases its sounds (remove, and World::clearObjects).
-    void releaseSounds(SoundLibrary *sm);
+    // Despawns it: its fall sound stops and its sounds are released
+    // (remove, and World::clearObjects).
+    void despawn(PlayEvents &events) const;
 
     // Frees its tile claims and its path-finder.
     ~Foe() override;
 
-    // Draws it on the debug map and adds it to the tooltip; n is its place
-    // in the World's foe list.
-    void debugDraw(unsigned n) const;
-
-    // Draws the foe for one pass of the frame: a catcher or thrower model
-    // (its dying look, firing its death effects, once it is dying), its
-    // shadow and its particles.
-    // deathsDrawn is the level's death count at the last frame drawn: a
-    // newer death fires its effects.
-    void draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const;
-
     // One tick, towards the player's cell (or whatever target GameTick chose).
-    void step(unsigned char playerU, unsigned char playerV);
+    void step(unsigned char playerU, unsigned char playerV, PlayEvents &events);
 
     // Searches towards (u, v) and queues the first step in pendingMove;
     // returns it.
@@ -94,8 +81,7 @@ public:
                       unsigned char escortU, unsigned char escortV,
                       unsigned char *pu, unsigned char *pv);
     // The foe's own bomb drop, when step() raised the hit flag.
-    void dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs,
-                  const BombSounds &sounds);
+    void dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs);
     // Touching the player kills it (*playerMoveState = 1); once the player is
     // down, a foe not held gets anim 0x28.
     void checkPlayerContact(unsigned char *playerMoveState,

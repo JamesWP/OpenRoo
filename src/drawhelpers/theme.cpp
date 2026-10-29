@@ -519,14 +519,8 @@ void ThemeParser::particleSystem(ThemeObjectTypeSlot *slot, Cursor<ThemeLevelObj
     if (is(tok[2], "movable1") && slot) rec->dwMovableType_ = 1;
     if (is(tok[2], "movable2") && slot) rec->dwMovableType_ = 2;
 
-    unsigned count = (unsigned)atoi(tok[3]);
-    if (count < 2 || count > 16) {
-        if (slot) rec->dwInstanceCount_ = 1;
-    } else {
-        for (unsigned i = 1; i < count; i++)
-            if (slot) rec->pParticleSystems_[i] = ps->clone();
-        if (slot) rec->dwInstanceCount_ = count;
-    }
+    // The fourth token was how many bursts could play at once, each with a
+    // copy of the system; a burst is drawn from its age now, so one serves.
 }
 
 void ThemeParser::fog(bool inEnvironment)

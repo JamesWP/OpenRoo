@@ -2,7 +2,7 @@
  * drawn as a theme object -- the pads, stairs, switches, the exit, the
  * bombable blocks -- and the items lying about.  Built on level entry from the
  * map; drawn every frame from the cells' live state (busy, blasting, what lies
- * there).  The level's moving objects draw themselves (World::draw).
+ * there).  The level's moving objects are entitydraw.h's.
  *
  * Positions are (u, height, -v). */
 #pragma once
@@ -29,9 +29,9 @@ public:
      * (sideHeight deep, from the theme).  Called on level entry. */
     void build(const LevelMap *map, float sideHeight);
 
-    /* Draws the level's fixed picture for one pass of the frame.  Fires and
-     * clears a blasted block's pending debris. */
-    void draw(draw::Frame &f, draw::Pass pass, const LevelMap *map);
+    /* Draws the level's fixed picture for one pass of the frame; a blasted
+     * block's debris by its age on the World's clock. */
+    void draw(draw::Frame &f, draw::Pass pass, const LevelMap *map, double clock);
 
     LevelPlacements() = default;
     ~LevelPlacements() { release(); }
@@ -48,8 +48,6 @@ private:
     struct Cell {
         draw::Instance in;
         unsigned char  u, v;
-        // A bombable block: the blast time its debris last fired for.
-        double         firedBlast = -1.0;
     };
 
     void buildWalls(const LevelMap *map, float depth);
@@ -57,7 +55,7 @@ private:
     const std::vector<draw::Instance> &instances(Group g, const LevelMap *map);
     void group(draw::Frame &f, Group g, ThemeObjectType look, const LevelMap *map,
                bool particles);
-    void bombables(draw::Frame &f, const LevelMap *map);
+    void bombables(draw::Frame &f, const LevelMap *map, double clock);
     /* The items lying about, one instance each (looks[i] is items_[i]'s). */
     void collectItems(const LevelMap *map);
 

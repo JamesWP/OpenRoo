@@ -18,6 +18,7 @@
 #include <string.h>
 #include "sysdev.h"
 #include "windev.h"
+#include "audiodev.h"
 #include "logger.h"
 #include "game.h"
 #include "quitforward.h"
@@ -26,6 +27,7 @@
 #include "scoretally.h"
 #include "prof.h"
 #include "tiledebug.h"
+#include "entitydebug.h"
 #include "cheats.h"
 #include "gamedebug.h"
 #include "keys.h"
@@ -72,10 +74,10 @@ static void tick_level_objects(Game *self)
     unsigned char u, v;
     if (Tile_DebugDrawMap(self->world(), &u, &v))
         Cheat_TeleportPlayer(self, u, v);
-    self->world()->tickLifts();
-    self->world()->tickPlatforms();
-    self->world()->tickFallings();
-    self->world()->tickBridges();
+    self->world()->tickLifts(*self->soundEvents());
+    self->world()->tickPlatforms(*self->soundEvents());
+    self->world()->tickFallings(*self->soundEvents());
+    self->world()->tickBridges(*self->soundEvents());
 }
 
   void
@@ -92,6 +94,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     }
 
     advance_clock(self, dt, now);
+    audiodev::logMark(self->world()->now());
 
     if (self->state() == GameState::MainMenu || self->state() == GameState::PauseMenu) {
         PROF_SCOPE("menus");
@@ -122,7 +125,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     if ((self->state() == GameState::Playing || self->state() == GameState::Flythrough) && input::pressed(input::KEY_ESCAPE))
         Flow_OpenPauseMenu(self);
 
-    self->world()->tickBombs();
+    self->world()->tickBombs(*self->soundEvents());
 
     {
         unsigned char pct = completion_percent((unsigned int)pl->completionNumerator(), self->session()->playingTime());
@@ -133,7 +136,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 
     {
         PROF_SCOPE("player");
-        pl->updateTileEffects();
+        pl->updateTileEffects(*self->soundEvents(), self->world()->random());
     }
 
     if (self->state() == GameState::Playing)
@@ -165,8 +168,9 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     }
 
     Play_TickFoes(self);
+    self->world()->recordEffects();
 
-    pl->debugDraw();  // last, so it sits over the foes
+    Entities_DebugDrawMap(self->world());
     Game_DebugPanel(self);
     Cheat_DebugPanel(self);
 

@@ -169,14 +169,16 @@ void UVAnimator::applySineWave(unsigned int ticks, float rate,
     dirty_ = 1;
 }
 
-/* The scroll adds to whatever the coordinates already are, every call. */
+/* The offset is the clock times the speed, wrapped to one repeat of the
+ * texture.  (The original added the whole clock to the offset every frame, so
+ * the scroll sped up as the level went on, and faster at a higher frame rate.) */
 void UVAnimator::scrollUVs(unsigned int ticks, int axisU, float speed)
 {
     if (pMesh_ != NULL) {
-        float delta = (float)((double)ticks * (double)speed);
-
-        UVTransform t = pMesh_->uvTransform();
-        (axisU != 0 ? t.offsetU : t.offsetV) += delta;
+        if (vertsDirty_)
+            restoreVertices();
+        UVTransform t;
+        (axisU != 0 ? t.offsetU : t.offsetV) = (float)fmod((double)ticks * (double)speed, 1.0);
         pMesh_->setUVTransform(t);
 
         const unsigned int count = pMesh_->vertexCount();

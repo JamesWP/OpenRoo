@@ -5,15 +5,12 @@
 #pragma once
 #include "entitycontext.h"
 #include "entitylist.h"
+#include "playevents.h"
 #include "tickstep.h"
-#include "drawfwd.h"
 
  
 
-class SoundVoice;
-class SoundLibrary;
-
-class LiftObject {
+class LiftObject : public Listed {
 public:
      
 
@@ -21,15 +18,8 @@ public:
     static void spawn(const EntityContext &ctx, EntityList<LiftObject> &lifts, unsigned int uArg,
                       unsigned int vArg, unsigned int baseArg, unsigned int topArg);
 
-    // Releases its sound, before World destroys it.
-    void releaseSounds(SoundLibrary *sm);
-
-    // One tick.
-    void tick();
-
-    // The moving-loop sound, attached by InitLevelBasedSounds
-    // (levelsounds.cpp).
-    void setSound(SoundVoice *p) { sound_ = p; }
+    // One tick; its moving loop starts, follows it and stops through events.
+    void tick(PlayEvents &events);
 
     // Where it stands: u, live height, v.
     float posU() const   { return posU_; }
@@ -46,9 +36,6 @@ public:
     int    state() const      { return state_; }
     bool   atTop() const      { return atTop_ != 0; }
     double phaseStart() const { return phaseStart_; }
-
-    // Draws the lift, in the opaque pass.
-    void draw(draw::Frame &f, draw::Pass pass) const;
 
     ~LiftObject();
 
@@ -72,7 +59,6 @@ private:
     LevelMap               *map_;    // World::map()
     signed char         baseHeight_;
     signed char         topHeight_;
-    SoundVoice *sound_;       // the moving loop; may be NULL
     unsigned char       slot_;        // its index in World's lift list
     int                 atTop_;       // 1: parked at the top
     signed char         state_;       // 0 parked, 1 rising, 2 falling

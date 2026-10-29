@@ -1,5 +1,5 @@
 /* The particle effects' own random numbers.  They are kept apart from the
- * game's rand() (crtrand.h) so that loading or cloning an effect cannot move
+ * rules' (World::random(), crtrand.h) so that loading or cloning an effect cannot move
  * the simulation. */
 #pragma once
 #include <random>

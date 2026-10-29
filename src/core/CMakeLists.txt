@@ -1,5 +1,6 @@
 add_library(core OBJECT
     gameboot.cpp
+    entitydebug.cpp
     gamedebug.cpp
     gametick.cpp
     quitforward.cpp

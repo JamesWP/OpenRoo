@@ -18,7 +18,6 @@
 #include "levelsounds.h"
 #include "fixedsounds.h"
 #include "levelscore.h"
-#include "soundobj.h"
 #include "tilequery.h"
 #include "bridgeobject.h"
 #include "foe.h"
@@ -70,7 +69,6 @@ void Play_SpawnTimedFoes(Game *self)
                 foe.setDropContents(7);
             else
                 foe.setDropContents(1);
-            Sim_AcquireFoeSounds(self, foe);
         }
         // The last-spawn time, from the clock.
         E->lastSpawn = self->world()->now();
@@ -94,12 +92,12 @@ void Play_DropPlayerBomb(Game *self)
         }
         if (spawn) {
             if (offset)
-                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), self->bombSounds(), (unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
+                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), (unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
                                     (unsigned char)((unsigned char)pl->cellV() - (unsigned char)pl->stepV()),
                                     (unsigned char)((unsigned char)pl->heightCell() - (unsigned char)pl->field141()),
                                     pl->facing());
             else
-                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), self->bombSounds(), (unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
+                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), (unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
                                     pl->facing());
             pl->setBombDropRequest(0);
         }
@@ -116,7 +114,7 @@ void Play_PlayerSwitch(Game *self)
         g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
         trigger_switch_tile(br, self->world()->map()->tile(pl->cellU(), pl->cellV()));
         br->arm(self->world()->now());
-        br->playArmSound();
+        br->playArmSound(*self->soundEvents());
         Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(), br->phase(), sw);
         pl->setSwitchSlot(0xff);
     }
@@ -156,13 +154,12 @@ void Play_TickFoes(Game *self)
         }
         {
             PROF_SCOPE("step");
-            foe.step(tu, tv);
+            foe.step(tu, tv, *self->soundEvents());
         }
-        foe.debugDraw((unsigned)i);
-        foe.dropBomb(self->world()->entityContext(), self->world()->bombs(), self->bombSounds());
+        foe.dropBomb(self->world()->entityContext(), self->world()->bombs());
         foe.checkPlayerContact(pl->moveStateRef(), pl->posU(), pl->posY(), pl->posV());
         if (foe.finishDespawn(self->world()->map())) {
-            Foe::remove(self->world()->entityContext(), foes, i);  // the next moves into i
+            Foe::remove(foes, i, *self->soundEvents());  // the next moves into i
             self->session()->setFoesKilled((unsigned char)(self->session()->foesKilled() + 1));
         } else {
             ++i;
@@ -196,19 +193,15 @@ void Play_CheckLevelEnd(Game *self)
     if (pl->moveState() != 3) {
         int t = self->world()->timeLimit() * 1000;
         if (t - (int)self->world()->timeElapsed() <= 0) {
-            void *snd = self->audio()->fixedSounds()->timeOut;
             self->world()->setTimeElapsed((unsigned int)t);
             pl->setMoveState(3);
-            if (snd != NULL)
-                ((audiodev::Buffer *)snd)->play(false);
+            self->soundEvents()->soundPlay({SoundSource::Level, 0, Sfx::TimeOut});
         }
     }
     if (pl->gemsCollected() >= self->world()->gemsRequired()) {
         if (self->gemsGoalReached() == 0 && self->state() != GameState::LevelComplete) {
             int r = (int)(long long)(self->world()->now());
-            void *snd = self->audio()->fixedSounds()->crystalBank[r % 3];
-            if (snd != NULL)
-                ((audiodev::Buffer *)snd)->play(false);
+            self->soundEvents()->soundPlay({SoundSource::Level, 0, Sfx::GemsDone, (unsigned char)(r % 3)});
             self->setGemsGoalReached(1);
         }
         self->world()->map()->tile((signed char)pl->markerCellU(), (signed char)pl->markerCellV())->setBusy(1);
@@ -217,8 +210,7 @@ void Play_CheckLevelEnd(Game *self)
             pl->moveState() == 0) {
             pl->setHeld(1);
             if ((unsigned int)pl->moveDir() == 0) {
-                if (self->audio()->fixedSounds()->levelCompleted != NULL)
-                    (self->audio()->fixedSounds()->levelCompleted)->play(false);
+                self->soundEvents()->soundPlay({SoundSource::Level, 0, Sfx::LevelComplete});
                 if ((unsigned int)self->session()->levelIndex() + 1 == (unsigned int)self->session()->levelCount()) {
                     self->setState(GameState::GameOver);
                     if (self->config()->musicOn() != 0)

@@ -9,6 +9,8 @@
  * planning its moves -- takes a const World &.
  */
 #pragma once
+#include "crtrand.h"
+#include "playevents.h"
 
 #include <array>
 #include "levelmap.h"
@@ -25,9 +27,8 @@
 #include "platformobject.h"
 #include "bridgeobject.h"
 #include "fallingtile.h"
-#include "drawfwd.h"
+#include "effects.h"
 
-class SoundLibrary;
 
 class World {
 public:
@@ -81,6 +82,8 @@ public:
     /* The game clock in ms.  Objects keep a pointer to it and re-read it
      * every tick. */
     double         now() const       { return clock_; }
+    /* The rules' random numbers: the level's setup and the random pickups draw from them. */
+    CrtRand       &random()          { return random_; }
     double        *clock()           { return &clock_; }
     /* Advances the clock dt ms, or sets it. */
     void           advanceClock(double dt) { clock_ += dt; }
@@ -118,32 +121,28 @@ public:
     /* What the entities are given at spawn, and the tables they fill. */
     EntityContext entityContext()
     {
-        return { &clock_, &tickStep_, &map_, sound_, &switchCells_,
-                 &switchMax_, levelName_, &crystalsInLevel_, &deaths_ };
+        return { &clock_, &tickStep_, &map_, &switchCells_,
+                 &switchMax_, levelName_, &crystalsInLevel_ };
     }
 
-    /* The sound library the entities acquire their sounds from, set by Game
-     * when it is built (it stays Game's). */
-    void setSoundLibrary(SoundLibrary *s) { sound_ = s; }
-
     /* Removes every object from the level and resets the switch counts. */
-    void clearObjects();
+    void clearObjects(PlayEvents &events);
     /* Ticks every object of one kind, in list order. */
-    void tickLifts();
-    void tickPlatforms();
-    void tickFallings();
-    void tickBridges();
-    /* Ticks and debug-draws each bomb, removing those that asked to be. */
-    void tickBombs();
+    void tickLifts(PlayEvents &events);
+    void tickPlatforms(PlayEvents &events);
+    void tickFallings(PlayEvents &events);
+    void tickBridges(PlayEvents &events);
+    /* Ticks each bomb, removing those that asked to be. */
+    void tickBombs(PlayEvents &events);
+    /* Notes the effects this tick started (pickups, a tile falling) and the
+     * player's place on its path, and drops what can no longer be seen.  Once
+     * a tick: a tick that does not move the clock records nothing. */
+    void recordEffects();
 
-    /* Draws every object in the level for one pass of the frame, each as it
-     * draws itself, then the bursts they started.  deathsDrawn is deaths()
-     * as it was at the last frame drawn: newer deaths fire their effects. */
-    void draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const;
-
-    /* The foes and bombs that have started dying, counted from the start.
-     * Never reset, so a renderer can compare it across levels. */
-    unsigned deaths() const { return deaths_; }
+    /* The one-shot effects still to be seen, oldest first, and the player's
+     * recent path (effects.h). */
+    const std::vector<EffectStart> &effects() const    { return effects_; }
+    const std::deque<PathSample>   &playerPath() const { return playerPath_; }
 
 private:
     std::array<TimedSpawner, 256> timedSpawners_{};
@@ -151,11 +150,11 @@ private:
     LevelCensus   census_;
     unsigned char switchMax_{};
     unsigned short crystalsInLevel_{};
-    unsigned      deaths_{};
     ExtraObjects  extraObjects_;
     SwitchCells   switchCells_;
     double        clock_{};
     TickStep      tickStep_;
+    CrtRand       random_;  // the rules' random numbers
     /* As long as a level-name table entry. */
     char          levelName_[0x100]{};
     EntityList<BridgeObject>   bridges_;
@@ -163,6 +162,10 @@ private:
     EntityList<LiftObject>     lifts_;
     EntityList<FallingTile>    fallings_;
     EntityList<Bomb>           bombs_;
+    std::vector<EffectStart>   effects_;
+    std::deque<PathSample>     playerPath_;
+    unsigned                   effectSeed_{};
+    double                     effectsAt_ = -1.0;  // the clock recordEffects last ran at
     EntityList<Foe>            foes_;
     Player        player_;
     /* The map: header, grid and snapshot grid.  Its header holds the time limit (GameTick times the
@@ -170,6 +173,4 @@ private:
      * pays the unused seconds) and the gem quota (CalculateLevelScore
      * pays 5 a gem up to it and 10 per gem beyond). */
     LevelMap      map_;
-    /* The sound library the entities acquire from; Game sets it. */
-    SoundLibrary *sound_{};
 };

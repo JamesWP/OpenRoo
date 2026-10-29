@@ -11,17 +11,13 @@
 
 #include "audiodev.h"
 
-/* Resets the old buffer if there is one, then loads a new one from "<game
- * dir>\waves\<name><suffix>.wav".  The caller stores the result back into the
- * slot. */
-static audiodev::Buffer *bank(Game *game, SoundVoice *cur,
-                                const char *fmt, const char *suffix)
+/* A level-wide sound from "<game dir>\\waves\\<name><suffix>.wav". */
+static void define(Game *game, SoundSource source, Sfx sfx, unsigned char variant,
+                   const char *fmt, const char *suffix, bool positional = false)
 {
     char path[256];
-    if (cur != NULL)
-        static_cast<audiodev::Buffer *>(cur)->reset();
-    sprintf(path, fmt, game->gameDir(), suffix);
-    return game->audio()->soundManager()->acquireStatic(path, 0);
+    snprintf(path, sizeof(path), fmt, game->gameDir(), suffix);
+    game->soundEvents()->define(source, sfx, variant, path, positional, 1);
 }
 
   void  
@@ -56,28 +52,28 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     // rest are the player's pickup sounds.
     for (unsigned int i = 0; i < 3; ++i) {
         char suffix[2] = { (char)('A' + i), 0 };
-        Player *pl = self->world()->player();
-        FixedSounds *fs = self->audio()->fixedSounds();
-        fs->crystalBank[i] = bank(self, fs->crystalBank[i], "%s\\waves\\add02%s.wav", suffix);
-#define PBANK(k, fmt) pl->setPickupSound(Player::k, i, bank(self, pl->pickupSound(Player::k, i), fmt, suffix))
-        PBANK(SND_15E, "%s\\waves\\add08%s.wav");
-        PBANK(SND_16A, "%s\\waves\\add06%s.wav");
-        PBANK(SND_176, "%s\\waves\\add07%s.wav");
-        PBANK(SND_182, "%s\\waves\\add03%s.wav");
-        PBANK(SND_18E, "%s\\waves\\add05%s.wav");
-        PBANK(SND_1A6, "%s\\waves\\add04%s.wav");
-        PBANK(SND_1B2, "%s\\waves\\add10%s.wav");
-        PBANK(SND_1BE, "%s\\waves\\add09%s.wav");
-        PBANK(SND_19A, "%s\\waves\\add01%s.wav");
-#undef PBANK
+        define(self, SoundSource::Level, Sfx::GemsDone, (unsigned char)i, "%s\\waves\\add02%s.wav",
+               suffix);
+        static const struct { Sfx sfx; const char *fmt; } pickups[] = {
+            { Sfx::PickupFreeze,   "%s\\waves\\add08%s.wav" },
+            { Sfx::PickupLife,     "%s\\waves\\add06%s.wav" },
+            { Sfx::PickupTime,     "%s\\waves\\add07%s.wav" },
+            { Sfx::PickupFast,     "%s\\waves\\add03%s.wav" },
+            { Sfx::PickupSlow,     "%s\\waves\\add05%s.wav" },
+            { Sfx::PickupBombs,    "%s\\waves\\add04%s.wav" },
+            { Sfx::PickupReversed, "%s\\waves\\add10%s.wav" },
+            { Sfx::PickupShield,   "%s\\waves\\add09%s.wav" },
+            { Sfx::PickupGlider,   "%s\\waves\\add01%s.wav" },
+        };
+        for (const auto &p : pickups)
+            define(self, SoundSource::Player, p.sfx, (unsigned char)i, p.fmt, suffix);
     }
 
     ScriptPlayer *sp = self->scriptPlayer();
     self->world()->extraObjects()->setSoundLibrary(sm);
     sp->setSoundManager(sm);
 
-    snprintf(path, sizeof(path), "%s\134waves\134TimeOut.wav", self->gameDir());
-    self->audio()->fixedSounds()->timeOut = sm->acquireStatic(path, 0);
+    define(self, SoundSource::Level, Sfx::TimeOut, 0, "%s\134waves\134TimeOut%s.wav", "");
     snprintf(path, sizeof(path), "%s\134waves\134LastSeconds.wav", self->gameDir());
     self->audio()->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), "%s\134waves\134Count.wav", self->gameDir());
@@ -86,10 +82,8 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     self->audio()->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);
     snprintf(path, sizeof(path), "%s\134waves\134Switch.wav", self->gameDir());
     self->audio()->fixedSounds()->switchClick = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), "%s\134waves\134LevelCompleted.wav", self->gameDir());
-    self->audio()->fixedSounds()->levelCompleted = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), "%s\134waves\134splat.wav", self->gameDir());
-    self->world()->player()->setSoundA7(sm->acquireStatic(path, 1));
+    define(self, SoundSource::Level, Sfx::LevelComplete, 0, "%s\134waves\134LevelCompleted%s.wav", "");
+    define(self, SoundSource::Player, Sfx::Splat, 0, "%s\134waves\134splat%s.wav", "", true);
     sm->setup(self->config()->sound3D());
 
     self->audio()->fixedSounds()->loaded = 1;

@@ -19,14 +19,11 @@
 #include <string.h>
 
 #include "bridgeobject.h"
-#include "dbg.h"
 #include "switchcells.h"
 #include <algorithm>
-#include "soundvoice.h"
 #include "levelmap.h"
 #include "tile.h"
 #include "logger.h"
-#include "themedraw.h"
 
 /* The float nearest 0.01; widened where it is multiplied. */
 static const float K_MS_TO_TILE = 0.01f;
@@ -169,8 +166,6 @@ void BridgeObject::spawn(const EntityContext &ctx, EntityList<BridgeObject> &bri
     tile->setBridgeAxis((unsigned char)axis);
     tile->setField1f6(0);
 
-    obj->sound_ = 0;
-
     if (s_diag_place)
         g_logger.write("bridgeobject:   bridge done -- +0x38=%u +0x45=%u +0x57=%d "
                   "+0x5d=%u +0x5e=%u\n",
@@ -178,20 +173,10 @@ void BridgeObject::spawn(const EntityContext &ctx, EntityList<BridgeObject> &bri
                   (int)obj->step_, (unsigned)obj->endU_, (unsigned)obj->endV_);
 }
 
-void BridgeObject::releaseSounds(SoundLibrary *sm)
+void BridgeObject::playArmSound(PlayEvents &events)
 {
-    if (sm->active() && sound_ != 0)
-        sm->releaseVoice(sound_, true);
-    sound_ = 0;
-}
-
-void BridgeObject::playArmSound()
-{
-    if (sound_ != 0) {
-        sound_->setPosition((float)(int)cellU_, (float)(int)heightCell_,
-                              -(float)(int)cellV_, 1);
-        sound_->play(true);
-    }
+    events.soundStart({SoundSource::Bridge, id(), Sfx::BridgeMoving}, (float)(int)cellU_,
+                      (float)(int)heightCell_, -(float)(int)cellV_);
 }
 
 /* DETERMINISM: truncates toward zero, keeping the low byte. */
@@ -205,8 +190,9 @@ static int s_logged_first   = 0;
 static int s_logged_stamp   = 0;
 static int s_logged_unstamp = 0;
 
-void BridgeObject::tick()
+void BridgeObject::tick(PlayEvents &events)
 {
+    const SoundKey moving{SoundSource::Bridge, id(), Sfx::BridgeMoving};
     unsigned char axis;
     double elapsed;
     double span100;
@@ -243,8 +229,7 @@ void BridgeObject::tick()
         if (!((double)span100 > elapsed)) {
             //             // Snaps to (int)(step * span) + rest, never the live coordinate:
             //             // one cell index, then both floats.
-            if (sound_ != 0)
-                sound_->stop();
+            events.soundStop(moving);
             armed_ = 0;
             phase_ = 1;
 
@@ -261,10 +246,7 @@ void BridgeObject::tick()
         }
 
         //         // The sound is placed from last frame's cell, before the move.
-        if (sound_ != 0)
-            sound_->setPosition((float)(int)cellU_,
-                                  (float)(int)heightCell_,
-                                  -(float)(int)cellV_, 1);
+        events.soundMove(moving, (float)(int)cellU_, (float)(int)heightCell_, -(float)(int)cellV_);
 
         //         // DETERMINISM: double, associated as written; a one-ulp change
         //         // moves a whole cell.
@@ -309,8 +291,7 @@ void BridgeObject::tick()
 
     if (!((double)span100 > elapsed)) {
         //             // Snaps back to rest.
-        if (sound_ != 0)
-            sound_->stop();
+        events.soundStop(moving);
         armed_ = 0;
         phase_ = 0;
 
@@ -324,10 +305,7 @@ void BridgeObject::tick()
         return;
     }
 
-    if (sound_ != 0)
-        sound_->setPosition((float)(int)cellU_,
-                              (float)(int)heightCell_,
-                              -(float)(int)cellV_, 1);
+    events.soundMove(moving, (float)(int)cellU_, (float)(int)heightCell_, -(float)(int)cellV_);
 
     //         // DETERMINISM: the destination first, then the travel subtracted;
     //         // not re-associated.
@@ -367,119 +345,3 @@ void BridgeObject::tick()
     }
 }
 
-/* The deck: one quad, a unit wide, from the anchor to the live end, z
- * negated.  Its texture repeats every four units along it and scrolls along
- * it over time, a span's length a second. */
-bool BridgeObject::deck(draw::FieldVertex v[4], double t) const
-{
-    if (armed_ == 0 && phase_ == 0)
-        return false;
-
-    const float ax = restU_, ay = restY_, az = -restV_;
-    const float dx = posU_ - ax, dy = posY_ - ay, dz = -posV_ - az;
-    const float len = sqrtf(dx * dx + dy * dy + dz * dz);
-    const float tiles = len * 0.25f;
-    const float n = span_ != 0 ? (float)span_ : 1.0f;
-    const float scroll = (float)fmod(t * 0.001 / n, 1.0) * n;
-
-    // The deck's two ends along its axis, a and b, and the texture's v at each.
-    const bool fwd = step_ > 0;
-    float a, b;
-    if ((signed char)axis_ == 1) {
-        const float x0 = ax - 0.5f;
-        a = fwd ? x0 + len : x0;
-        b = fwd ? x0 : x0 - len;
-    } else {
-        const float z1 = az + 0.5f;
-        a = fwd ? z1 - len : z1;
-        b = fwd ? z1 : z1 + len;
-    }
-    const float va = fwd ? tiles - scroll : scroll + tiles;
-    const float vb = fwd ? -scroll : scroll;
-
-    const uint32_t white = 0xffffffff;
-    if ((signed char)axis_ == 1) {
-        const float lo = az - 0.5f, hi = az + 0.5f;
-        v[0] = { a, ay, lo, white, 0.0f, va };
-        v[1] = { b, ay, lo, white, 0.0f, vb };
-        v[2] = { a, ay, hi, white, 1.0f, va };
-        v[3] = { b, ay, hi, white, 1.0f, vb };
-    } else {
-        const float lo = ax - 0.5f, hi = ax + 0.5f;
-        v[0] = { hi, ay, a, white, 1.0f, va };
-        v[1] = { lo, ay, a, white, 0.0f, va };
-        v[2] = { hi, ay, b, white, 1.0f, vb };
-        v[3] = { lo, ay, b, white, 0.0f, vb };
-    }
-    return true;
-}
-
-void BridgeObject::draw(draw::Frame &f, draw::Pass pass) const
-{
-    draw::FieldVertex q[1][4];
-    if (pass != draw::Pass::Effects || !deck(q[0], f.now))
-        return;
-    const draw::Instance in;
-    draw::objects(f, THEME_OBJ_BRIDGE, &in, 1, q);
-}
-
-
-static void deck_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
-{
-    // As the map draws one: extended deck inside the span's outline.
-    dl->AddRectFilled(a, ImVec2(a.x + (b.x - a.x) * 0.6f, b.y), IM_COL32(190, 140, 80, 255));
-    dl->AddRect(a, b, IM_COL32(170, 110, 50, 255), 0.0f, 0, 2.0f);
-}
-
-/* Bridges are objects, not tiles: the builder clears their cells.  The whole
- * span is outlined; the deck fills as far as it has extended. */
-void BridgeObject::debugDraw(const SwitchCells &sc_) const
-{
-    if (!dbg::active())
-        return;
-    dbg::MapLayer layer;
-    if (!layer)
-        return;
-    const dbg::MapView &m = *layer;
-    ImDrawList *dl = m.dl;
-    const BridgeExtent b = extent();
-    const bool alongU = b.axis == 1;
-    const float end  = (alongU ? b.restU : b.restV) + b.step * b.span;
-    const float rest = alongU ? b.restU : b.restV;
-    const float reach = m.asLoaded ? rest : (alongU ? b.reachU : b.reachV);
-    // The cross-axis cell is the anchor's.
-    const float cross = alongU ? b.restV : b.restU;
-    auto rect = [&](float a0, float a1, ImVec2 *p0, ImVec2 *p1) {
-        const float lo = std::min(a0, a1), hi = std::max(a0, a1);
-        *p0 = alongU ? m.corner(lo, cross) : m.corner(cross, lo);
-        *p1 = alongU ? m.corner(hi, cross + 1) : m.corner(cross + 1, hi);
-    };
-    ImVec2 p0, p1;
-    if (reach != rest) {
-        rect(rest, reach, &p0, &p1);
-        dl->AddRectFilled(p0, p1, IM_COL32(190, 140, 80, 255));
-    }
-    rect(rest, end, &p0, &p1);
-    dl->AddRect(p0, p1, b.armed ? IM_COL32(255, 220, 60, 255) : IM_COL32(170, 110, 50, 255),
-                0.0f, 0, std::max(1.5f, m.cell * 0.1f));
-
-    // A line from each of its switches to the middle of the span: all of
-    // them, or those of a hovered switch or bridge.
-    const ImVec2 mid((p0.x + p1.x) * 0.5f, (p0.y + p1.y) * 0.5f);
-    const SwitchCells *sc = &sc_;
-    const int hAlong = alongU ? m.hoverU : m.hoverV, hAcross = alongU ? m.hoverV : m.hoverU;
-    const bool onSpan = hAcross == (int)cross && hAlong >= std::min(rest, end) && hAlong < std::max(rest, end);
-    bool show = m.links || onSpan;
-    for (unsigned k = 0; k < sc->count(b.slot); k++)
-        show = show || m.hovered(sc->cellU(b.slot, k), sc->cellV(b.slot, k));
-    for (unsigned k = 0; show && k < sc->count(b.slot); k++)
-        dl->AddLine(m.centre((float)sc->cellU(b.slot, k), (float)sc->cellV(b.slot, k)), mid,
-                    IM_COL32(230, 40, 40, 200), std::max(1.0f, m.cell * 0.08f));
-
-    if (onSpan) {
-        m.separator();
-        m.tip("bridge on switch %d, along %s, %d cells", b.slot + 1, alongU ? "U" : "V", b.span);
-        m.tip("%s, %s next", b.armed ? "moving" : "still", b.phase ? "retracts" : "extends");
-    }
-    m.legend(0, "bridge", deck_swatch);
-}

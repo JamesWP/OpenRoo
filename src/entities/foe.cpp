@@ -10,7 +10,6 @@
 
 #include "foe.h"
 #include "foetype.h"
-#include "dbg.h"
 #include "tilenames.h"
 #include "levelmap.h"
 #include "switchcells.h"
@@ -18,12 +17,9 @@
 #include "movableentity.h"
 #include "entitymath.h"
 #include "foepath.h"
-#include "soundvoice.h"
 #include "bomb.h"
 #include "tilequery.h"
 #include "logger.h"
-#include "themedraw.h"
-
 
 /* KAROO_SPAWN_DIAG, KAROO_REMOVE_DIAG and
  * KAROO_FOESTEP_DIAG log periodic counts and first-occurrence events for the
@@ -51,7 +47,6 @@ Tile *Foe::tile(int u, int v) const
 
 Foe::Foe()
 {
-    zeroSoundSlots();
     dyingStarted_         = 0;
     removeRequested_ = 0;
     dying_         = 0;
@@ -77,17 +72,6 @@ Foe::Foe()
     gliding_         = 0;
     onSwitch_        = 0;
     onLift_         = 0;
-    pool_9f_         = 0;
-    sound_ab_        = 0;
-    sound_af_        = 0;
-    sound_b3_        = 0;
-    sound_b7_        = 0;
-    sound_bb_        = 0;
-    sound_bf_        = 0;
-    sound_c3_        = 0;
-    sound_c7_        = 0;
-    sound_cb_        = 0;
-    sound_cf_        = 0;
     anim_         = 0;
     idleStarted_         = 0;
     pickedUp_         = 0;
@@ -217,6 +201,8 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
     p->lastActive_ = (double)(int)(n * 1500) + *ctx.clock;
 
     p->kind_ = (unsigned char)kind;
+    p->soundSource_ = kind == (unsigned char)FoeKind::Catcher ? SoundSource::Catcher
+                                                                : SoundSource::Thrower;
     if (kind == (unsigned char)FoeKind::Catcher) {
         p->stepDuration_ = 500.0;
         if (s_diag_spawn && !s_logged_kind2) {
@@ -232,7 +218,6 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
     }
 
     p->map_ = ctx.map;
-    p->deathCounter_ = ctx.deaths;
     p->type_     = type;
 
     if (type > FOE_FACING_BASE) {
@@ -276,22 +261,8 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
 
 static unsigned long s_removals       = 0;
 static int           s_logged_remove  = 0;
-static int           s_logged_release = 0;
 
-static void release(SoundLibrary *sm, void *obj, SoundVoice *buf)
-{
-    if (buf == 0)
-        return;
-
-    if (s_diag_remove && !s_logged_release) {
-        s_logged_release = 1;
-        g_logger.write("foe: first sound release -- obj=%p buf=%p\n", obj, (void *)buf);
-    }
-
-    sm->releaseVoice(buf, true);
-}
-
-void Foe::remove(const EntityContext &ctx, EntityList<Foe> &foes, std::size_t i)
+void Foe::remove(EntityList<Foe> &foes, std::size_t i, PlayEvents &events)
 {
     diag_init();
 
@@ -306,23 +277,15 @@ void Foe::remove(const EntityContext &ctx, EntityList<Foe> &foes, std::size_t i)
             g_logger.write("foe: %lu removals\n", s_removals);
     }
 
-    foes[i].releaseSounds(ctx.sound);
+    foes[i].despawn(events);
     foes.erase(i);
 }
 
-void Foe::releaseSounds(SoundLibrary *sm)
+void Foe::despawn(PlayEvents &events) const
 {
-    if (!sm->active())
-        return;
-    if (sound_c3_ != 0)
-        sound_c3_->stop();
-    // In a fixed order; the pools as well as the single voices.
-    SoundVoice **voices[] = { &pool_9f_, &sound_b3_, &sound_c7_, &sound_b7_, &sound_bb_, &sound_c3_,
-                              &sound_ab_, &sound_af_, &sound_cb_, &sound_cf_, &sound_a7_ };
-    for (SoundVoice **v : voices) {
-        release(sm, this, *v);
-        *v = 0;
-    }
+    events.soundStop(sound(Sfx::Fall));
+    events.soundStop(sound(Sfx::Slide));
+    events.soundStop(sound(Sfx::Ice));
 }
 
 static inline int ftol_i(double v)
@@ -345,7 +308,7 @@ static int           s_logged_turn    = 0;
 static int           s_logged_repost  = 0;
 static int           s_logged_frozen  = 0;
 
-void Foe::step(unsigned char playerU, unsigned char playerV)
+void Foe::step(unsigned char playerU, unsigned char playerV, PlayEvents &events)
 {
     diag_init();
 
@@ -401,13 +364,8 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
                           (int)cellU_, (int)cellV_);
             }
 
-            if (pool_9f_ != 0) {
-                pool_9f_->setPosition((float)(int)cellU_,
-                                                  (float)(int)heightCell_,
-                                                  -(float)(int)cellV_,
-                                                  1);
-                pool_9f_->play(0);
-            }
+            events.soundPlay(sound(Sfx::Crystal), (float)(int)cellU_, (float)(int)heightCell_,
+                             -(float)(int)cellV_);
             pickedUp_ = 1;
         }
     }
@@ -421,7 +379,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
         }
     }
     if (moveDir_ != 0) {
-        updateMovement();
+        updateMovement(events);
         return;
     }
 
@@ -437,7 +395,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
         // only when the chase above found no move.
         targetU_ = playerU;
         targetV_ = playerV;
-        updateMovement();
+        updateMovement(events);
         return;
     }
 
@@ -487,7 +445,7 @@ void Foe::step(unsigned char playerU, unsigned char playerV)
         chase(targetU_, targetV_, chaseSpeed_);
     }
 
-    updateMovement();
+    updateMovement(events);
 }
 
 static inline unsigned ftol32(double v)
@@ -680,8 +638,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
     *pv = tv;
 }
 
-void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs,
-                   const BombSounds &sounds)
+void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs)
 {
     if (bombDropRequest_ == 0 || type_ == FOE_SWITCH_RUNNER)
         return;
@@ -696,12 +653,12 @@ void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs,
     if (!spawn)
         return;
     if (offset)
-        Bomb::spawn(ctx, bombs, sounds, (unsigned char)((unsigned char)cellU_ - (unsigned char)stepU_),
+        Bomb::spawn(ctx, bombs, (unsigned char)((unsigned char)cellU_ - (unsigned char)stepU_),
                           (unsigned char)((unsigned char)cellV_ - (unsigned char)stepV_),
                           (unsigned char)((unsigned char)heightCell_ - (unsigned char)field_141),
                           facing_);
     else
-        Bomb::spawn(ctx, bombs, sounds, (unsigned char)cellU_, (unsigned char)cellV_,
+        Bomb::spawn(ctx, bombs, (unsigned char)cellU_, (unsigned char)cellV_,
                           (unsigned char)heightCell_, facing_);
     bombDropRequest_ = 0;
 }
@@ -740,83 +697,3 @@ bool Foe::finishDespawn(LevelMap *map)
     return true;
 }
 
-static void foe_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
-{
-    dl->AddCircleFilled(ImVec2((a.x + b.x) * 0.5f, (a.y + b.y) * 0.5f), (b.x - a.x) * 0.35f,
-                        IM_COL32(230, 50, 50, 255));
-}
-
-void Foe::debugDraw(unsigned n) const
-{
-    if (!dbg::active())
-        return;
-    if (pathfinder())  // its route goes under it
-        pathfinder()->debugDraw(posU(), posV());
-    dbg::MapLayer layer;
-    if (!layer)
-        return;
-    const dbg::MapView &m = *layer;
-    if (!m.asLoaded) {
-        const ImVec2 p = m.centre(posU(), posV());
-        m.dl->AddCircleFilled(p, m.cell * 0.35f,
-                              dyingStarted() ? IM_COL32(120, 60, 60, 255) : IM_COL32(230, 50, 50, 255));
-        // A tick for its facing, as the player's.
-        const int f = facing();
-        if (f >= DIR_MIN && f <= DIR_MAX)
-            m.dl->AddLine(p, ImVec2(p.x + DIR_DU[f] * m.cell * 0.5f, p.y + DIR_DV[f] * m.cell * 0.5f),
-                          IM_COL32(0, 0, 0, 255), 2);
-        m.legend(2, "foe", foe_swatch);
-    }
-    if (m.hovered((uint8_t)cellU(), (uint8_t)cellV())) {
-        m.separator();
-        m.tip("foe #%u at U%u V%u H%u", n, (uint8_t)cellU(), (uint8_t)cellV(), (uint8_t)heightCell());
-        m.tip("kind %u, behaviour %u, facing %u%s", kind(), type(), facing(), moveDir() ? ", moving" : "");
-        const char *drops = Tile_ContentsName(dropContents());
-        m.tip("home U%u V%u H%u, drops %s", homeU(), homeV(), homeH(), drops ? drops : "nothing");
-        if (held())
-            m.tip("frozen");
-        if (dyingStarted())
-            m.tip("dying");
-    }
-}
-
-void Foe::draw(draw::Frame &f, draw::Pass pass, unsigned deathsDrawn) const
-{
-    // Kind 2 is a catcher, 3 a thrower; any other kind has no look.
-    if (!isCatcher() && !isThrower())
-        return;
-    const bool dying = dyingStarted_ != 0;
-    ThemeObjectType look = isCatcher() ? THEME_OBJ_FOE_CATCHER : THEME_OBJ_FOE_THROWER;
-    if (dying)
-        look = isCatcher() ? THEME_OBJ_FOE_CATCHER_DYING : THEME_OBJ_FOE_THROWER_DYING;
-    draw::Instance in = pose();
-    if (dying) {
-        in.conditions = draw::COND_DEAD;
-        in.animCode = 0;
-        in.animTime = 0.0f;
-    }
-
-    switch (pass) {
-    case draw::Pass::Opaque:
-        if (dying) {
-            const bool fire = deathNumber_ > deathsDrawn;
-            draw::fireEffects(f, look, fire);
-            if (fire)
-                draw::explode(f, look);
-        }
-        draw::objects(f, look, &in);
-        break;
-    case draw::Pass::Shadows:
-        if (!dying)
-            draw::shadows(f, look, &in);
-        break;
-    case draw::Pass::Particles:
-        if (f.opts.particles > 0)
-            draw::particles(f, look, &in);
-        if (f.opts.particles > 1 && pickedUp_ == CONTENTS_CRYSTAL)
-            draw::spawnBurst(f, THEME_OBJ_CRYSTAL_PICKUP, in.pos);
-        break;
-    default:
-        break;
-    }
-}

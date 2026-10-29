@@ -80,6 +80,7 @@ struct PlayerView : Mover {
 };
 
 struct FoeView : Mover {
+    unsigned id = 0;        // the world's, kept while it lives (entitylist.h)
     int  kind = 0;          // FoeKind: 2 catcher, 3 thrower
     int  type = 0;          // its behaviour (Foe::chooseTarget)
     bool held = false;      // frozen
@@ -150,6 +151,7 @@ struct BridgeView {
 };
 
 struct BombView : Mover {
+    unsigned id = 0;        // the world's, kept while it lives (entitylist.h)
     double droppedAt = 0;   // clock ms; it blows 2 s later
 };
 

@@ -1,13 +1,12 @@
-/* Every Generator and Environment virtual: the per-tick bookkeeping each
- * hands the device (the particles themselves are simulated and drawn from
- * their distributions there; see particletypes.h), Load, CopyFrom and the
+/* Every Generator and Environment virtual: the description each hands the
+ * device (the particles themselves are worked out and drawn from their
+ * distributions there; see particletypes.h), Load, CopyFrom and the
  * constructors. */
 
 #include <string.h>
 #include <stdint.h>
 #include "generators.h"
 #include "particletypes.h"
-#include "fxrand.h"
 #include "logger.h"
 #include <new>
 #include <math.h>
@@ -17,29 +16,6 @@
 #include <algorithm>
 #include <iterator>
 
-/* ─── Fading ─── */
-
-/* Fade step for this tick: accumulate, truncate toward zero, suppress when it
- * does not clear the threshold, then subtract what was consumed. */
-static uint32_t fade_step(float *accum, float rate, uint32_t threshold, float dt)
-{
-    *accum += dt * rate;
-    uint32_t step = (uint32_t)(long long)*accum;
-    if (step <= threshold)
-        step = 0;
-    *accum -= (float)step;
-    return step;
-}
-
-/* The fade steps of every tick since the last take, which the device applies
- * as one (it stops at the target either way). */
-static void take_fade(ParticleField &out, uint32_t rgb, float *pending)
-{
-    out.fadeRGB = rgb;
-    out.fadeStep = std::min(*pending, 255.0f);
-    *pending = 0.0f;
-}
-
 static Vec3 vec3_of(const float v[3])
 {
     return { v[0], v[1], v[2] };
@@ -47,23 +23,16 @@ static Vec3 vec3_of(const float v[3])
 
 /* ─── The environments ─── */
 
-/* The bases: a generator that emits nothing, a field that does nothing. */
-void Generator::takeEmit(ParticleEmit &out)
-{
-    out.count = 0;
-}
-
-void Environment::takeField(ParticleField &out)
+/* The base: a field that does nothing.
+ *
+ * The original faded in whole steps once more than the threshold was due;
+ * it came to the same rate, which is what the device is given. */
+void Environment::describe(ParticleField &out) const
 {
     out.kind = ParticleFieldKind::None;
 }
 
-void GravityEnvironment::tick(float dt)
-{
-    flFadePending_ += (float)fade_step(&flFadeAccum_, flFadeRate_, dwFadeThreshold_, dt);
-}
-
-void GravityEnvironment::takeField(ParticleField &out)
+void GravityEnvironment::describe(ParticleField &out) const
 {
     out.kind = ParticleFieldKind::Gravity;
     out.accel = vec3_of(flGravity_);
@@ -71,54 +40,26 @@ void GravityEnvironment::takeField(ParticleField &out)
         out.clip[a] = dwClipEnable_[a] != 0;
     out.clipMin = vec3_of(flClipMin_);
     out.clipMax = vec3_of(flClipMax_);
-    take_fade(out, dwTargetRGB_, &flFadePending_);
+    out.fadeRGB = dwTargetRGB_;
+    out.fadeRate = flFadeRate_;
 }
 
-void MagnetEnvironment::tick(float dt)
-{
-    flFadePending_ += (float)fade_step(&flFadeAccum_, flFadeRate_, dwFadeThreshold_, dt);
-}
-
-void MagnetEnvironment::takeField(ParticleField &out)
+void MagnetEnvironment::describe(ParticleField &out) const
 {
     out.kind = ParticleFieldKind::Magnet;
     out.centre = vec3_of(flCentre_);
     out.force = vec3_of(flForce_);
     out.halfExtent = vec3_of(flHalfExtent_);
-    take_fade(out, dwTargetRGB_, &flFadePending_);
+    out.fadeRGB = dwTargetRGB_;
+    out.fadeRate = flFadeRate_;
 }
 
 /* ─── Emission ─── */
 
+EmitterGenerator::EmitterGenerator() = default;
 
-EmitterGenerator::EmitterGenerator()
-    : seed_((uint32_t)fx_index(0x7fffffff))
+void EmitterGenerator::describe(ParticleEmit &out) const
 {
-}
-
-/* dt's share of the rate: whole particles, with the fraction carried into
- * the next tick. */
-void EmitterGenerator::tick(float dt)
-{
-    if (dwEnabled_ == 0)
-        return;
-    float acc = dt * rate_ + accumulator_;
-    accumulator_ = acc;
-    if (!(acc >= 0.0f))
-        return;
-    int count = (int)acc;  // truncates toward zero
-    accumulator_ = acc - (float)count;
-    // More than the slots hold is lost anyway.
-    if (count > 0)
-        pendingCount_ = std::min<uint32_t>(pendingCount_ + (uint32_t)count, 1u << 20);
-}
-
-void EmitterGenerator::takeEmit(ParticleEmit &out)
-{
-    out.count = pendingCount_;
-    pendingCount_ = 0;
-    out.seed = seed_;
-    seed_ = seed_ * 1664525u + 1013904223u;
     out.dirMean = vec3_of(dirMean_);
     out.dirVariance = vec3_of(dirVariance_);
     out.speedMean = speedMean_;
@@ -188,8 +129,6 @@ void GravityEnvironment::gravitySetVector(const float dir[3], float mag)
     flGravity_[2] = q[2] * mag;
 }
 
-/* Leaves flFadeAccum as constructed — unlike MagnetEnvironment::Load, which
- * resets it every time. */
 int GravityEnvironment::load(std::istream &in)
 {
     float dir[3], mag, fade;
@@ -223,7 +162,6 @@ int MagnetEnvironment::load(std::istream &in)
     if (!read1(&range, 4, in))            return false;
     if (!read1(&flFadeRate_, 4, in))      return false;
     if (!read1(&dwFadeThreshold_, 4, in)) return false;
-    flFadeAccum_ = 0.0f;
     return true;
 }
 
@@ -334,7 +272,6 @@ int StdGenerator::copyFrom(const Generator *gsrc)
     if (!Generator::copyFrom(gsrc))
         return false;
     *this = *static_cast<const StdGenerator *>(gsrc);
-    pendingCount_ = 0;
     return true;
 }
 
@@ -490,7 +427,6 @@ int CylinderGenerator::copyFrom(const Generator *gsrc)
     if (!Generator::copyFrom(gsrc))
         return false;
     *this = *static_cast<const CylinderGenerator *>(gsrc);
-    pendingCount_ = 0;
     return true;
 }
 

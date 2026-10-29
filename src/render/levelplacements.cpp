@@ -281,9 +281,9 @@ void LevelPlacements::group(draw::Frame &f, Group g, ThemeObjectType look,
         draw::objects(f, look, in.data(), (unsigned)in.size());
 }
 
-/* The bombable blocks: whole, or while blasting their exploding look, which
- * fires its debris the first frame of each blast. */
-void LevelPlacements::bombables(draw::Frame &f, const LevelMap *map)
+/* The bombable blocks: whole, or while blasting their exploding look, its
+ * debris by the blast's age. */
+void LevelPlacements::bombables(draw::Frame &f, const LevelMap *map, double clock)
 {
     for (Cell &c : cells_[GROUP_BOMBABLE]) {
         const Tile *t = map->tile(c.u, c.v);
@@ -294,11 +294,8 @@ void LevelPlacements::bombables(draw::Frame &f, const LevelMap *map)
             draw::objects(f, THEME_OBJ_BOMBABLE, &in);
             continue;
         }
-        const bool fire = t->blastTime() != c.firedBlast;
-        c.firedBlast = t->blastTime();
-        draw::fireEffects(f, THEME_OBJ_BOMBABLE_EXPLODING, fire);
-        if (fire)
-            draw::explode(f, THEME_OBJ_BOMBABLE_EXPLODING);
+        in.effectAge = (float)((clock - t->blastTime()) * 0.001);
+        in.seed = c.v * 256u + c.u;
         draw::objects(f, THEME_OBJ_BOMBABLE_EXPLODING, &in);
     }
 }
@@ -322,7 +319,7 @@ void LevelPlacements::collectItems(const LevelMap *map)
         }
 }
 
-void LevelPlacements::draw(draw::Frame &f, draw::Pass pass, const LevelMap *map)
+void LevelPlacements::draw(draw::Frame &f, draw::Pass pass, const LevelMap *map, double clock)
 {
     switch (pass) {
     case draw::Pass::Opaque:
@@ -340,7 +337,7 @@ void LevelPlacements::draw(draw::Frame &f, draw::Pass pass, const LevelMap *map)
         group(f, GROUP_STAIRS,     THEME_OBJ_STAIRS,         map, false);
         group(f, GROUP_SLIDE,      THEME_OBJ_SLIDE,         map, false);
         group(f, GROUP_EXIT,       THEME_OBJ_EXIT,          map, false);
-        bombables(f, map);
+        bombables(f, map, clock);
         {
             PROF_SCOPE("items");
             collectItems(map);

@@ -250,8 +250,7 @@ Flow_HandleKeypress(Game *self, ProgableControl *progCtrl)
         self->frontEnd()->menu()->setLock(1);
         self->frontEnd()->menu()->pop();
         g_logger.logMessage(1, "level completed - continue");
-        if (self->audio()->fixedSounds()->levelCompleted != NULL)
-            (self->audio()->fixedSounds()->levelCompleted)->stop();
+        self->soundEvents()->soundStop({SoundSource::Level, 0, Sfx::LevelComplete});
         break;
     }
     case 0x22: case 0x32: case 0x3e: case 0x3f:
