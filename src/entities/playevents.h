@@ -6,11 +6,12 @@
  *
  * A sound is named by its source (which kind of object, and its id there,
  * entitylist.h) and which of the source's sounds it is.  A one-shot plays; a
- * loop starts, moves with its source, and stops.  When an entity is destroyed,
- * entityDestroyed() reports it, and its sounds are released. */
+ * loop starts, moves with its source, and stops.  Whatever is still playing
+ * of an entity's when it is removed, the rules stop: a loop left running
+ * would run on. */
 #pragma once
 
-enum class SoundSource : unsigned char { Lift, Platform, Bridge, Falling, Player, Foe, Bomb, Level };
+enum class SoundSource : unsigned char { Lift, Platform, Bridge, Falling, Player, Catcher, Thrower, Bomb, Level };
 
 /* Each source's sounds. */
 enum class Sfx : unsigned char {
@@ -77,9 +78,7 @@ public:
     /* A loop starts at (x, y, z), moves there, stops. */
     virtual void soundStart(const SoundKey &, float, float, float) {}
     virtual void soundMove(const SoundKey &, float, float, float) {}
+    /* Stops the key's sound, a loop or a one-shot still playing; a move or a
+     * stop of a sound not playing does nothing. */
     virtual void soundStop(const SoundKey &) {}
-    /* An entity was created, and may want its sounds loaded (a bomb, dropped mid-tick). */
-    virtual void entityCreated(SoundSource, unsigned) {}
-    /* An entity was destroyed; its sounds are released. */
-    virtual void entityDestroyed(SoundSource, unsigned) {}
 };

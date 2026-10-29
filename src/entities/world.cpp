@@ -19,23 +19,21 @@ const BridgeObject *World::bridge(unsigned char switchSlot) const
     return const_cast<World *>(this)->bridge(switchSlot);
 }
 
-/* Releases each object's sounds, then destroys them all, first to last. */
+/* Stops each object's loops, then destroys them all, first to last. */
 void World::clearObjects(PlayEvents &events)
 {
     effects_.clear();
     playerPath_.clear();
     effectsAt_ = -1.0;
     for (const LiftObject &lift : lifts_)
-        events.entityDestroyed(SoundSource::Lift, lift.id());
+        events.soundStop({SoundSource::Lift, lift.id(), Sfx::LiftMoving});
     lifts_.clear();
     for (const PlatformObject &platform : platforms_)
-        events.entityDestroyed(SoundSource::Platform, platform.id());
+        events.soundStop({SoundSource::Platform, platform.id(), Sfx::PlatformMoving});
     platforms_.clear();
-    for (const FallingTile &falling : fallings_)
-        events.entityDestroyed(SoundSource::Falling, falling.id());
     fallings_.clear();
     for (const BridgeObject &bridge : bridges_)
-        events.entityDestroyed(SoundSource::Bridge, bridge.id());
+        events.soundStop({SoundSource::Bridge, bridge.id(), Sfx::BridgeMoving});
     bridges_.clear();
 
     // The 256 switch counts.
@@ -46,7 +44,7 @@ void World::clearObjects(PlayEvents &events)
         foe.despawn(events);
     foes_.clear();
     for (const Bomb &bomb : bombs_)
-        events.entityDestroyed(SoundSource::Bomb, bomb.id());
+        events.soundStop(bomb.sound(Sfx::BombRoll));
     bombs_.clear();
 }
 

@@ -18,7 +18,6 @@
 #include "levelsounds.h"
 #include "fixedsounds.h"
 #include "levelscore.h"
-#include "soundobj.h"
 #include "tilequery.h"
 #include "bridgeobject.h"
 #include "foe.h"
@@ -70,7 +69,6 @@ void Play_SpawnTimedFoes(Game *self)
                 foe.setDropContents(7);
             else
                 foe.setDropContents(1);
-            Sim_AcquireFoeSounds(self, foe);
         }
         // The last-spawn time, from the clock.
         E->lastSpawn = self->world()->now();
@@ -94,12 +92,12 @@ void Play_DropPlayerBomb(Game *self)
         }
         if (spawn) {
             if (offset)
-                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), *self->soundEvents(), (unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
+                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), (unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
                                     (unsigned char)((unsigned char)pl->cellV() - (unsigned char)pl->stepV()),
                                     (unsigned char)((unsigned char)pl->heightCell() - (unsigned char)pl->field141()),
                                     pl->facing());
             else
-                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), *self->soundEvents(), (unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
+                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), (unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
                                     pl->facing());
             pl->setBombDropRequest(0);
         }
@@ -158,7 +156,7 @@ void Play_TickFoes(Game *self)
             PROF_SCOPE("step");
             foe.step(tu, tv, *self->soundEvents());
         }
-        foe.dropBomb(self->world()->entityContext(), self->world()->bombs(), *self->soundEvents());
+        foe.dropBomb(self->world()->entityContext(), self->world()->bombs());
         foe.checkPlayerContact(pl->moveStateRef(), pl->posU(), pl->posY(), pl->posV());
         if (foe.finishDespawn(self->world()->map())) {
             Foe::remove(foes, i, *self->soundEvents());  // the next moves into i

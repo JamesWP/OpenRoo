@@ -44,7 +44,6 @@ void Game::releaseAllSounds()
     SoundManager *sm = audio()->soundManager();
     FixedSounds *fixed = audio()->fixedSounds();
     if (audio()->soundCreated() != 0) {
-        Player *p = world()->player();
         audiodev::Buffer *statics1[] = {
             fixed->lastSeconds,
             fixed->count,   fixed->switchClick,
@@ -53,8 +52,7 @@ void Game::releaseAllSounds()
             if (s) sm->releaseStaticForOwner(s, 1);
         if (fixed->menuUpDown)
             sm->releasePooledForOwner(fixed->menuUpDown, 1);
-        soundEvents_.entityDestroyed(SoundSource::Player, p->id());
-        soundEvents_.entityDestroyed(SoundSource::Level, 0);
+        soundEvents_.clear();
     }
     fixed->loaded = 0;
 }

@@ -163,7 +163,7 @@ private:
      * is torn down before it. */
     World         world_;
     /* The rules' sounds, hooked to the sound (soundevents.h). */
-    SoundEvents   soundEvents_{&audio_};
+    SoundEvents   soundEvents_{audio_.soundManager()};
     /* The front end (frontend.h): the menu, the text entries, the save slots
      * and the high-score table.  Declared after World, so it is torn down
      * before it and the game's sound. */

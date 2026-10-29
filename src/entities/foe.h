@@ -81,7 +81,7 @@ public:
                       unsigned char escortU, unsigned char escortV,
                       unsigned char *pu, unsigned char *pv);
     // The foe's own bomb drop, when step() raised the hit flag.
-    void dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs, PlayEvents &events);
+    void dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs);
     // Touching the player kills it (*playerMoveState = 1); once the player is
     // down, a foe not held gets anim 0x28.
     void checkPlayerContact(unsigned char *playerMoveState,
