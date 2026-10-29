@@ -18,7 +18,6 @@
 
 #include "tile.h"
 #include "levelmap.h"
-#include "crtrand.h"
 #include "player.h"
 #include "entitymath.h"
 #include "foepath.h"
@@ -83,7 +82,7 @@ void Player::endEffect(int code)
         effectList_.erase(it);
 }
 
-unsigned int Player::updateTileEffects(PlayEvents &events)
+unsigned int Player::updateTileEffects(PlayEvents &events, CrtRand &random)
 {
 
     copy8(&tickStepCopy_, tickStep_);
@@ -155,10 +154,10 @@ unsigned int Player::updateTileEffects(PlayEvents &events)
         if (!onTile)
             goto expire;
 
-        //         // DETERMINISM: a random pickup rolls rand() here, inside the
-        //         // simulation: codes 5 to 13, written back to the tile.
+        // A random pickup rolls here, from the World's random numbers: codes
+        // 5 to 13, written back to the tile.
         if ((signed char)t->contents() == CONTENTS_RANDOM) {
-            int r = (int)crt_rand() * 8;
+            int r = (int)random.next() * 8;
             signed char rolled = (signed char)((char)(r / 0x7FFF) + 5);  // An 8-bit add.
 
             lastRoll_ = rolled;

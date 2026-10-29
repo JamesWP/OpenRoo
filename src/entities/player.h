@@ -7,6 +7,7 @@
 #pragma once
 
  
+#include "crtrand.h"
 #include "movableentity.h"
 
 #include <vector>
@@ -18,7 +19,7 @@ public:
 
     // Latches the clock, moves the player, drops a respawning player back in,
     // and consumes the tile underfoot.  See player.cpp.
-    unsigned int updateTileEffects(PlayEvents &events);
+    unsigned int updateTileEffects(PlayEvents &events, CrtRand &random);
 
     // The six actions DirectInputSetup registers as player controls.
     void actMoveForward(PlayEvents &events);

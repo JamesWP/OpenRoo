@@ -9,6 +9,7 @@
  * planning its moves -- takes a const World &.
  */
 #pragma once
+#include "crtrand.h"
 #include "playevents.h"
 
 #include <array>
@@ -81,6 +82,8 @@ public:
     /* The game clock in ms.  Objects keep a pointer to it and re-read it
      * every tick. */
     double         now() const       { return clock_; }
+    /* The rules' random numbers: the level's setup and the random pickups draw from them. */
+    CrtRand       &random()          { return random_; }
     double        *clock()           { return &clock_; }
     /* Advances the clock dt ms, or sets it. */
     void           advanceClock(double dt) { clock_ += dt; }
@@ -151,6 +154,7 @@ private:
     SwitchCells   switchCells_;
     double        clock_{};
     TickStep      tickStep_;
+    CrtRand       random_;  // the rules' random numbers
     /* As long as a level-name table entry. */
     char          levelName_[0x100]{};
     EntityList<BridgeObject>   bridges_;
