@@ -136,7 +136,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 
     {
         PROF_SCOPE("player");
-        pl->updateTileEffects(*self->soundEvents());
+        pl->updateTileEffects(*self->soundEvents(), self->world()->random());
     }
 
     if (self->state() == GameState::Playing)
