@@ -47,7 +47,6 @@ Tile *Foe::tile(int u, int v) const
 
 Foe::Foe()
 {
-    soundSource_ = SoundSource::Foe;
     dyingStarted_         = 0;
     removeRequested_ = 0;
     dying_         = 0;
@@ -202,6 +201,8 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
     p->lastActive_ = (double)(int)(n * 1500) + *ctx.clock;
 
     p->kind_ = (unsigned char)kind;
+    p->soundSource_ = kind == (unsigned char)FoeKind::Catcher ? SoundSource::Catcher
+                                                                : SoundSource::Thrower;
     if (kind == (unsigned char)FoeKind::Catcher) {
         p->stepDuration_ = 500.0;
         if (s_diag_spawn && !s_logged_kind2) {
@@ -283,7 +284,8 @@ void Foe::remove(EntityList<Foe> &foes, std::size_t i, PlayEvents &events)
 void Foe::despawn(PlayEvents &events) const
 {
     events.soundStop(sound(Sfx::Fall));
-    events.entityDestroyed(SoundSource::Foe, id());
+    events.soundStop(sound(Sfx::Slide));
+    events.soundStop(sound(Sfx::Ice));
 }
 
 static inline int ftol_i(double v)
@@ -636,7 +638,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
     *pv = tv;
 }
 
-void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs, PlayEvents &events)
+void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs)
 {
     if (bombDropRequest_ == 0 || type_ == FOE_SWITCH_RUNNER)
         return;
@@ -651,12 +653,12 @@ void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs, PlayEvents
     if (!spawn)
         return;
     if (offset)
-        Bomb::spawn(ctx, bombs, events, (unsigned char)((unsigned char)cellU_ - (unsigned char)stepU_),
+        Bomb::spawn(ctx, bombs, (unsigned char)((unsigned char)cellU_ - (unsigned char)stepU_),
                           (unsigned char)((unsigned char)cellV_ - (unsigned char)stepV_),
                           (unsigned char)((unsigned char)heightCell_ - (unsigned char)field_141),
                           facing_);
     else
-        Bomb::spawn(ctx, bombs, events, (unsigned char)cellU_, (unsigned char)cellV_,
+        Bomb::spawn(ctx, bombs, (unsigned char)cellU_, (unsigned char)cellV_,
                           (unsigned char)heightCell_, facing_);
     bombDropRequest_ = 0;
 }

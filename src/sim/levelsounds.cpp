@@ -1,8 +1,7 @@
 /* Everything is gated on the sound device being up.  The world's sound variant
  * is 0, 2 for Space and 1 for Candy; PRESERVED: Egypt is set to 0 a second
- * time, redundantly.  The player's two voice pools and eleven effect buffers
- * are reloaded, then every foe, falling tile, lift, platform and bridge gets its
- * sounds, and on a first attempt at a level with 3D sound each extra sound
+ * time, redundantly.  The player's, the foes', the bombs' and the level
+ * objects' sounds are defined from the theme (soundevents.h), and on a first attempt at a level with 3D sound each extra sound
  * object (.leo) starts looping at its position.  Every load passes a stack
  * copy of the name.  Returns 0 in the low byte. */
 
@@ -14,59 +13,41 @@
 #include "game.h"
 #include "levelsounds.h"
 #include "player.h"
-#include "soundobj.h"
-#include "liftobject.h"
-#include "platformobject.h"
-#include "bridgeobject.h"
-#include "fallingtile.h"
 
 namespace audiodev { class Buffer; }
-#include "voicepool.h"
 
-static audiodev::Buffer *acq(Game *game, const SoundAssetName *asset)
-{
-    char name[256];
-    strcpy(name, asset->name);
-    return game->audio()->soundManager()->acquireStatic(name, 1);
-}
-
-static VoicePool *acq_pool(Game *game, int count, const SoundAssetName *asset)
-{
-    char name[256];
-    strcpy(name, asset->name);
-    return game->audio()->soundManager()->acquirePool(count, name, 1);
-}
-
-/* Resets the player's old buffer if there is one, then loads the named asset
- * in its place if it is set; otherwise the reset one stays. */
-static void reslot(Game *game, const SoundKey &key, ThemeSound sound)
+/* A source kind's sfx plays the theme's sound, if the theme has it set;
+ * `voices` are loaded now, enough for that many to play at once. */
+static void define(Game *game, SoundSource source, Sfx sfx, ThemeSound sound, unsigned voices)
 {
     const SoundAssetName *asset = game->audio()->themeSound(sound);
-    if (SoundVoice *cur = game->soundEvents()->voice(key))
-        static_cast<audiodev::Buffer *>(cur)->reset();
     if (asset->enabled != 0)
-        game->soundEvents()->attach(key, acq(game, asset));
+        game->soundEvents()->define(source, sfx, 0, asset->name, true, voices);
+    else
+        game->soundEvents()->undefine(source, sfx);
 }
 
-/* The same for a pool, which is wiped. */
-static void reslotPool(Game *game, const SoundKey &key, int count, ThemeSound sound)
+/* What a foe of either kind, and a bomb, share with the player. */
+static void define_mover(Game *game, SoundSource source, unsigned voices)
 {
-    const SoundAssetName *asset = game->audio()->themeSound(sound);
-    if (SoundVoice *cur = game->soundEvents()->voice(key))
-        static_cast<VoicePool *>(cur)->wipe();
-    if (asset->enabled != 0)
-        game->soundEvents()->attach(key, acq_pool(game, count, asset));
+    define(game, source, Sfx::JumpPad, ThemeSound::MoveJumpPad, voices);
+    define(game, source, Sfx::Teleport, ThemeSound::Teleporter, voices);
+    define(game, source, Sfx::Teleported, ThemeSound::Teleporter, voices);
 }
 
-/* Gives every object in one list its moving-loop sound. */
-template <class T>
-static void attachLoopSound(Game *game, const EntityList<T> &list, SoundSource source, Sfx sfx,
-                            const SoundAssetName *asset)
+/* A catcher's or a thrower's sounds. */
+static void define_foe(Game *game, SoundSource source, ThemeSound fall, ThemeSound step,
+                       ThemeSound splat)
 {
-    for (const T &obj : list) {
-        if (asset->enabled != 0)
-            game->soundEvents()->attach({source, obj.id(), sfx}, acq(game, asset));
-    }
+    const unsigned voices = 4;
+    define_mover(game, source, voices);
+    define(game, source, Sfx::Crystal, ThemeSound::Crystal, 3);
+    define(game, source, Sfx::Ice, ThemeSound::MoveIceSliding, voices);
+    define(game, source, Sfx::Slide, ThemeSound::MoveSliding, voices);
+    define(game, source, Sfx::Fall, fall, voices);
+    define(game, source, Sfx::Step, step, 8);
+    define(game, source, Sfx::Splat, splat, voices);
+    define(game, source, Sfx::Switch, ThemeSound::Switch, voices);
 }
 
   unsigned int  
@@ -86,38 +67,35 @@ Sim_InitLevelBasedSounds(Game *self)
         if (strcmp(world, "Candy") == 0)
             pl->setWorldSoundVariant(1);
 
-        reslotPool(game, pl->sound(Sfx::Crystal), 3, ThemeSound::Crystal);
-        reslotPool(game, pl->sound(Sfx::Step), 10, ThemeSound::MoveJJ);
+        const SoundSource P = SoundSource::Player;
+        define_mover(game, P, 1);
+        define(game, P, Sfx::Crystal, ThemeSound::Crystal, 3);
+        define(game, P, Sfx::Step, ThemeSound::MoveJJ, 10);
+        define(game, P, Sfx::Fall, ThemeSound::FallJJ, 1);
+        define(game, P, Sfx::Glue, ThemeSound::Glue, 1);
+        define(game, P, Sfx::Glide, ThemeSound::MoveParagliding, 1);
+        define(game, P, Sfx::GlideStart, ThemeSound::MoveParaglidingStart, 1);
+        define(game, P, Sfx::Ice, ThemeSound::MoveIceSliding, 1);
+        define(game, P, Sfx::Slide, ThemeSound::MoveSliding, 1);
+        define(game, P, Sfx::Switch, ThemeSound::Switch, 1);
+        define(game, P, Sfx::Splat, ThemeSound::SplatJJ, 1);
 
-        reslot(game, pl->sound(Sfx::Fall), ThemeSound::FallJJ);
-        reslot(game, pl->sound(Sfx::Glue), ThemeSound::Glue);
-        reslot(game, pl->sound(Sfx::JumpPad), ThemeSound::MoveJumpPad);
-        reslot(game, pl->sound(Sfx::Glide), ThemeSound::MoveParagliding);
-        reslot(game, pl->sound(Sfx::GlideStart), ThemeSound::MoveParaglidingStart);
-        reslot(game, pl->sound(Sfx::Teleport), ThemeSound::Teleporter);
-        reslot(game, pl->sound(Sfx::Teleported), ThemeSound::Teleporter);
-        reslot(game, pl->sound(Sfx::Ice), ThemeSound::MoveIceSliding);
-        reslot(game, pl->sound(Sfx::Slide), ThemeSound::MoveSliding);
-        reslot(game, pl->sound(Sfx::Switch), ThemeSound::Switch);
-        reslot(game, pl->sound(Sfx::Splat), ThemeSound::SplatJJ);
+        define_foe(game, SoundSource::Catcher, ThemeSound::FallCatcher, ThemeSound::MoveCatcher,
+                   ThemeSound::SplatCatcher);
+        define_foe(game, SoundSource::Thrower, ThemeSound::FallThrower, ThemeSound::MoveThrower,
+                   ThemeSound::SplatThrower);
 
-        for (Foe &foe : game->world()->foes())
-            Sim_AcquireFoeSounds(game, foe);
+        const SoundSource B = SoundSource::Bomb;
+        define_mover(game, B, 2);
+        define(game, B, Sfx::BombBlast, ThemeSound::ExplosionBomb, 4);
+        define(game, B, Sfx::Fall, ThemeSound::FallCatcher, 2);
+        define(game, B, Sfx::BombRoll, ThemeSound::BombTick, 4);
 
-        for (const FallingTile &bt : game->world()->fallings()) {
-            if (game->audio()->themeSound(ThemeSound::DestructStart)->enabled != 0)
-                game->soundEvents()->attach({SoundSource::Falling, bt.id(), Sfx::TileFalls},
-                                            acq(game, game->audio()->themeSound(ThemeSound::DestructStart)));
-            if (game->audio()->themeSound(ThemeSound::DestructRegen)->enabled != 0)
-                game->soundEvents()->attach({SoundSource::Falling, bt.id(), Sfx::TileRespawns},
-                                            acq(game, game->audio()->themeSound(ThemeSound::DestructRegen)));
-        }
-        attachLoopSound(game, game->world()->lifts(), SoundSource::Lift, Sfx::LiftMoving,
-                        game->audio()->themeSound(ThemeSound::Elevator));
-        attachLoopSound(game, game->world()->platforms(), SoundSource::Platform,
-                        Sfx::PlatformMoving, game->audio()->themeSound(ThemeSound::Platform));
-        attachLoopSound(game, game->world()->bridges(), SoundSource::Bridge, Sfx::BridgeMoving,
-                        game->audio()->themeSound(ThemeSound::Bridge));
+        define(game, SoundSource::Falling, Sfx::TileFalls, ThemeSound::DestructStart, 4);
+        define(game, SoundSource::Falling, Sfx::TileRespawns, ThemeSound::DestructRegen, 4);
+        define(game, SoundSource::Lift, Sfx::LiftMoving, ThemeSound::Elevator, 1);
+        define(game, SoundSource::Platform, Sfx::PlatformMoving, ThemeSound::Platform, 1);
+        define(game, SoundSource::Bridge, Sfx::BridgeMoving, ThemeSound::Bridge, 1);
 
         if (game->session()->restartCount() == 0 && game->config()->sound3D() != 0) {
             g_logger.logMessage(1, "GAME: try to play level-based LEO sounds");

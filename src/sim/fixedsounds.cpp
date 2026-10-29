@@ -11,17 +11,13 @@
 
 #include "audiodev.h"
 
-/* Resets the old buffer if there is one, then loads a new one from "<game
- * dir>\waves\<name><suffix>.wav".  The caller stores the result back into the
- * slot. */
-static audiodev::Buffer *bank(Game *game, SoundVoice *cur,
-                                const char *fmt, const char *suffix)
+/* A level-wide sound from "<game dir>\\waves\\<name><suffix>.wav". */
+static void define(Game *game, SoundSource source, Sfx sfx, unsigned char variant,
+                   const char *fmt, const char *suffix, bool positional = false)
 {
     char path[256];
-    if (cur != NULL)
-        static_cast<audiodev::Buffer *>(cur)->reset();
-    sprintf(path, fmt, game->gameDir(), suffix);
-    return game->audio()->soundManager()->acquireStatic(path, 0);
+    snprintf(path, sizeof(path), fmt, game->gameDir(), suffix);
+    game->soundEvents()->define(source, sfx, variant, path, positional, 1);
 }
 
   void  
@@ -56,9 +52,8 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     // rest are the player's pickup sounds.
     for (unsigned int i = 0; i < 3; ++i) {
         char suffix[2] = { (char)('A' + i), 0 };
-        Player *pl = self->world()->player();
-        SoundKey gems{SoundSource::Level, 0, Sfx::GemsDone, (unsigned char)i};
-        self->soundEvents()->attach(gems, bank(self, self->soundEvents()->voice(gems), "%s\\waves\\add02%s.wav", suffix));
+        define(self, SoundSource::Level, Sfx::GemsDone, (unsigned char)i, "%s\\waves\\add02%s.wav",
+               suffix);
         static const struct { Sfx sfx; const char *fmt; } pickups[] = {
             { Sfx::PickupFreeze,   "%s\\waves\\add08%s.wav" },
             { Sfx::PickupLife,     "%s\\waves\\add06%s.wav" },
@@ -70,19 +65,15 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
             { Sfx::PickupShield,   "%s\\waves\\add09%s.wav" },
             { Sfx::PickupGlider,   "%s\\waves\\add01%s.wav" },
         };
-        for (const auto &p : pickups) {
-            SoundKey key = pl->sound(p.sfx);
-            key.variant  = (unsigned char)i;
-            self->soundEvents()->attach(key, bank(self, self->soundEvents()->voice(key), p.fmt, suffix));
-        }
+        for (const auto &p : pickups)
+            define(self, SoundSource::Player, p.sfx, (unsigned char)i, p.fmt, suffix);
     }
 
     ScriptPlayer *sp = self->scriptPlayer();
     self->world()->extraObjects()->setSoundLibrary(sm);
     sp->setSoundManager(sm);
 
-    snprintf(path, sizeof(path), "%s\134waves\134TimeOut.wav", self->gameDir());
-    self->soundEvents()->attach({SoundSource::Level, 0, Sfx::TimeOut}, sm->acquireStatic(path, 0));
+    define(self, SoundSource::Level, Sfx::TimeOut, 0, "%s\134waves\134TimeOut%s.wav", "");
     snprintf(path, sizeof(path), "%s\134waves\134LastSeconds.wav", self->gameDir());
     self->audio()->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), "%s\134waves\134Count.wav", self->gameDir());
@@ -91,10 +82,8 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     self->audio()->fixedSounds()->menuUpDown = sm->acquirePool(5, path, 0);
     snprintf(path, sizeof(path), "%s\134waves\134Switch.wav", self->gameDir());
     self->audio()->fixedSounds()->switchClick = sm->acquireStatic(path, 0);
-    snprintf(path, sizeof(path), "%s\134waves\134LevelCompleted.wav", self->gameDir());
-    self->soundEvents()->attach({SoundSource::Level, 0, Sfx::LevelComplete}, sm->acquireStatic(path, 0));
-    snprintf(path, sizeof(path), "%s\134waves\134splat.wav", self->gameDir());
-    self->soundEvents()->attach(self->world()->player()->sound(Sfx::Splat), sm->acquireStatic(path, 1));
+    define(self, SoundSource::Level, Sfx::LevelComplete, 0, "%s\134waves\134LevelCompleted%s.wav", "");
+    define(self, SoundSource::Player, Sfx::Splat, 0, "%s\134waves\134splat%s.wav", "", true);
     sm->setup(self->config()->sound3D());
 
     self->audio()->fixedSounds()->loaded = 1;

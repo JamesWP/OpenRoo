@@ -1,84 +1,136 @@
 #include "soundevents.h"
 #include "soundvoice.h"
-#include "gameaudio.h"
-#include "soundmanager.h"
 
-SoundEvents::SoundEvents(GameAudio *audio) : audio_(audio), library_(audio->soundManager()) {}
+SoundEvents::SoundEvents(SoundLibrary *library) : library_(library) {}
 
-void SoundEvents::attach(const SoundKey &key, SoundVoice *voice)
+SoundEvents::~SoundEvents()
 {
-    voices_[key] = voice;
+    clear();
 }
 
-SoundVoice *SoundEvents::voice(const SoundKey &key) const
+bool SoundEvents::load(Sound &s)
 {
-    auto it = voices_.find(key);
-    return it == voices_.end() ? nullptr : it->second;
+    SoundVoice *v = library_->acquireVoice(s.name.c_str(), s.positional);
+    if (v == nullptr)
+        return false;
+    s.voices.push_back({ v });
+    return true;
+}
+
+void SoundEvents::release(Sound &s)
+{
+    for (Voice &v : s.voices) {
+        v.voice->stop();
+        library_->releaseVoice(v.voice, true);
+    }
+    s.voices.clear();
+}
+
+void SoundEvents::define(SoundSource source, Sfx sfx, unsigned char variant, const char *name,
+                         bool positional, unsigned voices)
+{
+    undefine(source, sfx, variant);
+    if (!library_->active())
+        return;
+    Sound &s = sounds_[{ source, sfx, variant }];
+    s.name = name;
+    s.positional = positional;
+    for (unsigned i = 0; i < voices && load(s); i++) {
+    }
+}
+
+void SoundEvents::undefine(SoundSource source, Sfx sfx, unsigned char variant)
+{
+    auto it = sounds_.find({ source, sfx, variant });
+    if (it == sounds_.end())
+        return;
+    release(it->second);
+    sounds_.erase(it);
+}
+
+void SoundEvents::clear()
+{
+    for (auto &entry : sounds_)
+        release(entry.second);
+    sounds_.clear();
+}
+
+SoundEvents::Sound *SoundEvents::sound(const SoundKey &key)
+{
+    auto it = sounds_.find({ key.source, key.sfx, key.variant });
+    return it == sounds_.end() || it->second.voices.empty() ? nullptr : &it->second;
+}
+
+SoundEvents::Voice *SoundEvents::owned(const SoundKey &key)
+{
+    Sound *s = sound(key);
+    if (s == nullptr)
+        return nullptr;
+    for (Voice &v : s->voices)
+        if (v.owned && v.owner.id == key.id)
+            return &v;
+    return nullptr;
+}
+
+SoundEvents::Voice *SoundEvents::take(Sound &s, const SoundKey &key)
+{
+    for (Voice &v : s.voices)
+        if (v.owned && v.owner.id == key.id)
+            return &v;
+    for (size_t n = 0; n < s.voices.size(); n++) {
+        Voice &v = s.voices[(s.next + n) % s.voices.size()];
+        if (v.held)
+            continue;
+        s.next = (s.next + n + 1) % s.voices.size();
+        v.owner = key;
+        v.owned = true;
+        return &v;
+    }
+    if (!load(s))
+        return nullptr;
+    Voice &v = s.voices.back();
+    v.owner = key;
+    v.owned = true;
+    return &v;
 }
 
 void SoundEvents::soundPlay(const SoundKey &key, float x, float y, float z)
 {
-    if (SoundVoice *v = voice(key)) {
-        v->setPosition(x, y, z, true);
-        v->play(false);
+    Sound *s = sound(key);
+    if (Voice *v = s ? take(*s, key) : nullptr) {
+        v->voice->setPosition(x, y, z, true);
+        v->voice->play(false);
     }
 }
 
 void SoundEvents::soundPlay(const SoundKey &key)
 {
-    if (SoundVoice *v = voice(key))
-        v->play(false);
+    Sound *s = sound(key);
+    if (Voice *v = s ? take(*s, key) : nullptr)
+        v->voice->play(false);
 }
 
 void SoundEvents::soundStart(const SoundKey &key, float x, float y, float z)
 {
-    if (SoundVoice *v = voice(key)) {
-        v->setPosition(x, y, z, true);
-        v->play(true);
+    Sound *s = sound(key);
+    if (Voice *v = s ? take(*s, key) : nullptr) {
+        v->held = true;
+        v->voice->setPosition(x, y, z, true);
+        v->voice->play(true);
     }
 }
 
 void SoundEvents::soundMove(const SoundKey &key, float x, float y, float z)
 {
-    if (SoundVoice *v = voice(key))
-        v->setPosition(x, y, z, true);
+    if (Voice *v = owned(key))
+        v->voice->setPosition(x, y, z, true);
 }
 
 void SoundEvents::soundStop(const SoundKey &key)
 {
-    if (SoundVoice *v = voice(key))
-        v->stop();
-}
-
-void SoundEvents::acquire(const SoundKey &key, ThemeSound sound)
-{
-    const SoundAssetName *asset = audio_->themeSound(sound);
-    if (asset->enabled != 0)
-        voices_[key] = library_->acquireVoice(asset->name, true);
-}
-
-/* A bomb's sounds, acquired as it is dropped. */
-void SoundEvents::entityCreated(SoundSource source, unsigned id)
-{
-    if (source != SoundSource::Bomb || !library_->active())
-        return;
-    acquire({source, id, Sfx::JumpPad}, ThemeSound::MoveJumpPad);
-    if (audio_->themeSound(ThemeSound::Teleporter)->enabled != 0) {
-        acquire({source, id, Sfx::Teleport}, ThemeSound::Teleporter);
-        acquire({source, id, Sfx::Teleported}, ThemeSound::Teleporter);
-    }
-    acquire({source, id, Sfx::BombBlast}, ThemeSound::ExplosionBomb);
-    acquire({source, id, Sfx::Fall}, ThemeSound::FallCatcher);
-    acquire({source, id, Sfx::BombRoll}, ThemeSound::BombTick);
-}
-
-void SoundEvents::entityDestroyed(SoundSource source, unsigned id)
-{
-    auto it = voices_.lower_bound({source, id, Sfx{}});
-    while (it != voices_.end() && it->first.source == source && it->first.id == id) {
-        if (library_->active() && it->second != nullptr)
-            // A bomb's sounds stay loaded for the next.
-            library_->releaseVoice(it->second, source != SoundSource::Bomb);
-        it = voices_.erase(it);
+    if (Voice *v = owned(key)) {
+        v->voice->stop();
+        v->owned = false;
+        v->held = false;
     }
 }

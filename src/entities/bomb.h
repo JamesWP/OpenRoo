@@ -19,7 +19,7 @@ public:
 
     // Spawns a bomb at (u, v, h), reporting it created; the arguments
     // are masked to bytes.
-    static void spawn(const EntityContext &ctx, EntityList<Bomb> &bombs, PlayEvents &events,
+    static void spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,
                       unsigned int uArg, unsigned int vArg, unsigned int hArg,
                       unsigned int flagArg);
 

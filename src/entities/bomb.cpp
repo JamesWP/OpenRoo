@@ -123,7 +123,7 @@ Bomb::Bomb()
 static unsigned long s_spawns       = 0;
 static int           s_logged_spawn = 0;
 
-void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs, PlayEvents &events,
+void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,
                  unsigned int uArg, unsigned int vArg, unsigned int hArg, unsigned int flagArg)
 {
     unsigned char u = (unsigned char)(uArg & 0xff);
@@ -162,8 +162,6 @@ void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs, PlayEvents &
     b.posV_ = (float)(int)(unsigned int)v;
 
     b.droppedAt_ = *ctx.clock;
-
-    events.entityCreated(SoundSource::Bomb, b.id());
 }
 
 static unsigned long s_removals        = 0;
@@ -184,7 +182,7 @@ void Bomb::remove(EntityList<Bomb> &bombs, std::size_t i, PlayEvents &events)
             g_logger.write("bomb: %lu removals\n", s_removals);
     }
 
-    events.entityDestroyed(SoundSource::Bomb, bombs[i].id());
+    events.soundStop(bombs[i].sound(Sfx::BombRoll));
     bombs.erase(i);
 }
 
