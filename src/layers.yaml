@@ -55,11 +55,13 @@ layers:
   # planner, botworld: the whole level stepped forward by the engine itself,
   # a copy of the World (entities) ticked by its own rules -- the one bot
   # layer that reads more than the view, and only the World, never the Game.
+  # Beside the executive, simbot: a bot of its own that plays ahead on
+  # copies of the World and has no model of the game but the game.
   - [botapi]
   - [botmodel, botmotor]
   - [botplan, botworld]
   - [bottactics]
-  - [botexec]
+  - [botexec, simbot]
 
   # Drawing the game's screens and running it (sim); then the sequencer, the
   # order things happen in -- the frame's draw passes, and what each game state

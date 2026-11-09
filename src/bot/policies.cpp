@@ -3,6 +3,7 @@
 #include "executive.h"
 #include "explore.h"
 #include "motor.h"
+#include "simbot.h"
 
 namespace bot {
 
@@ -94,6 +95,8 @@ std::unique_ptr<Policy> makePolicy(const std::string &name)
         return std::make_unique<Explore>();
     if (name == "plan")
         return std::make_unique<Executive>();
+    if (name == "sim")
+        return std::make_unique<simbot::SimBot>();
     if (name == "wander")
         return std::make_unique<Wander>();
     return nullptr;
