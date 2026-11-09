@@ -71,7 +71,6 @@ Foe::Foe()
     pickedUp_         = 0;
     dropContents_    = 0;
     type_            = 0;
-    pathfinder_      = 0;
 
     // Everything else starts at zero.  stepEnd_ in particular is read by the
     // first step commit (now_ - stepEnd_, to decide where the move animation
@@ -108,15 +107,6 @@ Foe::Foe()
     teleportSince_ = 0.0;
     movingBackwards_ = 0;
     onStairOrSlide_ = 0;
-}
-
-Foe::~Foe()
-{
-    FoePath *pf;
-
-    pf = pathfinder_;
-    if (pf != 0)
-        FoePath::destroy(pf);
 }
 
 static unsigned char s_type_seen[256];
@@ -189,7 +179,7 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
 
     if (type > FOE_FACING_BASE) {
         p->facing_ = (unsigned char)(type - FOE_FACING_BASE);  // facing_ carries the type - 0x64
-        type = 0;  // type is zeroed so the pathfinder mode below never sees it.
+        type = 0;  // type is zeroed so the path mode below never sees it.
         if (s_diag_spawn && !s_logged_hightype) {
             s_logged_hightype = 1;
             g_logger.write("foe: first type > 0x64\n");
@@ -218,9 +208,7 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
 
     ctx.map->tile( (int)u, (int)v)->setOccupant(p->kind_);
 
-    p->pathfinder_ = FoePath::create(ctx.map, 0);
-
-    p->pathfinder_->setMode(type);
+    p->pathMode_ = type;
 
     return *p;
 }
@@ -431,24 +419,22 @@ unsigned char Foe::chase(LevelMap &map, unsigned char targetU, unsigned char tar
 {
     diag_init();
 
-    pathfinder_->setCap(speed);
-    pathfinder_->setTarget(targetU, targetV);
-
     if (type_ == FOE_SWITCH_RUNNER)
-        pathfinder_->setMode((onSwitch_ != 0) ? 0 : 2);
+        pathMode_ = (onSwitch_ != 0) ? 0 : 2;
 
     if (moveDir_ != 0)
         return pendingMove_;
 
-    if (pathfinder_->find(map, (int)cellU_, (int)cellV_,
-                          (unsigned)targetU, (unsigned)targetV) == 0) {
+    searchU_   = targetU;
+    searchV_   = targetV;
+    searchCap_ = speed;
+    FoePath path(map, pathMode_, speed);
+    if (!path.find((int)cellU_, (int)cellV_, (unsigned)targetU, (unsigned)targetV)) {
         pendingMove_ = 0;
         return pendingMove_;
     }
 
-    pathfinder_->setResult(pathfinder_->result()->parent());
-
-    const PathNode *node = pathfinder_->result();
+    const PathNode *node = path.result()->parent();
     const unsigned char nu = (unsigned char)node->u();
     const unsigned char nv = (unsigned char)node->v();
 

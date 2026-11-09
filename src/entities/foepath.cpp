@@ -2,15 +2,13 @@
  * backward -- seeded at the target cell, it stops on reaching the foe's own
  * cell -- so the caller takes the result node's parent as the foe's next step
  * toward the target.  h is a squared distance, not a true one, so the
- * heuristic is inadmissible; PropagateImprovedPathCosts exists to repair the
- * closed-list reopenings that produces.  Each function below is a FoePath
- * method (or a free helper it calls) followed by its export shim. */
+ * heuristic is inadmissible; propagate() exists to repair the closed-list
+ * reopenings that produces. */
 
 #include <strings.h>
 #include <stdint.h>
 #include "sysdev.h"
 #include <stdlib.h>
-#include <new>
 #include "logger.h"
 #include "foepath.h"
 #include "foetype.h"
@@ -46,7 +44,7 @@ static void diag_report(void)
               g_diag.pops, g_diag.deepest);
 }
 
-int FoePath::passable(int u, int v)
+int FoePath::passable(int u, int v) const
 {
     const Tile *t = map()->tile( u, v);
     const unsigned char kind = t->objectMarker();
@@ -73,11 +71,10 @@ int FoePath::passable(int u, int v)
     return 1;
 }
 
-int FoePath::cellKey(int u, int v)
+/* The stride is the map's u extent, not the tile stride (100). */
+int FoePath::cellKey(int u, int v) const
 {
-    const int stride = keyStride_;
-
-    return stride * v + u;
+    return (int)map_->extentU() * v + u;
 }
 
 /* The open list stays in f order because insertOpenByCost inserts by cost, so
@@ -99,76 +96,18 @@ PathNode *FoePath::popBestOpen()
 
 void FoePath::releaseLists()
 {
-    static int reported = 0;
-    int freed = 0;
-
-    for (int i = 0; i < 2; ++i) {
-        PathNode *&hdr = (i == 0) ? open_ : closed_;
-        if (hdr == 0)
+    for (PathNode **hdr : { &open_, &closed_ }) {
+        if (*hdr == 0)
             continue;
-
-        PathNode *n = hdr->next_;
+        PathNode *n = (*hdr)->next_;
         while (n != 0) {
             PathNode *p = n;
             n = n->next_;  // next must be read before p is freed
             delete p;
-            ++freed;
         }
-        delete hdr;
-        hdr = 0;
+        delete *hdr;
+        *hdr = 0;
     }
-
-    // Logged in two stages because the first call is always empty: it runs
-    // before any search has allocated a node, so a single log line would only
-    // prove the function is reached, not that it ever frees anything.
-    if (reported == 0) {
-        reported = 1;
-        g_logger.write("foepath: first ReleasePathSearchNodeLists -- %d node(s) freed\n", freed);
-    }
-    if (reported == 1 && freed > 0) {
-        reported = 2;
-        g_logger.write("foepath: first non-empty release -- %d node(s) freed\n", freed);
-    }
-}
-
-void Sim_ReleasePathSearchNodeLists(FoePath *self)
-{
-    self->releaseLists();
-}
-
-FoePath *FoePath::create(LevelMap *map, unsigned short field04)
-{
-    FoePath *p = (FoePath *)::operator new(sizeof(FoePath), std::nothrow);
-    if (p == 0)
-        return 0;
-    p->populate(map, field04);
-    return p;
-}
-
-void FoePath::destroy(FoePath *p)
-{
-    p->dispose();
-    ::operator delete(p);
-}
-
-void FoePath::populate(LevelMap *map, unsigned short field04)
-{
-    map_       = nullptr;
-    field_04   = field04;
-    keyStride_ = (int)map->extentU();
-    extentV_   = (int)map->extentV();
-    pending_   = new PendingStack();
-    found_     = 0;
-    open_      = 0;
-    closed_    = 0;
-    result_    = 0;
-}
-
-void FoePath::dispose()
-{
-    releaseLists();
-    delete pending_;
-    pending_ = 0;
 }
 
 PathNode *FoePath::findByKey(PathNode *hdr, int key)
@@ -218,32 +157,6 @@ void FoePath::insertOpenByCost(PathNode *n)
     prev->next_ = n;
 }
 
-void FoePath::pushPending(PathNode *node)
-{
-    ++g_diag.pushes;
-
-    PendingCell *cell = new PendingCell();
-
-    cell->node_ = node;
-
-    cell->next_         = pending_->head_;
-    pending_->head_     = cell;
-}
-
-PathNode *FoePath::popPending()
-{
-    PendingStack *owner = pending_;
-    PendingCell  *cell  = owner->head_;
-
-    ++g_diag.pops;
-
-    PathNode *node = cell->node_;
-    owner->head_ = cell->next_;
-
-    delete cell;
-    return node;
-}
-
 void FoePath::propagate(PathNode *p)
 {
     ++g_diag.cascades;
@@ -260,18 +173,15 @@ void FoePath::propagate(PathNode *p)
             c->f_      = c->h_ + gnew;
             c->parent_ = p;
             ++g_diag.reparent;
-            pushPending(c);
+            ++g_diag.pushes;
+            pending_.push_back(c);
         }
     }
 
-    PendingStack *owner = pending_;
-    if (owner->head_ == 0) {
-        diag_report();
-        return;
-    }
-
-    do {
-        PathNode *q = popPending();
+    while (!pending_.empty()) {
+        PathNode *q = pending_.back();
+        pending_.pop_back();
+        ++g_diag.pops;
         if (++g_diag.cur_drain > g_diag.deepest)
             g_diag.deepest = g_diag.cur_drain;
 
@@ -285,12 +195,11 @@ void FoePath::propagate(PathNode *p)
                 c->f_      = c->h_ + gnew;
                 c->parent_ = q;
                 ++g_diag.reparent;
-                pushPending(c);
+                ++g_diag.pushes;
+                pending_.push_back(c);
             }
         }
-
-        owner = pending_;
-    } while (owner->head_ != 0);
+    }
 
     diag_report();
 }
@@ -487,15 +396,10 @@ void FoePath::expand(PathNode *n, int goalU, int goalV)
 
 int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
 {
-    targetV_ = (unsigned char)vTarget;
-    foeV_    = (unsigned char)vFoe;
-    targetU_ = (unsigned char)uTarget;
-    foeU_    = (unsigned char)uFoe;
-
     const int goalKey = cellKey(uFoe, vFoe);
 
-    // These two headers, and the seed node below, are new on every search;
-    // releaseLists frees the headers and the nodes chained off them.
+    // The two list headers, and the seed node below; releaseLists frees the
+    // headers and the nodes chained off them.
     open_   = new PathNode();
     closed_ = new PathNode();
 
@@ -514,7 +418,7 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
 
     open_->next_ = seed;
 
-    unsigned short cap = cap_;
+    const unsigned short cap = cap_;
 
     int iter = 0;
     PathNode *node = 0;
@@ -541,32 +445,16 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
     return 0;
 }
 
-int FoePath::find(const LevelMap &map, int uFoe, int vFoe, int uTarget, int vTarget)
+bool FoePath::find(int uFoe, int vFoe, int uTarget, int vTarget)
 {
-    map_ = &map;
-    if (passable(uTarget, vTarget) != 0 &&
-        passable(uFoe, vFoe) != 0) {
-
-        // Compares node KEYS, not coordinates, to detect "already there".
-        // Since cellKey's stride is a per-search value rather than the tile
-        // stride, two genuinely different cells would collide under a wrong
-        // stride and this would report "no path" instead of searching --
-        // another reason that stride must stay as read from the map.
-        const int keyFoe    = cellKey(uFoe, vFoe);
-        const int keyTarget = cellKey(uTarget, vTarget);
-
-        if (keyFoe != keyTarget) {
-            releaseLists();
-
-            const int ok = search(uFoe, vFoe, uTarget, vTarget);
-            if (ok != 0) {
-                found_ = 1;
-                return 1;
-            }
-        }
-    }
-
-    found_ = 0;
-    return 0;
+    if (passable(uTarget, vTarget) == 0 || passable(uFoe, vFoe) == 0)
+        return false;
+    // Compares node KEYS, not coordinates, to detect "already there".  Since
+    // cellKey's stride is the map's u extent rather than the tile stride, two
+    // genuinely different cells would collide under a wrong stride and this
+    // would report "no path" instead of searching -- another reason that
+    // stride must stay as read from the map.
+    if (cellKey(uFoe, vFoe) == cellKey(uTarget, vTarget))
+        return false;
+    return search(uFoe, vFoe, uTarget, vTarget) != 0;
 }
-

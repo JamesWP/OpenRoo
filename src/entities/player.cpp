@@ -20,7 +20,6 @@
 #include "levelmap.h"
 #include "player.h"
 #include "entitymath.h"
-#include "foepath.h"
 #include <stdlib.h>
 #include "logger.h"
 
@@ -442,12 +441,5 @@ Player::Player()
     falling_       = 0;
     moveState_     = 0;
     stepGrace_     = 20.0;
-    pathfinder_    = NULL;
-}
-
-Player::~Player()
-{
-    if (pathfinder_ != NULL)
-        FoePath::destroy(pathfinder_);
 }
 

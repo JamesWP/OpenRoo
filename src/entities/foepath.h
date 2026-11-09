@@ -1,10 +1,10 @@
 /* FoePath: the foe pathfinder, a best-first (A*-shaped) search over the tile
- * grid, run backward from the target to the foe.  One per foe.  The object,
- * its worklist block, cells and nodes are all allocated and freed here (new
- * and delete).  foepath.cpp has each method's PRESERVED
- * notes. */
+ * grid, run backward from the target to the foe.  foepath.cpp has each
+ * method's PRESERVED notes. */
 
 #pragma once
+
+#include <vector>
 
 class LevelMap;
 class Tile;
@@ -13,7 +13,6 @@ class Tile;
  * (foe.cpp) reads the result's parent and cell. */
 class PathNode {
 public:
-     
 
     PathNode *parent() const { return parent_; }
     int       u() const      { return u_; }
@@ -45,77 +44,31 @@ private:
     PathNode *parent_;
     PathNode *children_[8];  // the nodes relaxed through this one
     PathNode *next_;         // the open or closed chain
-
-     
 };
 
- 
-
-/* One cell of the cost-propagation worklist: nine bytes for two
- * pointers; the ninth is never touched. */
-class PendingCell {
-public:
-     
-
-private:
-    friend class FoePath;  // the worklist is FoePath's
-
-    PathNode    *node_;
-    PendingCell *next_;
-    unsigned char field_8_;  // never touched
-
-     
-};
-
- 
-/* The worklist's owner block, one pointer.  Only the head is ever touched:
- * the worklist is a stack. */
-class PendingStack {
-public:
-     
-
-private:
-    friend class FoePath;
-    PendingCell  *head_;
-};
-
+/* One search, made for the call that needs it and gone with it: a foe keeps
+ * nothing of its searches but the mode it searches in.  Its nodes are freed
+ * when it goes out of scope. */
 class FoePath {
 public:
-     
+    // A search of map, in the foe's mode (the foe type, or 0 or 2 for the
+    // switch runner; passable() branches on it), giving up after cap nodes.
+    FoePath(const LevelMap &map, unsigned char mode, unsigned short cap)
+        : map_(&map), mode_(mode), cap_(cap) {}
+    ~FoePath() { releaseLists(); }
+    FoePath(const FoePath &) = delete;
+    FoePath &operator=(const FoePath &) = delete;
 
-    // Allocates (nothrow) and populates one; NULL if the allocation fails, and
-    // the caller stores that.
-    static FoePath *create(LevelMap *map, unsigned short field04);
-    // dispose(), then delete.
-    static void destroy(FoePath *p);
+    // Searches from the target back to the foe; true if it got there.  Once.
+    bool find(int uFoe, int vFoe, int uTarget, int vTarget);
+    // After a find that got there: the foe's own cell, whose parents lead on
+    // to the target -- the first parent is the foe's next step.
+    const PathNode *result() const { return result_; }
 
-    // The chase's side (Foe::chase, foe.cpp).
-    // The search's iteration budget, from the chase's speed.
-    void setCap(unsigned short n)                  { cap_ = n; }
-    // Written by the chase, and again by the search.
-    void setTarget(unsigned char u, unsigned char v)
-    {
-        targetU_ = u;
-        targetV_ = v;
-    }
-    // The mover mode passable() branches on: the spawn stores the foe type,
-    // the chase 0 or 2.
-    void setMode(unsigned char m)                  { mode_ = m; }
-    // The node the search stopped on: the foe's cell, since it runs backward.
-    // The chase advances it to its parent.
-    PathNode *result() const                       { return result_; }
-    void setResult(PathNode *n)                    { result_ = n; }
-
+private:
     const LevelMap *map() const { return map_; }
-    // The last search reached the foe: result() and its parents are live.
-    bool      hasPath() const                      { return found_ != 0; }
-
-
-    // The search (foepath.cpp).
-    // A search of map: the map is kept only for the search's own steps.
-    int       find(const LevelMap &map, int uFoe, int vFoe, int uTarget, int vTarget);
-    int       cellKey(int u, int v);
-    int       passable(int u, int v);
+    int       cellKey(int u, int v) const;
+    int       passable(int u, int v) const;
     void      releaseLists();
     int       search(int uFoe, int vFoe, int uTarget, int vTarget);
     PathNode *popBestOpen();
@@ -126,33 +79,14 @@ public:
     PathNode *findClosed(int key);
     void      insertOpenByCost(PathNode *node);
     void      propagate(PathNode *node);
-    void      pushPending(PathNode *node);
-    PathNode *popPending();
-
-    // The destructor body: frees the nodes and the worklist block.  The caller
-    // frees the FoePath itself.
-    void      dispose();
-
-private:
-    FoePath() = delete;  // built by create()
-    // The constructor's stores.
-    void populate(LevelMap *map, unsigned short field04);
     static PathNode *findByKey(PathNode *hdr, int key);
 
-    const LevelMap *map_;  // the map of the last search
-    unsigned short field_04;   // the ctor's second argument (0)
-    PathNode      *open_;      // a header node, fresh each search
-    PathNode      *closed_;    // likewise
-    PathNode      *result_;
-    PendingStack  *pending_;
-    int            found_;     // mirrors find()'s return
-    int            extentV_;   // the map's v extent
-    // The map's u extent.  Not the tile stride (100).
-    int            keyStride_;
-    unsigned char  mode_;
-    unsigned short cap_;
-    unsigned char  targetU_;
-    unsigned char  targetV_;
-    unsigned char  foeU_;
-    unsigned char  foeV_;
+    const LevelMap *map_;
+    unsigned char   mode_;
+    unsigned short  cap_;       // the iteration budget, from the chase's speed
+    PathNode       *open_{};    // a header node
+    PathNode       *closed_{};  // likewise
+    PathNode       *result_{};
+    // The cost-propagation worklist, used as a stack.
+    std::vector<PathNode *> pending_;
 };

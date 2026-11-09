@@ -45,7 +45,6 @@ public:
     void despawn(LevelMap &map, PlayEvents &events) const;
 
     // Frees its tile claims and its path-finder.
-    ~Foe() override;
 
     // One tick, towards the player's cell (or whatever target GameTick chose).
     void step(const EntityContext &ctx, unsigned char playerU, unsigned char playerV,
@@ -67,6 +66,12 @@ public:
     // The last cell its chase found a way to.
     unsigned char lastTargetU() const { return targetU_; }
     unsigned char lastTargetV() const { return targetV_; }
+    // The mode its searches run in (FoePath), and the target and budget of
+    // its last search, which the debug view searches again to draw.
+    unsigned char  pathMode() const  { return pathMode_; }
+    unsigned char  searchU() const   { return searchU_; }
+    unsigned char  searchV() const   { return searchV_; }
+    unsigned short searchCap() const { return searchCap_; }
 
     // Set by the timed spawners: 7 (an extra life) every 15th kill, else 1.
     void setDropContents(unsigned char c)  { dropContents_ = c; }
@@ -99,6 +104,9 @@ private:
     unsigned char targetU_;       // the last chase target,
     unsigned char targetV_;       // which "return to post" chases again
     unsigned char field_15d;
+    unsigned char  pathMode_{};
+    unsigned char  searchU_{}, searchV_{};
+    unsigned short searchCap_{};
 };
 
  
