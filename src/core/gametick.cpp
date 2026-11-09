@@ -145,8 +145,8 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     else
         Flow_TickIdleControls(self, progCtrl);
 
-    Play_DropPlayerBomb(self);
-    Play_PlayerSwitch(self);
+    self->world()->dropPlayerBomb();
+    self->world()->playerSwitch(*self->soundEvents());
 
     if (pl->moveState() != 0) {
         self->camera()->setMode(2);
@@ -168,7 +168,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
         }
     }
 
-    Play_TickFoes(self);
+    self->world()->tickFoes(self->state() == GameState::Playing, *self->soundEvents());
     self->world()->recordEffects();
 
     Entities_DebugDrawMap(self->world());

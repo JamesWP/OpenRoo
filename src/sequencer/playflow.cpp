@@ -81,7 +81,7 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
     if (self->frontEnd()->cheatEntry()->active() != 0)
         Flow_HandleTypedCheatCode(self);
 
-    Play_SpawnTimedFoes(self);
+    self->world()->spawnTimedFoes();
 
     self->config()->setActiveCameraPitch(self->config()->cameraPitch());
     if (pl->moveState() != 0) {

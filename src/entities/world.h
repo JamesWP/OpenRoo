@@ -120,6 +120,18 @@ public:
     void tickBridges(PlayEvents &events);
     /* Ticks each bomb, removing those that asked to be. */
     void tickBombs(PlayEvents &events);
+
+    /* The rules a tick applies (worldrules.cpp), in the order it calls them. */
+    /* Spawns a foe from each timed spawner whose interval has passed. */
+    void spawnTimedFoes();
+    /* Drops the bomb the player asked for, unless a step is too far along. */
+    void dropPlayerBomb();
+    /* Arms the bridge of the switch the player stepped on. */
+    void playerSwitch(PlayEvents &events);
+    /* Arms the bridge of any switch a foe stepped on, then moves each foe;
+     * they hold still unless play is running, the player is up and they are
+     * not frozen.  Removes the foes that finished dying, counting them. */
+    void tickFoes(bool running, PlayEvents &events);
     /* Notes the effects this tick started (pickups, a tile falling) and the
      * player's place on its path, and drops what can no longer be seen.  Once
      * a tick: a tick that does not move the clock records nothing. */
