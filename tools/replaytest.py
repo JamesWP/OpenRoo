@@ -638,11 +638,6 @@ def main():
                     help="run each tick on a fresh copy of the World at a new address "
                          "(KAROO_WORLD_COPY): passes only if nothing outside the World "
                          "points into it and the copy carries all its state")
-    ap.add_argument("--world-fork", action="store_true",
-                    help="run each tick of play again on a copy of the World by "
-                         "World::tick alone, and go on with the copy's result "
-                         "(KAROO_WORLD_FORK): passes only if World::tick is the "
-                         "game's own tick")
     ap.add_argument("--verbose", "-v", dest="verbose", default=False, action="store_true")
     args = ap.parse_args()
 
@@ -658,8 +653,6 @@ def main():
 
     if args.world_copy:
         os.environ["KAROO_WORLD_COPY"] = "1"
-    if args.world_fork:
-        os.environ["KAROO_WORLD_FORK"] = "1"
     if args.sound_log:
         os.makedirs(args.sound_log, exist_ok=True)
     results = [(e["name"], run_one(m, e, bless=args.bless,

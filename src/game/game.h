@@ -59,15 +59,10 @@ public:
     /* The presses the key dispatch made this tick (presses.h), handed to
      * the World and cleared by takePresses. */
     void          addPress(unsigned p) { presses_ |= p; }
-    unsigned      takePresses()        { tickPresses_ = presses_; presses_ = 0; return tickPresses_; }
-    /* The presses last handed to the World: the KAROO_WORLD_FORK check
-     * gives them to its copy (core/gametick.cpp). */
-    unsigned      tickPresses() const  { return tickPresses_; }
+    unsigned      takePresses()        { unsigned p = presses_; presses_ = 0; return p; }
     /* Moves the game onto a copy of its World at a new address, freeing
      * the old: the KAROO_WORLD_COPY check (world.h). */
     void          moveToWorldCopy() { world_ = std::make_unique<World>(*world_); }
-    /* Moves the game onto another World: the KAROO_WORLD_FORK check. */
-    void          adoptWorld(std::unique_ptr<World> w) { world_ = std::move(w); }
     SoundEvents  *soundEvents() { return &soundEvents_; }
     /* The level's scenery from its .leo (extraobjects.h): models, particle
      * systems and ambient sounds, which the rules never see. */
@@ -178,7 +173,6 @@ private:
      * is torn down before it. */
     std::unique_ptr<World> world_{std::make_unique<World>()};
     unsigned      presses_{};
-    unsigned      tickPresses_{};
     ExtraObjects  extraObjects_;
     /* The rules' sounds, hooked to the sound (soundevents.h). */
     SoundEvents   soundEvents_{audio_.soundManager()};

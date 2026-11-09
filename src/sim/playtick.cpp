@@ -39,8 +39,8 @@ void Play_OpenTallyMenu(Game *self)
     self->frontEnd()->menu()->setCursor(0);
 }
 
-/* Playing: the camera follows the player, then the World's rules for the
- * level's end; a completed level moves on to the next, or ends the game. */
+/* Playing, after the World's rules: the camera follows the player, and a
+ * level the World has completed moves on to the next, or ends the game. */
 void Play_CheckLevelEnd(Game *self)
 {
     const Player *pl = self->world()->player();
@@ -51,7 +51,6 @@ void Play_CheckLevelEnd(Game *self)
         self->camera()->setFocus(2, pl->posV());
         self->camera()->setMode(0);
     }
-    self->world()->updateLevelEnd(*self->soundEvents());
     if (!self->world()->completed())
         return;
 

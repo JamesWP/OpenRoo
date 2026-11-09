@@ -12,8 +12,6 @@
  * separate level that goes on from where the original was (the bot plays
  * ahead on copies).  KAROO_WORLD_COPY=1 checks that the game keeps nothing
  * pointing into it: each tick then runs on a fresh copy at a new address.
- * KAROO_WORLD_FORK=1 checks that tick() alone is the game's tick: each tick
- * of play is also run by tick() on a copy, and the game takes the copy's.
  */
 #pragma once
 #include "crtrand.h"
@@ -111,13 +109,26 @@ public:
 
     /* ── changing the level ────────────────────────────────────────── */
 
-    /* One tick of the level, dt ms on, with the presses held; running is
-     * whether play is on (the game's state is Playing), which lets the
-     * player act, the foes move and the level end.  Every step below, in
-     * the order the game makes them; the game calls them one by one, with
-     * its own work (camera, menus, the HUD) between (core/gametick.cpp).
-     * Code with no Game -- the bot -- calls this. */
-    void tick(double dt, unsigned presses, bool running, PlayEvents &events);
+    /* What a tick's rules report to the game around them. */
+    struct TickResult {
+        unsigned playedMs = 0;  // the play time counted this tick
+    };
+
+    /* One tick of the level, dt ms on, with the presses held (presses.h);
+     * running is whether play is on (the game's state is Playing), which
+     * lets the player act, the foes move and the level end.  beginTick
+     * then update: code with no Game -- the bot -- calls this. */
+    TickResult tick(double dt, unsigned presses, bool running, PlayEvents &events)
+    {
+        beginTick(dt);
+        return update(presses, running, events);
+    }
+    /* The game makes the two halves itself, its menus between them: they run
+     * on the new clock, and may start a level (core/gametick.cpp).  The
+     * clock on dt ms (0 while paused); then every rule, in order
+     * (worldrules.cpp). */
+    void       beginTick(double dt) { tickStep_.value = dt; clock_ += dt; }
+    TickResult update(unsigned presses, bool running, PlayEvents &events);
 
     /* What the entities are given as they spawn and each tick. */
     EntityContext entityContext()
@@ -125,11 +136,22 @@ public:
         return { clock_, tickStep_, &map_ };
     }
 
-    /* The tick's first step: the clock on dt ms (0 while paused). */
-    void beginTick(double dt) { tickStep_.value = dt; clock_ += dt; }
-
     /* Removes every object from the level. */
     void clearObjects(PlayEvents &events);
+
+    /* Whether the gems are in, and whether the player has reached the open
+     * exit; both cleared as a level (re)starts. */
+    bool gemsGoalReached() const { return gemsGoalReached_; }
+    bool completed() const       { return completed_; }
+    void resetLevelEnd()         { gemsGoalReached_ = false; completed_ = false; }
+
+    /* The one-shot effects still to be seen, oldest first, and the player's
+     * recent path (effects.h). */
+    const std::vector<EffectStart> &effects() const    { return effects_; }
+    const std::deque<PathSample>   &playerPath() const { return playerPath_; }
+
+private:
+    /* update's steps, in the order it takes them. */
     /* Ticks every object of one kind, in list order. */
     void tickLifts(PlayEvents &events);
     void tickPlatforms(PlayEvents &events);
@@ -137,8 +159,6 @@ public:
     void tickBridges(PlayEvents &events);
     /* Ticks each bomb, removing those that asked to be. */
     void tickBombs(PlayEvents &events);
-
-    /* The rules a tick applies (worldrules.cpp), in the order it calls them. */
     /* The tile underfoot, the player's step and its pickups
      * (Player::updateTileEffects). */
     void updatePlayer(PlayEvents &events);
@@ -146,11 +166,8 @@ public:
      * the countdown, and the presses acted on if the player is up.  While
      * not: the player kept from idling, and the countdown silenced. */
     void tickControls(bool running, unsigned presses, PlayEvents &events);
-    /* The level's play time, while running and the player is up. */
-    void countPlayTime(bool running);
-    /* The player's actions for the presses held (presses.h), in the order
-     * the game always made them: turns, then moves, then the bomb and
-     * harakiri.  The game makes them only while the player is up. */
+    /* The player's actions for the presses held, in the order the game
+     * always made them: turns, then moves, then the bomb and harakiri. */
     void applyPresses(unsigned presses, PlayEvents &events);
     /* The countdown's last ten seconds: a tick sound as each whole second
      * left is passed, while the player has not timed out.  stopCountdown
@@ -163,31 +180,22 @@ public:
     void dropPlayerBomb();
     /* Arms the bridge of the switch the player stepped on. */
     void playerSwitch(PlayEvents &events);
+    /* The level's play time, while running and the player is up; the ms
+     * counted. */
+    unsigned countPlayTime(bool running);
     /* Arms the bridge of any switch a foe stepped on, then moves each foe;
      * they hold still unless play is running, the player is up and they are
      * not frozen.  Removes the foes that finished dying, counting them. */
     void tickFoes(bool running, PlayEvents &events);
+    /* Notes the effects this tick started (pickups, a tile falling) and the
+     * player's place on its path, and drops what can no longer be seen.  Once
+     * a tick: a tick that does not move the clock records nothing. */
+    void recordEffects();
     /* While play runs: times the level out, opens the exit once the gems
      * are in, and holds the player on it, completing the level when its
      * step is over. */
     void updateLevelEnd(PlayEvents &events);
 
-    /* Whether the gems are in, and whether the player has reached the open
-     * exit; both cleared as a level (re)starts. */
-    bool gemsGoalReached() const { return gemsGoalReached_; }
-    bool completed() const       { return completed_; }
-    void resetLevelEnd()         { gemsGoalReached_ = false; completed_ = false; }
-    /* Notes the effects this tick started (pickups, a tile falling) and the
-     * player's place on its path, and drops what can no longer be seen.  Once
-     * a tick: a tick that does not move the clock records nothing. */
-    void recordEffects();
-
-    /* The one-shot effects still to be seen, oldest first, and the player's
-     * recent path (effects.h). */
-    const std::vector<EffectStart> &effects() const    { return effects_; }
-    const std::deque<PathSample>   &playerPath() const { return playerPath_; }
-
-private:
     std::array<TimedSpawner, 256> timedSpawners_{};
     std::array<FreeBomb, 256>     freeBombs_{};
     LevelCensus   census_;
