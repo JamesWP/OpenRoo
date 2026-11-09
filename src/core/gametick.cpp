@@ -81,6 +81,12 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     static const bool copyWorld = sysdev::envFlag("KAROO_WORLD_COPY");
     if (copyWorld)
         self->moveToWorldCopy();
+    // KAROO_WORLD_FORK=1: a tick of play is also run on a copy by
+    // World::tick alone, and the game goes on with the copy's result.
+    static const bool forkWorld = sysdev::envFlag("KAROO_WORLD_FORK");
+    std::unique_ptr<World> fork;
+    if (forkWorld && self->state() == GameState::Playing)
+        fork = std::make_unique<World>(*self->world());
     Player *pl = self->world()->player();
 
     input::update();
@@ -170,6 +176,14 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 
     if (self->state() == GameState::Playing)
         Play_CheckLevelEnd(self);
+
+    // The fork's tick, if play ran all through this one (no pause opened).
+    if (fork && self->state() != GameState::PauseMenu) {
+        PlayEvents none;
+        fork->tick(dt, self->tickPresses(), true, none);
+        self->adoptWorld(std::move(fork));
+        pl = self->world()->player();
+    }
 
     // ENTER after a death, or on the game-over tally.
     if (self->state() != GameState::GameOver) {
