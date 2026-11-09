@@ -3,5 +3,5 @@ add_library(game OBJECT
     soundevents.cpp)
 target_include_directories(game PUBLIC .)
 target_link_libraries(game
-    PUBLIC  base audio ui camera script session entities
-    PRIVATE soundapi log inputapi audiodev windev level)
+    PUBLIC  base audio ui camera script session entities level
+    PRIVATE soundapi log inputapi audiodev windev)

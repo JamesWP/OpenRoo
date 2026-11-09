@@ -94,7 +94,7 @@ Sim_ParseLevelFiles(Game *self, const char *name)
     ok = self->world()->map()->readFile(path);
 
     if ((char)ok != 0) {
-        self->world()->extraObjects()->releaseSounds();
+        self->extraObjects()->releaseSounds();
         g_logger.logMessage(1, "GAME: level (Bonus=%d) loaded by name: %s.jjm",
                            self->world()->map()->bonus(), path);
     } else {
@@ -179,7 +179,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     ok = self->world()->map()->readFile(path);
 
     if ((char)ok != 0) {
-        self->world()->extraObjects()->releaseSounds();
+        self->extraObjects()->releaseSounds();
         g_logger.logMessage(1, "GAME: level (Bonus=%d) loaded by Number (%d): %s.jjm",
                            self->world()->map()->bonus(),
                            levelNo & 0xff, path);

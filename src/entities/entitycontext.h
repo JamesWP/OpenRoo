@@ -13,6 +13,4 @@ struct EntityContext {
     double        now;   // the World's clock, ms
     TickStep      step;  // this tick's step, ms
     LevelMap     *map;
-    /* The level's name (diagnostics). */
-    const char     *levelName;
 };

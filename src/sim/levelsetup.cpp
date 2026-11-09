@@ -187,7 +187,7 @@ Sim_SetupLevelObjects(Game *self)
 
     self->audio()->setLevelSoundsReady(0);
     self->scriptPlayer()->releaseStreams();
-    self->world()->extraObjects()->releaseSounds();
+    self->extraObjects()->releaseSounds();
     // The game also makes a no-op call here; it has no effect.
 
     // The camera focus is zeroed; the scripted eye and the pose eye start at y 1000.
@@ -608,12 +608,12 @@ next_row:
         g_logger.logMessage(3, "GAME: warning - not enough crystals to complete this level!!!!");
 
     // One argument: the level name.
-    if (self->world()->extraObjects()->openFile(self->gameDir(), self->world()->levelName()) == 0) {
-        self->world()->extraObjects()->setLoaded(0);
+    if (self->extraObjects()->openFile(self->gameDir(), self->world()->levelName()) == 0) {
+        self->extraObjects()->setLoaded(0);
         g_logger.logMessage(1, "GAME: could not load LEO:%s.leo no extra-objects in this level",
                            self->world()->levelName());
     } else {
-        self->world()->extraObjects()->setLoaded(1);
+        self->extraObjects()->setLoaded(1);
         g_logger.logMessage(1, "GAME: LEO-file %s loaded",
                            self->world()->levelName());
     }

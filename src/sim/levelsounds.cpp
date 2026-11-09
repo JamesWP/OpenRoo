@@ -100,7 +100,7 @@ Sim_InitLevelBasedSounds(Game *self)
         if (game->session()->restartCount() == 0 && game->config()->sound3D() != 0) {
             g_logger.logMessage(1, "GAME: try to play level-based LEO sounds");
             // The count is re-read every pass.
-            ExtraObjects *xo = game->world()->extraObjects();
+            ExtraObjects *xo = game->extraObjects();
             for (unsigned short i = 0; i < xo->objectCount(); ++i) {
                 ExtraObjectRecord *E = xo->record(i);
                 if (E->kind != EXTRA_SOUND)
