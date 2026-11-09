@@ -1,15 +1,35 @@
 #include "worldsim.h"
+#include "world.h"
+#include "worldview.h"
 
 namespace bot {
 
-WorldSim::WorldSim(const BotView &start) : view_(start)
+WorldSim::WorldSim(const World &start)
+    : world_(std::make_unique<World>(start)), dt_(start.tickStep()->value)
 {
 }
 
-void WorldSim::tick(unsigned)
+WorldSim::WorldSim(const WorldSim &other)
+    : world_(std::make_unique<World>(*other.world_)), dt_(other.dt_)
 {
-    view_.now += view_.tickMs;
-    view_.timeElapsedMs += (unsigned)view_.tickMs;
+}
+
+WorldSim::~WorldSim() = default;
+
+void WorldSim::tick(unsigned presses, double dt)
+{
+    PlayEvents unheard;
+    world_->tick(dt != 0 ? dt : dt_, presses, true, unheard);
+}
+
+BotView WorldSim::view() const
+{
+    return viewOf(*world_);
+}
+
+double WorldSim::now() const
+{
+    return world_->now();
 }
 
 bool runScript(WorldSim &sim, const Script &script, double untilMs)
