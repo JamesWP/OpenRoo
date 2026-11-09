@@ -76,8 +76,6 @@ public:
     /* GameTick latches it to 1 the first time the gems required for the exit
      * are collected in a level (and plays a crystal sound); the level builder
      * and Load clear it. */
-    int            gemsGoalReached() const           { return gemsGoalReached_; }
-    void           setGemsGoalReached(int v)         { gemsGoalReached_ = v; }
 
     /* The level builder sets it to 1 once a level is built; the next frame's
      * update (core/frame.h) then prepares the level's assets and clears it (skipping the frame
@@ -178,7 +176,6 @@ private:
     Session       session_;
     double        lastTickTime_{};
     int           levelPrepPending_{};
-    int           gemsGoalReached_{};
     ScriptPlayer  scriptPlayer_;
     CameraRig     camera_;
     /* The settings (config.h); music, volumes, 3D sound, the camera

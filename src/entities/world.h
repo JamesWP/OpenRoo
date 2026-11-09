@@ -132,6 +132,16 @@ public:
      * they hold still unless play is running, the player is up and they are
      * not frozen.  Removes the foes that finished dying, counting them. */
     void tickFoes(bool running, PlayEvents &events);
+    /* While play runs: times the level out, opens the exit once the gems
+     * are in, and holds the player on it, completing the level when its
+     * step is over. */
+    void updateLevelEnd(PlayEvents &events);
+
+    /* Whether the gems are in, and whether the player has reached the open
+     * exit; both cleared as a level (re)starts. */
+    bool gemsGoalReached() const { return gemsGoalReached_; }
+    bool completed() const       { return completed_; }
+    void resetLevelEnd()         { gemsGoalReached_ = false; completed_ = false; }
     /* Notes the effects this tick started (pickups, a tile falling) and the
      * player's place on its path, and drops what can no longer be seen.  Once
      * a tick: a tick that does not move the clock records nothing. */
@@ -150,6 +160,8 @@ private:
     TickStep      tickStep_;
     CrtRand       random_;  // the rules' random numbers
     unsigned char foesKilled_{};
+    bool          gemsGoalReached_{};
+    bool          completed_{};
     /* As long as a level-name table entry. */
     char          levelName_[0x100]{};
     EntityList<BridgeObject>   bridges_;

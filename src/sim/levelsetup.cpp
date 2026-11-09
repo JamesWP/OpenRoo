@@ -214,7 +214,7 @@ Sim_SetupLevelObjects(Game *self)
     // The crystals to be had: each crystal tile, and each foe that carries
     // one.  Only the census total and the log below want it.
     unsigned short crystals = 0;
-    self->setGemsGoalReached(0);
+    self->world()->resetLevelEnd();
     self->world()->player()->setMovingBackwards(0);
     self->world()->player()->setTeleportPhase(0);
     self->world()->player()->setLaunched(0);

@@ -1,5 +1,6 @@
 /* World: the rules a tick applies to the level as a whole -- the timed foe
- * spawners, the player's bomb drop and switches, and the foes.  Core_GameTick
+ * spawners, the player's bomb drop and switches, the foes, and the level's
+ * end.  Core_GameTick
  * (core/gametick.cpp) calls them in its fixed order.
  *
  * PRESERVED:
@@ -119,6 +120,42 @@ void World::tickFoes(bool running, PlayEvents &events)
             ++foesKilled_;
         } else {
             ++i;
+        }
+    }
+}
+
+void World::updateLevelEnd(PlayEvents &events)
+{
+    Player &pl = player_;
+
+    // Out of time.
+    if (pl.moveState() != 3) {
+        int t = timeLimit() * 1000;
+        if (t - (int)timeElapsed() <= 0) {
+            setTimeElapsed((unsigned int)t);
+            pl.setMoveState(3);
+            events.soundPlay({SoundSource::Level, 0, Sfx::TimeOut});
+        }
+    }
+
+    if (pl.gemsCollected() < gemsRequired())
+        return;
+    // The gems are in: a cheer the first time, and the exit opens.
+    if (!gemsGoalReached_) {
+        int r = (int)(long long)clock_;
+        events.soundPlay({SoundSource::Level, 0, Sfx::GemsDone, (unsigned char)(r % 3)});
+        gemsGoalReached_ = true;
+    }
+    map_.tile((signed char)pl.markerCellU(), (signed char)pl.markerCellV())->setBusy(1);
+
+    // Standing on the exit: held there, and done once its step is over.
+    if ((unsigned char)pl.cellU() == pl.markerCellU() && (unsigned char)pl.cellV() == pl.markerCellV() &&
+        (unsigned char)pl.heightCell() == pl.markerCellH() && (unsigned int)pl.falling() == 0 &&
+        pl.moveState() == 0) {
+        pl.setHeld(1);
+        if ((unsigned int)pl.moveDir() == 0) {
+            events.soundPlay({SoundSource::Level, 0, Sfx::LevelComplete});
+            completed_ = true;
         }
     }
 }
