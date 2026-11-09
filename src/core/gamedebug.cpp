@@ -88,7 +88,7 @@ void Game_DebugPanel(Game *g)
     ImGui::SameLine();
     ImGui::TextDisabled("%u s of %d", g->world()->timeElapsed() / 1000, g->world()->timeLimit());
 
-    level_stats(g->world(), g->session()->foesKilled());
+    level_stats(g->world(), g->world()->foesKilled());
 }
 
 void Cheat_DebugPanel(Game *g)

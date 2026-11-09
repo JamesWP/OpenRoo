@@ -67,6 +67,10 @@ public:
     double         now() const       { return clock_; }
     /* The rules' random numbers: the level's setup and the random pickups draw from them. */
     CrtRand       &random()          { return random_; }
+    /* Foes killed this level, kept over its restarts: every 15th spawned foe
+     * drops a life, and the level's score pays 50 for each. */
+    unsigned char  foesKilled() const               { return foesKilled_; }
+    void           setFoesKilled(unsigned char n)   { foesKilled_ = n; }
     double        *clock()           { return &clock_; }
     /* Advances the clock dt ms, or sets it. */
     void           advanceClock(double dt) { clock_ += dt; }
@@ -133,6 +137,7 @@ private:
     double        clock_{};
     TickStep      tickStep_;
     CrtRand       random_;  // the rules' random numbers
+    unsigned char foesKilled_{};
     /* As long as a level-name table entry. */
     char          levelName_[0x100]{};
     EntityList<BridgeObject>   bridges_;

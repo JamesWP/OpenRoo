@@ -51,7 +51,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
     }
 
     // Foes.
-    const unsigned foes = self->session()->foesKilled();
+    const unsigned foes = self->world()->foesKilled();
     t->score[TALLY_FOES] = (int)(foes * 50u);
     t->count[TALLY_FOES] = (int)foes;
 
