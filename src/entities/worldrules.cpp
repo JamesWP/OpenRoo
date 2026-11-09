@@ -35,6 +35,57 @@ static void arm_bridge(World &w, BridgeObject *br, unsigned char sw, int u, int 
     br->arm(w.now());
 }
 
+void World::tick(double dt, unsigned presses, bool running, PlayEvents &events)
+{
+    beginTick(dt);
+    tickLifts(events);
+    tickPlatforms(events);
+    tickFallings(events);
+    tickBridges(events);
+    tickBombs(events);
+    updatePlayer(events);
+    tickControls(running, presses, events);
+    dropPlayerBomb();
+    playerSwitch(events);
+    countPlayTime(running);
+    tickFoes(running, events);
+    recordEffects();
+    if (running)
+        updateLevelEnd(events);
+}
+
+void World::updatePlayer(PlayEvents &events)
+{
+    PROF_SCOPE("player");
+    player_.updateTileEffects(entityContext(), events, random_);
+}
+
+void World::tickControls(bool running, unsigned presses, PlayEvents &events)
+{
+    Player &pl = player_;
+    if (!running) {
+        pl.setIdleStarted(0);
+        pl.setLastActive(clock_);
+        stopCountdown(events);
+        return;
+    }
+    spawnTimedFoes();
+    if (pl.moveState() != 0) {
+        events.soundStop(pl.sound(Sfx::Slide));
+        events.soundStop(pl.sound(Sfx::Ice));
+        events.soundStop(pl.sound(Sfx::Glide));
+    }
+    updateCountdown(events);
+    if (pl.moveState() == 0)
+        applyPresses(presses, events);
+}
+
+void World::countPlayTime(bool running)
+{
+    if (running && player_.moveState() == 0)
+        setTimeElapsed(timeElapsed() + (unsigned int)(long long)tickStep_.value);
+}
+
 void World::applyPresses(unsigned presses, PlayEvents &events)
 {
     if (presses & PRESS_LEFT)     player_.actTurnLeft(map_, events);

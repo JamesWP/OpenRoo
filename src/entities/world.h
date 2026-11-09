@@ -109,11 +109,22 @@ public:
 
     /* ── changing the level ────────────────────────────────────────── */
 
+    /* One tick of the level, dt ms on, with the presses held; running is
+     * whether play is on (the game's state is Playing), which lets the
+     * player act, the foes move and the level end.  Every step below, in
+     * the order the game makes them; the game calls them one by one, with
+     * its own work (camera, menus, the HUD) between (core/gametick.cpp).
+     * Code with no Game -- the bot -- calls this. */
+    void tick(double dt, unsigned presses, bool running, PlayEvents &events);
+
     /* What the entities are given as they spawn and each tick. */
     EntityContext entityContext()
     {
         return { clock_, tickStep_, &map_ };
     }
+
+    /* The tick's first step: the clock on dt ms (0 while paused). */
+    void beginTick(double dt) { tickStep_.value = dt; clock_ += dt; }
 
     /* Removes every object from the level. */
     void clearObjects(PlayEvents &events);
@@ -126,6 +137,15 @@ public:
     void tickBombs(PlayEvents &events);
 
     /* The rules a tick applies (worldrules.cpp), in the order it calls them. */
+    /* The tile underfoot, the player's step and its pickups
+     * (Player::updateTileEffects). */
+    void updatePlayer(PlayEvents &events);
+    /* While running: the timed spawners, a downed player's loops silenced,
+     * the countdown, and the presses acted on if the player is up.  While
+     * not: the player kept from idling, and the countdown silenced. */
+    void tickControls(bool running, unsigned presses, PlayEvents &events);
+    /* The level's play time, while running and the player is up. */
+    void countPlayTime(bool running);
     /* The player's actions for the presses held (presses.h), in the order
      * the game always made them: turns, then moves, then the bomb and
      * harakiri.  The game makes them only while the player is up. */
