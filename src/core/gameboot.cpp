@@ -97,7 +97,6 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     g->scriptPlayer_.setRunning(g->scriptPlayer_.loaded() != 0 ? 1 : 0);
 
     g->world()->setNow(1000.0);
-    g->gemsGoalReached_     = 0;
     g->world()->player()->setGliding(0);
     g->frontEnd()->setTextEntryActive(0);
     g->camera()->setMode(1);
