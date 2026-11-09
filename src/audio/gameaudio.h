@@ -18,7 +18,6 @@ struct FixedSounds {
     audiodev::Buffer *switchClick;      /* menu select */
     VoicePool          *menuUpDown;       /* 5 voices */
     audiodev::Buffer *count;
-    audiodev::Buffer *lastSeconds;      /* the countdown */
     /* Set once the load has run (or found no sound); it never runs again. */
     unsigned int        loaded;
 };

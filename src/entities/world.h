@@ -130,6 +130,11 @@ public:
      * the game always made them: turns, then moves, then the bomb and
      * harakiri.  The game makes them only while the player is up. */
     void applyPresses(unsigned presses, PlayEvents &events);
+    /* The countdown's last ten seconds: a tick sound as each whole second
+     * left is passed, while the player has not timed out.  stopCountdown
+     * silences it, as play stops. */
+    void updateCountdown(PlayEvents &events);
+    void stopCountdown(PlayEvents &events);
     /* Spawns a foe from each timed spawner whose interval has passed. */
     void spawnTimedFoes();
     /* Drops the bomb the player asked for, unless a step is too far along. */

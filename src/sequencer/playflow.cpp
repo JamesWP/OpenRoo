@@ -28,13 +28,6 @@
 #include "cheatcode.h"
 #include "keys.h"
 
-
-/* floor() of a double. */
-static double crt_floor(double v)
-{
-    return floor((double)v);
-}
-
 /* The flythrough: its checkpoint is restored, and ENTER ends it and returns to play. */
 void Flow_TickFlythrough(Game *self)
 {
@@ -102,21 +95,7 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
         self->camera()->setParkedCameraOption(0);
     }
 
-    // The countdown's last seconds: compared at 80 bits, stored at 64.
-    {
-        static const double k001 = 0.001;  // a double
-        double lim = (double)(unsigned long long)(unsigned int)self->world()->timeLimit() * 1000.0;
-        double rem80 = (lim - (double)(unsigned long long)self->world()->timeElapsed()) *
-                            (double)k001;
-        double rem64 = (double)rem80;
-        if (rem80 > 11.0 || pl->moveState() == 3) {
-            pl->setLastSecondsMark(10.0);
-        } else if ((double)pl->lastSecondsMark() > (double)rem64) {
-            if (self->audio()->fixedSounds()->lastSeconds != NULL)
-                (self->audio()->fixedSounds()->lastSeconds)->play(false);
-            pl->setLastSecondsMark(crt_floor(rem64));
-        }
-    }
+    self->world()->updateCountdown(*self->soundEvents());
     if (pl->moveState() == 0) {
         PROF_SCOPE("player");
         // Noted before the dispatch, so paused and cutscene modes are seen.
@@ -135,8 +114,7 @@ void Flow_TickIdleControls(Game *self, ProgableControl *progCtrl)
     pl->setLastActive(self->world()->now());
     gamestate_note_mode(0);
     progCtrl->dispatch(0);
-    if (self->audio()->fixedSounds()->lastSeconds != NULL)
-        (self->audio()->fixedSounds()->lastSeconds)->stop();
+    self->world()->stopCountdown(*self->soundEvents());
 }
 
 /* ENTER after a death: restarts the level, or ends it as game over or, on a bonus level, complete. */
