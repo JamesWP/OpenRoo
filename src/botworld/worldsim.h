@@ -37,7 +37,7 @@ public:
     double now() const;
 
 private:
-    std::unique_ptr<World> world_;  // 2.4 MB, so not kept inline
+    std::unique_ptr<World> world_;  // World is incomplete here
     double                 dt_;
 };
 

@@ -12,9 +12,10 @@
  *   2. Every border cell is zeroed after it is read, so the file position
  *      advances as for any cell.
  *   3. Each cell is copied into the snapshot after the border clear.
- *   4. Only width * height cells are filled; the four file bytes of all
- *      10000 are zeroed first (not the rest of the record, not the
- *      snapshot).
+ *   4. Only width * height cells are filled; the four file bytes of each
+ *      are zeroed first (not the rest of the record, not the snapshot):
+ *      a cell keeps the rest of its record from the level read before, if
+ *      that had the cell too.
  *   5. End of file is not detected: a truncated file gives 0xff cells, and
  *      only a failed open returns 0. */
 
@@ -53,15 +54,14 @@ int LevelMap::readFile(const char *path)
     if (!in)
         return 0;
 
-    // Width to extentU_, height to extentV_.
+    // Width to extentU_, height to extentV_; the grids to the new size, each
+    // cell the last level had kept where it was.
     readBytes(in, hdr, 2);
-    extentU_ = hdr[0];
-    extentV_ = hdr[1];
+    resize(hdr[0], hdr[1]);
 
-    // Zero every tile's four file bytes, u outer and v inner.
-    for (int u = 0; u < DIM; u++)
-        for (int v = 0; v < DIM; v++)
-            clear_file_bytes(tile(u, v));
+    // Zero every tile's four file bytes.
+    for (Tile &t : grid_)
+        clear_file_bytes(&t);
 
     width  = extentU_;
     height = extentV_;
@@ -104,10 +104,24 @@ int LevelMap::readFile(const char *path)
     return 1;
 }
 
-/* The two extent bytes; the rest is left as it was. */
 LevelMap::LevelMap()
 {
     extentV_ = 0;
     extentU_ = 0;
+}
+
+void LevelMap::resize(unsigned char eu, unsigned char ev)
+{
+    auto remap = [&](std::vector<Tile> &grid) {
+        std::vector<Tile> next((size_t)eu * ev);
+        for (int v = 0; v < ev && v < extentV_; v++)
+            for (int u = 0; u < eu && u < extentU_; u++)
+                next[(size_t)v * eu + u] = grid[(size_t)v * extentU_ + u];
+        grid.swap(next);
+    };
+    remap(grid_);
+    remap(snapshot_);
+    extentU_ = eu;
+    extentV_ = ev;
 }
 

@@ -1,25 +1,29 @@
 /* LevelMap: the level's map, a sub-object of Game, read from the level's .jjm
- * file (levelmap.cpp).  A header, then a fixed 100 x 100 grid of tile records
- * (tile.h), then a second grid of the same shape: the snapshot, the level as
- * the file gave it.  The reader writes each cell's four file bytes into both.
+ * file (levelmap.cpp).  A header, then a grid of tile records (tile.h) the
+ * level's size, then a second grid of the same shape: the snapshot, the level
+ * as the file gave it.  The reader writes each cell's four file bytes into both.
  * The builder spawns from the snapshot's contents, a restart copies it back
  * over the live grid, and a despawning foe clears its home cell in it.
  * It holds no pointers, so a copy is a whole, separate map. */
 #pragma once
 
 #include <stddef.h>
+#include <vector>
 #include "tile.h"
 
 class LevelMap {
 public:
      
 
-    // The grid is 100 x 100 whatever the level's real size.
+    // The game's grid was 100 x 100 whatever the level's real size; the
+    // cells beyond the level and within that are open void.
     static const int DIM = 100;
 
-    // The cell at (u, v), either axis signed.  A cell outside the grid is a
-    // scratch solid wall, fresh on every call, so a scan that steps off the
-    // grid stops there and a write to it is lost.
+    // The cell at (u, v), either axis signed.  A cell outside the 100 x 100
+    // grid is a scratch solid wall, fresh on every call, so a scan that steps
+    // off the grid stops there and a write to it is lost; one within it but
+    // beyond the level (the renderer looks one past its edge) is a scratch
+    // empty tile, its file bytes zero, as the reader leaves it.
     Tile       *tile(int u, int v)       { return cellAt(grid_, u, v); }
     const Tile *tile(int u, int v) const
     {
@@ -52,7 +56,9 @@ public:
 
 
 private:
-     
+    /* The grids to eu x ev, each cell within both sizes kept, the rest
+     * fresh. */
+    void resize(unsigned char eu, unsigned char ev);
 
     int           timeLimit_{};      // the live time limit, s; a time bonus adds 5
     unsigned int  timeElapsed_{};    // ms of play
@@ -64,16 +70,18 @@ private:
     int           gemsRequired_{};   // crystals needed to open the exit
     unsigned char extentV_{};        // the v extent (file byte 1)
     unsigned char extentU_{};        // the u extent (file byte 0)
-    // Indexed [u][v].
-    Tile          grid_[DIM][DIM];
-    Tile          snapshot_[DIM][DIM];
-    mutable Tile  outside_;        // what tile() hands out beyond the grid
+    // extentU_ * extentV_ each, u fastest: only the level's cells, so a
+    // copy of the map (World is copied whole) is as small as the level.
+    std::vector<Tile> grid_;
+    std::vector<Tile> snapshot_;
+    mutable Tile  outside_;        // what tile() hands out beyond the level
 
-    Tile *cellAt(Tile (&grid)[DIM][DIM], int u, int v) const
+    Tile *cellAt(std::vector<Tile> &grid, int u, int v) const
     {
-        if (u >= 0 && u < DIM && v >= 0 && v < DIM)
-            return &grid[u][v];
-        outside_ = Tile::outsideGrid();
+        if (u >= 0 && u < extentU_ && v >= 0 && v < extentV_)
+            return &grid[(size_t)v * extentU_ + u];
+        const bool inGrid = u >= 0 && u < DIM && v >= 0 && v < DIM;
+        outside_ = inGrid ? Tile() : Tile::outsideGrid();
         return &outside_;
     }
 };
