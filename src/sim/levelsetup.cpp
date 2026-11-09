@@ -34,6 +34,7 @@
 #include "logger.h"
 #include "player.h"
 #include "crtrand.h"
+#include "foetype.h"
 #include "game.h"
 #include "bomb.h"
 #include "tilequery.h"
@@ -210,7 +211,9 @@ Sim_SetupLevelObjects(Game *self)
 
     self->world()->census()->reset();
 
-    self->world()->setCrystalsInLevel(0);
+    // The crystals to be had: each crystal tile, and each foe that carries
+    // one.  Only the census total and the log below want it.
+    unsigned short crystals = 0;
     self->setGemsGoalReached(0);
     self->world()->player()->setMovingBackwards(0);
     self->world()->player()->setTeleportPhase(0);
@@ -295,7 +298,7 @@ Sim_SetupLevelObjects(Game *self)
                 t->setField202(0);
 
                 if (t->contents() == CONTENTS_CRYSTAL)
-                    self->world()->setCrystalsInLevel((unsigned short)(self->world()->crystalsInLevel() + 1));
+                    crystals++;
                 if (t->contents() == CONTENTS_EXTRA_LIFE) self->world()->census()->extraLives++;
 
                 if (t->objectMarker() == TILE_KIND_01) self->world()->census()->kind01++;
@@ -506,12 +509,16 @@ Sim_SetupLevelObjects(Game *self)
                             t->setParam(0);
                             hh = (unsigned char)(hh + bump);
                         }
+                        if (t->param() == FOE_GEM_CARRIER)
+                            crystals++;
                         Foe::spawn(self->world()->entityContext(), self->world()->foes(), u, v, hh, 2, t->param());
                         t->setContents(0);
                         spawned2 = 1;
                     }
 
                     if (s->contents() == CONTENTS_FOE_TYPE3) {
+                        if (t->param() == FOE_GEM_CARRIER)
+                            crystals++;
                         Foe::spawn(self->world()->entityContext(), self->world()->foes(), u, v, t->height(), 3, t->param());
                         t->setContents(0);
                         t->setParam(0);
@@ -541,7 +548,7 @@ next_row:
                                   self->world()->census()->shadow1      + self->world()->census()->protections +
                                   self->world()->census()->paragliders  + self->world()->census()->shadow7 +
                                   self->world()->census()->freezeItems + self->world()->census()->extraLives +
-                                  self->world()->census()->timeBonuses  + self->world()->crystalsInLevel());
+                                  self->world()->census()->timeBonuses  + crystals);
 
     self->world()->player()->setMoveState(0);
     self->world()->player()->setLastContact(self->world()->now());
@@ -605,10 +612,10 @@ next_row:
     self->camera()->setOverviewActive(0);
 
     g_logger.logMessage(1, "GAME: %d crystals in this level, %d needed",
-                       (unsigned int)self->world()->crystalsInLevel(),
+                       (unsigned int)crystals,
                        self->world()->gemsRequired());
 
-    if ((int)((unsigned int)self->world()->player()->gemsCollected() + (unsigned int)self->world()->crystalsInLevel()) <
+    if ((int)((unsigned int)self->world()->player()->gemsCollected() + (unsigned int)crystals) <
         self->world()->gemsRequired())
         g_logger.logMessage(3, "GAME: warning - not enough crystals to complete this level!!!!");
 
@@ -632,7 +639,7 @@ next_row:
                   "bridges=%u teleports=%u lifts=%u platforms=%u falling tiles=%u "
                   "foes=%u freebombs=%u timed=%u switchmax=%u\n",
                   s_calls, (unsigned)M->extentU(), (unsigned)M->extentV(),
-                  (unsigned)self->world()->crystalsInLevel(), (unsigned)self->world()->census()->total,
+                  (unsigned)crystals, (unsigned)self->world()->census()->total,
                   (unsigned)self->world()->census()->bridges, (unsigned)self->world()->census()->teleports,
                   (unsigned)self->world()->lifts().size(), (unsigned)self->world()->platforms().size(),
                   (unsigned)self->world()->fallings().size(), (unsigned)self->world()->foes().size(),

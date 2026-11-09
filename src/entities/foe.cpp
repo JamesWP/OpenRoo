@@ -231,7 +231,6 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
         p->facing_ = 1;
         if (type == FOE_GEM_CARRIER) {
             p->dropContents_ = 1;
-            ++*ctx.crystalsInLevel;
         } else if (type == FOE_LIFE_CARRIER) {
             p->dropContents_ = 7;
         } else if (type == FOE_GEM_RUNNER) {

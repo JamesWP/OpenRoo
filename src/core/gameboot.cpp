@@ -33,7 +33,6 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     *g->session()->tally() = ScoreTally();
     g->world()->switchCells()->clearCounts();
     Sim_ResetLevelObjectCounters(g);
-    g->world()->setCrystalsInLevel(0);
     g->mapChanged_       = 1;
     g->initialised_      = 0;
     g->audio()->setLevelSoundsReady(0);
