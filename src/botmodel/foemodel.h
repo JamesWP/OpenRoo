@@ -195,7 +195,7 @@ private:
     bool workSwitch(int slot, bool byFoe);
     /* A mover at rest on (u, v) at height h works the switch there, once. */
     static bool onSwitch(const Cell &c, int h, bool *worked, int *slot);
-    /* tilequery.cpp's Sim_FindNearestListedObjectTile: the nearest raised
+    /* tilequery.cpp's Sim_FindNearestBusySwitch: the nearest raised
      * switch within 7 of (u0, v0), not (u0, v0) itself. */
     bool nearestSwitch(int u0, int v0, int *pu, int *pv) const;
 

@@ -115,7 +115,7 @@ void Play_PlayerSwitch(Game *self)
         trigger_switch_tile(br, self->world()->map()->tile(pl->cellU(), pl->cellV()));
         br->arm(self->world()->now());
         br->playArmSound(*self->soundEvents());
-        Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(), br->phase(), sw);
+        Sim_MarkSwitchTiles(self->world()->map(), br->phase(), sw);
         pl->setSwitchSlot(0xff);
     }
 }
@@ -138,7 +138,7 @@ void Play_TickFoes(Game *self)
             g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
             trigger_switch_tile(br, self->world()->map()->tile(foe.cellU(), foe.cellV()));
             br->arm(self->world()->now());
-            Sim_MarkListedTilesBlockedByObject(self->world()->switchCells(), self->world()->map(), br->phase(), sw);
+            Sim_MarkSwitchTiles(self->world()->map(), br->phase(), sw);
             foe.clearSwitchSlot();
         }
 

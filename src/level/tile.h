@@ -68,8 +68,8 @@ enum TileKind {
     // its direction, quickly and facing that way, and paths leave it only
     // that way.  The builder moves the param byte into slideDir().
     TILE_SLIDE       = 0x10,
-    // A numbered switch; the builder files the cell into SwitchCells and
-    // leaves the number in field1f3().
+    // A numbered switch; the builder leaves its number, from 0, in
+    // field1f3() (tilequery.h finds a switch's tiles by it).
     TILE_SWITCH      = 0x11,
     // Bridges along u and v.
     TILE_BRIDGE_U    = 0x12,

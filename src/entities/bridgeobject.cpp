@@ -19,7 +19,6 @@
 #include <string.h>
 
 #include "bridgeobject.h"
-#include "switchcells.h"
 #include <algorithm>
 #include "levelmap.h"
 #include "tile.h"

@@ -2,18 +2,29 @@
  * object lists or the tile flags. */
 #pragma once
 
+#include "levelmap.h"
+#include "tile.h"
+
 class Game;
-class LevelMap;
-class SwitchCells;
 
- 
-/* Marks the tiles of object list listIndex as blocked, from the phase of the
- * bridge on that list. */
-  void   Sim_MarkListedTilesBlockedByObject(SwitchCells *sw, LevelMap *map, int bridgePhase, unsigned int listIndex);
+/* Calls f(u, v) for each tile of switch sw, v outer and u inner. */
+template <class F>
+void Sim_ForEachSwitchCell(const LevelMap *map, unsigned int sw, F f)
+{
+    for (unsigned v = 0; v < map->extentV(); v++)
+        for (unsigned u = 0; u < map->extentU(); u++) {
+            const Tile *t = map->tile((int)u, (int)v);
+            if (t->objectMarker() == TILE_SWITCH && t->field1f3() == (sw & 0xff))
+                f((unsigned char)u, (unsigned char)v);
+        }
+}
 
-/* The nearest tile of the listed objects to (*pu, *pv), within maxDist;
- * written back through pu and pv. */
-  unsigned int   Sim_FindNearestListedObjectTile(SwitchCells *sw, unsigned char switchMax, LevelMap *map, unsigned char *pu, unsigned char *pv, unsigned char maxDist);
+/* Sets switch sw's tiles busy, or not, from the phase of the bridge it arms. */
+void Sim_MarkSwitchTiles(LevelMap *map, int bridgePhase, unsigned int sw);
+
+/* The busy switch tile nearest (*pu, *pv) within maxDist, written back. */
+unsigned int Sim_FindNearestBusySwitch(const LevelMap *map, unsigned char *pu, unsigned char *pv,
+                                       unsigned char maxDist);
 
 /* The nearest flagged tile within radius of (*pu, *pv), written back. */
   unsigned int   Sim_FindNearestFlaggedTileInRadius(LevelMap *map, unsigned char *pu, unsigned char *pv, unsigned char radius);

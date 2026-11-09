@@ -11,7 +11,7 @@
 #include "foepath.h"
 #include "bomb.h"
 #include "bridgeobject.h"
-#include "switchcells.h"
+#include "tilequery.h"
 #include "tile.h"
 #include "tilenames.h"
 
@@ -24,7 +24,7 @@ static void deck_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
 
 /* Bridges are objects, not tiles: the builder clears their cells.  The whole
  * span is outlined; the deck fills as far as it has extended. */
-static void debug_bridge(const dbg::MapView &m, const BridgeObject &br, const SwitchCells &sc)
+static void debug_bridge(const dbg::MapView &m, const BridgeObject &br, const LevelMap &map)
 {
     ImDrawList *dl = m.dl;
     const BridgeExtent b = br.extent();
@@ -54,11 +54,14 @@ static void debug_bridge(const dbg::MapView &m, const BridgeObject &br, const Sw
     const int hAlong = alongU ? m.hoverU : m.hoverV, hAcross = alongU ? m.hoverV : m.hoverU;
     const bool onSpan = hAcross == (int)cross && hAlong >= std::min(rest, end) && hAlong < std::max(rest, end);
     bool show = m.links || onSpan;
-    for (unsigned k = 0; k < sc.count(b.slot); k++)
-        show = show || m.hovered(sc.cellU(b.slot, k), sc.cellV(b.slot, k));
-    for (unsigned k = 0; show && k < sc.count(b.slot); k++)
-        dl->AddLine(m.centre((float)sc.cellU(b.slot, k), (float)sc.cellV(b.slot, k)), mid,
-                    IM_COL32(230, 40, 40, 200), std::max(1.0f, m.cell * 0.08f));
+    Sim_ForEachSwitchCell(&map, b.slot, [&](unsigned char u, unsigned char v) {
+        show = show || m.hovered(u, v);
+    });
+    if (show)
+        Sim_ForEachSwitchCell(&map, b.slot, [&](unsigned char u, unsigned char v) {
+            dl->AddLine(m.centre((float)u, (float)v), mid, IM_COL32(230, 40, 40, 200),
+                        std::max(1.0f, m.cell * 0.08f));
+        });
 
     if (onSpan) {
         m.separator();
@@ -179,7 +182,7 @@ void Entities_DebugDrawMap(const World *world)
         return;
     const dbg::MapView &m = *layer;
     for (const BridgeObject &b : world->bridges())
-        debug_bridge(m, b, *world->switchCells());
+        debug_bridge(m, b, *world->map());
     for (const Bomb &b : world->bombs())
         debug_bomb(m, b);
     for (const Foe &e : world->foes())

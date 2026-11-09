@@ -28,7 +28,6 @@ struct BridgeExtent {
     int   height;     // the deck's
 };
 
-class SwitchCells;
 
 class BridgeObject : public Listed {
 public:
