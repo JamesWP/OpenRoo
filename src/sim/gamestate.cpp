@@ -81,7 +81,7 @@ bool StateSnapshot::read()
     elapsed_ms     = g->world()->timeElapsed();
     lives          = (uint8_t)pl->lives();
     bombs          = pl->bombsCarried();
-    total_score    = pl->score();
+    total_score    = g->session()->totalScore();
     level_score    = g->session()->tally()->levelTotal;
     vitality       = g->session()->vitalityPercent();
     {

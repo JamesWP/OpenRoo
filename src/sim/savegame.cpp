@@ -16,7 +16,7 @@ SaveGame_StoreIntoSaveSlot(FrontEnd *frontEnd, const Session *session, const Wor
     S->levelIndex          = (unsigned char)(session->levelIndex() + 1);
     S->elapsedGameTime     = (unsigned int)(long long)session->totalPlayTime();
     S->completionNumerator = (unsigned int)world->player()->completionNumerator();
-    S->totalScore          = (unsigned int)world->player()->score();
+    S->totalScore          = (unsigned int)session->totalScore();
     S->livesRemaining      = (unsigned char)world->player()->lives();
     S->inUse               = 1;
     return 1;
@@ -32,7 +32,7 @@ SaveGame_RestoreFromSaveSlot(FrontEnd *frontEnd, Session *session, World *world,
     // DETERMINISM: the stored time is unsigned; widened exactly.
     session->setTotalPlayTime((double)(unsigned long long)S->elapsedGameTime);
     world->player()->setCompletionNumerator(S->completionNumerator);
-    world->player()->setScore(S->totalScore);
+    session->setTotalScore((int)S->totalScore);
     world->player()->setLives(S->livesRemaining);
     return 1;
 }

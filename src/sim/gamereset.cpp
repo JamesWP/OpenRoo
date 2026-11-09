@@ -86,7 +86,7 @@ Sim_ClearGameState(Game *self)
     pl->setFalling(0);
     pl->setMoveState(0);
     pl->setStepDuration(200.0);  // bits 0x4069000000000000
-    pl->setScore(0);
+    self->session()->setTotalScore(0);
 
     if (gamefile_ok == 0) {
         g_logger.logMessage(4, "GAME: ** error ** game-file %s is not readable (maybe it does not exist\077) aborting game!!!",
