@@ -45,7 +45,6 @@ void Game::releaseAllSounds()
     FixedSounds *fixed = audio()->fixedSounds();
     if (audio()->soundCreated() != 0) {
         audiodev::Buffer *statics1[] = {
-            fixed->lastSeconds,
             fixed->count,   fixed->switchClick,
         };
         for (audiodev::Buffer *s : statics1)

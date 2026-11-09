@@ -14,6 +14,8 @@
 #include "prof.h"
 #include "tilequery.h"
 
+#include <math.h>
+
 /* The bridge a switch operates, if it is one (0xff is none) and the bridge
  * is at rest. */
 static BridgeObject *idle_bridge(World &w, unsigned char sw)
@@ -41,6 +43,25 @@ void World::applyPresses(unsigned presses, PlayEvents &events)
     if (presses & PRESS_BACK)     player_.actMoveBack(map_, events);
     if (presses & PRESS_BOMB)     player_.actReleaseBomb();
     if (presses & PRESS_HARAKIRI) player_.actHarakiri();
+}
+
+void World::updateCountdown(PlayEvents &events)
+{
+    static const double k001 = 0.001;
+    const double limit = (double)(unsigned long long)(unsigned int)timeLimit() * 1000.0;
+    const double left = (limit - (double)(unsigned long long)timeElapsed()) * k001;  // s
+    Player &pl = player_;
+    if (left > 11.0 || pl.moveState() == 3) {
+        pl.setLastSecondsMark(10.0);
+    } else if (pl.lastSecondsMark() > left) {
+        events.soundPlay({SoundSource::Level, 0, Sfx::LastSeconds});
+        pl.setLastSecondsMark(floor(left));
+    }
+}
+
+void World::stopCountdown(PlayEvents &events)
+{
+    events.soundStop({SoundSource::Level, 0, Sfx::LastSeconds});
 }
 
 void World::spawnTimedFoes()

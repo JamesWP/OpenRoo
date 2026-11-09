@@ -74,8 +74,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     sp->setSoundManager(sm);
 
     define(self, SoundSource::Level, Sfx::TimeOut, 0, "%s\134waves\134TimeOut%s.wav", "");
-    snprintf(path, sizeof(path), "%s\134waves\134LastSeconds.wav", self->gameDir());
-    self->audio()->fixedSounds()->lastSeconds = sm->acquireStatic(path, 0);
+    define(self, SoundSource::Level, Sfx::LastSeconds, 0, "%s\134waves\134LastSeconds%s.wav", "");
     snprintf(path, sizeof(path), "%s\134waves\134Count.wav", self->gameDir());
     self->audio()->fixedSounds()->count = sm->acquireStatic(path, 0);
     snprintf(path, sizeof(path), "%s\134waves\134MenuUpDown.wav", self->gameDir());

@@ -47,6 +47,7 @@ enum class Sfx : unsigned char {
     PickupReversed,  // the controls reversed
     PickupShield,    // protection
     // The level's (id 0), heard everywhere:
+    LastSeconds,     // a tick of the countdown's last ten seconds
     TimeOut,         // the time has run out
     GemsDone,        // the last gem needed, in three takes
     LevelComplete,   // the player home with the gems
