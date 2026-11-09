@@ -1,15 +1,14 @@
 /* Game::GameTick: one simulation step, called once a frame by Core_UpdateFrame
- * with dt and the clock.  It ticks the bombs, the timed foe spawners, the
- * countdown, the player's bomb drop and switches, the foes, the lifts and
- * platforms; then, by game state, the camera and exit while playing, the restart
- * or game-over tally on ENTER, and high-score entry.  The notes on what
- * those steps do are in sim/playtick.cpp and sequencer/playflow.cpp.
+ * with dt and the clock.  The World's clock moves first (its menus, the
+ * flythrough and the tally run on the new clock, and may start a level);
+ * then the controls note the presses, the World's rules run in one call
+ * (World::update, entities/worldrules.cpp), and the game answers them: the
+ * play time, the camera, the level's end, the restart or game-over tally on
+ * ENTER, and high-score entry.  The notes on the game's own steps are in
+ * sim/playtick.cpp and sequencer/playflow.cpp.
  *
  * The x87 helpers keep a value on the FPU across a chain where the result
- * depends on it, rather than trusting the compiler's spills.
- *
- * The lifts tick before the platforms.  Both change the tile map, so the order
- * is observable. */
+ * depends on it, rather than trusting the compiler's spills. */
 
 #include "gametick.h"
 #include "keycodes.h"
@@ -63,30 +62,12 @@ static void advance_clock(Game *self, double dt, double now)
     self->world()->beginTick(self->state() == GameState::PauseMenu ? 0.0 : dt);
 }
 
-/* The level objects: the tile debug map, then the lifts, platforms, falling tiles and bridges. */
-static void tick_level_objects(Game *self)
-{
-    unsigned char u, v;
-    if (Tile_DebugDrawMap(self->world(), &u, &v))
-        Cheat_TeleportPlayer(self, u, v);
-    self->world()->tickLifts(*self->soundEvents());
-    self->world()->tickPlatforms(*self->soundEvents());
-    self->world()->tickFallings(*self->soundEvents());
-    self->world()->tickBridges(*self->soundEvents());
-}
-
   void
 Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 {
     static const bool copyWorld = sysdev::envFlag("KAROO_WORLD_COPY");
     if (copyWorld)
         self->moveToWorldCopy();
-    // KAROO_WORLD_FORK=1: a tick of play is also run on a copy by
-    // World::tick alone, and the game goes on with the copy's result.
-    static const bool forkWorld = sysdev::envFlag("KAROO_WORLD_FORK");
-    std::unique_ptr<World> fork;
-    if (forkWorld && self->state() == GameState::Playing)
-        fork = std::make_unique<World>(*self->world());
     Player *pl = self->world()->player();
 
     input::update();
@@ -124,12 +105,15 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     if (self->state() == GameState::NameEntry)
         self->frontEnd()->nameEntry()->poll((unsigned int)(long long)(self->world()->now()));
 
-    tick_level_objects(self);
-
+    // Before the World's rules: the tile debug map's teleport, the pause
+    // key, the HUD's vitality, and the controls, which note the presses.
+    {
+        unsigned char u, v;
+        if (Tile_DebugDrawMap(self->world(), &u, &v))
+            Cheat_TeleportPlayer(self, u, v);
+    }
     if ((self->state() == GameState::Playing || self->state() == GameState::Flythrough) && input::pressed(input::KEY_ESCAPE))
         Flow_OpenPauseMenu(self);
-
-    self->world()->tickBombs(*self->soundEvents());
 
     {
         unsigned char pct = completion_percent((unsigned int)pl->completionNumerator(), self->session()->playingTime());
@@ -138,23 +122,21 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
             self->session()->setVitalityPercent(100);
     }
 
-    self->world()->updatePlayer(*self->soundEvents());
-
-    if (self->state() == GameState::Playing)
+    const bool playing = self->state() == GameState::Playing;
+    if (playing)
         Flow_TickPlayingControls(self, progCtrl);
     else
-        Flow_TickIdleControls(self, progCtrl);
+        Flow_TickIdleControls(progCtrl);
 
-    self->world()->dropPlayerBomb();
-    self->world()->playerSwitch(*self->soundEvents());
+    // The World's rules (World::update).
+    const World::TickResult ticked =
+        self->world()->update(self->takePresses(), playing, *self->soundEvents());
 
-    self->world()->countPlayTime(self->state() == GameState::Playing);
-    if (pl->moveState() != 0) {
+    // After them: the session's play time, the camera, the debug panels, and
+    // the game's answer to the level's end.
+    self->session()->setPlayingTime(self->session()->playingTime() + ticked.playedMs);
+    if (pl->moveState() != 0)
         self->camera()->setMode(2);
-    } else if (self->state() == GameState::Playing) {
-        self->session()->setPlayingTime(self->session()->playingTime()
-            + (unsigned int)(long long)(self->world()->tickStep()->value));
-    }
 
     if ((unsigned int)pl->gliding() != 0) {
         self->camera()->setMode(0);
@@ -167,23 +149,12 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
         }
     }
 
-    self->world()->tickFoes(self->state() == GameState::Playing, *self->soundEvents());
-    self->world()->recordEffects();
-
     Entities_DebugDrawMap(self->world());
     Game_DebugPanel(self);
     Cheat_DebugPanel(self);
 
-    if (self->state() == GameState::Playing)
+    if (playing && self->state() == GameState::Playing)
         Play_CheckLevelEnd(self);
-
-    // The fork's tick, if play ran all through this one (no pause opened).
-    if (fork && self->state() != GameState::PauseMenu) {
-        PlayEvents none;
-        fork->tick(dt, self->tickPresses(), true, none);
-        self->adoptWorld(std::move(fork));
-        pl = self->world()->player();
-    }
 
     // ENTER after a death, or on the game-over tally.
     if (self->state() != GameState::GameOver) {

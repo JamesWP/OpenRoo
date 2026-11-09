@@ -1,7 +1,6 @@
-/* World: the rules a tick applies to the level as a whole -- the timed foe
- * spawners, the player's bomb drop and switches, the foes, and the level's
- * end.  Core_GameTick
- * (core/gametick.cpp) calls them in its fixed order.
+/* World: the rules a tick applies to the level -- update and its steps:
+ * the controls, the timed foe spawners, the player's bomb drop and
+ * switches, the play time, the foes, and the level's end.
  *
  * PRESERVED:
  *   - a bomb drop, the player's or a foe's (Foe::dropBomb), refused as too
@@ -35,9 +34,11 @@ static void arm_bridge(World &w, BridgeObject *br, unsigned char sw, int u, int 
     br->arm(w.now());
 }
 
-void World::tick(double dt, unsigned presses, bool running, PlayEvents &events)
+World::TickResult World::update(unsigned presses, bool running, PlayEvents &events)
 {
-    beginTick(dt);
+    TickResult result;
+    // The lifts tick before the platforms.  Both change the tile map, so the
+    // order is observable.
     tickLifts(events);
     tickPlatforms(events);
     tickFallings(events);
@@ -47,11 +48,12 @@ void World::tick(double dt, unsigned presses, bool running, PlayEvents &events)
     tickControls(running, presses, events);
     dropPlayerBomb();
     playerSwitch(events);
-    countPlayTime(running);
+    result.playedMs = countPlayTime(running);
     tickFoes(running, events);
     recordEffects();
     if (running)
         updateLevelEnd(events);
+    return result;
 }
 
 void World::updatePlayer(PlayEvents &events)
@@ -80,10 +82,13 @@ void World::tickControls(bool running, unsigned presses, PlayEvents &events)
         applyPresses(presses, events);
 }
 
-void World::countPlayTime(bool running)
+unsigned World::countPlayTime(bool running)
 {
-    if (running && player_.moveState() == 0)
-        setTimeElapsed(timeElapsed() + (unsigned int)(long long)tickStep_.value);
+    if (!running || player_.moveState() != 0)
+        return 0;
+    const unsigned ms = (unsigned int)(long long)tickStep_.value;
+    setTimeElapsed(timeElapsed() + ms);
+    return ms;
 }
 
 void World::applyPresses(unsigned presses, PlayEvents &events)
