@@ -1,43 +1,19 @@
 /* The play's per-tick simulation, called from Core_GameTick (core/gametick.cpp):
- * the level sounds, the timed foe spawns, the player's bomb drop and switch,
- * the foes, and the level end.
+ * the level sounds and the level end.  The rules between them are World's
+ * (entities/worldrules.cpp).
  *
  * PRESERVED:
- *   - a bomb drop or foe bomb refused as too soon also leaves its request
- *     flag set;
  *   - the game-over branch of the restart skips the camera reset;
  *   - leaving game over with ENTER adds the level time to the total play time;
  *     ENTER after high-score name entry does not.
  */
 
 #include "playtick.h"
-#include "foetype.h"
 #include "logger.h"
 #include "game.h"
-#include "prof.h"
 #include "levelsounds.h"
 #include "fixedsounds.h"
 #include "levelscore.h"
-#include "tilequery.h"
-#include "bridgeobject.h"
-#include "foe.h"
-
-/* The switch-triggered block, shared by the player and each foe. */
-
-static void trigger_switch_tile(BridgeObject *br, Tile *t)
-{
-    t->setBusy(br->phase() == 0 ? 1 : 0);
-}
-
-/* The bridge a switch slot operates, if it is one (0xff is none) and the
- * bridge is at rest. */
-static BridgeObject *idle_bridge(World *w, unsigned char sw)
-{
-    if (sw == 0xff)
-        return nullptr;
-    BridgeObject *br = w->bridge(sw);
-    return (br != nullptr && br->armed() == 0) ? br : nullptr;
-}
 
 /* Acquires the fixed sound buffers, and loads the level sounds on the first tick they are ready. */
 void Play_LoadSounds(Game *self)
@@ -48,122 +24,6 @@ void Play_LoadSounds(Game *self)
         self->audio()->setLevelSoundsReady(1);
         if (self->state() == GameState::MainMenu && self->config()->musicOn() != 0)
             self->audio()->cdThemes()->replay();
-    }
-}
-
-/* Spawns a foe from each timed spawner whose interval has elapsed. */
-void Play_SpawnTimedFoes(Game *self)
-{
-    // The timed foe spawners (levelcensus.h).
-    for (int i = 0; i < (int)self->world()->census()->timed; ++i) {
-        TimedSpawner *E = self->world()->timedSpawner((unsigned)i);
-        double since = (double)self->world()->now() - (double)E->lastSpawn;
-        if (!(since > (double)E->interval))
-            continue;
-        signed char u = (signed char)E->u, v = (signed char)E->v;
-        if (self->world()->map()->tile(u, v)->occupant() == 0 && self->world()->foes().size() < E->maxFoes) {
-            Foe &foe = Foe::spawn(self->world()->entityContext(), self->world()->foes(), (unsigned char)u,
-                                  (unsigned char)v, E->height, 2,
-                                  (unsigned char)(E->field_0b + FOE_FACING_BASE));
-            if (((int)self->world()->foesKilled() + 1) % 15 == 0)
-                foe.setDropContents(7);
-            else
-                foe.setDropContents(1);
-        }
-        // The last-spawn time, from the clock.
-        E->lastSpawn = self->world()->now();
-    }
-}
-
-/* The player's bomb drop. */
-void Play_DropPlayerBomb(Game *self)
-{
-    Player *pl = self->world()->player();
-
-    if ((unsigned int)pl->bombDropRequest() != 0) {
-        unsigned int timed = (unsigned int)pl->moveDir();
-        int spawn = 1, offset = 0;
-        if (timed != 0) {
-            double since = (double)self->world()->now() - (double)pl->animStart();
-            if (since < 50.0)
-                offset = 1;
-            else
-                spawn = 0;  // too soon: the flag stays set
-        }
-        if (spawn) {
-            if (offset)
-                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), (unsigned char)((unsigned char)pl->cellU() - (unsigned char)pl->stepU()),
-                                    (unsigned char)((unsigned char)pl->cellV() - (unsigned char)pl->stepV()),
-                                    (unsigned char)((unsigned char)pl->heightCell() - (unsigned char)pl->field141()),
-                                    pl->facing());
-            else
-                Bomb::spawn(self->world()->entityContext(), self->world()->bombs(), (unsigned char)pl->cellU(), (unsigned char)pl->cellV(), (unsigned char)pl->heightCell(),
-                                    pl->facing());
-            pl->setBombDropRequest(0);
-        }
-    }
-}
-
-/* A switch the player stepped on. */
-void Play_PlayerSwitch(Game *self)
-{
-    Player *pl = self->world()->player();
-
-    unsigned char sw = pl->switchSlot();
-    if (BridgeObject *br = idle_bridge(self->world(), sw)) {
-        g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
-        trigger_switch_tile(br, self->world()->map()->tile(pl->cellU(), pl->cellV()));
-        br->arm(self->world()->now());
-        br->playArmSound(*self->soundEvents());
-        Sim_MarkSwitchTiles(self->world()->map(), br->phase(), sw);
-        pl->setSwitchSlot(0xff);
-    }
-}
-
-/* The foes.  Their pieces are Foe methods (foe.cpp). */
-void Play_TickFoes(Game *self)
-{
-    Player *pl = self->world()->player();
-    EntityList<Foe> &foes = self->world()->foes();
-
-    if (foes.empty())
-        return;
-    PROF_SCOPE("foes");
-    for (std::size_t i = 0; i < foes.size();) {
-        Foe &foe = foes[i];
-        unsigned char tu, tv;
-
-        unsigned char sw = foe.switchSlot();
-        if (BridgeObject *br = idle_bridge(self->world(), sw)) {
-            g_logger.logMessage(1, "GAME: switch triggered %d", (unsigned int)sw);
-            trigger_switch_tile(br, self->world()->map()->tile(foe.cellU(), foe.cellV()));
-            br->arm(self->world()->now());
-            Sim_MarkSwitchTiles(self->world()->map(), br->phase(), sw);
-            foe.clearSwitchSlot();
-        }
-
-        int hold = ((unsigned int)pl->freezeActive() == 0 && self->state() == GameState::Playing) ? 0 : 1;
-        if (self->state() == GameState::LevelComplete)
-            hold = 1;
-        if (pl->moveState() != 0)
-            hold = 1;
-        {
-            PROF_SCOPE("choose target");
-            foe.chooseTarget(self->world()->entityContext(), foes, hold, (unsigned char)pl->cellU(),
-                             (unsigned char)pl->cellV(), pl->markerCellU(), pl->markerCellV(), &tu, &tv);
-        }
-        {
-            PROF_SCOPE("step");
-            foe.step(self->world()->entityContext(), tu, tv, *self->soundEvents());
-        }
-        foe.dropBomb(self->world()->entityContext(), self->world()->bombs());
-        foe.checkPlayerContact(pl->moveStateRef(), pl->posU(), pl->posY(), pl->posV());
-        if (foe.finishDespawn(self->world()->map())) {
-            Foe::remove(foes, i, *self->world()->map(), *self->soundEvents());  // the next moves into i
-            self->world()->setFoesKilled((unsigned char)(self->world()->foesKilled() + 1));
-        } else {
-            ++i;
-        }
     }
 }
 

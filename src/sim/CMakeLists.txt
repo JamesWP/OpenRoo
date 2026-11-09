@@ -12,4 +12,4 @@ add_library(sim OBJECT
     savegame.cpp)
 target_include_directories(sim PUBLIC .)
 target_link_libraries(sim
-    PRIVATE sysdev log base prof audiodev audio ui session level entities game)
+    PRIVATE sysdev log base audiodev audio ui session level entities game)
