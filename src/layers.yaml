@@ -46,14 +46,15 @@ layers:
   - [render, game]
 
   # The player bot's layers (docs/BOT_DESIGN.md, section 3).  None of them
-  # reads the game: botapi is the bot's vocabulary, the view it decides from
+  # reads the Game: botapi is the bot's vocabulary, the view it decides from
   # and the presses it makes; the run (bot, below) captures the views from
   # the game and presses the keys.  Then the model (the nav, the routes and
   # the predictors) and the motor, peers; the planner, which plans over the
   # model; the tactical layer, which turns a plan's step into a script the
   # motor runs; and the executive, the policy that drives them.  Beside the
-  # planner, botworld: the whole level stepped forward as the game would,
-  # built apart from the planner and measured against the game.
+  # planner, botworld: the whole level stepped forward by the engine itself,
+  # a copy of the World (entities) ticked by its own rules -- the one bot
+  # layer that reads more than the view, and only the World, never the Game.
   - [botapi]
   - [botmodel, botmotor]
   - [botplan, botworld]

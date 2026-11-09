@@ -15,9 +15,9 @@
  * when its fuse runs out (tools/bot/bombcheck.py).
  *
  * KAROO_BOT_SIM_LOG=<file> checks the world sim (worldsim.h): every tenth of
- * a second it runs the sim from the views 1, 6, 30 and 120 ticks ago, with
- * the presses really held since, and logs which parts of the world it has
- * right (compare.h; tools/bot/simcheck.py). */
+ * a second it starts the sim from a copy of the World, ticks it with the
+ * presses really held, and 1, 6, 30 and 120 ticks on logs which parts of the
+ * world it has right (compare.h; tools/bot/simcheck.py). */
 #pragma once
 
 #include <deque>
@@ -27,6 +27,9 @@
 #include "bombmodel.h"
 #include "botview.h"
 #include "foemodel.h"
+#include "worldsim.h"
+
+class World;
 
 namespace bot {
 
@@ -35,15 +38,15 @@ public:
     /* Opens the logs the environment names. */
     Checks();
 
-    /* Each tick the policy acts on: the view, the run's frame and the presses
-     * held since the last such tick. */
-    void observe(const BotView &view, unsigned long frame, unsigned held);
+    /* Each tick the policy acts on: the view, the World it was read from,
+     * the run's frame and the presses held since the last such tick. */
+    void observe(const BotView &view, const World &world, unsigned long frame, unsigned held);
 
 private:
     void logAction(const BotView &view);
     void checkFoes(const BotView &view);
     void checkBombs(const BotView &view);
-    void checkSim(const BotView &view);
+    void checkSim(const BotView &view, const World &world);
     void writeAction(const BotView &view, const PlayerView &to);
 
     unsigned long frame_ = 0;
@@ -67,12 +70,13 @@ private:
     std::map<double, std::tuple<Blast, bool, double>> bombs_;  // by drop time
 
     std::ofstream simLog_;   // KAROO_BOT_SIM_LOG: the world sim against the game
-    struct Seen {
-        unsigned long frame;
-        unsigned      held;   // the presses held into this view
-        BotView       view;
+    struct Running {
+        unsigned long start;    // the frame it was started on
+        double        startMs;  // and the clock then
+        WorldSim      sim;
     };
-    std::deque<Seen> seen_;
+    std::deque<Running> sims_;      // the oldest first
+    unsigned long       simFrame_ = 0;  // the last frame checkSim saw
 };
 
 }  // namespace bot
