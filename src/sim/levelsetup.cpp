@@ -222,7 +222,6 @@ Sim_SetupLevelObjects(Game *self)
 
     // Tear down the previous level.
     self->world()->clearObjects(*self->soundEvents());
-    self->world()->setSwitchMax(0);
     self->world()->player()->setLastRoll(0);
 
     self->world()->player()->setMap(M);
@@ -319,21 +318,13 @@ Sim_SetupLevelObjects(Game *self)
                     }
                 }
 
-                // A switch cell.
+                // A switch cell: switches number from 1 in the file, from 0
+                // here.  A 0 in the file (no shipped level has one) becomes
+                // 0xff, which arms no bridge.
                 if (t->objectMarker() == TILE_SWITCH) {
-                    unsigned char param = t->param();
-                    if (param == 0) {
+                    if (t->param() == 0)
                         g_logger.logMessage(1, "GAME: warning - switch with an index lower than 1 !!!");
-                    } else {
-                        unsigned char idx = (unsigned char)(param - 1);
-                        if (idx > self->world()->switchMax())
-                            self->world()->setSwitchMax(idx);
-                        t->setField1f3(idx);
-                        // The count is re-read for each store.
-                        self->world()->switchCells()->setCellU(idx, self->world()->switchCells()->count(idx), u);
-                        self->world()->switchCells()->setCellV(idx, self->world()->switchCells()->count(idx), v);
-                        self->world()->switchCells()->setCount(idx, (unsigned char)(self->world()->switchCells()->count(idx) + 1));
-                    }
+                    t->setField1f3((unsigned char)(t->param() - 1));
                     t->setParam(0);
                 }
 
@@ -637,14 +628,13 @@ next_row:
     if (s_diag)
         g_logger.write("levelsetup: DIAG call #%u map=%ux%u crystals=%u total=%u "
                   "bridges=%u teleports=%u lifts=%u platforms=%u falling tiles=%u "
-                  "foes=%u freebombs=%u timed=%u switchmax=%u\n",
+                  "foes=%u freebombs=%u timed=%u\n",
                   s_calls, (unsigned)M->extentU(), (unsigned)M->extentV(),
                   (unsigned)crystals, (unsigned)self->world()->census()->total,
                   (unsigned)self->world()->census()->bridges, (unsigned)self->world()->census()->teleports,
                   (unsigned)self->world()->lifts().size(), (unsigned)self->world()->platforms().size(),
                   (unsigned)self->world()->fallings().size(), (unsigned)self->world()->foes().size(),
-                  (unsigned)self->world()->census()->freeBombs, (unsigned)self->world()->census()->timed,
-                  (unsigned)self->world()->switchMax());
+                  (unsigned)self->world()->census()->freeBombs, (unsigned)self->world()->census()->timed);
 
     // Returns 0.
     return 0;

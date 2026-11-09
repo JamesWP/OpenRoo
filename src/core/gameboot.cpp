@@ -31,7 +31,6 @@ void Game_Boot(Game *g, const char *gameName, const char *gameDir)
     snprintf(g->gameDir_, sizeof(g->gameDir_), "%s", gameDir);
     // The tally is read by the state dump before any level has been scored.
     *g->session()->tally() = ScoreTally();
-    g->world()->switchCells()->clearCounts();
     Sim_ResetLevelObjectCounters(g);
     g->mapChanged_       = 1;
     g->initialised_      = 0;
@@ -118,7 +117,6 @@ void Game_Shutdown(Game *g)
 {
     g_logger.logMessage(1, "GAME: starting destructor");
     g->world()->clearObjects(*g->soundEvents());
-    g->world()->setSwitchMax(0);
     g->config_.setCameraDistanceSetting(g->camera()->zoomDistance());
     if (g->frontEnd()->highScores()->writeFile(g->gameDir_, g->gameFileName_, HIGHSCORE_KEY))
         g_logger.logMessage(1, "GAME: highscore-files saved");

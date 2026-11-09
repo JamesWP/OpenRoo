@@ -12,7 +12,6 @@
 #include "foetype.h"
 #include "tilenames.h"
 #include "levelmap.h"
-#include "switchcells.h"
 #include "tile.h"
 #include "movableentity.h"
 #include "entitymath.h"
@@ -581,7 +580,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
     if (type_ == FOE_SWITCH_RUNNER) {
         tu = (unsigned char)cellU_;
         tv = (unsigned char)cellV_;
-        if (Sim_FindNearestListedObjectTile(ctx.switches, *ctx.switchMax, ctx.map, &tu, &tv, 7) != 0) {
+        if (Sim_FindNearestBusySwitch(ctx.map, &tu, &tv, 7) != 0) {
             chaseSpeed_ = 100;
             chase(tu, tv, 100);
             if (onSwitch_ == 0 && pendingMove_ == 0 && turnKind_ == 0) {

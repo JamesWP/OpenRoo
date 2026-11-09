@@ -1,6 +1,6 @@
 /* World: the level in play, owned by Game.  Its map (the header and both tile
  * grids), the objects in it (one EntityList per kind, the level builder's
- * census and spawn tables, the switch cells and the extra 3D objects), the
+ * census and spawn tables and the extra 3D objects), the
  * player, and the clock they all run on.
  *
  * A const World is a read-only view of the level: every accessor has a const
@@ -15,7 +15,6 @@
 #include <array>
 #include "levelmap.h"
 #include "levelcensus.h"
-#include "switchcells.h"
 #include "extraobjects.h"
 #include "tickstep.h"
 #include "entitycontext.h"
@@ -45,13 +44,6 @@ public:
     void           setTimeLimit(int s)               { map_.setTimeLimit(s); }
     unsigned int   timeElapsed() const               { return map_.timeElapsed(); }
     void           setTimeElapsed(unsigned int ms)   { map_.setTimeElapsed(ms); }
-
-    /* The cells each switch controls (switchcells.h), and the highest
-     * switch index the level builder saw -- the list walks run to it. */
-    SwitchCells       *switchCells()                  { return &switchCells_; }
-    const SwitchCells *switchCells() const            { return &switchCells_; }
-    unsigned char      switchMax() const              { return switchMax_; }
-    void               setSwitchMax(unsigned char n)  { switchMax_ = n; }
 
     /* The level builder's census and spawn tables (levelcensus.h); the
      * census counts the entries in use. */
@@ -116,11 +108,10 @@ public:
     /* What the entities are given at spawn, and the tables they fill. */
     EntityContext entityContext()
     {
-        return { &clock_, &tickStep_, &map_, &switchCells_,
-                 &switchMax_, levelName_ };
+        return { &clock_, &tickStep_, &map_, levelName_ };
     }
 
-    /* Removes every object from the level and resets the switch counts. */
+    /* Removes every object from the level. */
     void clearObjects(PlayEvents &events);
     /* Ticks every object of one kind, in list order. */
     void tickLifts(PlayEvents &events);
@@ -143,9 +134,7 @@ private:
     std::array<TimedSpawner, 256> timedSpawners_{};
     std::array<FreeBomb, 256>     freeBombs_{};
     LevelCensus   census_;
-    unsigned char switchMax_{};
     ExtraObjects  extraObjects_;
-    SwitchCells   switchCells_;
     double        clock_{};
     TickStep      tickStep_;
     CrtRand       random_;  // the rules' random numbers

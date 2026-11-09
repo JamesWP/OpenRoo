@@ -36,9 +36,6 @@ void World::clearObjects(PlayEvents &events)
         events.soundStop({SoundSource::Bridge, bridge.id(), Sfx::BridgeMoving});
     bridges_.clear();
 
-    // The 256 switch counts.
-    switchCells_.clearCounts();
-
     // A foe frees its tile claims as it goes.
     for (Foe &foe : foes_)
         foe.despawn(events);

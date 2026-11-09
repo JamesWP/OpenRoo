@@ -1,28 +1,18 @@
-/* The tile queries.  Each object list is a switch's cells (switchcells.h)
- * paired with the bridge that switch arms.  Distances are
+/* The tile queries.  A switch's cells are the tiles of kind TILE_SWITCH that
+ * carry its number (Tile::field1f3); switch k arms bridge k.  Distances are
  * (byte)trunc(sqrt(sum of integer squares)): the squares are integers and the
  * square root is truncated without rounding through double first, which would
  * turn a one-ulp difference into a whole unit at a perfect square.
  *
  * PRESERVED:
- *   1. The listed-object search's entry guard, (unsigned)count + 1 > 0,
- *      cannot fail.
- *   2. Its outer loop runs count + 1 times: an 8-bit counter compared
- *      signed against a bound of count + 1 re-read every pass.  A count of
- *      0xff would never end.
- *   3. The blocked flag is inverted: a list's tiles are marked blocked when
- *      its bridge's phase is zero.
- *   4. The pair read takes v first, then u one byte below it.
- *   5. The radius search can never select row or column 0.
- *   6. Its window is half-open: radius tiles one way, radius - 1 the other.
- *   7. The listed-object search writes *pu and *pv on every inner pass as
- *      scratch, and restores them only on failure.
- *   8. The farthest-tile search's inner index is a signed char.
- *   9. Its best distance is compared at extended precision and stored as a
+ *   1. The radius search can never select row or column 0.
+ *   2. Its window is half-open: radius tiles one way, radius - 1 the other.
+ *   3. The farthest-tile search's inner index is a signed char.
+ *   4. Its best distance is compared at extended precision and stored as a
  *      double; collapsing both to one precision can change which of two
  *      nearly equidistant tiles wins.
- * 10. It succeeds only for a best distance strictly above 0 (a NaN fails).
- * 11. The two nearest searches accept unsigned, strictly, and reject a
+ *   5. It succeeds only for a best distance strictly above 0 (a NaN fails).
+ *   6. The two nearest searches accept unsigned, strictly, and reject a
  *      distance of 0.
  *
  * KAROO_TILEQ_DIAG=1 logs the first call and first hit of each query and a
@@ -32,6 +22,7 @@
 #include "sysdev.h"
 #include <string.h>
 #include <math.h>
+#include <algorithm>
 
 #include "logger.h"
 #include "tilequery.h"
@@ -50,7 +41,6 @@ static void diag_init(void)
 }
 
 #include "levelmap.h"
-#include "switchcells.h"
 #include "tile.h"
 
 /* The tile tables are the map's; reached through World::map(). */
@@ -75,8 +65,8 @@ static int s_first[4]   = { 0, 0, 0, 0 };
 static int s_success[4] = { 0, 0, 0, 0 };
 
 static const char *const k_names[4] = {
-    "MarkListedTilesBlockedByObject",
-    "FindNearestListedObjectTile",
+    "MarkSwitchTiles",
+    "FindNearestBusySwitch",
     "FindNearestFlaggedTileInRadius",
     "FindFarthestOccupiedTile",
 };
@@ -105,108 +95,50 @@ static void diag_hit(int which, unsigned u, unsigned v)
     }
 }
 
-/* Recomputes the blocked word of one list's tiles from its bridge. */
-  void  
-Sim_MarkListedTilesBlockedByObject(SwitchCells *sw, LevelMap *map,
-                                   int bridgePhase, unsigned int listIndex)
+/* Sets the busy flag of switch sw's tiles from the phase of the bridge it
+ * arms: busy while the phase is zero. */
+void Sim_MarkSwitchTiles(LevelMap *map, int bridgePhase, unsigned int sw)
 {
-    unsigned int   li = listIndex & 0xff;
-    int            flagged;
-    unsigned int   value;
-    int            i;
-
-    diag_init();
-    diag_enter(Q_MARK, sw);
-
-    // PRESERVED: blocked when the phase is zero.  Read once, before the loop.
-    flagged = bridgePhase;
-    value   = (unsigned int)(flagged == 0);
-
-    if (sw->count(li) == 0)
-        return;
-
-    i = 0;
-    do {
-        // PRESERVED: v at the pointer, u one byte below it.
-        unsigned char v = sw->cellV(li, (unsigned)i);
-        unsigned char u = sw->cellU(li, (unsigned)i);
-
-        ++i;
-
-        map->tile(u, v)->setBusy((int)value);
-
-    // The bound is re-read every pass.
-    } while (i < (int)(unsigned)sw->count(li));
+    diag_enter(Q_MARK, map);
+    Sim_ForEachSwitchCell(map, sw, [&](unsigned char u, unsigned char v) {
+        map->tile(u, v)->setBusy(bridgePhase == 0);
+    });
 }
 
-/* The listed tile nearest the one passed in, among tiles whose blocked word is
- * non-zero, within maxDist. */
-  unsigned int  
-Sim_FindNearestListedObjectTile(SwitchCells *sw, unsigned char switchMax,
-                                LevelMap *map, unsigned char *pu,
-                                unsigned char *pv, unsigned char maxDist)
+/* The busy switch tile nearest (*pu, *pv), within maxDist and not on it.  Of
+ * two as near, the lower switch number wins, then the lower v, then the
+ * lower u: the order the switches' cells were listed in. */
+unsigned int Sim_FindNearestBusySwitch(const LevelMap *map, unsigned char *pu, unsigned char *pv,
+                                       unsigned char maxDist)
 {
-    unsigned char  u0 = *pu;  // saved inputs, restored on failure
-    unsigned char  v0 = *pv;
-    unsigned char  best     = maxDist;
-    unsigned char  bestU    = 0, bestV = 0;
-    unsigned int   list;
+    const int u0 = *pu, v0 = *pv;
+    bool found = false;
+    int best = 0, bestU = 0, bestV = 0, bestSw = 0;
 
-    diag_init();
-    diag_enter(Q_LIST, sw);
-
-    // PRESERVED: this guard cannot fail.
-    if ((int)((unsigned int)switchMax + 1) > 0) {
-
-        for (list = 0; ; ) {
-            unsigned char inner = 0;
-
-            if (sw->count(list) != 0) {
-                do {
-                    unsigned char  u, v;
-
-                    u = sw->cellU(list, inner);
-                    // PRESERVED: both outputs are scribbled on every pass.
-                    *pu = u;
-                    v = sw->cellV(list, inner);
-                    *pv = v;
-
-                    if (map->tile(u, v)->busy() != 0) {
-                        unsigned char d =
-                            tile_distance((int)u0 - (int)u,
-                                          (int)v0 - (int)v);
-
-                        // Unsigned and strict; a zero distance is rejected.
-                        if (d != 0 && d < best) {
-                            best  = d;
-                            bestU = u;
-                            bestV = v;
-                        }
-                    }
-
-                    // An 8-bit counter compared unsigned against the count.
-                    ++inner;
-                } while (inner < sw->count(list));
-            }
-
-            // PRESERVED: an 8-bit counter widened for a signed compare against
-            // count + 1, re-read every pass: the body runs count + 1 times.
-            list = (unsigned int)(unsigned char)(list + 1);
-            if (!((int)list < (int)((unsigned int)switchMax + 1)))
-                break;
-        }
-
-        if (best < maxDist) {
-            *pu = bestU;
-            *pv = bestV;
-            diag_hit(Q_LIST, bestU, bestV);
-            return 1;
+    diag_enter(Q_LIST, map);
+    for (int v = std::max(0, v0 - maxDist); v <= std::min(map->extentV() - 1, v0 + maxDist); v++) {
+        for (int u = std::max(0, u0 - maxDist); u <= std::min(map->extentU() - 1, u0 + maxDist); u++) {
+            const Tile *t = map->tile(u, v);
+            if (t->objectMarker() != TILE_SWITCH || t->busy() == 0)
+                continue;
+            const unsigned char d = tile_distance(u0 - u, v0 - v);
+            if (d == 0 || d >= maxDist)
+                continue;
+            if (found && (d > best || (d == best && t->field1f3() >= bestSw)))
+                continue;
+            found = true;
+            best = d;
+            bestU = u;
+            bestV = v;
+            bestSw = t->field1f3();
         }
     }
-
-    *pu = u0;
-    *pv = v0;
-    return 0;
+    if (!found)
+        return 0;
+    *pu = (unsigned char)bestU;
+    *pv = (unsigned char)bestV;
+    diag_hit(Q_LIST, *pu, *pv);
+    return 1;
 }
 
 /* The nearest tile with flag 1 in a square window around the one passed in.
