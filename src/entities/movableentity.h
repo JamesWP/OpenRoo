@@ -112,8 +112,6 @@ public:
 
 protected:
     double              now_{};
-    double             *clock_{};
-    TickStep        *tickStep_{};
     unsigned char       facing_{};
     TickStep         tickStepCopy_;
     // World position (U, height, V).

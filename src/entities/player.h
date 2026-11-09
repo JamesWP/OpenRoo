@@ -8,6 +8,7 @@
 
  
 #include "crtrand.h"
+#include "entitycontext.h"
 #include "movableentity.h"
 
 #include <vector>
@@ -19,7 +20,7 @@ public:
 
     // Latches the clock, moves the player, drops a respawning player back in,
     // and consumes the tile underfoot.  See player.cpp.
-    unsigned int updateTileEffects(PlayEvents &events, CrtRand &random);
+    unsigned int updateTileEffects(const EntityContext &ctx, PlayEvents &events, CrtRand &random);
 
     // The six actions DirectInputSetup registers as player controls.
     void actMoveForward(PlayEvents &events);
@@ -34,8 +35,6 @@ public:
     Tile       *curTile();
     const Tile *curTile() const;
 
-    void  setClock(double *c)                  { clock_ = c; }
-    void  setTickStep(TickStep *r)            { tickStep_ = r; }
     void  setMap(LevelMap *m)         { map_ = m; }
     // The readers (facing, pos, cell) are MovableEntity's.
     void  setFacing(unsigned char f)           { facing_ = f; }

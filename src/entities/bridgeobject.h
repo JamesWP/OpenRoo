@@ -39,7 +39,7 @@ public:
                       unsigned int axisArg);
 
     // One tick; its moving loop follows it and stops through events.
-    void tick(PlayEvents &events);
+    void tick(const EntityContext &ctx, PlayEvents &events);
 
     // When the move under way began, clock ms.
     double phaseStart() const        { return phaseStart_; }
@@ -80,11 +80,9 @@ private:
     BridgeObject(const BridgeObject &) = delete;
     BridgeObject &operator=(const BridgeObject &) = delete;
 
-    double              now_;         // latched from *clock_
-    double             *clock_;       // World::clock()
-    TickStep        *tickStep_;       // World::tickStep()
+    double              now_;         // the clock, as this tick began
     unsigned char       field_14;
-    TickStep         tickStepCopy_;   // copied from *tickStep_
+    TickStep         tickStepCopy_;   // this tick's step
     unsigned char       field_1d[8];
     float               posU_;        // the live position:
     float               posY_;        // the deck's far point

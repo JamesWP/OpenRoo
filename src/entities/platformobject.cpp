@@ -96,8 +96,6 @@ void PlatformObject::spawn(const EntityContext &ctx, EntityList<PlatformObject> 
                   (kind == TILE_PLATFORM_V) ? "SCAN-V" : "no-scan");
     }
 
-    obj->clock_    = ctx.clock;
-    obj->tickStep_   = ctx.tickStep;
     obj->kind_     = (signed char)kind;
     obj->state_    = 1;
     obj->map_ = base;
@@ -193,7 +191,7 @@ void PlatformObject::vacate()
     map_->tile( cellU_, cellV_)->setOccupant(0);
 }
 
-void PlatformObject::tick(PlayEvents &events)
+void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
 {
     const SoundKey moving{SoundSource::Platform, id(), Sfx::PlatformMoving};
     Tile *t;
@@ -210,8 +208,8 @@ void PlatformObject::tick(PlayEvents &events)
             g_logger.write("platformobject: %lu ticks\n", s_ticks);
     }
 
-    tickStepCopy_ = *tickStep_;
-    now_ = *clock_;
+    tickStepCopy_ = ctx.step;
+    now_ = ctx.now;
 
     if (state_ == 1) {
         double travel = ((double)now_ - (double)phaseStart_)

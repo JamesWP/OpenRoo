@@ -19,7 +19,7 @@ public:
                       unsigned int vArg, unsigned int baseArg, unsigned int topArg);
 
     // One tick; its moving loop starts, follows it and stops through events.
-    void tick(PlayEvents &events);
+    void tick(const EntityContext &ctx, PlayEvents &events);
 
     // Where it stands: u, live height, v.
     float posU() const   { return posU_; }
@@ -44,11 +44,9 @@ private:
     LiftObject(const LiftObject &) = delete;
     LiftObject &operator=(const LiftObject &) = delete;
 
-    double              now_;         // latched from *clock_
-    double             *clock_;       // World::clock()
-    TickStep        *tickStep_;       // World::tickStep()
+    double              now_;         // the clock, as this tick began
     unsigned char       field_14;
-    TickStep         tickStepCopy_;   // copied from *tickStep_
+    TickStep         tickStepCopy_;   // this tick's step
     unsigned char       field_1d[8];
     float               posU_;
     float               height_;      // the live height

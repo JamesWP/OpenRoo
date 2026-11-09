@@ -20,7 +20,7 @@ public:
                       unsigned int heightArg, unsigned int kindArg);
 
     // One tick; its moving loop starts, follows it and stops through events.
-    void tick(PlayEvents &events);
+    void tick(const EntityContext &ctx, PlayEvents &events);
 
     // Where it stands, and its axis: kind 0x0a runs along U, any other
     // along V.
@@ -52,11 +52,9 @@ private:
     // Releases the tile the platform just left.
     void vacate();
 
-    double              now_;           // latched from *clock_
-    double             *clock_;         // World::clock()
-    TickStep        *tickStep_;         // World::tickStep()
+    double              now_;           // the clock, as this tick began
     unsigned char       field_14;
-    TickStep         tickStepCopy_;     // copied from *tickStep_
+    TickStep         tickStepCopy_;     // this tick's step
     unsigned char       field_1d[8];
     float               posU_;          // read by the renderer
     float               posY_;

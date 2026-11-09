@@ -48,7 +48,8 @@ public:
     ~Foe() override;
 
     // One tick, towards the player's cell (or whatever target GameTick chose).
-    void step(unsigned char playerU, unsigned char playerV, PlayEvents &events);
+    void step(const EntityContext &ctx, unsigned char playerU, unsigned char playerV,
+              PlayEvents &events);
 
     // Searches towards (u, v) and queues the first step in pendingMove;
     // returns it.

@@ -105,10 +105,10 @@ public:
 
     /* ── changing the level ────────────────────────────────────────── */
 
-    /* What the entities are given at spawn, and the tables they fill. */
+    /* What the entities are given as they spawn and each tick. */
     EntityContext entityContext()
     {
-        return { &clock_, &tickStep_, &map_, levelName_ };
+        return { clock_, tickStep_, &map_, levelName_ };
     }
 
     /* Removes every object from the level. */
