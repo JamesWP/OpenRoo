@@ -125,7 +125,7 @@ void Game_Shutdown(Game *g)
     else
         g_logger.logMessage(3, "GAME: ** error ** while saving config-values (maybe write-protected or hd full\077) !!!");
     g->scriptPlayer_.releaseStreams();
-    g->world()->extraObjects()->releaseSounds();
+    g->extraObjects()->releaseSounds();
     g->releaseAllSounds();
     g_logger.logMessage(1, "GAME: all sounds released successfully");
     g->audio()->soundManager()->purgeAssets();

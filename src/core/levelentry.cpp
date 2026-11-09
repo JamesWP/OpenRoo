@@ -51,7 +51,7 @@ void LevelEntry_PrepareAssets(Game *g, Renderer *renderer)
 
     // 4. What the frame renderer draws.
     renderer->levelPlacements.build(g->world()->map(), renderer->themeBlock.sideHeight());
-    renderer->scene.buildObjectList(d3d, g->world()->extraObjects());
+    renderer->scene.buildObjectList(d3d, g->extraObjects());
 
     strcpy(renderer->levelTitle, map->title());
     renderer->lastTickMs = clock_advance() * 1000.0;

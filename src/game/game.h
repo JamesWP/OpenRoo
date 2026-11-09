@@ -3,6 +3,7 @@
  * named field_<hex>, after where the original kept it.
  */
 #pragma once
+#include "extraobjects.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -54,6 +55,9 @@ public:
     /* The level in play: its map, objects and player (world.h). */
     World        *world()       { return &world_; }
     SoundEvents  *soundEvents() { return &soundEvents_; }
+    /* The level's scenery from its .leo (extraobjects.h): models, particle
+     * systems and ambient sounds, which the rules never see. */
+    ExtraObjects *extraObjects() { return &extraObjects_; }
     const World  *world() const { return &world_; }
 
     /* ── time ───────────────────────────────────────────────────────── */
@@ -150,9 +154,9 @@ private:
     unsigned int  mapChanged_{};
     int           initialised_{};                           /* 0 until Load completes */
     /* The game's sound (gameaudio.h): the sound manager, the fixed sounds,
-     * the theme's sound table and the CD player.  Declared before the level,
-     * whose entities hold sound handles, so the level is torn down before
-     * it. */
+     * the theme's sound table and the CD player.  Declared before the
+     * scenery and the rules' sounds, which hold its voices, so they are torn
+     * down before it. */
     GameAudio     audio_;
     /* 256 level names, 0x100 each.  SetCurrentLevelName copies entry `levelNo & 0xff` into World's levelName_. */
     char          gameFileName_[0x80]{};
@@ -162,6 +166,7 @@ private:
     /* The level in play (world.h).  Declared after the game's sound, so it
      * is torn down before it. */
     World         world_;
+    ExtraObjects  extraObjects_;
     /* The rules' sounds, hooked to the sound (soundevents.h). */
     SoundEvents   soundEvents_{audio_.soundManager()};
     /* The front end (frontend.h): the menu, the text entries, the save slots

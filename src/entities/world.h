@@ -1,6 +1,6 @@
 /* World: the level in play, owned by Game.  Its map (the header and both tile
  * grids), the objects in it (one EntityList per kind, the level builder's
- * census and spawn tables and the extra 3D objects), the
+ * census and spawn tables), the
  * player, and the clock they all run on.
  *
  * A const World is a read-only view of the level: every accessor has a const
@@ -15,7 +15,6 @@
 #include <array>
 #include "levelmap.h"
 #include "levelcensus.h"
-#include "extraobjects.h"
 #include "tickstep.h"
 #include "entitycontext.h"
 #include "entitylist.h"
@@ -54,9 +53,6 @@ public:
     FreeBomb           *freeBomb(unsigned i)           { return &freeBombs_[i]; }
     const FreeBomb     *freeBomb(unsigned i) const     { return &freeBombs_[i]; }
 
-    /* The level's extra 3D objects, from its .leo (extraobjects.h). */
-    ExtraObjects       *extraObjects()       { return &extraObjects_; }
-    const ExtraObjects *extraObjects() const { return &extraObjects_; }
 
     /* The current level's path; diagnostics only. */
     const char    *levelName() const               { return levelName_; }
@@ -108,7 +104,7 @@ public:
     /* What the entities are given as they spawn and each tick. */
     EntityContext entityContext()
     {
-        return { clock_, tickStep_, &map_, levelName_ };
+        return { clock_, tickStep_, &map_ };
     }
 
     /* Removes every object from the level. */
@@ -134,7 +130,6 @@ private:
     std::array<TimedSpawner, 256> timedSpawners_{};
     std::array<FreeBomb, 256>     freeBombs_{};
     LevelCensus   census_;
-    ExtraObjects  extraObjects_;
     double        clock_{};
     TickStep      tickStep_;
     CrtRand       random_;  // the rules' random numbers

@@ -70,7 +70,7 @@ Sim_AcquireFixedSoundBuffersAndMaybeReport(Game *self)
     }
 
     ScriptPlayer *sp = self->scriptPlayer();
-    self->world()->extraObjects()->setSoundLibrary(sm);
+    self->extraObjects()->setSoundLibrary(sm);
     sp->setSoundManager(sm);
 
     define(self, SoundSource::Level, Sfx::TimeOut, 0, "%s\134waves\134TimeOut%s.wav", "");

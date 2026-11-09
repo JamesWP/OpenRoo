@@ -120,14 +120,6 @@ Foe::~Foe()
 }
 
 static unsigned char s_type_seen[256];
-static unsigned int  s_hi_level[256];
-
-static unsigned int level_hash(const char *s)
-{
-    unsigned int h = 2166136261u;
-    while (*s) { h ^= (unsigned char)*s++; h *= 16777619u; }
-    return h ? h : 1u;
-}
 
 static unsigned long s_spawns          = 0;
 static int           s_logged_spawn    = 0;
@@ -160,22 +152,13 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
                   (unsigned)v, (unsigned)h, (int)kind, (unsigned)type);
     }
     if (s_diag_spawn) {
-        const char  *lvl = ctx.levelName;
-        unsigned int lh  = level_hash(lvl);
-
         ++s_spawns;
         if ((s_spawns % 500) == 0)
             g_logger.write("foe: %lu spawns\n", s_spawns);
         if (!s_type_seen[type]) {
             s_type_seen[type] = 1;
-            g_logger.write("foe: type %u (0x%02x)%s first seen in '%s'\n",
-                      (unsigned)type, (unsigned)type,
-                      type > FOE_FACING_BASE ? " >0x64" : "", lvl);
-        }
-        if (type > FOE_FACING_BASE && s_hi_level[type] != lh) {
-            s_hi_level[type] = lh;
-            g_logger.write("foe: HIGHTYPE %u (0x%02x) in '%s'\n",
-                      (unsigned)type, (unsigned)type, lvl);
+            g_logger.write("foe: type %u (0x%02x)%s first seen\n", (unsigned)type,
+                      (unsigned)type, type > FOE_FACING_BASE ? " >0x64" : "");
         }
     }
 
