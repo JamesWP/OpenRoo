@@ -37,12 +37,8 @@ public:
     bool   atTop() const      { return atTop_ != 0; }
     double phaseStart() const { return phaseStart_; }
 
-    ~LiftObject();
-
 private:
     LiftObject();
-    LiftObject(const LiftObject &) = delete;
-    LiftObject &operator=(const LiftObject &) = delete;
 
     double              now_;         // the clock, as this tick began
     unsigned char       field_14;

@@ -73,12 +73,8 @@ public:
         return { axis_, restU_, restV_, step_, span_, posU_, posV_, slot_, armed_ != 0, phase_, height_ };
     }
 
-    ~BridgeObject();
-
 private:
     BridgeObject();
-    BridgeObject(const BridgeObject &) = delete;
-    BridgeObject &operator=(const BridgeObject &) = delete;
 
     double              now_;         // the clock, as this tick began
     unsigned char       field_14;

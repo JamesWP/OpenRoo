@@ -39,13 +39,9 @@ public:
     bool   respawnPending() const              { return respawnPending_ != 0; }
     bool   noRespawn() const                   { return noRespawn_ != 0; }
 
-    ~FallingTile();
-
 private:
 
     FallingTile();
-    FallingTile(const FallingTile &) = delete;
-    FallingTile &operator=(const FallingTile &) = delete;
 
     // The tile it sits on: (cellU_, cellV_), read signed.
     Tile *tile(LevelMap &map) const;

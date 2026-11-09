@@ -40,14 +40,9 @@ public:
     bool   atLimit() const    { return atLimit_ != 0; }
     double phaseStart() const { return phaseStart_; }
 
-
-    ~PlatformObject();
-
 private:
 
     PlatformObject();
-    PlatformObject(const PlatformObject &) = delete;
-    PlatformObject &operator=(const PlatformObject &) = delete;
 
     // Releases the tile the platform just left.
     void vacate(LevelMap &map);
