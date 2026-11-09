@@ -19,9 +19,6 @@ MovableEntity::MovableEntity()
     queuedTurn_ = 0;
 }
 
-MovableEntity::~MovableEntity()
-{
-}
 
 
 

@@ -130,7 +130,7 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
 
     diag_init();
 
-    Foe *p = &foes.add(std::unique_ptr<Foe>(new Foe));
+    Foe *p = &foes.add(Foe());
     // Its place in the list, counting from 1.
     const unsigned int n = (unsigned int)foes.size();
 

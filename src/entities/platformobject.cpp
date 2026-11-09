@@ -53,10 +53,6 @@ PlatformObject::PlatformObject()
     posV_ = 0.0f;
 }
 
-PlatformObject::~PlatformObject()
-{
-}
-
 static int s_logged_spawn = 0;
 
 void PlatformObject::spawn(const EntityContext &ctx, EntityList<PlatformObject> &platforms, unsigned int uArg, unsigned int vArg,
@@ -85,7 +81,7 @@ void PlatformObject::spawn(const EntityContext &ctx, EntityList<PlatformObject> 
     tile->setField202(0);
 
     n   = (unsigned char)platforms.size();
-    obj = &platforms.add(std::unique_ptr<PlatformObject>(new PlatformObject));
+    obj = &platforms.add(PlatformObject());
 
     if (s_diag_place) {
         s_logged_spawn++;

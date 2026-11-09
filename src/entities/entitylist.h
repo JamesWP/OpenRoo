@@ -1,11 +1,14 @@
-/* EntityList<T>: the level's objects of one kind, owned by the list and kept
- * in the order they were added.  Removing one keeps the order of the rest.
+/* EntityList<T>: the level's objects of one kind, held by value and kept in
+ * the order they were added.  Removing one keeps the order of the rest.
+ * Copying the list copies the objects: they hold no pointers, so a copy is a
+ * whole, separate level's worth.
  *
  * Constness is deep: a const list hands out const objects only.  This is what
  * makes a const World a read-only view of the level (the player AI, the HUD,
  * the debug panels).
  *
- * The objects are held by pointer so they stay put while the list changes.
+ * The objects move as the list changes: a reference to one lasts until the
+ * list next gains or loses one, so none is kept across an add or an erase.
  * During a walk that may remove the current object, use the indices: erase(i)
  * moves the next object down into i.
  *
@@ -16,8 +19,7 @@
 #pragma once
 
 #include <cstddef>
-#include <iterator>
-#include <memory>
+#include <utility>
 #include <vector>
 
 template <class T> class EntityList;
@@ -34,66 +36,40 @@ private:
 
 template <class T>
 class EntityList {
-    using Store = std::vector<std::unique_ptr<T>>;
-
-    /* Turns the store's unique_ptrs into references to E (T or const T). */
-    template <class E, class It>
-    class Iter {
-    public:
-        using iterator_category = std::forward_iterator_tag;
-        using value_type        = E;
-        using difference_type   = std::ptrdiff_t;
-        using pointer           = E *;
-        using reference         = E &;
-
-        Iter() = default;
-        explicit Iter(It it) : it_(it) {}
-        E    &operator*() const  { return **it_; }
-        E    *operator->() const { return it_->get(); }
-        Iter &operator++()       { ++it_; return *this; }
-        Iter  operator++(int)    { Iter t = *this; ++it_; return t; }
-        bool  operator==(const Iter &o) const { return it_ == o.it_; }
-        bool  operator!=(const Iter &o) const { return it_ != o.it_; }
-
-    private:
-        It it_{};
-    };
+    using Store = std::vector<T>;
 
 public:
-    using iterator       = Iter<T, typename Store::iterator>;
-    using const_iterator = Iter<const T, typename Store::const_iterator>;
+    using iterator       = typename Store::iterator;
+    using const_iterator = typename Store::const_iterator;
 
     std::size_t size() const  { return objs_.size(); }
     bool        empty() const { return objs_.empty(); }
 
-    T       &operator[](std::size_t i)       { return *objs_[i]; }
-    const T &operator[](std::size_t i) const { return *objs_[i]; }
+    T       &operator[](std::size_t i)       { return objs_[i]; }
+    const T &operator[](std::size_t i) const { return objs_[i]; }
 
+    iterator       begin()       { return objs_.begin(); }
+    iterator       end()         { return objs_.end(); }
+    const_iterator begin() const { return objs_.begin(); }
+    const_iterator end() const   { return objs_.end(); }
 
-    iterator       begin()       { return iterator(objs_.begin()); }
-    iterator       end()         { return iterator(objs_.end()); }
-    const_iterator begin() const { return const_iterator(objs_.begin()); }
-    const_iterator end() const   { return const_iterator(objs_.end()); }
-
-    /* Takes ownership of obj, appended at the end; returns it. */
-    T &add(std::unique_ptr<T> obj)
+    /* Appends obj at the end, giving it the next id; returns it. */
+    T &add(T obj)
     {
-        obj->id_ = nextId_++;
+        obj.id_ = nextId_++;
         objs_.push_back(std::move(obj));
-        return *objs_.back();
+        return objs_.back();
     }
 
-    /* Destroys the object at i; those after it move down one. */
+    /* Removes the object at i; those after it move down one. */
     void erase(std::size_t i)
     {
         objs_.erase(objs_.begin() + (std::ptrdiff_t)i);
     }
 
-    /* Destroys every object, first to last. */
+    /* Removes every object, and starts the ids again. */
     void clear()
     {
-        for (auto &o : objs_)
-            o.reset();
         objs_.clear();
         nextId_ = 0;
     }

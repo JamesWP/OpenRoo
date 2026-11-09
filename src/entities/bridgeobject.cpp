@@ -51,10 +51,6 @@ BridgeObject::BridgeObject()
     armed_  = 0;
 }
 
-BridgeObject::~BridgeObject()
-{
-}
-
 /* The spawn's scans: axis 1 walks u, axis 2 walks v, anything else does not
  * scan.  A zero marker behind the spawn cell reverses the step to -1.  The
  * walk is a while loop, stepping while the marker stays zero; neither scan
@@ -79,7 +75,7 @@ void BridgeObject::spawn(const EntityContext &ctx, EntityList<BridgeObject> &bri
     slot   = slotArg & 0xff;
     axis   = axisArg & 0xff;
 
-    obj = &bridges.add(std::unique_ptr<BridgeObject>(new BridgeObject));
+    obj = &bridges.add(BridgeObject());
 
     obj->axis_   = (unsigned char)axis;
 

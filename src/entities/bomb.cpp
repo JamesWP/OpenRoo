@@ -133,7 +133,7 @@ void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,
 
     diag_init();
 
-    Bomb &b = bombs.add(std::unique_ptr<Bomb>(new Bomb));
+    Bomb &b = bombs.add(Bomb());
 
     if (!s_logged_spawn) {
         s_logged_spawn = 1;

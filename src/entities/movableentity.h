@@ -99,11 +99,6 @@ protected:
     // position floats.
     MovableEntity();
 
-public:
-    // Virtual, so a Foe or Bomb is destroyed through a MovableEntity pointer.
-    virtual ~MovableEntity();
-
-protected:
     double              now_{};
     unsigned char       facing_{};
     TickStep         tickStepCopy_;

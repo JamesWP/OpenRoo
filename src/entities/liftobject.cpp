@@ -52,10 +52,6 @@ LiftObject::LiftObject()
     atTop_  = 1;
 }
 
-LiftObject::~LiftObject()
-{
-}
-
 static int s_logged_spawn = 0;
 
 void LiftObject::spawn(const EntityContext &ctx, EntityList<LiftObject> &lifts, unsigned int uArg,
@@ -74,7 +70,7 @@ void LiftObject::spawn(const EntityContext &ctx, EntityList<LiftObject> &lifts, 
     top  = topArg & 0xff;
 
     n    = (unsigned char)lifts.size();
-    obj  = &lifts.add(std::unique_ptr<LiftObject>(new LiftObject));
+    obj  = &lifts.add(LiftObject());
     tile = ctx.map->tile( (int)u, (int)v);
 
     if (s_diag_place && !s_logged_spawn) {

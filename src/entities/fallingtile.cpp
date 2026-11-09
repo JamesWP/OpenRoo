@@ -55,10 +55,6 @@ FallingTile::FallingTile()
     justRespawned_  = 0;
 }
 
-FallingTile::~FallingTile()
-{
-}
-
 static unsigned s_spawns       = 0;
 static int      s_logged_spawn = 0;
 
@@ -79,7 +75,7 @@ void FallingTile::spawn(const EntityContext &ctx, EntityList<FallingTile> &falli
     height = heightArg & 0xff;
 
     n   = (unsigned char)fallings.size();
-    obj = &fallings.add(std::unique_ptr<FallingTile>(new FallingTile));
+    obj = &fallings.add(FallingTile());
 
     if (s_diag_place && !s_logged_spawn) {
         s_logged_spawn = 1;
