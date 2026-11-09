@@ -88,8 +88,6 @@ public:
     // nonzero while dead or respawning.
     unsigned char moveState() const            { return moveState_; }
     void  setMoveState(unsigned char s)        { moveState_ = s; }
-    const FoePath *pathfinder() const          { return pathfinder_; }
-    FoePath       *pathfinder()                { return pathfinder_; }
 
     // Which of the sources of sound it is, and one of its sounds by name
     // (playevents.h).
@@ -177,7 +175,6 @@ protected:
     double              stuckSince_{};  // The clock the sticky pad caught this entity; zero while not stuck.
     int                 field_12e{};
     double              animDuration_{};  // ms the current animation phase lasts.
-    FoePath            *pathfinder_{};  // Foe: its FoePath.
     // stepU_ / stepV_: moveDir_ resolved to a cell step, each -1, 0 or +1.
     signed char         stepU_;
     signed char         stepV_;

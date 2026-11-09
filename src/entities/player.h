@@ -169,7 +169,6 @@ public:
     void  setGemsCollected(int n)                   { gemsCollected_ = n; }
 
     Player();
-    ~Player() override;
     Player(const Player &) = delete;
     Player &operator=(const Player &) = delete;
 

@@ -98,13 +98,16 @@ static void path_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
     dl->AddLine(ImVec2(a.x, b.y), ImVec2(b.x, a.y), IM_COL32(255, 140, 0, 220), 2.0f);
 }
 
-/* A foe's route left to its target, from its position.  The nodes run on
- * towards the target. */
-static void debug_path(const dbg::MapView &m, const FoePath &path, float fromU, float fromV)
+/* A foe's route to the target of its last search, searched again from where
+ * it stands on the map as it is now. */
+static void debug_path(const dbg::MapView &m, const World &w, const Foe &e)
 {
-    if (!path.hasPath() || !path.result() || !m.foePaths || m.asLoaded)
+    if (!m.foePaths || m.asLoaded || e.searchCap() == 0)
         return;
-    ImVec2 prev = m.centre(fromU, fromV);
+    FoePath path(*w.map(), e.pathMode(), e.searchCap());
+    if (!path.find(e.cellU(), e.cellV(), e.searchU(), e.searchV()))
+        return;
+    ImVec2 prev = m.centre(e.posU(), e.posV());
     int guard = 0;
     for (const PathNode *n = path.result(); n && guard++ < 4096; n = n->parent()) {
         const ImVec2 p = m.centre((float)n->u(), (float)n->v());
@@ -121,10 +124,9 @@ static void foe_swatch(ImDrawList *dl, ImVec2 a, ImVec2 b, void *)
                         IM_COL32(230, 50, 50, 255));
 }
 
-static void debug_foe(const dbg::MapView &m, const Foe &e)
+static void debug_foe(const dbg::MapView &m, const World &w, const Foe &e)
 {
-    if (e.pathfinder())  // its route goes under it
-        debug_path(m, *e.pathfinder(), e.posU(), e.posV());
+    debug_path(m, w, e);  // its route goes under it
     if (!m.asLoaded) {
         const ImVec2 p = m.centre(e.posU(), e.posV());
         m.dl->AddCircleFilled(p, m.cell * 0.35f,
@@ -186,6 +188,6 @@ void Entities_DebugDrawMap(const World *world)
     for (const Bomb &b : world->bombs())
         debug_bomb(m, b);
     for (const Foe &e : world->foes())
-        debug_foe(m, e);
+        debug_foe(m, *world, e);
     debug_player(m, *world->player());  // last, so it sits over the foes
 }
