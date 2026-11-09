@@ -6,6 +6,11 @@
 #include "tile.h"
 #include "entitymath.h"
 
+#include <type_traits>
+
+static_assert(std::is_copy_constructible<World>::value && std::is_copy_assignable<World>::value,
+              "a World is a value the bot can copy");
+
 BridgeObject *World::bridge(unsigned char switchSlot)
 {
     for (BridgeObject &b : bridges_)

@@ -7,6 +7,11 @@
  * overload that hands out only const objects (EntityList's constness is
  * deep).  Code that only looks -- the HUD, the debug panels, a player AI
  * planning its moves -- takes a const World &.
+ *
+ * A World is a value: nothing in it points anywhere, so a copy is a whole,
+ * separate level that goes on from where the original was (the bot plays
+ * ahead on copies).  KAROO_WORLD_COPY=1 checks that the game keeps nothing
+ * pointing into it: each tick then runs on a fresh copy at a new address.
  */
 #pragma once
 #include "crtrand.h"
@@ -62,8 +67,7 @@ public:
 
     /* ── the clock ─────────────────────────────────────────────────── */
 
-    /* The game clock in ms.  Objects keep a pointer to it and re-read it
-     * every tick. */
+    /* The game clock in ms. */
     double         now() const       { return clock_; }
     /* The rules' random numbers: the level's setup and the random pickups draw from them. */
     CrtRand       &random()          { return random_; }
@@ -71,7 +75,6 @@ public:
      * drops a life, and the level's score pays 50 for each. */
     unsigned char  foesKilled() const               { return foesKilled_; }
     void           setFoesKilled(unsigned char n)   { foesKilled_ = n; }
-    double        *clock()           { return &clock_; }
     /* Advances the clock dt ms, or sets it. */
     void           advanceClock(double dt) { clock_ += dt; }
     void           setNow(double ms)       { clock_ = ms; }

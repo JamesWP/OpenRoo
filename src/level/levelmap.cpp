@@ -111,7 +111,3 @@ LevelMap::LevelMap()
     extentU_ = 0;
 }
 
-LevelMap::~LevelMap()
-{
-}
-
