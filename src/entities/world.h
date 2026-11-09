@@ -71,11 +71,6 @@ public:
     /* SetCurrentLevelName copies entry `levelNo & 0xff` into levelName_. */
     char          *levelNameBuffer()                 { return levelName_; }
 
-    /* The crystals in the level: the level builder counts each crystal tile
-     * and each foe of type 0x0b spawned (EntityContext::crystalsInLevel).
-     * Summed into the census total, and logged as the crystals in the level. */
-    unsigned short crystalsInLevel() const             { return crystalsInLevel_; }
-    void           setCrystalsInLevel(unsigned short n) { crystalsInLevel_ = n; }
 
     /* ── the clock ─────────────────────────────────────────────────── */
 
@@ -122,7 +117,7 @@ public:
     EntityContext entityContext()
     {
         return { &clock_, &tickStep_, &map_, &switchCells_,
-                 &switchMax_, levelName_, &crystalsInLevel_ };
+                 &switchMax_, levelName_ };
     }
 
     /* Removes every object from the level and resets the switch counts. */
@@ -149,7 +144,6 @@ private:
     std::array<FreeBomb, 256>     freeBombs_{};
     LevelCensus   census_;
     unsigned char switchMax_{};
-    unsigned short crystalsInLevel_{};
     ExtraObjects  extraObjects_;
     SwitchCells   switchCells_;
     double        clock_{};
