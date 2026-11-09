@@ -148,7 +148,6 @@ void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,
             g_logger.write("bomb: %lu spawns\n", s_spawns);
     }
 
-    b.map_      = ctx.map;
     b.facing_   = f;
 
     b.cellU_      = (signed char)u;
@@ -188,13 +187,9 @@ static unsigned long s_ticks        = 0;
 static int           s_logged_first = 0;
 static int           s_logged_blast = 0;
 
-Tile *Bomb::tile(int u, int v) const
-{
-    return map_->tile( u, v);
-}
-
 void Bomb::tick(const EntityContext &ctx, PlayEvents &events)
 {
+    LevelMap &map = *ctx.map;
     double diff;
 
     diag_init();
@@ -227,7 +222,7 @@ void Bomb::tick(const EntityContext &ctx, PlayEvents &events)
     diff = now_ - droppedAt_;
     if (!(diff >= K_FUSE_MS)) {
         pendingMove_ = facing_;
-        updateMovement(events);
+        updateMovement(map, events);
         if (moveDir_ != 0)
             held_ = 1;
         return;
@@ -254,7 +249,7 @@ void Bomb::tick(const EntityContext &ctx, PlayEvents &events)
 
     for (int u = (int)cellU_ - 1; u <= (int)cellU_ + 1; ++u) {
         for (int v = (int)cellV_ - 1; v <= (int)cellV_ + 1; ++v) {
-            Tile *t = tile(u, v);
+            Tile *t = map.tile(u, v);
 
             // The raw byte of the height: PRESERVED.
             t->setBlastHeight((unsigned char)heightCell_);
@@ -286,7 +281,7 @@ void Bomb::tick(const EntityContext &ctx, PlayEvents &events)
     if (diff >= K_CLEAR_MS && zoneCleared_ == 0) {
         for (int u = (int)cellU_ - 1; u <= (int)cellU_ + 1; ++u) {
             for (int v = (int)cellV_ - 1; v <= (int)cellV_ + 1; ++v) {
-                Tile *t = tile(u, v);
+                Tile *t = map.tile(u, v);
 
                 t->setBlastHeight(0);
 
@@ -303,11 +298,11 @@ void Bomb::tick(const EntityContext &ctx, PlayEvents &events)
     if (diff >= K_REMOVE_MS && zoneCleared_ == 0) {
         zoneCleared_ = 1;
         moveState_   = 4;  // despawn
-        updateMovement(events);
+        updateMovement(map, events);
         return;
     }
 
     zoneCleared_ = 0;
-    updateMovement(events);
+    updateMovement(map, events);
 }
 

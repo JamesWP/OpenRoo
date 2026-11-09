@@ -90,7 +90,6 @@ private:
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;
-    LevelMap               *map_;    // World::map()
     unsigned char       guard_;       // the far end; read signed by the tick
     float               restU_;       // the anchor, where the deck
     float               restY_;       // starts

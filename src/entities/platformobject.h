@@ -50,7 +50,7 @@ private:
     PlatformObject &operator=(const PlatformObject &) = delete;
 
     // Releases the tile the platform just left.
-    void vacate();
+    void vacate(LevelMap &map);
 
     double              now_;           // the clock, as this tick began
     unsigned char       field_14;
@@ -71,7 +71,6 @@ private:
     unsigned char       limit_;       // the track's last cell
     unsigned char       trackStart_;  // the track's first cell
     unsigned char       tileHeight_;  // stamped into the tile
-    LevelMap               *map_;    // World::map()
     signed char         kind_;        // 0x0a: along U; else V
     int                 atLimit_;     // 1: parked at the limit
     signed char         state_;       // 0 parked, 1 advancing, 2 retreating

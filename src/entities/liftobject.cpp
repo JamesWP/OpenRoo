@@ -84,7 +84,6 @@ void LiftObject::spawn(const EntityContext &ctx, EntityList<LiftObject> &lifts, 
                   (unsigned)n, u, v, base, top, (void *)obj);
     }
 
-    obj->map_ = ctx.map;
 
     obj->cellU_      = (signed char)u;
     obj->cellV_      = (signed char)v;
@@ -150,7 +149,7 @@ void LiftObject::tick(const EntityContext &ctx, PlayEvents &events)
 
         //         // Compares against the rounded height_; a NaN completes the rise.
         if (!((double)(int)topHeight_ > (double)height_)) {
-            signed char top = map_->tile( cellU_, cellV_)->liftTop();
+            signed char top = ctx.map->tile( cellU_, cellV_)->liftTop();
 
             if (s_diag_lift && !s_logged_rise) {
                 s_logged_rise = 1;
@@ -182,7 +181,7 @@ void LiftObject::tick(const EntityContext &ctx, PlayEvents &events)
             //             // An integer compare, where the rise compares floats.
             if ((int)c <= (int)baseHeight_ - 1) {
                 signed char bot =
-                    map_->tile( cellU_, cellV_)->liftBottom();
+                    ctx.map->tile( cellU_, cellV_)->liftBottom();
 
                 if (s_diag_lift && !s_logged_fall) {
                     s_logged_fall = 1;
@@ -204,7 +203,7 @@ void LiftObject::tick(const EntityContext &ctx, PlayEvents &events)
         events.soundMove(moving, (float)(int)cellU_, height_, -(float)(int)cellV_);
     }
 
-    t = map_->tile( cellU_, cellV_);
+    t = ctx.map->tile( cellU_, cellV_);
 
     if (state_ == 0) {
         //         // The park time is published before the departure test replaces it.

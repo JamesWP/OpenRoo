@@ -153,7 +153,7 @@ void FoePath::destroy(FoePath *p)
 
 void FoePath::populate(LevelMap *map, unsigned short field04)
 {
-    map_       = map;
+    map_       = nullptr;
     field_04   = field04;
     keyStride_ = (int)map->extentU();
     extentV_   = (int)map->extentV();
@@ -370,7 +370,7 @@ Sim_GetCellStepDirectionCode(unsigned char u_from, unsigned char v_from,
  * "illegal" (the bridge and jump-pad blocks both do, on their failure path),
  * so reordering them changes the answer. */
 int
-Sim_CheckCellStepIsLegal(LevelMap *base, unsigned char u_from, unsigned char v_from,
+Sim_CheckCellStepIsLegal(const LevelMap *base, unsigned char u_from, unsigned char v_from,
                          unsigned char u_to, unsigned char v_to)
 {
     const Tile *to   = base->tile( u_to,   v_to);
@@ -541,8 +541,9 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
     return 0;
 }
 
-int FoePath::find(int uFoe, int vFoe, int uTarget, int vTarget)
+int FoePath::find(const LevelMap &map, int uFoe, int vFoe, int uTarget, int vTarget)
 {
+    map_ = &map;
     if (passable(uTarget, vTarget) != 0 &&
         passable(uFoe, vFoe) != 0) {
 

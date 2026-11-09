@@ -98,7 +98,6 @@ void PlatformObject::spawn(const EntityContext &ctx, EntityList<PlatformObject> 
 
     obj->kind_     = (signed char)kind;
     obj->state_    = 1;
-    obj->map_ = base;
 
     //     // This clear fires for every kind but covers only the spawn cell.
     //     // PRESERVED: the V scan clears the marker of every cell it walks; the U
@@ -180,15 +179,15 @@ static int s_logged_advance = 0;
 static int s_logged_retreat = 0;
 static int s_logged_depart  = 0;
 
-void PlatformObject::vacate()
+void PlatformObject::vacate(LevelMap &map)
 {
     if (s_diag_block && !s_logged_vacate) {
         s_logged_vacate = 1;
         g_logger.write("platformobject: first vacate -- cell=(%d,%d)\n",
                   (int)cellU_, (int)cellV_);
     }
-    map_->tile( cellU_, cellV_)->setObjectMarker(0);
-    map_->tile( cellU_, cellV_)->setOccupant(0);
+    map.tile( cellU_, cellV_)->setObjectMarker(0);
+    map.tile( cellU_, cellV_)->setOccupant(0);
 }
 
 void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
@@ -222,7 +221,7 @@ void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
 
             //             // A signed compare against the cell before it is updated.
             if (ftol_c(pos) > cellU_)
-                vacate();
+                vacate(*ctx.map);
 
             cellU_ = ftol_c((double)posU_);
 
@@ -241,7 +240,7 @@ void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
             posV_ = (float)pos;
 
             if (ftol_c(pos) > cellV_)
-                vacate();
+                vacate(*ctx.map);
 
             cellV_ = ftol_c((double)posV_);
 
@@ -279,7 +278,7 @@ void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
             posU_ = (float)pos;
 
             if (ftol_c(pos) < cellU_)
-                vacate();
+                vacate(*ctx.map);
 
             cellU_ = ftol_c((double)posU_);
 
@@ -297,7 +296,7 @@ void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
             posV_ = (float)pos;
 
             if (ftol_c(pos) < cellV_)
-                vacate();
+                vacate(*ctx.map);
 
             cellV_ = ftol_c((double)posV_);
 
@@ -325,12 +324,12 @@ void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
     }
 
     if (state_ == 0) {
-        t = map_->tile( cellU_, cellV_);
+        t = ctx.map->tile( cellU_, cellV_);
         t->setPlatformParkedSince(phaseStart_);
         t->setPlatformDwell(K_PARK_DWELL);
 
         if (now_ - phaseStart_ >= K_PARK_DWELL) {
-            map_->tile( cellU_, cellV_)->setObjectMarker(0);
+            ctx.map->tile( cellU_, cellV_)->setObjectMarker(0);
 
             phaseStart_ = now_;
             state_ = (signed char)((atLimit_ != 0) + 1);
@@ -346,14 +345,14 @@ void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
         }
     }
 
-    t = map_->tile( cellU_, cellV_);
+    t = ctx.map->tile( cellU_, cellV_);
     t->setObjectMarker(0x0c);
     t->setHeight(tileHeight_);
 
     posY_ = (float)(int)heightCell_;
 
     //     // Indexed by the origin cell: the home tile carries the live position.
-    t = map_->tile( originU_, originV_);
+    t = ctx.map->tile( originU_, originV_);
     t->setPlatformCell((unsigned char)cellU_, (unsigned char)cellV_);
     t->setPlatformPos(posU_, posY_, posV_);
 }

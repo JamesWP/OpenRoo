@@ -37,8 +37,6 @@ public:
 private:
     Bomb();
 
-    // The cell (u, v) from this bomb's tile base, both read signed.
-    Tile *tile(int u, int v) const;
     int                 blastSoundPlayed_;
     int                 zoneCleared_;
     double              droppedAt_;

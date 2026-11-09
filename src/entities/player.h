@@ -23,19 +23,19 @@ public:
     unsigned int updateTileEffects(const EntityContext &ctx, PlayEvents &events, CrtRand &random);
 
     // The six actions DirectInputSetup registers as player controls.
-    void actMoveForward(PlayEvents &events);
-    void actMoveBack(PlayEvents &events);
-    void actTurnLeft(PlayEvents &events);
-    void actTurnRight(PlayEvents &events);
+    void actMoveForward(LevelMap &map, PlayEvents &events);
+    void actMoveBack(LevelMap &map, PlayEvents &events);
+    void actTurnLeft(LevelMap &map, PlayEvents &events);
+    void actTurnRight(LevelMap &map, PlayEvents &events);
     void actHarakiri();
     void actReleaseBomb();
 
 
     // The tile the player stands on, from its signed cell coordinates.
-    Tile       *curTile();
-    const Tile *curTile() const;
+    // The tile it stands on.
+    Tile       *curTile(LevelMap &map) const;
+    const Tile *curTile(const LevelMap &map) const;
 
-    void  setMap(LevelMap *m)         { map_ = m; }
     // The readers (facing, pos, cell) are MovableEntity's.
     void  setFacing(unsigned char f)           { facing_ = f; }
     // Stored in the order u, y, v, as every caller stores them.

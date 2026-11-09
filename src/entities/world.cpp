@@ -38,7 +38,7 @@ void World::clearObjects(PlayEvents &events)
 
     // A foe frees its tile claims as it goes.
     for (Foe &foe : foes_)
-        foe.despawn(events);
+        foe.despawn(map_, events);
     foes_.clear();
     for (const Bomb &bomb : bombs_)
         events.soundStop(bomb.sound(Sfx::BombRoll));

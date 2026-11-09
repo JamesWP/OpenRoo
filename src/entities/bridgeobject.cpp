@@ -84,7 +84,6 @@ void BridgeObject::spawn(const EntityContext &ctx, EntityList<BridgeObject> &bri
     obj->axis_   = (unsigned char)axis;
 
     base = ctx.map;
-    obj->map_ = base;
 
     tile = base->tile( (int)u, (int)v);
     tile->setObjectMarker(0);
@@ -266,7 +265,7 @@ void BridgeObject::tick(const EntityContext &ctx, PlayEvents &events)
         //         // test and returns without stamping.
         if ((axis == 1 && cu < (signed char)guard_)
             || (axis == 2 && cv < (signed char)guard_)) {
-            Tile *t = map_->tile( cu, cv);
+            Tile *t = ctx.map->tile( cu, cv);
 
             if (s_diag_deck && !s_logged_stamp) {
                 s_logged_stamp = 1;
@@ -325,7 +324,7 @@ void BridgeObject::tick(const EntityContext &ctx, PlayEvents &events)
 
     if ((axis == 1 && cu < (signed char)guard_)
         || (axis == 2 && cv < (signed char)guard_)) {
-        Tile *t = map_->tile( cu, cv);
+        Tile *t = ctx.map->tile( cu, cv);
 
         if (s_diag_deck && !s_logged_unstamp) {
             s_logged_unstamp = 1;
