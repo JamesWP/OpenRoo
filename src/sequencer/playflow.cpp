@@ -65,8 +65,9 @@ void Flow_OpenPauseMenu(Game *self)
     input::swallow(input::KEY_ESCAPE);
 }
 
-/* The controls while playing: cheat entry, the timed spawners, the camera pitch, the
- * countdown's last seconds, and the progctrl dispatch once the player is at rest. */
+/* The controls while playing: cheat entry, the camera, the progctrl dispatch
+ * once the player is at rest, then the World's controls with the presses it
+ * made (World::tickControls). */
 void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
 {
     Player *pl = self->world()->player();
@@ -74,15 +75,10 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
     if (self->frontEnd()->cheatEntry()->active() != 0)
         Flow_HandleTypedCheatCode(self);
 
-    self->world()->spawnTimedFoes();
-
     self->config()->setActiveCameraPitch(self->config()->cameraPitch());
     if (pl->moveState() != 0) {
         self->camera()->setOverviewActive(0);
         self->camera()->setDistance(self->camera()->zoomDistance());
-        self->soundEvents()->soundStop(pl->sound(Sfx::Slide));
-        self->soundEvents()->soundStop(pl->sound(Sfx::Ice));
-        self->soundEvents()->soundStop(pl->sound(Sfx::Glide));
     }
 
     if ((unsigned int)pl->gliding() != 0) {
@@ -95,26 +91,20 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
         self->camera()->setParkedCameraOption(0);
     }
 
-    self->world()->updateCountdown(*self->soundEvents());
     if (pl->moveState() == 0) {
-        PROF_SCOPE("player");
         // Noted before the dispatch, so paused and cutscene modes are seen.
         gamestate_note_mode(static_cast<unsigned short>(static_cast<unsigned char>(self->state())));
         progCtrl->dispatch(static_cast<unsigned short>(static_cast<unsigned char>(self->state())));
-        self->world()->applyPresses(self->takePresses(), *self->soundEvents());
     }
+    self->world()->tickControls(true, self->takePresses(), *self->soundEvents());
 }
 
 /* The controls outside play: the progctrl dispatch runs in mode 0. */
 void Flow_TickIdleControls(Game *self, ProgableControl *progCtrl)
 {
-    Player *pl = self->world()->player();
-
-    pl->setIdleStarted(0);
-    pl->setLastActive(self->world()->now());
     gamestate_note_mode(0);
     progCtrl->dispatch(0);
-    self->world()->stopCountdown(*self->soundEvents());
+    self->world()->tickControls(false, self->takePresses(), *self->soundEvents());
 }
 
 /* ENTER after a death: restarts the level, or ends it as game over or, on a bonus level, complete. */

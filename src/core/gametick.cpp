@@ -60,12 +60,7 @@ static unsigned char completion_percent(unsigned int a, unsigned int b)
 static void advance_clock(Game *self, double dt, double now)
 {
     self->setLastTickTime(now);
-    if (self->state() == GameState::PauseMenu) {
-        self->world()->tickStep()->value = 0.0;  // +0.0
-    } else {
-        self->world()->tickStep()->value = dt;
-        self->world()->advanceClock(dt);
-    }
+    self->world()->beginTick(self->state() == GameState::PauseMenu ? 0.0 : dt);
 }
 
 /* The level objects: the tile debug map, then the lifts, platforms, falling tiles and bridges. */
@@ -137,11 +132,7 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
             self->session()->setVitalityPercent(100);
     }
 
-    {
-        PROF_SCOPE("player");
-        pl->updateTileEffects(self->world()->entityContext(), *self->soundEvents(),
-                              self->world()->random());
-    }
+    self->world()->updatePlayer(*self->soundEvents());
 
     if (self->state() == GameState::Playing)
         Flow_TickPlayingControls(self, progCtrl);
@@ -151,11 +142,10 @@ Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
     self->world()->dropPlayerBomb();
     self->world()->playerSwitch(*self->soundEvents());
 
+    self->world()->countPlayTime(self->state() == GameState::Playing);
     if (pl->moveState() != 0) {
         self->camera()->setMode(2);
     } else if (self->state() == GameState::Playing) {
-        self->world()->setTimeElapsed(self->world()->timeElapsed()
-            + (unsigned int)(long long)(self->world()->tickStep()->value));
         self->session()->setPlayingTime(self->session()->playingTime()
             + (unsigned int)(long long)(self->world()->tickStep()->value));
     }
