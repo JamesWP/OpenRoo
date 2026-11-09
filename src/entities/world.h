@@ -12,6 +12,8 @@
  * separate level that goes on from where the original was (the bot plays
  * ahead on copies).  KAROO_WORLD_COPY=1 checks that the game keeps nothing
  * pointing into it: each tick then runs on a fresh copy at a new address.
+ * KAROO_WORLD_FORK=1 checks that tick() alone is the game's tick: each tick
+ * of play is also run by tick() on a copy, and the game takes the copy's.
  */
 #pragma once
 #include "crtrand.h"
