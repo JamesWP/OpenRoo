@@ -39,11 +39,6 @@ static void diag_init(void)
     s_diag_step   = sysdev::envFlag("KAROO_FOESTEP_DIAG");
 }
 
-Tile *Foe::tile(int u, int v) const
-{
-    return map_->tile( u, v);
-}
-
 Foe::Foe()
 {
     dyingStarted_         = 0;
@@ -84,7 +79,6 @@ Foe::Foe()
     // recycled heap block held could be a NaN, which made animStart_ NaN and
     // left the foe's position NaN.
     now_ = 0;
-    map_ = 0;
     facing_ = 0;
     posU_ = posY_ = posV_ = 0.0f;
     cellU_ = cellV_ = heightCell_ = 0;
@@ -119,10 +113,6 @@ Foe::Foe()
 Foe::~Foe()
 {
     FoePath *pf;
-
-    tile(cellU_, cellV_)->setField1a1(0);
-    tile(cellU_, cellV_)->setOccupant(0);
-    tile(cellU_ - stepU_, cellV_ - stepV_)->setOccupant(0);
 
     pf = pathfinder_;
     if (pf != 0)
@@ -212,7 +202,6 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
         }
     }
 
-    p->map_ = ctx.map;
     p->type_     = type;
 
     if (type > FOE_FACING_BASE) {
@@ -246,7 +235,7 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
 
     ctx.map->tile( (int)u, (int)v)->setOccupant(p->kind_);
 
-    p->pathfinder_ = FoePath::create(p->map_, 0);
+    p->pathfinder_ = FoePath::create(ctx.map, 0);
 
     p->pathfinder_->setMode(type);
 
@@ -256,7 +245,7 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
 static unsigned long s_removals       = 0;
 static int           s_logged_remove  = 0;
 
-void Foe::remove(EntityList<Foe> &foes, std::size_t i, PlayEvents &events)
+void Foe::remove(EntityList<Foe> &foes, std::size_t i, LevelMap &map, PlayEvents &events)
 {
     diag_init();
 
@@ -271,12 +260,17 @@ void Foe::remove(EntityList<Foe> &foes, std::size_t i, PlayEvents &events)
             g_logger.write("foe: %lu removals\n", s_removals);
     }
 
-    foes[i].despawn(events);
+    foes[i].despawn(map, events);
     foes.erase(i);
 }
 
-void Foe::despawn(PlayEvents &events) const
+/* Frees its claims on the tiles it stood on and was stepping from, and
+ * stops its loops. */
+void Foe::despawn(LevelMap &map, PlayEvents &events) const
 {
+    map.tile(cellU_, cellV_)->setField1a1(0);
+    map.tile(cellU_, cellV_)->setOccupant(0);
+    map.tile(cellU_ - stepU_, cellV_ - stepV_)->setOccupant(0);
     events.soundStop(sound(Sfx::Fall));
     events.soundStop(sound(Sfx::Slide));
     events.soundStop(sound(Sfx::Ice));
@@ -317,6 +311,7 @@ void Foe::step(const EntityContext &ctx, unsigned char playerU, unsigned char pl
             g_logger.write("foe: %lu ticks\n", s_ticks);
     }
 
+    LevelMap &map = *ctx.map;
     tickStepCopy_ = ctx.step;
     now_        = ctx.now;
 
@@ -346,7 +341,7 @@ void Foe::step(const EntityContext &ctx, unsigned char playerU, unsigned char pl
 
     pickedUp_ = 0;
     if (type_ == FOE_GEM_THIEF && moveDir_ == 0) {
-        Tile *t = tile(cellU_, cellV_);
+        Tile *t = map.tile(cellU_, cellV_);
 
         if ((int)heightCell_ == (int)t->height() &&
             (signed char)t->contents() == CONTENTS_CRYSTAL) {
@@ -374,11 +369,11 @@ void Foe::step(const EntityContext &ctx, unsigned char playerU, unsigned char pl
         }
     }
     if (moveDir_ != 0) {
-        updateMovement(events);
+        updateMovement(map, events);
         return;
     }
 
-    chase(playerU, playerV, chaseSpeed_);
+    chase(map, playerU, playerV, chaseSpeed_);
 
     if ((signed char)pendingMove_ != 0) {
         if (s_diag_step && !s_logged_chase) {
@@ -390,12 +385,12 @@ void Foe::step(const EntityContext &ctx, unsigned char playerU, unsigned char pl
         // only when the chase above found no move.
         targetU_ = playerU;
         targetV_ = playerV;
-        updateMovement(events);
+        updateMovement(map, events);
         return;
     }
 
     if (type_ == FOE_SWITCH_RUNNER) {
-        Tile *t = tile(cellU_, cellV_);
+        Tile *t = map.tile(cellU_, cellV_);
 
         if ((signed char)t->objectMarker() == TILE_SWITCH) {
             unsigned char facing;
@@ -437,10 +432,10 @@ void Foe::step(const EntityContext &ctx, unsigned char playerU, unsigned char pl
             g_logger.write("foe: first return-to-post -- target=(%u,%u)\n",
                       (unsigned)targetU_, (unsigned)targetV_);
         }
-        chase(targetU_, targetV_, chaseSpeed_);
+        chase(map, targetU_, targetV_, chaseSpeed_);
     }
 
-    updateMovement(events);
+    updateMovement(map, events);
 }
 
 static inline unsigned ftol32(double v)
@@ -448,7 +443,7 @@ static inline unsigned ftol32(double v)
     return (unsigned)(long long)v;
 }
 
-unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
+unsigned char Foe::chase(LevelMap &map, unsigned char targetU, unsigned char targetV,
                          unsigned short speed)
 {
     diag_init();
@@ -462,7 +457,7 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
     if (moveDir_ != 0)
         return pendingMove_;
 
-    if (pathfinder_->find((int)cellU_, (int)cellV_,
+    if (pathfinder_->find(map, (int)cellU_, (int)cellV_,
                           (unsigned)targetU, (unsigned)targetV) == 0) {
         pendingMove_ = 0;
         return pendingMove_;
@@ -514,8 +509,8 @@ unsigned char Foe::chase(unsigned char targetU, unsigned char targetV,
             return pendingMove_;
     }
 
-    Tile *step = map_->tile( (int)nu, (int)nv);
-    Tile *here = tile(cellU_, cellV_);
+    Tile *step = map.tile( (int)nu, (int)nv);
+    Tile *here = map.tile(cellU_, cellV_);
 
     if (step->objectMarker() == TILE_EMPTY)
         pendingMove_ = 0;
@@ -579,7 +574,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
         tv = (unsigned char)cellV_;
         if (Sim_FindNearestBusySwitch(ctx.map, &tu, &tv, 7) != 0) {
             chaseSpeed_ = 100;
-            chase(tu, tv, 100);
+            chase(*ctx.map, tu, tv, 100);
             if (onSwitch_ == 0 && pendingMove_ == 0 && turnKind_ == 0) {
                 tu = playerU;
                 tv = playerV;
@@ -600,7 +595,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
             chaseSpeed_ = 100;
         } else {
             chaseSpeed_ = 0x96;
-            chase(tu, tv, 0x96);
+            chase(*ctx.map, tu, tv, 0x96);
             if (pendingMove_ == 0) {
                 tu = playerU;
                 tv = playerV;
@@ -624,7 +619,7 @@ void Foe::chooseTarget(const EntityContext &ctx, const EntityList<Foe> &foes, in
     }
     if (type_ == FOE_GEM_RUNNER) {
         held_ = 0;
-        if (Sim_FindFarthestOccupiedTile(map(), &tu, &tv) != 0)
+        if (Sim_FindFarthestOccupiedTile(ctx.map, &tu, &tv) != 0)
             chaseSpeed_ = 0x96;
         else
             held_ = 1;
@@ -688,7 +683,7 @@ bool Foe::finishDespawn(LevelMap *map)
     if (removeRequested_ == 0)
         return false;
     if ((double)posY_ > 0.0)
-        tile(cellU_, cellV_)->setContents(dropContents_);
+        map->tile(cellU_, cellV_)->setContents(dropContents_);
     return true;
 }
 

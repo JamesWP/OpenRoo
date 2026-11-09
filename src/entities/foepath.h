@@ -106,13 +106,14 @@ public:
     PathNode *result() const                       { return result_; }
     void setResult(PathNode *n)                    { result_ = n; }
 
-    LevelMap *map() const { return map_; }
+    const LevelMap *map() const { return map_; }
     // The last search reached the foe: result() and its parents are live.
     bool      hasPath() const                      { return found_ != 0; }
 
 
     // The search (foepath.cpp).
-    int       find(int uFoe, int vFoe, int uTarget, int vTarget);
+    // A search of map: the map is kept only for the search's own steps.
+    int       find(const LevelMap &map, int uFoe, int vFoe, int uTarget, int vTarget);
     int       cellKey(int u, int v);
     int       passable(int u, int v);
     void      releaseLists();
@@ -138,7 +139,7 @@ private:
     void populate(LevelMap *map, unsigned short field04);
     static PathNode *findByKey(PathNode *hdr, int key);
 
-    LevelMap *map_;  // the ctor's argument
+    const LevelMap *map_;  // the map of the last search
     unsigned short field_04;   // the ctor's second argument (0)
     PathNode      *open_;      // a header node, fresh each search
     PathNode      *closed_;    // likewise

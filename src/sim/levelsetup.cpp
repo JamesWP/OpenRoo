@@ -224,7 +224,6 @@ Sim_SetupLevelObjects(Game *self)
     self->world()->clearObjects(*self->soundEvents());
     self->world()->player()->setLastRoll(0);
 
-    self->world()->player()->setMap(M);
 
     // The player start, and the marker-4 cell.
     if (Sim_FindTileByTypeMarker(M, 3, self->world()->player()->homeRef())) {

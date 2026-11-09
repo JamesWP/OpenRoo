@@ -48,7 +48,7 @@ private:
     FallingTile &operator=(const FallingTile &) = delete;
 
     // The tile it sits on: (cellU_, cellV_), read signed.
-    Tile *tile() const;
+    Tile *tile(LevelMap &map) const;
     // Plays one of its sounds at the tile.
     void playAtTile(PlayEvents &events, Sfx sfx, const Tile *t) const;
 
@@ -62,7 +62,6 @@ private:
     signed char         cellU_;           // read by RenderGameFrame
     signed char         cellV_;
     signed char         heightCell_;
-    LevelMap               *map_;        // World::map()
     int                 justRespawned_;   // set for the respawn tick
     int                 justFell_;        // set for the fall tick
     double              eventTime_;       // the clock at the last fall or respawn

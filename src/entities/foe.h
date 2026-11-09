@@ -38,11 +38,11 @@ public:
 
     // Destroys foes[i], reporting it destroyed; those after it move down
     // one.
-    static void remove(EntityList<Foe> &foes, std::size_t i, PlayEvents &events);
+    static void remove(EntityList<Foe> &foes, std::size_t i, LevelMap &map, PlayEvents &events);
 
     // Despawns it: its fall sound stops and its sounds are released
     // (remove, and World::clearObjects).
-    void despawn(PlayEvents &events) const;
+    void despawn(LevelMap &map, PlayEvents &events) const;
 
     // Frees its tile claims and its path-finder.
     ~Foe() override;
@@ -53,7 +53,7 @@ public:
 
     // Searches towards (u, v) and queues the first step in pendingMove;
     // returns it.
-    unsigned char chase(unsigned char targetU, unsigned char targetV,
+    unsigned char chase(LevelMap &map, unsigned char targetU, unsigned char targetV,
                         unsigned short speed);
 
     // GameTick's foe loop (gametick.cpp) keeps the Game-side sequencing (the
@@ -94,8 +94,6 @@ public:
 
 private:
     Foe();
-
-    Tile *tile(int u, int v) const;
 
     unsigned char dropContents_;  // stamped into its tile's contents when it dies
     unsigned char targetU_;       // the last chase target,

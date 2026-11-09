@@ -81,8 +81,8 @@ static inline double load_double(const void *p)
     return v;
 }
 
-/* Tile addressing: base->tile( u, v), both axes read signed. */
-#define TILE(u, v)   map_->tile( (u), (v))
+/* Tile addressing: the map's tile(u, v), both axes read signed. */
+#define TILE(u, v)   map.tile( (u), (v))
 #define GU           cellU_
 #define GV           cellV_
 #define GH           heightCell_
@@ -106,7 +106,7 @@ static inline unsigned ftol32(double v)
     return (unsigned)(long long)v;
 }
 
-unsigned int MovableEntity::updateMovement(PlayEvents &events)
+unsigned int MovableEntity::updateMovement(LevelMap &map, PlayEvents &events)
 {
     if (moveDir_ == 0 && ((signed char)moveState_) == 0)
         anim_ = 0;
@@ -152,7 +152,7 @@ unsigned int MovableEntity::updateMovement(PlayEvents &events)
             if (facing_or_reverse(((unsigned)moveDir_), facing_)) {
                 if (((signed char)kind_) != 9) {
                     // Clears the occupant of the cell being left.
-                    Tile *from = map_->tile(
+                    Tile *from = map.tile(
                         (int)GU - (int)stepU_, (int)GV - (int)stepV_);
                     from->setOccupant(0);
                 }
@@ -269,7 +269,7 @@ unsigned int MovableEntity::updateMovement(PlayEvents &events)
                     copy8(&teleportSince_, &now_);
                     teleportPhase_ = 2;
                     CUR->setBusy(0);
-                    LevelMap *base = map_;
+                    LevelMap *base = &map;
                     Tile *here = CUR;
                     signed char du = (signed char)here->teleportU();
                     signed char dv = (signed char)here->teleportV();
@@ -300,7 +300,7 @@ unsigned int MovableEntity::updateMovement(PlayEvents &events)
 
             // Attach to a moving platform.
             if (((signed char)platformSlot_) == -1) {
-                LevelMap *base = map_;
+                LevelMap *base = &map;
                 Tile *here = CUR;
                 if ((signed char)here->objectMarker() == TILE_PLATFORM_TRACK) {
                     unsigned pu = here->platformOriginU();
@@ -356,7 +356,7 @@ unsigned int MovableEntity::updateMovement(PlayEvents &events)
 
     // Riding a platform.
     if (((signed char)platformSlot_) != -1 && ((signed char)moveState_) == 0) {
-        LevelMap *base = map_;
+        LevelMap *base = &map;
         Tile *here = CUR;
         unsigned pu = here->platformOriginU();
         unsigned pv = here->platformOriginV();
@@ -596,7 +596,7 @@ unsigned int MovableEntity::updateMovement(PlayEvents &events)
             Tile          *here    = CUR;
             unsigned char  h_here  = here->height();
             unsigned char  k_here  = here->objectMarker();
-            Tile          *dest    = map_->tile(
+            Tile          *dest    = map.tile(
                 (int)stepU_ + (int)GU, (int)GV + (int)stepV_);
             unsigned char  h_dest  = dest->height();
             unsigned char  k_dest  = dest->objectMarker();
@@ -724,8 +724,8 @@ unsigned int MovableEntity::updateMovement(PlayEvents &events)
                     }
                     int nu = (int)GU + (int)stepU_;
                     int nv = (int)GV + (int)stepV_;
-                    if (nu < 0 || (int)(unsigned)map_->extentU() <= nu ||
-                        nv < 0 || (int)(unsigned)map_->extentV() <= nv) {
+                    if (nu < 0 || (int)(unsigned)map.extentU() <= nu ||
+                        nv < 0 || (int)(unsigned)map.extentV() <= nv) {
                         moveDir_ = 0;  // off the edge of the map
                     } else {
                         cellU_ = (signed char)(GU + stepU_);

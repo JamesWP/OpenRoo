@@ -54,7 +54,6 @@ private:
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;  // the live height, truncated
-    LevelMap               *map_;    // World::map()
     signed char         baseHeight_;
     signed char         topHeight_;
     unsigned char       slot_;        // its index in World's lift list

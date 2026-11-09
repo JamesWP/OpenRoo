@@ -56,7 +56,7 @@ void Cheat_Invulnerable(Game *g)
         pl->appendEffect(0x0d);
     pl->setProtectionActive(1);
     pl->setKind(3);
-    pl->curTile()->setOccupant(3);
+    pl->curTile(*g->world()->map())->setOccupant(3);
     pl->setProtectionStart(g->world()->now());
 }
 

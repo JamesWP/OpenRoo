@@ -89,7 +89,6 @@ void FallingTile::spawn(const EntityContext &ctx, EntityList<FallingTile> &falli
     }
 
     //     // PRESERVED: a failed allocation is not checked; the first store faults.
-    obj->map_ = ctx.map;
 
     obj->cellU_      = (signed char)u;
     obj->cellV_      = (signed char)v;
@@ -107,9 +106,9 @@ void FallingTile::spawn(const EntityContext &ctx, EntityList<FallingTile> &falli
     ctx.map->tile( (int)u, (int)v)->setObjectMarker(TILE_FALLING);
 }
 
-Tile *FallingTile::tile() const
+Tile *FallingTile::tile(LevelMap &map) const
 {
-    return map_->tile( (int)cellU_, (int)cellV_);
+    return map.tile( (int)cellU_, (int)cellV_);
 }
 
 void FallingTile::playAtTile(PlayEvents &events, Sfx sfx, const Tile *t) const
@@ -126,7 +125,7 @@ void FallingTile::tick(const EntityContext &ctx, PlayEvents &events)
     tickStepCopy_ = ctx.step;
     now_        = ctx.now;
 
-    Tile *t = tile();
+    Tile *t = tile(*ctx.map);
     const double now = now_;
 
     if ((signed char)t->occupant() != 0 && armed_ == 0 && t->busy() == 0) {

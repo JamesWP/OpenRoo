@@ -47,14 +47,14 @@ static inline double load_double(const void *p)
 }
 
 /* Re-derived at every use: movement can change the cell between blocks. */
-Tile *Player::curTile()
+Tile *Player::curTile(LevelMap &map) const
 {
-    return map_->tile(cellU_, cellV_);
+    return map.tile(cellU_, cellV_);
 }
 
-const Tile *Player::curTile() const
+const Tile *Player::curTile(const LevelMap &map) const
 {
-    return map_->tile(cellU_, cellV_);
+    return map.tile(cellU_, cellV_);
 }
 
 /* One take of a pickup's sound, at the player's cell. */
@@ -85,17 +85,17 @@ void Player::endEffect(int code)
 unsigned int Player::updateTileEffects(const EntityContext &ctx, PlayEvents &events,
                                        CrtRand &random)
 {
-
+    LevelMap &map = *ctx.map;
     tickStepCopy_ = ctx.step;
     now_ = ctx.now;
 
     pendingMove_ = 0;
 
     if ((signed char)anim_ != 10)
-        updateMovement(events);
+        updateMovement(map, events);
 
     if (moveState_ != 0) {
-        curTile()->setOccupant(0);
+        curTile(map)->setOccupant(0);
 
         effectBActive_ = 0;
         freezeActive_ = 0;
@@ -123,7 +123,7 @@ unsigned int Player::updateTileEffects(const EntityContext &ctx, PlayEvents &eve
     pickedUp_ = 0;
 
     {
-        Tile *t = curTile();
+        Tile *t = curTile(map);
         int tileH = (int)t->height();              // Read unsigned.
         int y     = (int)(signed char)(int)posY_;  // Truncated, then read signed.
         int onTile;
@@ -162,23 +162,22 @@ unsigned int Player::updateTileEffects(const EntityContext &ctx, PlayEvents &eve
             signed char rolled = (signed char)((char)(r / 0x7FFF) + 5);  // An 8-bit add.
 
             lastRoll_ = rolled;
-            curTile()->setContents((unsigned char)rolled);
+            curTile(map)->setContents((unsigned char)rolled);
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_TIME_BONUS) {
-            LevelMap *map = map_;
-            map->setTimeLimit(map->timeLimit() + 5);
-            curTile()->setContents(0);
+        if ((signed char)curTile(map)->contents() == CONTENTS_TIME_BONUS) {
+            map.setTimeLimit(map.timeLimit() + 5);
+            curTile(map)->setContents(0);
             itemsCollected_ += 1;
-            lastSecondsMark_ = (double)(map->timeLimit() + 1);
+            lastSecondsMark_ = (double)(map.timeLimit() + 1);
 
             pickupSound(events, Sfx::PickupTime, (int)(long long)now_ % 3);
             pickedUp_ = 6;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_CRYSTAL) {
+        if ((signed char)curTile(map)->contents() == CONTENTS_CRYSTAL) {
             gemsCollected_ += 1;
-            curTile()->setContents(0);
+            curTile(map)->setContents(0);
             itemsCollected_ += 1;
 
             events.soundPlay(sound(Sfx::Crystal), (float)(int)cellU_, (float)(int)heightCell_,
@@ -186,95 +185,95 @@ unsigned int Player::updateTileEffects(const EntityContext &ctx, PlayEvents &eve
             pickedUp_ = 1;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_EXTRA_LIFE) {
+        if ((signed char)curTile(map)->contents() == CONTENTS_EXTRA_LIFE) {
             lives_ += 1;
-            curTile()->setContents(0);
+            curTile(map)->setContents(0);
             itemsCollected_ += 1;
 
             pickupSound(events, Sfx::PickupLife, (int)(long long)now_ % 3);
             pickedUp_ = 7;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_PARAGLIDER && falling_ == 0) {
+        if ((signed char)curTile(map)->contents() == CONTENTS_PARAGLIDER && falling_ == 0) {
             glides_ += 1;
-            curTile()->setContents(0);
+            curTile(map)->setContents(0);
             itemsCollected_ += 1;
 
             pickupSound(events, Sfx::PickupGlider, worldSoundVariant_);
             pickedUp_ = 5;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_GRANT_09) {
+        if ((signed char)curTile(map)->contents() == CONTENTS_GRANT_09) {
             bombsCarried_ += 3;
-            curTile()->setContents(0);
+            curTile(map)->setContents(0);
             itemsCollected_ += 1;
 
             pickupSound(events, Sfx::PickupBombs, (int)(long long)now_ % 3);
             pickedUp_ = 9;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_FREEZE) {
+        if ((signed char)curTile(map)->contents() == CONTENTS_FREEZE) {
             if (freezeActive_ == 0)
                 appendEffect(8);
             copy8(&freezeStart_, &now_);
             freezeActive_ = 1;
-            curTile()->setContents(0);
+            curTile(map)->setContents(0);
             itemsCollected_ += 1;
 
             pickupSound(events, Sfx::PickupFreeze, (int)(long long)now_ % 3);
             pickedUp_ = 8;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_REVERSED) {
+        if ((signed char)curTile(map)->contents() == CONTENTS_REVERSED) {
             if (effectBActive_ == 0)
                 appendEffect(0xb);
             copy8(&effectBStart_, &now_);
             effectBActive_ = 1;
-            curTile()->setContents(0);
+            curTile(map)->setContents(0);
             itemsCollected_ += 1;
 
             pickupSound(events, Sfx::PickupReversed, (int)(long long)now_ % 3);
             pickedUp_ = 0xb;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_SPEED_UP) {
+        if ((signed char)curTile(map)->contents() == CONTENTS_SPEED_UP) {
             if (effectAActive_ == 0)
                 appendEffect(0xa);
             copy8(&effectAStart_, &now_);
             effectAActive_ = 1;
             stepDuration_ = 100.0;
-            curTile()->setContents(0);
+            curTile(map)->setContents(0);
             itemsCollected_ += 1;
 
             pickupSound(events, Sfx::PickupFast, (int)(long long)now_ % 3);
             pickedUp_ = 0xa;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_SPEED_DOWN) {
+        if ((signed char)curTile(map)->contents() == CONTENTS_SPEED_DOWN) {
             if (effectCActive_ == 0)
                 appendEffect(0xc);
             copy8(&effectCStart_, &now_);
             effectCActive_ = 1;
             stepDuration_ = 400.0;
-            curTile()->setContents(0);
+            curTile(map)->setContents(0);
             itemsCollected_ += 1;
 
             pickupSound(events, Sfx::PickupSlow, (int)(long long)now_ % 3);
             pickedUp_ = 0xc;
         }
 
-        if ((signed char)curTile()->contents() == CONTENTS_PROTECTION) {
+        if ((signed char)curTile(map)->contents() == CONTENTS_PROTECTION) {
             if (protectionActive_ == 0)
                 appendEffect(0xd);
 
             protectionActive_ = 1;
             kind_     = 3;
-            curTile()->setOccupant(3);
+            curTile(map)->setOccupant(3);
 
             //             // PRESERVED: stamped after the flag, unlike the other four.
             copy8(&protectionStart_, &now_);
 
-            curTile()->setContents(0);
+            curTile(map)->setContents(0);
             itemsCollected_ += 1;
 
             pickupSound(events, Sfx::PickupShield, (int)(long long)now_ % 3);
@@ -320,7 +319,7 @@ expire:
         if (now_ - protectionStart_ > K_EFFECT_MS) {
             protectionActive_ = 0;
             kind_     = 4;
-            curTile()->setOccupant(4);
+            curTile(map)->setOccupant(4);
             endEffect(0xd);
         }
     }
@@ -333,7 +332,7 @@ expire:
  * and 4 a right and left turn (whose pendingMove_ is the new facing + 10).
  * While effect 0xb is active, forward and back, left and right swap.  A turn
  * pressed while moving is queued unless one is already queued or under way. */
-void Player::actMoveForward(PlayEvents &events)
+void Player::actMoveForward(LevelMap &map, PlayEvents &events)
 {
     if (moveDir_ != 0)
         return;
@@ -344,10 +343,10 @@ void Player::actMoveForward(PlayEvents &events)
         pendingMove_ = Sim_GetTurnedDirection(facing_, 2);
         turnKind_ = 3;
     }
-    updateMovement(events);
+    updateMovement(map, events);
 }
 
-void Player::actMoveBack(PlayEvents &events)
+void Player::actMoveBack(LevelMap &map, PlayEvents &events)
 {
     if (moveDir_ != 0)
         return;
@@ -358,7 +357,7 @@ void Player::actMoveBack(PlayEvents &events)
         pendingMove_ = facing_;
         turnKind_ = 1;
     }
-    updateMovement(events);
+    updateMovement(map, events);
 }
 
 /* `delta` 3 turns left, 1 right. */
@@ -367,7 +366,7 @@ static inline unsigned char turned_plus_10(unsigned char facing, unsigned char d
     return (unsigned char)(Sim_GetTurnedDirection(facing, delta) + 10);
 }
 
-void Player::actTurnLeft(PlayEvents &events)
+void Player::actTurnLeft(LevelMap &map, PlayEvents &events)
 {
     if (moveDir_ != 0) {
         if (turnKind_ == 2 || turnKind_ == 4 || queuedTurn_ != 0)
@@ -385,10 +384,10 @@ void Player::actTurnLeft(PlayEvents &events)
         pendingMove_ = turned_plus_10(facing_, 1);
         turnKind_ = 2;
     }
-    updateMovement(events);
+    updateMovement(map, events);
 }
 
-void Player::actTurnRight(PlayEvents &events)
+void Player::actTurnRight(LevelMap &map, PlayEvents &events)
 {
     if (moveDir_ != 0) {
         if (turnKind_ == 4 || turnKind_ == 2 || queuedTurn_ != 0)
@@ -406,7 +405,7 @@ void Player::actTurnRight(PlayEvents &events)
         pendingMove_ = turned_plus_10(facing_, 3);
         turnKind_ = 4;
     }
-    updateMovement(events);
+    updateMovement(map, events);
 }
 
 /* Only while standing still. */

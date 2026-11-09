@@ -159,7 +159,7 @@ void Play_TickFoes(Game *self)
         foe.dropBomb(self->world()->entityContext(), self->world()->bombs());
         foe.checkPlayerContact(pl->moveStateRef(), pl->posU(), pl->posY(), pl->posV());
         if (foe.finishDespawn(self->world()->map())) {
-            Foe::remove(foes, i, *self->soundEvents());  // the next moves into i
+            Foe::remove(foes, i, *self->world()->map(), *self->soundEvents());  // the next moves into i
             self->session()->setFoesKilled((unsigned char)(self->session()->foesKilled() + 1));
         } else {
             ++i;

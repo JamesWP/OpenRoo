@@ -18,11 +18,12 @@ Input_TrySaveSettings(ProgableControl *progCtrl)
  * context, here the Game), each done with the game's events. */
 static Player *player_of(void *game) { return static_cast<Game *>(game)->world()->player(); }
 static PlayEvents &events_of(void *game) { return *static_cast<Game *>(game)->soundEvents(); }
+static LevelMap &map_of(void *game) { return *static_cast<Game *>(game)->world()->map(); }
 
-static void act_move_forward(int, int, void *g) { player_of(g)->actMoveForward(events_of(g)); }
-static void act_move_back(int, int, void *g)    { player_of(g)->actMoveBack(events_of(g)); }
-static void act_turn_left(int, int, void *g)    { player_of(g)->actTurnLeft(events_of(g)); }
-static void act_turn_right(int, int, void *g)   { player_of(g)->actTurnRight(events_of(g)); }
+static void act_move_forward(int, int, void *g) { player_of(g)->actMoveForward(map_of(g), events_of(g)); }
+static void act_move_back(int, int, void *g)    { player_of(g)->actMoveBack(map_of(g), events_of(g)); }
+static void act_turn_left(int, int, void *g)    { player_of(g)->actTurnLeft(map_of(g), events_of(g)); }
+static void act_turn_right(int, int, void *g)   { player_of(g)->actTurnRight(map_of(g), events_of(g)); }
 static void act_harakiri(int, int, void *g)     { player_of(g)->actHarakiri(); }
 static void act_release_bomb(int, int, void *g) { player_of(g)->actReleaseBomb(); }
 

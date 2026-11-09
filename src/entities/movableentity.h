@@ -23,9 +23,6 @@ class MovableEntity : public Listed {
 public:
      
 
-    // The level's map, copied in at spawn from World::map().
-    const LevelMap *map() const { return map_; }
-
     // Nonzero once this tick should remove the entity.  Read by GameTick after
     // a bomb's tick.
     int removeRequested() const { return removeRequested_; }
@@ -33,7 +30,7 @@ public:
     // The movement step every entity tick ends in (player, foe, bomb).
     // Returns 1 on the two early outs taken while the entity is dying, 0
     // otherwise.
-    unsigned int updateMovement(PlayEvents &events);
+    unsigned int updateMovement(LevelMap &map, PlayEvents &events);
 
     // Readers shared by every entity.  Meaning is noted below only where the
     // name does not already say it.
@@ -104,8 +101,6 @@ protected:
     // position floats.
     MovableEntity();
 
-    LevelMap *map() { return map_; }
-
 public:
     // Virtual, so a Foe or Bomb is destroyed through a MovableEntity pointer.
     virtual ~MovableEntity();
@@ -121,7 +116,6 @@ protected:
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;
-    LevelMap               *map_{};
     double              idleDuration_{};  // ms the idle animation runs.
     int                 onStairOrSlide_{};
     int                 movingBackwards_{};  // Set when turnKind_ is 3 (reversing this step).
