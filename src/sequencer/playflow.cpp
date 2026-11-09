@@ -195,7 +195,7 @@ void Flow_LeaveGameOver(Game *self)
     Player *pl = self->world()->player();
 
     unsigned int r = self->frontEnd()->highScores()->insert(
-        (unsigned int)pl->score(), (unsigned char)(self->session()->levelIndex() + 1));
+        (unsigned int)self->session()->totalScore(), (unsigned char)(self->session()->levelIndex() + 1));
     if ((unsigned char)r < 0xff) {
         self->setState(GameState::NameEntry);
         if (self->config()->musicOn() != 0)

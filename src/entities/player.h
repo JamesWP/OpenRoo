@@ -156,9 +156,6 @@ public:
     // The active timed-effect codes, in the order they started.
     void  appendEffect(int code);
     void  clearEffects();
-    // The running score total, persisted to the save.
-    int   score() const                     { return score_; }
-    void  setScore(int n)                   { score_ = n; }
     void  setLastRoll(signed char c)           { lastRoll_ = c; }
     void  setField231(double d)                { field_231 = d; }
     // Lives remaining.
@@ -192,7 +189,6 @@ private:
     float               markerV_{};
     unsigned short      itemsCollected_{};  // items picked up this level; the all-items bonus tests it
     std::vector<int>    effectList_;
-    int                 score_{};
     signed char         lastRoll_;
     double              field_231{};
     int                 lives_{};

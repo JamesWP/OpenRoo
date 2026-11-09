@@ -91,7 +91,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
                     + t->score[TALLY_SURPLUS]  + t->score[TALLY_VITALITY]
                     + t->score[TALLY_TIME]     + t->score[TALLY_GEMS];
 
-    const int running = self->world()->player()->score();
+    const int running = self->session()->totalScore();
     t->levelTotal = total;
     t->grandTotal = total + running;
 
@@ -104,7 +104,7 @@ Score_CalculateLevelScore(Game *self, char endReason)
 
     t->shownBase       = running;
     t->shownGrandTotal = running;
-    self->world()->player()->setScore(total + running);
+    self->session()->setTotalScore(total + running);
 
     // Hand the tally animation stage 0 and its start time.
     t->stage      = 0;

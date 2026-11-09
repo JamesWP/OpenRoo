@@ -45,6 +45,11 @@ public:
      * added as it ends; the save slot stores it, ClearGameState zeroes it. */
     double         totalPlayTime() const             { return totalPlayTime_; }
     void           setTotalPlayTime(double ms)       { totalPlayTime_ = ms; }
+    /* The score over the whole game: each level's tally adds to it
+     * (CalculateLevelScore); the save slot stores it, ClearGameState zeroes
+     * it, and game over enters it in the high scores. */
+    int            totalScore() const                { return totalScore_; }
+    void           setTotalScore(int n)              { totalScore_ = n; }
 
     char          *levelNameTableEntry(unsigned char i) { return levelNameTable_[i]; }
     const char    *levelNameTableEntry(unsigned char i) const { return levelNameTable_[i]; }
@@ -102,6 +107,7 @@ private:
     unsigned char restartCount_{};
     unsigned short itemTotal_{};
     double        totalPlayTime_{};
+    int           totalScore_{};
     /* Recomputed by GameTick every tick; see vitalityPercent(). */
     unsigned char vitalityPercent_{};
     unsigned int  playingTime_{};
