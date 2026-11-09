@@ -90,24 +90,15 @@ PathNode *FoePath::popBestOpen()
 
     head->next_    = closed_->next_;
     closed_->next_ = head;
+    head->list_    = CLOSED;
 
     return head;
 }
 
-void FoePath::releaseLists()
+PathNode *FoePath::newNode()
 {
-    for (PathNode **hdr : { &open_, &closed_ }) {
-        if (*hdr == 0)
-            continue;
-        PathNode *n = (*hdr)->next_;
-        while (n != 0) {
-            PathNode *p = n;
-            n = n->next_;  // next must be read before p is freed
-            delete p;
-        }
-        delete *hdr;
-        *hdr = 0;
-    }
+    nodes_.emplace_back();
+    return &nodes_.back();
 }
 
 PathNode *FoePath::findByKey(PathNode *hdr, int key)
@@ -122,14 +113,24 @@ PathNode *FoePath::findByKey(PathNode *hdr, int key)
     return 0;
 }
 
+/* The node for key on the chain, by the index; a key that is none of the
+ * map's cells by walking the chain. */
+PathNode *FoePath::find(int key, char list)
+{
+    if (key < 0 || (size_t)key >= byKey_.size())
+        return findByKey(list == OPEN ? open_ : closed_, key);
+    PathNode *n = byKey_[key];
+    return n != 0 && n->list_ == list ? n : 0;
+}
+
 PathNode *FoePath::findOpen(int key)
 {
-    return findByKey(open_, key);
+    return find(key, OPEN);
 }
 
 PathNode *FoePath::findClosed(int key)
 {
-    return findByKey(closed_, key);
+    return find(key, CLOSED);
 }
 
 /* Inserts by ascending f, which is what lets popBestOpen just take the front.
@@ -163,8 +164,7 @@ void FoePath::propagate(PathNode *p)
     g_diag.cur_drain = 0;
 
     const int gp = p->g_;
-    for (int i = 0; i < 8; ++i) {
-        PathNode *c = p->children_[i];
+    for (PathNode *c : p->children_) {
         if (c == 0)
             break;
         const int gnew = gp + 1;
@@ -185,8 +185,7 @@ void FoePath::propagate(PathNode *p)
         if (++g_diag.cur_drain > g_diag.deepest)
             g_diag.deepest = g_diag.cur_drain;
 
-        for (int i = 0; i < 8; ++i) {
-            PathNode *c = q->children_[i];
+        for (PathNode *c : q->children_) {
             if (c == 0)
                 break;
             const int gnew = q->g_ + 1;
@@ -209,10 +208,6 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
     const int gnew = p->g_ + 1;
     const int key = cellKey(u, v);
 
-    // PRESERVED: recordChild's open-coded scan has no bound, so a parent that
-    // accumulates a ninth distinct child across repeated relaxes overwrites
-    // its own list-chain pointer instead.  Exercised only by relax(), never
-    // guarded.
     PathNode *n = findOpen(key);
     if (n != 0) {
         p->recordChild(n);
@@ -236,7 +231,7 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
         return;
     }
 
-    n = new PathNode();
+    n = newNode();
 
     const int du = u - goalU;
     const int dv = v - goalV;
@@ -251,6 +246,9 @@ void FoePath::relax(PathNode *p, int u, int v, int goalU, int goalV)
     n->v_      = v;
 
     insertOpenByCost(n);
+    n->list_ = OPEN;
+    if (key >= 0 && (size_t)key < byKey_.size())
+        byKey_[key] = n;
 
     p->recordChild(n);  // recorded last here, unlike the two branches above
 }
@@ -398,12 +396,12 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
 {
     const int goalKey = cellKey(uFoe, vFoe);
 
-    // The two list headers, and the seed node below; releaseLists frees the
-    // headers and the nodes chained off them.
-    open_   = new PathNode();
-    closed_ = new PathNode();
+    // The two list headers, and the seed node below.
+    byKey_.assign((size_t)map_->extentU() * map_->extentV(), nullptr);
+    open_   = newNode();
+    closed_ = newNode();
 
-    PathNode *seed = new PathNode();
+    PathNode *seed = newNode();
 
     const int du = uTarget - uFoe;
     const int dv = vTarget - vFoe;
@@ -417,6 +415,9 @@ int FoePath::search(int uFoe, int vFoe, int uTarget, int vTarget)
     seed->v_   = vTarget;
 
     open_->next_ = seed;
+    seed->list_  = OPEN;
+    if (seed->key_ >= 0 && (size_t)seed->key_ < byKey_.size())
+        byKey_[seed->key_] = seed;
 
     const unsigned short cap = cap_;
 
