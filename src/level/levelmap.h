@@ -4,7 +4,7 @@
  * the file gave it.  The reader writes each cell's four file bytes into both.
  * The builder spawns from the snapshot's contents, a restart copies it back
  * over the live grid, and a despawning foe clears its home cell in it.
- * Objects keep the grid's first cell as their "tile base". */
+ * It holds no pointers, so a copy is a whole, separate map. */
 #pragma once
 
 #include <stddef.h>
@@ -49,9 +49,6 @@ public:
     int          gemsRequired() const        { return gemsRequired_; }
 
     LevelMap();
-    virtual ~LevelMap();
-    LevelMap(const LevelMap &) = delete;
-    LevelMap &operator=(const LevelMap &) = delete;
 
 
 private:

@@ -4,6 +4,7 @@
  */
 #pragma once
 #include "extraobjects.h"
+#include <memory>
 #include <stdint.h>
 #include <string.h>
 
@@ -53,12 +54,15 @@ public:
 
     /* ── the level in play (world.h) ─────────────────────────────────── */
     /* The level in play: its map, objects and player (world.h). */
-    World        *world()       { return &world_; }
+    World        *world()       { return world_.get(); }
+    const World  *world() const { return world_.get(); }
+    /* Moves the game onto a copy of its World at a new address, freeing
+     * the old: the KAROO_WORLD_COPY check (world.h). */
+    void          moveToWorldCopy() { world_ = std::make_unique<World>(*world_); }
     SoundEvents  *soundEvents() { return &soundEvents_; }
     /* The level's scenery from its .leo (extraobjects.h): models, particle
      * systems and ambient sounds, which the rules never see. */
     ExtraObjects *extraObjects() { return &extraObjects_; }
-    const World  *world() const { return &world_; }
 
     /* ── time ───────────────────────────────────────────────────────── */
     /* The `now` GameTick was last called with (double, ms); the menus
@@ -163,7 +167,7 @@ private:
     char          menuLevelName_[0x80]{};
     /* The level in play (world.h).  Declared after the game's sound, so it
      * is torn down before it. */
-    World         world_;
+    std::unique_ptr<World> world_{std::make_unique<World>()};
     ExtraObjects  extraObjects_;
     /* The rules' sounds, hooked to the sound (soundevents.h). */
     SoundEvents   soundEvents_{audio_.soundManager()};

@@ -634,6 +634,10 @@ def main():
     ap.add_argument("--sound-log", metavar="DIR",
                     help="write each run's sound log (KAROO_SOUND_LOG) to DIR/NAME.log, "
                          "to diff against another build's")
+    ap.add_argument("--world-copy", action="store_true",
+                    help="run each tick on a fresh copy of the World at a new address "
+                         "(KAROO_WORLD_COPY): passes only if nothing outside the World "
+                         "points into it and the copy carries all its state")
     ap.add_argument("--verbose", "-v", dest="verbose", default=False, action="store_true")
     args = ap.parse_args()
 
@@ -647,6 +651,8 @@ def main():
     if args.bless and len(entries) != 1:
         sys.exit("--bless takes exactly one recording name")
 
+    if args.world_copy:
+        os.environ["KAROO_WORLD_COPY"] = "1"
     if args.sound_log:
         os.makedirs(args.sound_log, exist_ok=True)
     results = [(e["name"], run_one(m, e, bless=args.bless,

@@ -83,6 +83,9 @@ static void tick_level_objects(Game *self)
   void
 Core_GameTick(Game *self, double dt, double now, ProgableControl *progCtrl)
 {
+    static const bool copyWorld = sysdev::envFlag("KAROO_WORLD_COPY");
+    if (copyWorld)
+        self->moveToWorldCopy();
     Player *pl = self->world()->player();
 
     input::update();
