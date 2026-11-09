@@ -122,6 +122,7 @@ void Flow_TickPlayingControls(Game *self, ProgableControl *progCtrl)
         // Noted before the dispatch, so paused and cutscene modes are seen.
         gamestate_note_mode(static_cast<unsigned short>(static_cast<unsigned char>(self->state())));
         progCtrl->dispatch(static_cast<unsigned short>(static_cast<unsigned char>(self->state())));
+        self->world()->applyPresses(self->takePresses(), *self->soundEvents());
     }
 }
 

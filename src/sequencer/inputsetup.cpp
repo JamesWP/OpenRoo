@@ -3,7 +3,7 @@
 #include "logger.h"
 #include "keycodes.h"
 #include "game.h"
-#include "player.h"
+#include "presses.h"
 #include "camerainput.h"
 
   void  
@@ -15,17 +15,16 @@ Input_TrySaveSettings(ProgableControl *progCtrl)
 }
 
 /* The player's actions (progctrl.h's ActionCallback: key, strength and
- * context, here the Game), each done with the game's events. */
-static Player *player_of(void *game) { return static_cast<Game *>(game)->world()->player(); }
-static PlayEvents &events_of(void *game) { return *static_cast<Game *>(game)->soundEvents(); }
-static LevelMap &map_of(void *game) { return *static_cast<Game *>(game)->world()->map(); }
+ * context, here the Game) each note their press; the World acts on them
+ * once the dispatch is done (Flow_TickPlayingControls). */
+static void press(void *game, unsigned p) { static_cast<Game *>(game)->addPress(p); }
 
-static void act_move_forward(int, int, void *g) { player_of(g)->actMoveForward(map_of(g), events_of(g)); }
-static void act_move_back(int, int, void *g)    { player_of(g)->actMoveBack(map_of(g), events_of(g)); }
-static void act_turn_left(int, int, void *g)    { player_of(g)->actTurnLeft(map_of(g), events_of(g)); }
-static void act_turn_right(int, int, void *g)   { player_of(g)->actTurnRight(map_of(g), events_of(g)); }
-static void act_harakiri(int, int, void *g)     { player_of(g)->actHarakiri(); }
-static void act_release_bomb(int, int, void *g) { player_of(g)->actReleaseBomb(); }
+static void act_move_forward(int, int, void *g) { press(g, PRESS_FORWARD); }
+static void act_move_back(int, int, void *g)    { press(g, PRESS_BACK); }
+static void act_turn_left(int, int, void *g)    { press(g, PRESS_LEFT); }
+static void act_turn_right(int, int, void *g)   { press(g, PRESS_RIGHT); }
+static void act_harakiri(int, int, void *g)     { press(g, PRESS_HARAKIRI); }
+static void act_release_bomb(int, int, void *g) { press(g, PRESS_BOMB); }
 
 /* The actions all get the Game as their context.  Default keys are bound
  * first; openroo.ini then overrides the actions it lists. */
