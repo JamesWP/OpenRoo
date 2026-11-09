@@ -119,7 +119,13 @@ bool Core_UpdateFrame(Game *g, Renderer *renderer, ProgableControl *progCtrl, Fr
     }
     t->now = now;
     t->elapsed = now - prevMs;
-    const double dt = t->dt = now - renderer->lastTickMs;
+    // On a fixed clock every tick is the step itself, not the difference of
+    // two running totals, which wanders in its last bits: so a copy of the
+    // World ticked the same step goes the same way (the bot's play-ahead).
+    const double fixedMs = clock_fixedStepMs();
+    const double dt = t->dt = fixedMs > 0.0 && renderer->lastTickMs > 0.0 && now > renderer->lastTickMs
+                                  ? fixedMs
+                                  : now - renderer->lastTickMs;
 
     if (dt > 0.0) {
         PROF_SCOPE("update");

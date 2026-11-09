@@ -8,6 +8,7 @@
 #include <string>
 #include <chrono>
 #include "binio.h"
+#include "clock.h"
 #include "game.h"
 #include "keycodes.h"
 #include "logger.h"
@@ -251,9 +252,26 @@ public:
     }
 } s_proxy;
 
+/* A bot plays on a fixed clock (clock.h): its play-ahead ticks copies of
+ * the World by the same step as the game's.  Fake time is turned on for it
+ * when the clock is real, and back off after. */
+bool s_madeFake = false;
+
+void fixClock(bool on)
+{
+    if (on && clock_fixedStepMs() == 0.0) {
+        clock_setFakeTime(true);
+        s_madeFake = true;
+    } else if (!on && s_madeFake) {
+        clock_setFakeTime(false);
+        s_madeFake = false;
+    }
+}
+
 void engage(bool on)
 {
     s_run.reset();
+    fixClock(on);
     if (!on)
         return;
     s_run = std::make_unique<Run>(s_game, *s_controls, makePolicy("plan"), true);
@@ -311,6 +329,7 @@ int init(const Game *game, const ProgableControl *controls)
         return -1;
     }
     g_logger.logMessage(1, "BOT: playing with policy %s", name.c_str());
+    fixClock(true);
     s_run     = std::make_unique<Run>(game, *controls, std::move(policy), false);
     s_fromEnv = true;
     return 1;
@@ -332,6 +351,7 @@ bool frame()
         if (s_run->done()) {
             s_lastOutcome = s_run->outcome();
             s_run.reset();
+            fixClock(false);
         }
     }
     debug_panel();

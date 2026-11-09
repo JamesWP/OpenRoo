@@ -22,6 +22,10 @@
  * being played instead; that run ends with the keyboard back in hand, and
  * starts again when another level is loaded under it.
  *
+ * A bot always plays on a fixed clock: every tick the same step (clock.h),
+ * so a copy of the World ticked by that step goes as the game does.  With
+ * no KAROO_FIXED_DT the run turns fake time on, and off again after.
+ *
  * The run also checks the bot's models against the game (checks.h). */
 #pragma once
 

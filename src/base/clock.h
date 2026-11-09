@@ -37,3 +37,7 @@ unsigned clock_frame(void);
 void clock_setFakeTime(bool on);
 bool clock_fakeTime(void);
 void clock_setFrameLimit(double fps);
+
+/* The fixed step in ms, every tick the same (KAROO_FIXED_DT, or fake time);
+ * 0 on the real clock. */
+double clock_fixedStepMs(void);
