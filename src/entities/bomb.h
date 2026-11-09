@@ -28,7 +28,7 @@ public:
     static void remove(EntityList<Bomb> &bombs, std::size_t i, PlayEvents &events);
 
     // One tick: the fuse, the roll and the blast.
-    void tick(PlayEvents &events);
+    void tick(const EntityContext &ctx, PlayEvents &events);
 
 
     // When it was dropped, in clock ms; it blows 2 s later.  Read by the bot.

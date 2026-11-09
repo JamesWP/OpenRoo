@@ -81,8 +81,6 @@ void BridgeObject::spawn(const EntityContext &ctx, EntityList<BridgeObject> &bri
 
     obj = &bridges.add(std::unique_ptr<BridgeObject>(new BridgeObject));
 
-    obj->clock_  = ctx.clock;
-    obj->tickStep_ = ctx.tickStep;
     obj->axis_   = (unsigned char)axis;
 
     base = ctx.map;
@@ -189,7 +187,7 @@ static int s_logged_first   = 0;
 static int s_logged_stamp   = 0;
 static int s_logged_unstamp = 0;
 
-void BridgeObject::tick(PlayEvents &events)
+void BridgeObject::tick(const EntityContext &ctx, PlayEvents &events)
 {
     const SoundKey moving{SoundSource::Bridge, id(), Sfx::BridgeMoving};
     unsigned char axis;
@@ -209,8 +207,8 @@ void BridgeObject::tick(PlayEvents &events)
             g_logger.write("bridgeobject: %lu ticks\n", s_ticks);
     }
 
-    tickStepCopy_ = *tickStep_;
-    now_ = *clock_;
+    tickStepCopy_ = ctx.step;
+    now_ = ctx.now;
 
     axis = axis_;
 

@@ -84,8 +84,6 @@ void LiftObject::spawn(const EntityContext &ctx, EntityList<LiftObject> &lifts, 
                   (unsigned)n, u, v, base, top, (void *)obj);
     }
 
-    obj->clock_    = ctx.clock;
-    obj->tickStep_   = ctx.tickStep;
     obj->map_ = ctx.map;
 
     obj->cellU_      = (signed char)u;
@@ -102,7 +100,7 @@ void LiftObject::spawn(const EntityContext &ctx, EntityList<LiftObject> &lifts, 
 
     tile->clearLiftMovingSince();
 
-    obj->phaseStart_ = *ctx.clock;
+    obj->phaseStart_ = ctx.now;
 
     obj->atTop_ = 0;
     obj->state_ = 1;
@@ -122,7 +120,7 @@ static int s_logged_rise   = 0;
 static int s_logged_fall   = 0;
 static int s_logged_depart = 0;
 
-void LiftObject::tick(PlayEvents &events)
+void LiftObject::tick(const EntityContext &ctx, PlayEvents &events)
 {
     const SoundKey moving{SoundSource::Lift, id(), Sfx::LiftMoving};
     Tile *t;
@@ -140,8 +138,8 @@ void LiftObject::tick(PlayEvents &events)
             g_logger.write("liftobject: %lu ticks\n", s_ticks);
     }
 
-    tickStepCopy_ = *tickStep_;
-    now_ = *clock_;
+    tickStepCopy_ = ctx.step;
+    now_ = ctx.now;
 
     if (state_ == 1) {
         double h = ((double)now_ - (double)phaseStart_)

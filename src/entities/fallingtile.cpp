@@ -89,8 +89,6 @@ void FallingTile::spawn(const EntityContext &ctx, EntityList<FallingTile> &falli
     }
 
     //     // PRESERVED: a failed allocation is not checked; the first store faults.
-    obj->clock_    = ctx.clock;
-    obj->tickStep_   = ctx.tickStep;
     obj->map_ = ctx.map;
 
     obj->cellU_      = (signed char)u;
@@ -120,13 +118,13 @@ void FallingTile::playAtTile(PlayEvents &events, Sfx sfx, const Tile *t) const
                      -(float)(int)cellV_);
 }
 
-void FallingTile::tick(PlayEvents &events)
+void FallingTile::tick(const EntityContext &ctx, PlayEvents &events)
 {
     diag_init();
     const double fallDelay = FALL_DELAY_MS;
 
-    tickStepCopy_ = *tickStep_;
-    now_        = *clock_;
+    tickStepCopy_ = ctx.step;
+    now_        = ctx.now;
 
     Tile *t = tile();
     const double now = now_;

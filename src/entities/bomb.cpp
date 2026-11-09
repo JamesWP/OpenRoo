@@ -148,8 +148,6 @@ void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,
             g_logger.write("bomb: %lu spawns\n", s_spawns);
     }
 
-    b.clock_    = ctx.clock;
-    b.tickStep_ = ctx.tickStep;
     b.map_      = ctx.map;
     b.facing_   = f;
 
@@ -161,7 +159,7 @@ void Bomb::spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,
     b.posY_ = (float)(int)(unsigned int)h;
     b.posV_ = (float)(int)(unsigned int)v;
 
-    b.droppedAt_ = *ctx.clock;
+    b.droppedAt_ = ctx.now;
 }
 
 static unsigned long s_removals        = 0;
@@ -195,7 +193,7 @@ Tile *Bomb::tile(int u, int v) const
     return map_->tile( u, v);
 }
 
-void Bomb::tick(PlayEvents &events)
+void Bomb::tick(const EntityContext &ctx, PlayEvents &events)
 {
     double diff;
 
@@ -212,8 +210,8 @@ void Bomb::tick(PlayEvents &events)
     }
 
     // Refresh the two cached copies.
-    tickStepCopy_ = *tickStep_;
-    now_        = *clock_;
+    tickStepCopy_ = ctx.step;
+    now_        = ctx.now;
 
     // The roll sound, on the grid cell: (u, h, -v).
     if (dying_ == 0) {  // raised by the blast below

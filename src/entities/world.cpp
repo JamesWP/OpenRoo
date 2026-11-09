@@ -47,26 +47,28 @@ void World::clearObjects(PlayEvents &events)
 
 /* Ticks every object in a list, in order; a tick does not add or remove. */
 template <class T>
-static void tickAll(EntityList<T> &list, const char *name, PlayEvents &events)
+static void tickAll(EntityList<T> &list, const char *name, const EntityContext &ctx,
+                    PlayEvents &events)
 {
     if (list.empty())
         return;
     PROF_SCOPE(name);
     for (T &obj : list)
-        obj.tick(events);
+        obj.tick(ctx, events);
 }
 
-void World::tickLifts(PlayEvents &events) { tickAll(lifts_, "lifts", events); }
-void World::tickPlatforms(PlayEvents &events) { tickAll(platforms_, "platforms", events); }
-void World::tickFallings(PlayEvents &events) { tickAll(fallings_, "falling tiles", events); }
+void World::tickLifts(PlayEvents &events) { tickAll(lifts_, "lifts", entityContext(), events); }
+void World::tickPlatforms(PlayEvents &events) { tickAll(platforms_, "platforms", entityContext(), events); }
+void World::tickFallings(PlayEvents &events) { tickAll(fallings_, "falling tiles", entityContext(), events); }
 
 void World::tickBridges(PlayEvents &events)
 {
     if (bridges_.empty())
         return;
     PROF_SCOPE("bridges");
+    const EntityContext ctx = entityContext();
     for (BridgeObject &b : bridges_)
-        b.tick(events);
+        b.tick(ctx, events);
 }
 
 void World::tickBombs(PlayEvents &events)
@@ -74,9 +76,10 @@ void World::tickBombs(PlayEvents &events)
     if (bombs_.empty())
         return;
     PROF_SCOPE("bombs");
+    const EntityContext ctx = entityContext();
     for (std::size_t i = 0; i < bombs_.size();) {
         Bomb &b = bombs_[i];
-        b.tick(events);
+        b.tick(ctx, events);
         if (b.removeRequested() != 0)
             Bomb::remove(bombs_, i, events);  // the next moves into i
         else

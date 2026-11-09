@@ -84,8 +84,6 @@ Foe::Foe()
     // recycled heap block held could be a NaN, which made animStart_ NaN and
     // left the foe's position NaN.
     now_ = 0;
-    clock_ = 0;
-    tickStep_ = 0;
     map_ = 0;
     facing_ = 0;
     posU_ = posY_ = posV_ = 0.0f;
@@ -191,13 +189,11 @@ Foe &Foe::spawn(const EntityContext &ctx, EntityList<Foe> &foes,
         }
     }
 
-    p->clock_ = ctx.clock;
 
-    p->tickStep_ = ctx.tickStep;
 
     // Each foe starts 1500ms later than the one before it in the list, so
     // their step and idle timers do not all line up.
-    p->lastActive_ = (double)(int)(n * 1500) + *ctx.clock;
+    p->lastActive_ = (double)(int)(n * 1500) + ctx.now;
 
     p->kind_ = (unsigned char)kind;
     p->soundSource_ = kind == (unsigned char)FoeKind::Catcher ? SoundSource::Catcher
@@ -306,7 +302,8 @@ static int           s_logged_turn    = 0;
 static int           s_logged_repost  = 0;
 static int           s_logged_frozen  = 0;
 
-void Foe::step(unsigned char playerU, unsigned char playerV, PlayEvents &events)
+void Foe::step(const EntityContext &ctx, unsigned char playerU, unsigned char playerV,
+               PlayEvents &events)
 {
     diag_init();
 
@@ -320,8 +317,8 @@ void Foe::step(unsigned char playerU, unsigned char playerV, PlayEvents &events)
             g_logger.write("foe: %lu ticks\n", s_ticks);
     }
 
-    tickStepCopy_ = *tickStep_;
-    now_        = *clock_;
+    tickStepCopy_ = ctx.step;
+    now_        = ctx.now;
 
     if (isThrower() && held_ == 0 && bombDropRequest_ == 0) {
         if (iabs_orig((int)playerU - (int)cellU_) < 2 &&
@@ -642,7 +639,7 @@ void Foe::dropBomb(const EntityContext &ctx, EntityList<Bomb> &bombs)
         return;
     int spawn = 1, offset = 0;
     if (moveDir_ != 0) {
-        double since = (double)*ctx.clock - (double)animStart_;
+        double since = (double)ctx.now - (double)animStart_;
         if (since < 50.0)
             offset = 1;
         else

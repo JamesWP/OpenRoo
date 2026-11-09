@@ -546,7 +546,6 @@ next_row:
 
     self->world()->player()->clearEffects();
 
-    self->world()->player()->setTickStep(self->world()->tickStep());
     self->world()->player()->setFreezeActive(0);
     self->world()->player()->setEffectBActive(0);
     self->world()->player()->setEffectAActive(0);
@@ -557,7 +556,6 @@ next_row:
     self->world()->player()->setBombDropRequest(0);
     self->world()->player()->setCompletionNumerator(0);
     self->world()->setTimeLimit(M->fileTimeLimit());
-    self->world()->player()->setClock(self->world()->clock());
 
     if (self->session()->restartCount() == 0) {
         self->session()->setFoesKilled(0);

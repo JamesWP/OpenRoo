@@ -154,7 +154,7 @@ void Play_TickFoes(Game *self)
         }
         {
             PROF_SCOPE("step");
-            foe.step(tu, tv, *self->soundEvents());
+            foe.step(self->world()->entityContext(), tu, tv, *self->soundEvents());
         }
         foe.dropBomb(self->world()->entityContext(), self->world()->bombs());
         foe.checkPlayerContact(pl->moveStateRef(), pl->posU(), pl->posY(), pl->posV());

@@ -82,11 +82,12 @@ void Player::endEffect(int code)
         effectList_.erase(it);
 }
 
-unsigned int Player::updateTileEffects(PlayEvents &events, CrtRand &random)
+unsigned int Player::updateTileEffects(const EntityContext &ctx, PlayEvents &events,
+                                       CrtRand &random)
 {
 
-    copy8(&tickStepCopy_, tickStep_);
-    copy8(&now_, clock_);
+    tickStepCopy_ = ctx.step;
+    now_ = ctx.now;
 
     pendingMove_ = 0;
 

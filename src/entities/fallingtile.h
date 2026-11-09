@@ -23,7 +23,7 @@ public:
                               unsigned int heightArg, unsigned int paramArg);
 
     // One tick; its sounds as it falls and comes back play through events.
-    void tick(PlayEvents &events);
+    void tick(const EntityContext &ctx, PlayEvents &events);
 
     // Set for the tick it falls.
     int  justFell() const                      { return justFell_; }
@@ -52,11 +52,9 @@ private:
     // Plays one of its sounds at the tile.
     void playAtTile(PlayEvents &events, Sfx sfx, const Tile *t) const;
 
-    double              now_;             // latched from *clock_
-    double             *clock_;           // World::clock()
-    TickStep        *tickStep_;           // World::tickStep()
+    double              now_;             // the clock, as this tick began
     unsigned char       field_14;
-    TickStep         tickStepCopy_;       // copied from *tickStep_
+    TickStep         tickStepCopy_;       // this tick's step
     unsigned char       field_1d[8];
     float               posU_;
     float               posY_;
