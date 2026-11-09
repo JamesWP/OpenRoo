@@ -63,7 +63,7 @@ void Explore::end(const BotView &view)
                view.player.moveState ? view.deathCause() : "");
 }
 
-unsigned Explore::act(const BotView &view)
+unsigned Explore::act(const BotView &view, const World &)
 {
     const PlayerView &p = view.player;
     restTicks_ = p.atRest() ? restTicks_ + 1 : 0;

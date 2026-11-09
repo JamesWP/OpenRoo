@@ -114,7 +114,7 @@ std::vector<Timed> Executive::ahead(const BotView &view) const
     return chosen_.ahead(view.now - chosenAt_, here);
 }
 
-unsigned Executive::act(const BotView &view)
+unsigned Executive::act(const BotView &view, const World &)
 {
     ++ticks_;
     const bool running = exec_.status() == Executor::Running;

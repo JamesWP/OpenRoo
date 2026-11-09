@@ -85,7 +85,7 @@ public:
             trace_ << view.toJson(frames_, haveLast_ ? &last_ : nullptr) << '\n';
         checks_.observe(view, *game_->world(), frames_, held_);
         const auto t0 = std::chrono::steady_clock::now();
-        const unsigned acts = policy_->act(view);
+        const unsigned acts = policy_->act(view, *game_->world());
         actMs_ = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
         actMostMs_ = actMs_ > actMostMs_ ? actMs_ : actMostMs_;
         // Wall time, not the game's: the ticks the bot holds up a 60 Hz frame.

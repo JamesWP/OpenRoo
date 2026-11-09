@@ -40,7 +40,7 @@ namespace bot {
 class Executive : public Policy {
 public:
     Executive();
-    unsigned act(const BotView &view) override;
+    unsigned act(const BotView &view, const World &world) override;
     std::string note() const override { return note_; }
     std::vector<Thought> thoughts() const override;
 
