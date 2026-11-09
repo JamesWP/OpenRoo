@@ -70,8 +70,6 @@ public:
      * the all-items bonus needs Player::itemsCollected to reach it. */
     unsigned short itemTotal() const                 { return itemTotal_; }
     void           setItemTotal(unsigned short n)    { itemTotal_ = n; }
-    unsigned char  foesKilled() const                { return foesKilled_; }
-    void           setFoesKilled(unsigned char n)    { foesKilled_ = n; }
     /* ── vitality and the score tally ───────────────────────────────── */
     /* The tally's "vitality" row, which pays it 1:1:
      * Player::completionNumerator per second of playingTime, times 25, capped
@@ -102,8 +100,6 @@ private:
     char          levelNameTable_[256][0x100]{};
     unsigned char levelCount_{};
     unsigned char restartCount_{};
-    /* Foes killed this level; CalculateLevelScore pays 50 each. */
-    unsigned char foesKilled_{};
     unsigned short itemTotal_{};
     double        totalPlayTime_{};
     /* Recomputed by GameTick every tick; see vitalityPercent(). */

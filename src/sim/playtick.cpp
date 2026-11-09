@@ -65,7 +65,7 @@ void Play_SpawnTimedFoes(Game *self)
             Foe &foe = Foe::spawn(self->world()->entityContext(), self->world()->foes(), (unsigned char)u,
                                   (unsigned char)v, E->height, 2,
                                   (unsigned char)(E->field_0b + FOE_FACING_BASE));
-            if (((int)self->session()->foesKilled() + 1) % 15 == 0)
+            if (((int)self->world()->foesKilled() + 1) % 15 == 0)
                 foe.setDropContents(7);
             else
                 foe.setDropContents(1);
@@ -160,7 +160,7 @@ void Play_TickFoes(Game *self)
         foe.checkPlayerContact(pl->moveStateRef(), pl->posU(), pl->posY(), pl->posV());
         if (foe.finishDespawn(self->world()->map())) {
             Foe::remove(foes, i, *self->world()->map(), *self->soundEvents());  // the next moves into i
-            self->session()->setFoesKilled((unsigned char)(self->session()->foesKilled() + 1));
+            self->world()->setFoesKilled((unsigned char)(self->world()->foesKilled() + 1));
         } else {
             ++i;
         }

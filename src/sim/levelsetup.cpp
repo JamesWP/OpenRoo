@@ -557,7 +557,7 @@ next_row:
     self->world()->setTimeLimit(M->fileTimeLimit());
 
     if (self->session()->restartCount() == 0) {
-        self->session()->setFoesKilled(0);
+        self->world()->setFoesKilled(0);
         self->world()->player()->setItemsCollected(0);
         self->session()->setItemTotal(self->world()->census()->total);
 

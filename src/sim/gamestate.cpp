@@ -76,7 +76,7 @@ bool StateSnapshot::read()
     const Player *pl = g->world()->player();
     gems_collected = pl->gemsCollected();
     gems_required  = g->world()->gemsRequired();
-    foes_killed    = g->session()->foesKilled();
+    foes_killed    = g->world()->foesKilled();
     time_limit_s   = g->world()->timeLimit();
     elapsed_ms     = g->world()->timeElapsed();
     lives          = (uint8_t)pl->lives();
