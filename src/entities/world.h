@@ -31,6 +31,7 @@
 #include "bridgeobject.h"
 #include "fallingtile.h"
 #include "effects.h"
+#include "presses.h"
 
 
 class World {
@@ -125,6 +126,10 @@ public:
     void tickBombs(PlayEvents &events);
 
     /* The rules a tick applies (worldrules.cpp), in the order it calls them. */
+    /* The player's actions for the presses held (presses.h), in the order
+     * the game always made them: turns, then moves, then the bomb and
+     * harakiri.  The game makes them only while the player is up. */
+    void applyPresses(unsigned presses, PlayEvents &events);
     /* Spawns a foe from each timed spawner whose interval has passed. */
     void spawnTimedFoes();
     /* Drops the bomb the player asked for, unless a step is too far along. */

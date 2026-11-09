@@ -22,7 +22,7 @@ public:
     // and consumes the tile underfoot.  See player.cpp.
     unsigned int updateTileEffects(const EntityContext &ctx, PlayEvents &events, CrtRand &random);
 
-    // The six actions DirectInputSetup registers as player controls.
+    // The six actions, one for each press (World::applyPresses).
     void actMoveForward(LevelMap &map, PlayEvents &events);
     void actMoveBack(LevelMap &map, PlayEvents &events);
     void actTurnLeft(LevelMap &map, PlayEvents &events);

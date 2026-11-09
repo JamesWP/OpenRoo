@@ -56,6 +56,10 @@ public:
     /* The level in play: its map, objects and player (world.h). */
     World        *world()       { return world_.get(); }
     const World  *world() const { return world_.get(); }
+    /* The presses the key dispatch made this tick (presses.h), handed to
+     * the World and cleared by takePresses. */
+    void          addPress(unsigned p) { presses_ |= p; }
+    unsigned      takePresses()        { unsigned p = presses_; presses_ = 0; return p; }
     /* Moves the game onto a copy of its World at a new address, freeing
      * the old: the KAROO_WORLD_COPY check (world.h). */
     void          moveToWorldCopy() { world_ = std::make_unique<World>(*world_); }
@@ -168,6 +172,7 @@ private:
     /* The level in play (world.h).  Declared after the game's sound, so it
      * is torn down before it. */
     std::unique_ptr<World> world_{std::make_unique<World>()};
+    unsigned      presses_{};
     ExtraObjects  extraObjects_;
     /* The rules' sounds, hooked to the sound (soundevents.h). */
     SoundEvents   soundEvents_{audio_.soundManager()};

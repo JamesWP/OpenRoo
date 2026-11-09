@@ -33,6 +33,16 @@ static void arm_bridge(World &w, BridgeObject *br, unsigned char sw, int u, int 
     br->arm(w.now());
 }
 
+void World::applyPresses(unsigned presses, PlayEvents &events)
+{
+    if (presses & PRESS_LEFT)     player_.actTurnLeft(map_, events);
+    if (presses & PRESS_RIGHT)    player_.actTurnRight(map_, events);
+    if (presses & PRESS_FORWARD)  player_.actMoveForward(map_, events);
+    if (presses & PRESS_BACK)     player_.actMoveBack(map_, events);
+    if (presses & PRESS_BOMB)     player_.actReleaseBomb();
+    if (presses & PRESS_HARAKIRI) player_.actHarakiri();
+}
+
 void World::spawnTimedFoes()
 {
     for (unsigned i = 0; i < census_.timed; ++i) {
