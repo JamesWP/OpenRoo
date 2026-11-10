@@ -14,6 +14,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <array>
 #include <functional>
 #include <map>
 #include <vector>
@@ -29,7 +30,8 @@ uint64_t onceDown(const World &w);
 
 class MoveGraph {
 public:
-    explicit MoveGraph(const World &start);
+    /* blasts: whether to find where a bomb dropped at each place blows. */
+    MoveGraph(const World &start, bool blasts);
 
     /* waits waits (schedule.h), then move (or the waits alone, move WAIT);
      * breaks: the one-time falling tiles it arms, a bit for each by its
@@ -70,13 +72,27 @@ public:
     std::vector<int> path(int from, const std::function<bool(int)> &goal,
                           const std::function<bool(int)> &blocked) const;
 
+    /* Where a bomb the player drops at a place blows (the foes removed):
+     * dropped standing (DROP) and stepping back (DROP_BACK), each its
+     * cell and height; ok false if it never blew.  None if not asked
+     * for. */
+    struct Blast {
+        Cell cell;
+        int  h = 0;
+        bool ok = false;
+    };
+    const Blast *blasts(int i) const { return blasts_.empty() || i < 0 ? nullptr : blasts_[i].data(); }
+
     /* The moves played to build it, and the edges that break a tile. */
     long played() const { return played_; }
     long breaking() const { return breaking_; }
 
 private:
+    Blast blastOf(const World &at, Move drop);
+
     std::vector<Place>              places_;
     std::vector<std::vector<Edge>>  edges_;
+    std::vector<std::array<Blast, 2>> blasts_;
     std::map<Place, int>            index_;
     std::map<Cell, std::vector<int>> byCell_;
     mutable std::map<int, std::vector<double>> times_;

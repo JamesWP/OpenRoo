@@ -16,8 +16,11 @@ namespace simbot {
 /* The four steps; then WAIT: nothing held for WAIT_TICKS (a short wait,
  * for a foe to pass), then until at rest; TIMED_WAIT, nothing held till a
  * time (waitUntil); DROP, a bomb dropped where the player stands, which
- * rolls on the way it faces. */
-enum Move { FORWARD, BACK, LEFT, RIGHT, MOVES, WAIT = MOVES, TIMED_WAIT, DROP };
+ * rolls on the way it faces (and off a ledge, to blow where it lands);
+ * DROP_BACK, the drop pressed with BACK: the game leaves the bomb in the
+ * cell stepped back from (worldrules.cpp), rolling on as the player backs
+ * away. */
+enum Move { FORWARD, BACK, LEFT, RIGHT, MOVES, WAIT = MOVES, TIMED_WAIT, DROP, DROP_BACK };
 const int WAIT_TICKS = 15;
 
 
@@ -64,8 +67,8 @@ struct Played {
 };
 
 /* Plays m on w, the player at rest.  Refused if the player is at rest on
- * the tick after the press where it was (never for WAIT; for DROP, if no bomb
- * was dropped); Unsettled if it is not at rest
+ * the tick after the press where it was (never for WAIT; for DROP and
+ * DROP_BACK, if no bomb was dropped); Unsettled if it is not at rest
  * within the limit (held on a sticky pad, say). */
 Played play(World &w, Move m, Work *work = nullptr);
 /* Nothing held till the clock is at until, then till at rest (a lift or

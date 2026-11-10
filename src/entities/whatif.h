@@ -16,4 +16,7 @@ void removeFoes(World &w);
  * one armed under the player: it still falls. */
 void restoreFallings(World &w);
 
+/* The player holding a bomb, and free to drop it now. */
+void giveBomb(World &w);
+
 }  // namespace whatif

@@ -30,4 +30,12 @@ void restoreFallings(World &w)
     }
 }
 
+void giveBomb(World &w)
+{
+    Player *p = w.player();
+    if (p->bombsCarried() == 0)
+        p->setBombsCarried(1);
+    p->setLastContact(w.now() - 2000.0);
+}
+
 }  // namespace whatif

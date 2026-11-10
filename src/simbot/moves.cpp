@@ -17,14 +17,20 @@ const int WAIT_LIMIT_TICKS = 1800;
 const char *moveName(Move m)
 {
     static const char *const names[] = {"forward", "back", "left", "right", "wait",
-                                         "timed wait", "drop"};
-    return m <= DROP ? names[m] : "?";
+                                         "timed wait", "drop", "drop back"};
+    return m <= DROP_BACK ? names[m] : "?";
 }
 
 unsigned pressOf(Move m)
 {
     static const unsigned presses[] = {PRESS_FORWARD, PRESS_BACK, PRESS_LEFT, PRESS_RIGHT};
-    return m < MOVES ? presses[m] : m == DROP ? (unsigned)PRESS_BOMB : 0u;
+    if (m < MOVES)
+        return presses[m];
+    if (m == DROP)
+        return PRESS_BOMB;
+    if (m == DROP_BACK)
+        return PRESS_BOMB | PRESS_BACK;
+    return 0u;
 }
 
 
@@ -83,7 +89,7 @@ Played play(World &w, Move m, Work *work)
     if (m == WAIT) {
         for (; out.ticks < WAIT_TICKS && !dead(w); out.ticks++)
             tick(w, 0, work);
-    } else if (m == DROP) {
+    } else if (m == DROP || m == DROP_BACK) {
         if (w.player()->bombsCarried() == bombs) {
             out.kind = Played::Refused;
             return out;

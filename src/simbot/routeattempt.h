@@ -31,10 +31,10 @@ public:
 
 private:
     bool done(const World &live) const;
-    /* For a kill: whether every way near the foe on the MoveGraph passes
-     * another foe (on its cell or beside it), and if so the first one on
-     * the quickest way. */
-    bool blockedBy(const World &w, const Goal &goal, unsigned *foe) const;
+    /* For a kill: whether every way on the MoveGraph to where a drop may
+     * catch the foe (nearFoe, foeH its height) passes a place another foe
+     * comes to first, and if so that foe, the first on the quickest way. */
+    bool blockedBy(const World &w, const Goal &goal, int foeH, bool moving, unsigned *foe) const;
 
     Goal goal_;
     const MoveGraph *graph_;

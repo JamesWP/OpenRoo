@@ -19,7 +19,9 @@ played after waiting, but only till the times the game's rules say
 something there changes (a lift beside it parks, glue lets go, a fallen
 tile comes back), worked out from the rules, not played in steps. Falling
 tiles are put back at every place (`whatif::restoreFallings`), and an edge
-notes the one-time tiles it breaks. The planner's
+notes the one-time tiles it breaks. On a level with foes and bombs to
+be had, it also records where a bomb dropped at each place blows, dropped
+standing or stepping back (it rolls, and falls off ledges). The planner's
 costs come from it, and it guides the Attempts' searches (A*). Other precomputed structures go here too as
 they are needed.
 
@@ -30,9 +32,11 @@ played on it. They are not game rules, so they are kept apart: in
 (`whatif::removeFoe`, `whatif::spendBlock`). No game code calls them.
 
 **Requirements.** An Action that cannot find a way reports why, as a fact,
-at once rather than after a long search: a kill whose every way near the
-foe on the MoveGraph passes another foe g requires `dead(g)`, so the
-planner kills g first; likewise `spent(b)`. If nothing found makes it possible, the Action is marked
+at once rather than after a long search. A drop can catch a foe from a
+place whose blast covers it, or, if it is moving, one it can walk beside
+before the fuse runs out. A kill whose every way to such a place passes a
+place another foe g reaches first requires `dead(g)`, so the planner kills
+g first; likewise `spent(b)`. If nothing found makes it possible, the Action is marked
 impossible as things stand. A learned condition holds until a fact it
 depends on changes. The planner then plans around it.
 

@@ -10,6 +10,13 @@
 
 namespace simbot {
 
+namespace {
+
+/* Ticks a dropped bomb is followed for, at most, till it blows. */
+const int BLAST_TICKS = 400;
+
+}  // namespace
+
 uint64_t onceDown(const World &w)
 {
     uint64_t bits = 0;
@@ -23,7 +30,27 @@ uint64_t onceDown(const World &w)
     return bits;
 }
 
-MoveGraph::MoveGraph(const World &start)
+MoveGraph::Blast MoveGraph::blastOf(const World &at, Move drop)
+{
+    World w(at);
+    whatif::giveBomb(w);
+    const size_t before = w.bombs().size();
+    tick(w, pressOf(drop));
+    played_++;
+    if (w.bombs().size() <= before)
+        return {};
+    const Bomb &b = w.bombs()[before];
+    const double fuse = b.droppedAt() + Bomb::FUSE_MS;
+    for (int i = 0; i < BLAST_TICKS && w.now() < fuse; i++) {
+        tick(w, 0);
+        if (w.bombs().size() <= before)
+            return {};
+    }
+    const Bomb &blown = w.bombs()[before];
+    return {{blown.cellU(), blown.cellV()}, blown.heightCell(), true};
+}
+
+MoveGraph::MoveGraph(const World &start, bool blasts)
 {
     // Each place's World, until its moves are played.
     std::deque<std::pair<int, std::unique_ptr<World>>> open;
@@ -47,6 +74,11 @@ MoveGraph::MoveGraph(const World &start)
         whatif::restoreFallings(*world);
         const uint64_t down0 = onceDown(*world);
         const double t0 = world->now();
+        if (blasts) {
+            blasts_.resize(places_.size());
+            for (int k = 0; k < 2; k++)
+                blasts_[at][k] = blastOf(*world, k ? DROP_BACK : DROP);
+        }
         std::set<int> reached{at};
         // An edge to where next is, if that place is not reached from at yet.
         auto reach = [&](std::unique_ptr<World> next, int w, Move m) {

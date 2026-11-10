@@ -5,7 +5,27 @@
 
 namespace simbot {
 
-Survey::Survey(const World &start) : graph_(start)
+namespace {
+
+/* Whether the player may ever have a bomb for a foe: foes, and bombs in
+ * hand or a pickup of them. */
+bool bombsForFoes(const World &w)
+{
+    if (w.foes().empty())
+        return false;
+    if (w.player()->bombsCarried() > 0)
+        return true;
+    const LevelMap *map = w.map();
+    for (int v = 0; v < map->extentV(); v++)
+        for (int u = 0; u < map->extentU(); u++)
+            if (map->tile(u, v)->contents() == CONTENTS_GRANT_09)
+                return true;
+    return false;
+}
+
+}  // namespace
+
+Survey::Survey(const World &start) : graph_(start, bombsForFoes(start))
 {
     const LevelMap *map = start.map();
     for (int v = 0; v < map->extentV(); v++)

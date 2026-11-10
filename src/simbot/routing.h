@@ -21,6 +21,7 @@
 #include "movegraph.h"
 #include "moves.h"
 
+class Foe;
 class World;
 
 namespace simbot {
@@ -34,16 +35,25 @@ struct Expect {
 };
 Expect expectOf(const World &w);
 
-/* What a Route is for: the player at rest on cell, or, with nearMs, where
- * the MoveGraph has it within nearMs of it (with track, of foe, wherever it
- * has come to: cell is only where it was, to guide the search); or, with
- * kill, foe (a Listed id) killed by a bomb the player drops
+/* Whether a foe is on the move (it stands still till its search finds a
+ * way to the player). */
+bool foeMoving(const World &w, const Foe &f);
+
+/* Whether a bomb dropped at place may catch a foe on cell foe at height
+ * foeH: where it blows (MoveGraph::blasts, standing or stepping back, as it
+ * rolls and falls off ledges) has the foe in its blast, or, the foe moving,
+ * is a place it may walk beside (the player's MoveGraph, its time) before
+ * it blows. */
+bool nearFoe(const MoveGraph &g, const Place &place, Cell foe, int foeH, bool moving);
+
+/* What a Route is for: the player at rest on cell, or, with track, nearFoe
+ * foe wherever it has come to (cell is only where it was, to guide the
+ * search); or, with kill, foe (a Listed id) killed by a bomb the player drops
  * near it (a DROP, a move or two clear, and the blast waited out: so a foe
  * chasing the player walks into it), the player alive and at rest, the cell
  * then the foe's, to guide the search. */
 struct Goal {
     Cell     cell;
-    double   nearMs = -1;
     bool     track = false;
     bool     kill = false;
     unsigned foe = 0;
@@ -77,13 +87,18 @@ private:
         int    escape = 0;    // moves made since
         Place  place;
         std::unique_ptr<World> world;
+        std::tuple<Place, int, bool, Cell, Cell> key;   // Key
     };
     bool reached(const Node &n) const;
+    /* Whether the player stands a while there unharmed (SAFE_MS). */
+    bool safe(const Node &n) const;
     bool mayDrop(const Node &n) const;
     void found(int at);
     void push(int id);
-    using Key = std::tuple<Place, int, bool>;   // place, waited, dropped
-    static Key keyOf(const Node &n) { return {n.place, n.waited, n.dropAt >= 0}; }
+    /* Place and waited; after a drop, with the foe's cell and the bomb's
+     * (the drop's time aside: where they are is what matters). */
+    using Key = std::tuple<Place, int, bool, Cell, Cell>;
+    Key keyOf(const Node &n) const;
 
     Goal   goal_;
     const MoveGraph *guide_;
