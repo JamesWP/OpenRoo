@@ -7,6 +7,7 @@ add_library(simbot OBJECT
     moves.cpp
     planner.cpp
     routing.cpp
+    schedule.cpp
     simbot.cpp
     simlog.cpp
     survey.cpp)

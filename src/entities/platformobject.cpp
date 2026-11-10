@@ -28,8 +28,6 @@
 #include "animcode.h"
 #include <math.h>
 
-static const float  K_MS_TO_TILE = 0.005f;
-static const double K_PARK_DWELL = 1500.0;
 
 static int s_diag_block     = 0;
 static int s_diag_place     = 0;
@@ -208,7 +206,7 @@ void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
 
     if (state_ == 1) {
         double travel = ((double)now_ - (double)phaseStart_)
-                             * (double)K_MS_TO_TILE;
+                             * (double)CELLS_PER_MS;
         int done = 0;
 
         if (kind_ == 0x0a) {
@@ -270,7 +268,7 @@ void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
         if (kind_ == 0x0a) {
             double pos = (double)(int)limit_
                               - ((double)now_ - (double)phaseStart_)
-                                * (double)K_MS_TO_TILE;
+                                * (double)CELLS_PER_MS;
             posU_ = (float)pos;
 
             if (ftol_c(pos) < cellU_)
@@ -288,7 +286,7 @@ void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
         } else {
             double pos = (double)(int)limit_
                               - ((double)now_ - (double)phaseStart_)
-                                * (double)K_MS_TO_TILE;
+                                * (double)CELLS_PER_MS;
             posV_ = (float)pos;
 
             if (ftol_c(pos) < cellV_)
@@ -322,9 +320,9 @@ void PlatformObject::tick(const EntityContext &ctx, PlayEvents &events)
     if (state_ == 0) {
         t = ctx.map->tile( cellU_, cellV_);
         t->setPlatformParkedSince(phaseStart_);
-        t->setPlatformDwell(K_PARK_DWELL);
+        t->setPlatformDwell(PARK_MS);
 
-        if (now_ - phaseStart_ >= K_PARK_DWELL) {
+        if (now_ - phaseStart_ >= PARK_MS) {
             ctx.map->tile( cellU_, cellV_)->setObjectMarker(0);
 
             phaseStart_ = now_;

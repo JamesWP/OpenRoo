@@ -59,7 +59,6 @@ static const float  K_FALL_ACCEL   = 5.405f;
 static const float  K_GLIDE_RATE   = 0.004f;
 static const float  K_SNAP_EPS     = 0.15f;
 static const double K_LINK_EPS     = 0.25;
-static const double K_STICKY_MS      = 3000.0;
 static const double K_HALF_SEC_MS  = 500.0;
 static const double K_IDLE_MS      = 5000.0;
 static const float  K_GLIDE_DROP   = 2.0f;
@@ -233,7 +232,7 @@ unsigned int MovableEntity::updateMovement(LevelMap &map, PlayEvents &events)
                         events.soundPlay(sound(Sfx::Glue), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
                     anim_ = 9;
                 }
-                if (now_ - stuckSince_ <= K_STICKY_MS) {
+                if (now_ - stuckSince_ <= STUCK_MS) {
                     pendingMove_ = 0;  // stuck: drop the queued move
                 } else {
                     stuckSince_ = 0.0;

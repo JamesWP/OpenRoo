@@ -31,7 +31,7 @@ private:
     std::unique_ptr<Route> route_;
     size_t at_ = 0;
     int    lead_ = 4;   // ticks
-    int    waits_ = 0;  // waits in a row the Route may make
+    bool   waits_ = false;  // the Route may wait (routing.h)
 };
 
 }  // namespace simbot

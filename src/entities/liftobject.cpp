@@ -23,8 +23,6 @@
 #include "tile.h"
 #include "logger.h"
 
-static const float  K_MS_TO_HEIGHT = 0.005f;
-static const double K_PARK_DWELL   = 1500.0;
 
 static int s_diag_lift      = 0;
 static int s_diag_place     = 0;
@@ -138,7 +136,7 @@ void LiftObject::tick(const EntityContext &ctx, PlayEvents &events)
 
     if (state_ == 1) {
         double h = ((double)now_ - (double)phaseStart_)
-                        * (double)K_MS_TO_HEIGHT
+                        * (double)HEIGHT_PER_MS
                         + (double)(int)baseHeight_;
         height_     = (float)h;
         heightCell_ = ftol_c(h);
@@ -168,7 +166,7 @@ void LiftObject::tick(const EntityContext &ctx, PlayEvents &events)
     if (state_ == 2) {
         double h = (double)(int)topHeight_
                         - ((double)now_ - (double)phaseStart_)
-                          * (double)K_MS_TO_HEIGHT;
+                          * (double)HEIGHT_PER_MS;
         height_ = (float)h;
         {
             signed char c = ftol_c(h);
@@ -204,10 +202,10 @@ void LiftObject::tick(const EntityContext &ctx, PlayEvents &events)
     if (state_ == 0) {
         //         // The park time is published before the departure test replaces it.
         t->setLiftParkedSince(phaseStart_);
-        t->setLiftDwell(K_PARK_DWELL);
+        t->setLiftDwell(PARK_MS);
 
         //         // A NaN does not depart.
-        if (now_ - phaseStart_ >= K_PARK_DWELL) {
+        if (now_ - phaseStart_ >= PARK_MS) {
             int latch = atTop_;
 
             phaseStart_ = now_;

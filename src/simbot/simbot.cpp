@@ -14,11 +14,20 @@ unsigned SimBot::act(const bot::BotView &, const World &world)
     ticks_++;
     if (!survey_) {
         survey_ = std::make_unique<Survey>(world);
-        char buf[96];
-        snprintf(buf, sizeof(buf), "\"places\":%zu,\"moves\":%ld,\"gems\":%zu,\"quota\":%d",
-                 survey_->graph().size(), survey_->graph().played(), survey_->gems().size(),
-                 survey_->quota());
-        log_.write(ticks_, "survey", buf);
+        // The gems the MoveGraph has no way to from the start.
+        std::string unreached;
+        const MoveGraph &g = survey_->graph();
+        const int from = g.find(placeOf(world));
+        for (const Cell &c : survey_->gems()) {
+            double ms;
+            if (from < 0 || g.arrive(from, c, &ms) < 0)
+                unreached += (unreached.empty() ? "" : " ") + std::to_string(c.u) + "," +
+                             std::to_string(c.v);
+        }
+        char buf[128];
+        snprintf(buf, sizeof(buf), "\"places\":%zu,\"moves\":%ld,\"gems\":%zu,\"quota\":%d,",
+                 g.size(), g.played(), survey_->gems().size(), survey_->quota());
+        log_.write(ticks_, "survey", buf + std::string("\"unreached\":") + SimLog::quote(unreached));
     }
     Work work;
     const unsigned presses = decide(world, work);

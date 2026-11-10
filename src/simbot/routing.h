@@ -3,8 +3,8 @@
  * on the clock over places, a little each frame (work.h): A*, guided by the
  * MoveGraph's time from each place to the target.  The first way to
  * a place is the only one kept, but for waiting: a place waited on is a
- * node of its own for each wait in a row, up to maxWaits (for a lift to
- * come, or a foe to pass).
+ * node of its own for each wait in a row.  Two waits: a short one, up to
+ * shortWaits in a row (for a foe to pass), and till the next of the schedule's wait times (schedule.h), up to timedWaits.
  *
  * Found, it holds the presses of each tick and the World expected before
  * each (Expect), so the one pressing them can tell when the game goes
@@ -34,7 +34,7 @@ Expect expectOf(const World &w);
 class Route {
 public:
     Route(const World &start, Cell target, const MoveGraph &guide, size_t maxPlaces = 6000,
-          int maxWaits = 0);
+          int shortWaits = 0, int timedWaits = 0);
     ~Route();
 
     enum Status { Searching, Found, NoWay };
@@ -62,7 +62,8 @@ private:
     const MoveGraph *guide_;
     const std::vector<double> *toTarget_;
     size_t maxPlaces_;
-    int    maxWaits_;
+    int    shortWaits_;
+    int    timedWaits_;
     std::unique_ptr<World> start_;
     std::vector<Node> nodes_;
     using Entry = std::pair<double, int>;

@@ -3,6 +3,7 @@
 #include <memory>
 #include <queue>
 #include <set>
+#include "schedule.h"
 #include "whatif.h"
 #include "world.h"
 
@@ -26,7 +27,6 @@ MoveGraph::MoveGraph(const World &start)
     auto first = std::make_unique<World>(start);
     whatif::removeFoes(*first);
     open.push_back({add(placeOf(*first)), std::move(first)});
-    const int waits = timed(start) ? MAX_WAITS : 0;
     while (!open.empty()) {
         auto [at, world] = std::move(open.front());
         open.pop_front();
@@ -45,12 +45,15 @@ MoveGraph::MoveGraph(const World &start)
             if (fresh)
                 open.push_back({i, std::move(next)});
         };
-        // waited: at's World after w waits.
+        // waited: at's World after w waits, each till the next wait time.
         auto waited = std::make_unique<World>(*world);
-        for (int w = 0; w <= waits; w++) {
+        const std::vector<double> times = waitTimes(*world, places_[at].cell());
+        for (int w = 0; w <= (int)times.size(); w++) {
             if (w > 0) {
+                if (times[w - 1] <= waited->now())
+                    continue;   // passed while the last one settled
                 played_++;
-                if (play(*waited, WAIT).kind != Played::Moved)
+                if (waitUntil(*waited, times[w - 1]).kind != Played::Moved)
                     break;
                 reach(std::make_unique<World>(*waited), w, WAIT);
             }

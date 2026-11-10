@@ -9,6 +9,8 @@ namespace {
 /* How long a move may take before it is given up on: long enough for a
  * slide or ice across a level, and a teleporter's holds. */
 const int MOVE_TICKS = 600;
+/* A wait's limit: a lift's whole cycle, and its ride after. */
+const int WAIT_LIMIT_TICKS = 1800;
 
 }  // namespace
 
@@ -24,10 +26,6 @@ unsigned pressOf(Move m)
     return m < MOVES ? presses[m] : 0u;
 }
 
-bool timed(const World &w)
-{
-    return !w.lifts().empty() || !w.platforms().empty();
-}
 
 Place placeOf(const World &w)
 {
@@ -79,6 +77,25 @@ Played play(World &w, Move m, Work *work)
             return out;
         }
         if (out.ticks >= MOVE_TICKS) {
+            out.kind = Played::Unsettled;
+            return out;
+        }
+        tick(w, 0, work);
+        out.ticks++;
+    }
+    out.kind = Played::Moved;
+    return out;
+}
+
+Played waitUntil(World &w, double until, Work *work)
+{
+    Played out;
+    while (out.ticks == 0 || w.now() < until || !atRest(w)) {
+        if (dead(w)) {
+            out.kind = Played::Died;
+            return out;
+        }
+        if (out.ticks >= WAIT_LIMIT_TICKS) {
             out.kind = Played::Unsettled;
             return out;
         }

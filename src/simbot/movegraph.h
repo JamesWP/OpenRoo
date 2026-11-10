@@ -3,10 +3,11 @@
  * each place, on a copy of the World with the foes removed
  * (whatif::removeFoes).  Built once, at the start of the level (survey.h).
  *
- * A place is played from at the time it was first come to.  On a timed
- * level (moves.h) each move is also played after waiting, up to MAX_WAITS
- * waits, so a lift or platform has come round: an edge is kept for each
- * place first reached that way, its waits counted in.  Still only an
+ * A place is played from at the time it was first come to; each move is
+ * also played after waiting till each of the schedule's wait times there
+ * (schedule.h: a lift or platform beside it parking, a sticky pad letting
+ * go): an edge is kept for each place first reached that
+ * way, the wait counted in.  Still only an
  * estimate for the planner; an Attempt finds the real way. */
 #pragma once
 
@@ -22,9 +23,7 @@ class MoveGraph {
 public:
     explicit MoveGraph(const World &start);
 
-    static const int MAX_WAITS = 24;   // 6 s
-
-    /* waits WAITs, then move (or the waits alone, move WAIT). */
+    /* waits waits (schedule.h), then move (or the waits alone, move WAIT). */
     struct Edge {
         int    to;
         int    waits;

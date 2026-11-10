@@ -15,6 +15,10 @@ class PlatformObject : public Listed {
 public:
      
 
+    // Its speed, in cells a ms, and how long it parks at each end.
+    static constexpr float  CELLS_PER_MS = 0.005f;
+    static constexpr double PARK_MS      = 1500.0;
+
     // Spawns a platform; the arguments are masked to bytes.
     static void spawn(const EntityContext &ctx, EntityList<PlatformObject> &platforms, unsigned int uArg, unsigned int vArg,
                       unsigned int heightArg, unsigned int kindArg);

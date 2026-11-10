@@ -9,6 +9,8 @@ namespace {
 const int MAX_LEAD = 600;
 /* Waits in a row for a foe to pass, where nothing else moves: 2 s. */
 const int FOE_WAITS = 8;
+/* Timed waits in a row (schedule.h): two lifts' cycles. */
+const int TIMED_WAITS = 4;
 
 }  // namespace
 
@@ -22,15 +24,17 @@ Attempt::Status GoTo::act(const World &live, Work &work, unsigned *presses)
         World ahead(live);
         for (int i = 0; i < lead_; i++)
             tick(ahead, 0, &work);
-        route_ = std::make_unique<Route>(ahead, target_, *graph_, 6000, waits_);
+        route_ = std::make_unique<Route>(ahead, target_, *graph_, 6000,
+                                         waits_ && !ahead.foes().empty() ? FOE_WAITS : 0,
+                                         waits_ ? TIMED_WAITS : 0);
         at_ = 0;
     }
     const Route::Status status = route_->run(work);
     if (status == Route::NoWay) {
         route_.reset();
-        if (waits_ > 0)
+        if (waits_)
             return Impossible;
-        waits_ = timed(live) ? MoveGraph::MAX_WAITS : FOE_WAITS;
+        waits_ = true;
         return Thinking;
     }
     if (status == Route::Searching)

@@ -1,4 +1,5 @@
 #include "routing.h"
+#include "schedule.h"
 #include "world.h"
 
 namespace simbot {
@@ -16,9 +17,9 @@ Expect expectOf(const World &w)
 }
 
 Route::Route(const World &start, Cell target, const MoveGraph &guide, size_t maxPlaces,
-             int maxWaits)
+             int shortWaits, int timedWaits)
     : target_(target), guide_(&guide), toTarget_(&guide.timesTo(target)),
-      maxPlaces_(maxPlaces), maxWaits_(maxWaits), start_(std::make_unique<World>(start))
+      maxPlaces_(maxPlaces), shortWaits_(shortWaits), timedWaits_(timedWaits), start_(std::make_unique<World>(start))
 {
     Node root;
     root.now   = start.now();
@@ -36,6 +37,9 @@ namespace {
 /* The estimate for a place the MoveGraph has no way on from (it is only an
  * estimate): far, not never. */
 const double NO_WAY_MS = 60000;
+/* The move after WAIT: a wait till the schedule's next wait time
+ * (schedule.h). */
+const int TIMED_WAIT = WAIT + 1;
 
 }  // namespace
 
@@ -69,31 +73,45 @@ Route::Status Route::run(Work &work)
             expanding_ = at;
             move_ = 0;
         }
-        // One move a turn, so the work is checked between them.
-        const int lastMove = nodes_[expanding_].waited < maxWaits_ ? WAIT : MOVES - 1;
-        if (move_ <= lastMove && nodes_.size() < maxPlaces_) {
+        // One move a turn, so the work is checked between them: the four
+        // steps, a short wait, then a wait till the next wait time.
+        if (move_ <= TIMED_WAIT && nodes_.size() < maxPlaces_) {
             const int at = expanding_;
-            auto next = std::make_unique<World>(*nodes_[at].world);
-            const Played p = play(*next, (Move)move_, &work);
-            const Move m = (Move)move_++;
-            if (p.kind != Played::Moved)
+            const int kind = move_++;
+            const int waited = nodes_[at].waited;
+            Played p;
+            std::unique_ptr<World> next;
+            if (kind < MOVES || (kind == WAIT && waited < shortWaits_)) {
+                next = std::make_unique<World>(*nodes_[at].world);
+                p = play(*next, (Move)kind, &work);
+            } else if (kind == TIMED_WAIT && waited < timedWaits_) {
+                const World &from = *nodes_[at].world;
+                for (double t : waitTimes(from, nodes_[at].place.cell()))
+                    if (t > from.now()) {
+                        next = std::make_unique<World>(from);
+                        p = waitUntil(*next, t, &work);
+                        break;
+                    }
+            }
+            if (!next || p.kind != Played::Moved)
                 continue;
+            const Move m = kind < MOVES ? (Move)kind : WAIT;
             const Place place = placeOf(*next);
-            const int waited = m == WAIT ? nodes_[at].waited + 1 : 0;
-            auto it = best_.find({place, waited});
+            const int waitedNow = m == WAIT ? waited + 1 : 0;
+            auto it = best_.find({place, waitedNow});
             if (it != best_.end() && nodes_[it->second].now <= next->now())
                 continue;
             Node n;
             n.parent = at;
             n.move   = m;
             n.ticks  = p.ticks;
-            n.waited = waited;
+            n.waited = waitedNow;
             n.now    = next->now();
             n.place  = place;
             n.world  = std::move(next);
             const int id = (int)nodes_.size();
             nodes_.push_back(std::move(n));
-            best_[{place, waited}] = id;
+            best_[{place, waitedNow}] = id;
             push(id);
             continue;
         }

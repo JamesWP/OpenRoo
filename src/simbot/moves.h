@@ -12,14 +12,11 @@ class World;
 
 namespace simbot {
 
-/* The four steps, then WAIT: nothing held for WAIT_TICKS, then until at
- * rest (a lift or platform may carry the player meanwhile). */
+/* The four steps, then WAIT: nothing held for WAIT_TICKS (a short wait,
+ * for a foe to pass), then until at rest. */
 enum Move { FORWARD, BACK, LEFT, RIGHT, MOVES, WAIT = MOVES };
 const int WAIT_TICKS = 15;
 
-/* The level has what moves by itself, lifts or platforms, so where a move
- * leads hangs on when it is played. */
-bool timed(const World &w);
 
 const char *moveName(Move m);
 /* The move's press (presses.h). */
@@ -62,5 +59,8 @@ struct Played {
  * the tick after the press where it was (never for WAIT); Unsettled if it is not at rest
  * within the limit (held on a sticky pad, say). */
 Played play(World &w, Move m, Work *work = nullptr);
+/* Nothing held till the clock is at until, then till at rest (a lift or
+ * platform may carry the player meanwhile); a WAIT. */
+Played waitUntil(World &w, double until, Work *work = nullptr);
 
 }  // namespace simbot
