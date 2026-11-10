@@ -12,4 +12,8 @@ namespace whatif {
  * spawning another. */
 void removeFoes(World &w);
 
+/* Every falling tile back in place and unarmed, as at the start, but for
+ * one armed under the player: it still falls. */
+void restoreFallings(World &w);
+
 }  // namespace whatif

@@ -45,6 +45,9 @@ std::vector<double> waitTimes(const World &w, Cell c)
             addParks(out, p.state(), p.phaseStart(), p.limit() - from,
                      PlatformObject::CELLS_PER_MS, PlatformObject::PARK_MS);
     }
+    for (const FallingTile &f : w.fallings())
+        if (f.respawnPending())
+            out.push_back(f.armedAt() + FallingTile::RESPAWN_MS + MARGIN_MS);
     const double stuck = w.player()->stuckSince();
     if (stuck != 0)
         out.push_back(stuck + MovableEntity::STUCK_MS + MARGIN_MS);

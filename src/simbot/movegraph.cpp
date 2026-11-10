@@ -4,10 +4,24 @@
 #include <queue>
 #include <set>
 #include "schedule.h"
+#include "tile.h"
 #include "whatif.h"
 #include "world.h"
 
 namespace simbot {
+
+uint64_t onceDown(const World &w)
+{
+    uint64_t bits = 0;
+    int i = 0;
+    for (const FallingTile &f : w.fallings()) {
+        if (i < 64 && f.noRespawn() &&
+            (f.armed() || w.map()->tile(f.cellU(), f.cellV())->objectMarker() != TILE_FALLING))
+            bits |= (uint64_t)1 << i;
+        i++;
+    }
+    return bits;
+}
 
 MoveGraph::MoveGraph(const World &start)
 {
@@ -30,6 +44,8 @@ MoveGraph::MoveGraph(const World &start)
     while (!open.empty()) {
         auto [at, world] = std::move(open.front());
         open.pop_front();
+        whatif::restoreFallings(*world);
+        const uint64_t down0 = onceDown(*world);
         const double t0 = world->now();
         std::set<int> reached{at};
         // An edge to where next is, if that place is not reached from at yet.
@@ -41,7 +57,9 @@ MoveGraph::MoveGraph(const World &start)
                 i = index_[to];
             if (!reached.insert(i).second)
                 return;
-            edges_[at].push_back({i, w, m, next->now() - t0});
+            const uint64_t breaks = onceDown(*next) & ~down0;
+            breaking_ += breaks != 0;
+            edges_[at].push_back({i, w, m, next->now() - t0, breaks});
             if (fresh)
                 open.push_back({i, std::move(next)});
         };

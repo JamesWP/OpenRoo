@@ -3,7 +3,9 @@
  * each place, on a copy of the World with the foes removed
  * (whatif::removeFoes).  Built once, at the start of the level (survey.h).
  *
- * A place is played from at the time it was first come to; each move is
+ * A place is played from at the time it was first come to, but with every
+ * falling tile back in place (whatif::restoreFallings): an edge has them
+ * all, and notes the ones that never come back that it breaks.  Each move is
  * also played after waiting till each of the schedule's wait times there
  * (schedule.h: a lift or platform beside it parking, a sticky pad letting
  * go): an edge is kept for each place first reached that
@@ -11,6 +13,7 @@
  * estimate for the planner; an Attempt finds the real way. */
 #pragma once
 
+#include <stdint.h>
 #include <map>
 #include <vector>
 #include "moves.h"
@@ -19,16 +22,23 @@ class World;
 
 namespace simbot {
 
+/* The one-time falling tiles armed or fallen, a bit for each by its index
+ * in World::fallings (the first 64). */
+uint64_t onceDown(const World &w);
+
 class MoveGraph {
 public:
     explicit MoveGraph(const World &start);
 
-    /* waits waits (schedule.h), then move (or the waits alone, move WAIT). */
+    /* waits waits (schedule.h), then move (or the waits alone, move WAIT);
+     * breaks: the one-time falling tiles it arms, a bit for each by its
+     * index in World::fallings (the first 64). */
     struct Edge {
-        int    to;
-        int    waits;
-        Move   move;
-        double ms;
+        int      to;
+        int      waits;
+        Move     move;
+        double   ms;
+        uint64_t breaks;
     };
 
     size_t size() const { return places_.size(); }
@@ -50,8 +60,9 @@ public:
      * there is none, and its ms. */
     int arrive(int from, Cell c, double *ms) const;
 
-    /* The moves played to build it. */
+    /* The moves played to build it, and the edges that break a tile. */
     long played() const { return played_; }
+    long breaking() const { return breaking_; }
 
 private:
     std::vector<Place>              places_;
@@ -61,6 +72,7 @@ private:
     mutable std::map<int, std::vector<double>> times_;
     mutable std::map<Cell, std::vector<double>> timesTo_;
     long played_ = 0;
+    long breaking_ = 0;
 };
 
 }  // namespace simbot

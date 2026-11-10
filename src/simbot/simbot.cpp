@@ -25,8 +25,9 @@ unsigned SimBot::act(const bot::BotView &, const World &world)
                              std::to_string(c.v);
         }
         char buf[128];
-        snprintf(buf, sizeof(buf), "\"places\":%zu,\"moves\":%ld,\"gems\":%zu,\"quota\":%d,",
-                 g.size(), g.played(), survey_->gems().size(), survey_->quota());
+        snprintf(buf, sizeof(buf),
+                 "\"places\":%zu,\"moves\":%ld,\"breaking\":%ld,\"gems\":%zu,\"quota\":%d,",
+                 g.size(), g.played(), g.breaking(), survey_->gems().size(), survey_->quota());
         log_.write(ticks_, "survey", buf + std::string("\"unreached\":") + SimLog::quote(unreached));
     }
     Work work;
