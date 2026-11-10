@@ -14,14 +14,19 @@ const int MOVE_TICKS = 600;
 
 const char *moveName(Move m)
 {
-    static const char *const names[] = {"forward", "back", "left", "right"};
-    return m < MOVES ? names[m] : "?";
+    static const char *const names[] = {"forward", "back", "left", "right", "wait"};
+    return m <= WAIT ? names[m] : "?";
 }
 
 unsigned pressOf(Move m)
 {
     static const unsigned presses[] = {PRESS_FORWARD, PRESS_BACK, PRESS_LEFT, PRESS_RIGHT};
-    return presses[m];
+    return m < MOVES ? presses[m] : 0u;
+}
+
+bool timed(const World &w)
+{
+    return !w.lifts().empty() || !w.platforms().empty();
 }
 
 Place placeOf(const World &w)
@@ -61,7 +66,10 @@ Played play(World &w, Move m, Work *work)
     const Place from = placeOf(w);
     tick(w, pressOf(m), work);
     out.ticks = 1;
-    if (atRest(w) && placeOf(w) == from) {
+    if (m == WAIT)
+        for (; out.ticks < WAIT_TICKS && !dead(w); out.ticks++)
+            tick(w, 0, work);
+    else if (atRest(w) && placeOf(w) == from) {
         out.kind = Played::Refused;
         return out;
     }

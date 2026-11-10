@@ -15,7 +15,7 @@ namespace {
 
 class ExitAttempt : public Attempt {
 public:
-    explicit ExitAttempt(Cell exit) : walk_(exit) {}
+    ExitAttempt(Cell exit, const MoveGraph &graph) : walk_(exit, graph) {}
     Status act(const World &live, Work &work, unsigned *presses) override
     {
         if (!there_) {
@@ -59,7 +59,7 @@ public:
 
     std::unique_ptr<Attempt> attempt(const Step &, const Survey &survey) const override
     {
-        return std::make_unique<ExitAttempt>(survey.exit());
+        return std::make_unique<ExitAttempt>(survey.exit(), survey.graph());
     }
 };
 

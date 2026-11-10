@@ -23,7 +23,7 @@ Facts factsOf(const World &w, const Survey &survey)
     for (size_t i = 0; i < survey.gems().size(); i++) {
         const Cell c = survey.gems()[i];
         if (w.map()->tile(c.u, c.v)->contents() != CONTENTS_CRYSTAL)
-            f.taken |= (uint64_t)1 << i;
+            f.taken.add(i);
     }
     return f;
 }
@@ -57,13 +57,13 @@ double Planner::estimate(const Facts &f) const
         return NO_WAY_MS;
     const MoveGraph &g = survey_.graph();
     int at = f.at;
-    uint64_t taken = f.taken;
+    GemSet taken = f.taken;
     double ms = 0;
     for (int need = survey_.quota() - f.gems; need > 0; need--) {
         int bestGem = -1, bestAt = -1;
         double best = 0;
         for (size_t i = 0; i < survey_.gems().size(); i++) {
-            if (taken >> i & 1)
+            if (taken.has(i))
                 continue;
             double t;
             const int p = g.arrive(at, survey_.gems()[i], &t);
@@ -77,7 +77,7 @@ double Planner::estimate(const Facts &f) const
             return ms + NO_WAY_MS;
         ms += best;
         at = bestAt;
-        taken |= (uint64_t)1 << bestGem;
+        taken.add(bestGem);
     }
     double t;
     return g.arrive(at, survey_.exit(), &t) < 0 ? ms + NO_WAY_MS : ms + t;

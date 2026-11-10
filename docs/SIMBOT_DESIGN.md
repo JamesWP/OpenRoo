@@ -14,8 +14,9 @@ plans again whenever the facts change.
 **Survey.** The one-off work at the start of a level, with a large budget.
 The first part is the *MoveGraph*: every move played from every place the
 player can rest on, on a copy of the World with the foes removed, giving
-which places lead to which and how long each takes. `reach` and the
-planner's costs come from it. Other precomputed structures go here too as
+which places lead to which and how long each takes; where lifts or
+platforms move, each move is also played after waiting. The planner's
+costs come from it, and it guides the Attempts' searches (A*). Other precomputed structures go here too as
 they are needed.
 
 **What-ifs.** Hypothetical facts are made by editing a copy of the World

@@ -16,7 +16,7 @@ public:
 
     const MoveGraph &graph() const { return graph_; }
     /* The cells the level's gems lie on at the start, in grid order: a gem
-     * is known by its index here (the first 64). */
+     * is known by its index here (the first GemSet::MAX). */
     const std::vector<Cell> &gems() const { return gems_; }
     Cell exit() const { return exit_; }
     int  quota() const { return quota_; }

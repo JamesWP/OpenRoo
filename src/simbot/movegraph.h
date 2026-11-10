@@ -3,9 +3,11 @@
  * each place, on a copy of the World with the foes removed
  * (whatif::removeFoes).  Built once, at the start of the level (survey.h).
  *
- * A move is played once, at whatever time its place was first come to, so
- * what hangs on time (a lift, a platform, a falling tile) is as it was then:
- * the graph is the planner's estimate, and an Attempt finds the real way. */
+ * A place is played from at the time it was first come to.  On a timed
+ * level (moves.h) each move is also played after waiting, up to MAX_WAITS
+ * waits, so a lift or platform has come round: an edge is kept for each
+ * place first reached that way, its waits counted in.  Still only an
+ * estimate for the planner; an Attempt finds the real way. */
 #pragma once
 
 #include <map>
@@ -20,8 +22,12 @@ class MoveGraph {
 public:
     explicit MoveGraph(const World &start);
 
+    static const int MAX_WAITS = 24;   // 6 s
+
+    /* waits WAITs, then move (or the waits alone, move WAIT). */
     struct Edge {
         int    to;
+        int    waits;
         Move   move;
         double ms;
     };
@@ -38,6 +44,9 @@ public:
     /* The least ms from place from to every place (< 0: no way), worked
      * out the first time it is asked for. */
     const std::vector<double> &times(int from) const;
+    /* The least ms from every place to a place on cell c (< 0: no way),
+     * worked out the first time it is asked for. */
+    const std::vector<double> &timesTo(Cell c) const;
     /* The quickest arrival on cell c from place from: the place, -1 if
      * there is none, and its ms. */
     int arrive(int from, Cell c, double *ms) const;
@@ -51,6 +60,7 @@ private:
     std::map<Place, int>            index_;
     std::map<Cell, std::vector<int>> byCell_;
     mutable std::map<int, std::vector<double>> times_;
+    mutable std::map<Cell, std::vector<double>> timesTo_;
     long played_ = 0;
 };
 

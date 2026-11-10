@@ -15,19 +15,38 @@ Expect expectOf(const World &w)
     return {w.now(), p->cellU(), p->cellV(), p->heightCell(), p->facing(), p->moveDir()};
 }
 
-Route::Route(const World &start, Cell target, size_t maxPlaces)
-    : target_(target), maxPlaces_(maxPlaces), start_(std::make_unique<World>(start))
+Route::Route(const World &start, Cell target, const MoveGraph &guide, size_t maxPlaces,
+             int maxWaits)
+    : target_(target), guide_(&guide), toTarget_(&guide.timesTo(target)),
+      maxPlaces_(maxPlaces), maxWaits_(maxWaits), start_(std::make_unique<World>(start))
 {
     Node root;
     root.now   = start.now();
     root.place = placeOf(start);
     root.world = std::make_unique<World>(start);
     nodes_.push_back(std::move(root));
-    best_[nodes_[0].place] = 0;
-    open_.push({nodes_[0].now, 0});
+    best_[{nodes_[0].place, 0}] = 0;
+    push(0);
 }
 
 Route::~Route() = default;
+
+namespace {
+
+/* The estimate for a place the MoveGraph has no way on from (it is only an
+ * estimate): far, not never. */
+const double NO_WAY_MS = 60000;
+
+}  // namespace
+
+void Route::push(int id)
+{
+    const int g = guide_->find(nodes_[id].place);
+    double h = g < 0 ? -1 : (*toTarget_)[g];
+    if (h < 0)
+        h = NO_WAY_MS;
+    open_.push({nodes_[id].now + h, id});
+}
 
 Route::Status Route::run(Work &work)
 {
@@ -39,7 +58,7 @@ Route::Status Route::run(Work &work)
             }
             const int at = open_.top().second;
             open_.pop();
-            if (best_[nodes_[at].place] != at) {
+            if (best_[{nodes_[at].place, nodes_[at].waited}] != at) {
                 nodes_[at].world.reset();   // a sooner way there was found since
                 continue;
             }
@@ -51,7 +70,8 @@ Route::Status Route::run(Work &work)
             move_ = 0;
         }
         // One move a turn, so the work is checked between them.
-        if (move_ < MOVES && nodes_.size() < maxPlaces_) {
+        const int lastMove = nodes_[expanding_].waited < maxWaits_ ? WAIT : MOVES - 1;
+        if (move_ <= lastMove && nodes_.size() < maxPlaces_) {
             const int at = expanding_;
             auto next = std::make_unique<World>(*nodes_[at].world);
             const Played p = play(*next, (Move)move_, &work);
@@ -59,20 +79,22 @@ Route::Status Route::run(Work &work)
             if (p.kind != Played::Moved)
                 continue;
             const Place place = placeOf(*next);
-            auto it = best_.find(place);
+            const int waited = m == WAIT ? nodes_[at].waited + 1 : 0;
+            auto it = best_.find({place, waited});
             if (it != best_.end() && nodes_[it->second].now <= next->now())
                 continue;
             Node n;
             n.parent = at;
             n.move   = m;
             n.ticks  = p.ticks;
+            n.waited = waited;
             n.now    = next->now();
             n.place  = place;
             n.world  = std::move(next);
             const int id = (int)nodes_.size();
             nodes_.push_back(std::move(n));
-            best_[place] = id;
-            open_.push({nodes_[id].now, id});
+            best_[{place, waited}] = id;
+            push(id);
             continue;
         }
         if (expanding_ != 0)

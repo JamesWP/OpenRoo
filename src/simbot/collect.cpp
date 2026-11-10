@@ -20,7 +20,7 @@ public:
         if (f.done || f.at < 0 || f.gems >= survey.quota())
             return;
         for (size_t i = 0; i < survey.gems().size(); i++) {
-            if (f.taken >> i & 1)
+            if (f.taken.has(i))
                 continue;
             const Cell c = survey.gems()[i];
             double ms;
@@ -32,7 +32,7 @@ public:
             s.arg    = (int)i;
             s.after  = f;
             s.after.at = to;
-            s.after.taken |= (uint64_t)1 << i;
+            s.after.taken.add(i);
             s.after.gems++;
             s.ms = ms;
             char buf[48];
@@ -44,7 +44,7 @@ public:
 
     std::unique_ptr<Attempt> attempt(const Step &step, const Survey &survey) const override
     {
-        return std::make_unique<GoTo>(survey.gems()[step.arg]);
+        return std::make_unique<GoTo>(survey.gems()[step.arg], survey.graph());
     }
 };
 

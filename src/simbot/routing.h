@@ -1,7 +1,10 @@
 /* Route: the quickest presses that bring the player to rest on a cell, found
  * by playing moves (moves.h) on copies of the World, foes and all: Dijkstra
- * on the clock over places, a little each frame (work.h).  The first way to
- * a place is the only one kept.
+ * on the clock over places, a little each frame (work.h): A*, guided by the
+ * MoveGraph's time from each place to the target.  The first way to
+ * a place is the only one kept, but for waiting: a place waited on is a
+ * node of its own for each wait in a row, up to maxWaits (for a lift to
+ * come, or a foe to pass).
  *
  * Found, it holds the presses of each tick and the World expected before
  * each (Expect), so the one pressing them can tell when the game goes
@@ -12,6 +15,7 @@
 #include <memory>
 #include <queue>
 #include <vector>
+#include "movegraph.h"
 #include "moves.h"
 
 class World;
@@ -29,7 +33,8 @@ Expect expectOf(const World &w);
 
 class Route {
 public:
-    Route(const World &start, Cell target, size_t maxPlaces = 6000);
+    Route(const World &start, Cell target, const MoveGraph &guide, size_t maxPlaces = 6000,
+          int maxWaits = 0);
     ~Route();
 
     enum Status { Searching, Found, NoWay };
@@ -45,19 +50,24 @@ private:
         int    parent = -1;
         Move   move = FORWARD;
         int    ticks = 0;
+        int    waited = 0;   // waits in a row that came to it
         double now = 0;
         Place  place;
         std::unique_ptr<World> world;
     };
     void found(int at);
+    void push(int id);
 
     Cell   target_;
+    const MoveGraph *guide_;
+    const std::vector<double> *toTarget_;
     size_t maxPlaces_;
+    int    maxWaits_;
     std::unique_ptr<World> start_;
     std::vector<Node> nodes_;
     using Entry = std::pair<double, int>;
     std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> open_;
-    std::map<Place, int> best_;
+    std::map<std::pair<Place, int>, int> best_;   // by place and waited
     int    expanding_ = -1;   // the node whose moves are being played
     int    move_ = 0;         // its next move
     Status status_ = Searching;
