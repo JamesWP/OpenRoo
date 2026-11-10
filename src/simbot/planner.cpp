@@ -37,7 +37,7 @@ Facts factsOf(const World &w, const Survey &survey)
     }
     f.bombs = w.player()->bombsCarried();
     for (size_t i = 0; i < survey.foes().size(); i++)
-        if (!foeDead(w, survey.foes()[i]))
+        if (!foeDead(w, survey.foes()[i]) && !(survey.spared() >> i & 1))
             f.alive |= (uint64_t)1 << i;
     return f;
 }

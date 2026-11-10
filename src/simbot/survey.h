@@ -28,6 +28,11 @@ public:
     Cell seen(int i) const { return seen_[i]; }
     /* Notes where the foes are now. */
     void see(const World &w);
+    /* The foes left alone for now, a bit for each: a kill of them was
+     * Impossible, so the planner counts them neither a risk nor a step. */
+    uint64_t spared() const { return spared_; }
+    void spare(int i) { spared_ |= (uint64_t)1 << i; }
+    void spareNone() { spared_ = 0; }
     Cell exit() const { return exit_; }
     int  quota() const { return quota_; }
 
@@ -37,6 +42,7 @@ private:
     std::vector<Cell> pickups_;
     std::vector<unsigned> foes_;
     std::vector<Cell> seen_;
+    uint64_t          spared_ = 0;
     Cell              exit_;
     int               quota_ = 0;
 };

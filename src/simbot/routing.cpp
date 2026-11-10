@@ -35,9 +35,9 @@ const int ESCAPE_MOVES = 2;
 }  // namespace
 
 Route::Route(const World &start, Goal goal, const MoveGraph &guide, size_t maxPlaces,
-             int shortWaits, int timedWaits)
+             int shortWaits, int timedWaits, long maxWork)
     : goal_(goal), guide_(&guide), toCell_(&guide.timesTo(goal.cell)), maxPlaces_(maxPlaces),
-      shortWaits_(shortWaits), timedWaits_(timedWaits), start_(std::make_unique<World>(start))
+      shortWaits_(shortWaits), timedWaits_(timedWaits), maxWork_(maxWork), start_(std::make_unique<World>(start))
 {
     Node root;
     root.now   = start.now();
@@ -52,8 +52,16 @@ Route::~Route() = default;
 
 bool Route::reached(const Node &n) const
 {
-    if (!goal_.kill)
-        return abs(n.place.u - goal_.cell.u) + abs(n.place.v - goal_.cell.v) <= goal_.near;
+    if (!goal_.kill) {
+        Cell c = goal_.cell;
+        if (goal_.track) {
+            const Foe *f = findFoe(*n.world, goal_.foe);
+            if (!f)
+                return true;   // gone: nothing left to come near
+            c = {f->cellU(), f->cellV()};
+        }
+        return abs(n.place.u - c.u) + abs(n.place.v - c.v) <= goal_.near;
+    }
     return n.dropAt >= 0 && n.now >= n.dropAt + BLAST_OVER_MS && foeDead(*n.world, goal_.foe);
 }
 
@@ -86,7 +94,13 @@ void Route::push(int id)
 
 Route::Status Route::run(Work &work)
 {
+    const long before = work.used;
     while (status_ == Searching && !work.out()) {
+        if (maxWork_ > 0 && spent_ + work.used - before > maxWork_) {
+            capped_ = true;
+            status_ = NoWay;
+            break;
+        }
         if (expanding_ < 0) {
             if (open_.empty()) {
                 status_ = NoWay;
@@ -171,13 +185,14 @@ Route::Status Route::run(Work &work)
             nodes_[expanding_].world.reset();
         expanding_ = -1;
     }
+    spent_ += work.used - before;
     return status_;
 }
 
 std::string Route::summary() const
 {
     char buf[128];
-    snprintf(buf, sizeof(buf), "places %zu%s", places_, capped_ ? " (capped)" : "");
+    snprintf(buf, sizeof(buf), "places %zu, work %ld%s", places_, spent_, capped_ ? " (capped)" : "");
     std::string out = buf;
     if (goal_.kill) {
         snprintf(buf, sizeof(buf), ", drops %d: foe lived %d, player died %d", drops_, foeLived_,

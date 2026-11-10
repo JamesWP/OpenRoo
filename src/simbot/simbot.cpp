@@ -62,12 +62,18 @@ unsigned SimBot::decide(const World &world, Work &work)
                     ruled_.clear();
                 ruledAt_ = now;
                 ruled_.insert({step_.action, step_.arg});
+                if (std::string(step_.action->name()) == "kill") {
+                    survey_->spare(step_.arg);
+                    spareUntil_ = ticks_ + SPARE_TICKS;
+                }
             }
             attempt_.reset();
             continue;
         }
         if (!atRest(world) || ticks_ < retryAt_)
             return 0;
+        if (ticks_ >= spareUntil_)
+            survey_->spareNone();
         if (!planner_) {
             survey_->see(world);
             const Facts now = factsOf(world, *survey_);

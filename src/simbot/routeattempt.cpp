@@ -13,6 +13,9 @@ const int FOE_WAITS = 8;
 const int TIMED_WAITS = 4;
 /* A kill's Routes are searched no further: it is near the foe or nowhere. */
 const size_t KILL_PLACES = 3000;
+/* What a kill's searches (the walk near, the kill) may each take: the
+ * player stands meanwhile, so 2 s of frames at most. */
+const long KILL_WORK = 120 * FRAME_WORK;
 /* Routes pressed to their end with the goal not come about, before it is
  * given up on. */
 const int MAX_ROUTES = 3;
@@ -50,8 +53,10 @@ Attempt::Status RouteAttempt::act(const World &live, Work &work, unsigned *press
             goal.cell = {f->cellU(), f->cellV()};
             const Place p = placeOf(ahead);
             if (abs(p.u - goal.cell.u) + abs(p.v - goal.cell.v) > APPROACH_NEAR) {
-                // Far: walk near it first, then the kill from there.
+                // Far: walk near it first (it may come to meet the player),
+                // then the kill from there.
                 goal.kill = false;
+                goal.track = true;
                 goal.near = APPROACH_NEAR;
                 approach_ = true;
             }
@@ -59,7 +64,8 @@ Attempt::Status RouteAttempt::act(const World &live, Work &work, unsigned *press
         const bool waits = waits_ && (!approach_ || approachWaits_);
         route_ = std::make_unique<Route>(ahead, goal, *graph_, goal.kill ? KILL_PLACES : 6000,
                                          waits && !ahead.foes().empty() ? FOE_WAITS : 0,
-                                         waits ? TIMED_WAITS : 0);
+                                         waits ? TIMED_WAITS : 0,
+                                         goal_.kill ? KILL_WORK : 0);
         at_ = 0;
     }
     const Route::Status status = route_->run(work);
