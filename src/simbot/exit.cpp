@@ -1,11 +1,11 @@
 /* exit: with the quota, walk onto the exit; the level is then done.
  *   pre:  gems held >= quota; the MoveGraph reaches the exit
  *   eff:  done
- *   do:   GoTo the exit, then stand there till the game completes the
+ *   do:   a RouteAttempt to the exit, then stand there till the game completes the
  *         level (which ends the run). */
 #include <stdio.h>
 #include "actions.h"
-#include "goto.h"
+#include "routeattempt.h"
 #include "survey.h"
 #include "world.h"
 
@@ -15,7 +15,7 @@ namespace {
 
 class ExitAttempt : public Attempt {
 public:
-    ExitAttempt(Cell exit, const MoveGraph &graph) : walk_(exit, graph) {}
+    ExitAttempt(Cell exit, const MoveGraph &graph) : walk_(Goal{exit}, graph) {}
     Status act(const World &live, Work &work, unsigned *presses) override
     {
         if (!there_) {
@@ -31,7 +31,7 @@ public:
     }
 
 private:
-    GoTo walk_;
+    RouteAttempt walk_;
     bool there_ = false;
 };
 
@@ -50,7 +50,7 @@ public:
         s.action = this;
         s.after  = f;
         s.after.done = true;
-        s.ms = ms;
+        s.ms = ms * (1 + foeRisk(f, survey));
         char buf[48];
         snprintf(buf, sizeof(buf), "exit (%d,%d)", survey.exit().u, survey.exit().v);
         s.what = buf;

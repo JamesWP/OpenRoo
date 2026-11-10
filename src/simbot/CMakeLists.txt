@@ -2,8 +2,10 @@ add_library(simbot OBJECT
     actions.cpp
     collect.cpp
     exit.cpp
-    goto.cpp
+    kill.cpp
+    routeattempt.cpp
     movegraph.cpp
+    pickup.cpp
     moves.cpp
     planner.cpp
     routing.cpp

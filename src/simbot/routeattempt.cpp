@@ -1,0 +1,107 @@
+#include "routeattempt.h"
+#include <stdlib.h>
+#include "world.h"
+
+namespace simbot {
+
+namespace {
+
+const int MAX_LEAD = 600;
+/* Waits in a row for a foe to pass: 2 s. */
+const int FOE_WAITS = 8;
+/* Timed waits in a row (schedule.h): two lifts' cycles. */
+const int TIMED_WAITS = 4;
+/* A kill's Routes are searched no further: it is near the foe or nowhere. */
+const size_t KILL_PLACES = 3000;
+/* Routes pressed to their end with the goal not come about, before it is
+ * given up on. */
+const int MAX_ROUTES = 3;
+/* A kill is searched from within this many steps of the foe; from farther,
+ * the player walks there first. */
+const int APPROACH_NEAR = 3;
+
+}  // namespace
+
+bool RouteAttempt::done(const World &live) const
+{
+    return goal_.kill ? foeDead(live, goal_.foe) : placeOf(live).cell() == goal_.cell;
+}
+
+Attempt::Status RouteAttempt::act(const World &live, Work &work, unsigned *presses)
+{
+    if (!route_) {
+        if (!atRest(live))
+            return Thinking;
+        if (done(live))
+            return Done;
+        if (routes_ >= MAX_ROUTES) {
+            why_ = "pressed its Routes to their end in vain";
+            return Impossible;
+        }
+        World ahead(live);
+        for (int i = 0; i < lead_; i++)
+            tick(ahead, 0, &work);
+        Goal goal = goal_;
+        approach_ = false;
+        if (goal.kill) {
+            const Foe *f = findFoe(ahead, goal.foe);
+            if (!f)
+                return Thinking;   // gone while standing: done next frame
+            goal.cell = {f->cellU(), f->cellV()};
+            const Place p = placeOf(ahead);
+            if (abs(p.u - goal.cell.u) + abs(p.v - goal.cell.v) > APPROACH_NEAR) {
+                // Far: walk near it first, then the kill from there.
+                goal.kill = false;
+                goal.near = APPROACH_NEAR;
+                approach_ = true;
+            }
+        }
+        const bool waits = waits_ && (!approach_ || approachWaits_);
+        route_ = std::make_unique<Route>(ahead, goal, *graph_, goal.kill ? KILL_PLACES : 6000,
+                                         waits && !ahead.foes().empty() ? FOE_WAITS : 0,
+                                         waits ? TIMED_WAITS : 0);
+        at_ = 0;
+    }
+    const Route::Status status = route_->run(work);
+    if (status != Route::Searching)
+        why_ = route_->summary();
+    if (status == Route::NoWay) {
+        route_.reset();
+        if (approach_) {
+            if (approachWaits_)
+                return Impossible;
+            approachWaits_ = true;
+            return Thinking;
+        }
+        if (waits_)
+            return Impossible;
+        waits_ = true;
+        return Thinking;
+    }
+    if (status == Route::Searching)
+        return Thinking;
+    const auto &p = route_->presses();
+    const auto &e = route_->expects();
+    if (at_ < e.size() && at_ == 0 && live.now() < e[0].now) {
+        *presses = 0;   // standing till the game comes to where the Route starts
+        return Pressing;
+    }
+    if (at_ >= p.size()) {
+        route_.reset();
+        if (done(live))
+            return Done;
+        if (!approach_)
+            routes_++;
+        return Thinking;
+    }
+    if (expectOf(live) == e[at_]) {
+        *presses = p[at_++];
+        return Pressing;
+    }
+    if (at_ == 0 && lead_ < MAX_LEAD)
+        lead_ *= 2;   // the search outran its lead
+    route_.reset();
+    return Thinking;
+}
+
+}  // namespace simbot

@@ -8,13 +8,16 @@
 #include <tuple>
 #include "work.h"
 
+class Foe;
 class World;
 
 namespace simbot {
 
-/* The four steps, then WAIT: nothing held for WAIT_TICKS (a short wait,
- * for a foe to pass), then until at rest. */
-enum Move { FORWARD, BACK, LEFT, RIGHT, MOVES, WAIT = MOVES };
+/* The four steps; then WAIT: nothing held for WAIT_TICKS (a short wait,
+ * for a foe to pass), then until at rest; TIMED_WAIT, nothing held till a
+ * time (waitUntil); DROP, a bomb dropped where the player stands, which
+ * rolls on the way it faces. */
+enum Move { FORWARD, BACK, LEFT, RIGHT, MOVES, WAIT = MOVES, TIMED_WAIT, DROP };
 const int WAIT_TICKS = 15;
 
 
@@ -39,6 +42,11 @@ struct Place {
 
 Place placeOf(const World &w);
 
+/* The foe with Listed id id, or null if it is gone. */
+const Foe *findFoe(const World &w, unsigned id);
+/* The foe is gone, or blasted and dying. */
+bool foeDead(const World &w, unsigned id);
+
 /* The player is alive and at rest: not stepping or turning, not in the
  * air, not held by a teleporter. */
 bool atRest(const World &w);
@@ -56,7 +64,8 @@ struct Played {
 };
 
 /* Plays m on w, the player at rest.  Refused if the player is at rest on
- * the tick after the press where it was (never for WAIT); Unsettled if it is not at rest
+ * the tick after the press where it was (never for WAIT; for DROP, if no bomb
+ * was dropped); Unsettled if it is not at rest
  * within the limit (held on a sticky pad, say). */
 Played play(World &w, Move m, Work *work = nullptr);
 /* Nothing held till the clock is at until, then till at rest (a lift or

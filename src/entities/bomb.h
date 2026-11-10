@@ -17,6 +17,12 @@ class Bomb : public MovableEntity {
 public:
      
 
+    // From when it is dropped: it blows FUSE_MS after, its blast is gone
+    // CLEAR_MS after, and it is removed REMOVE_MS after.
+    static constexpr double FUSE_MS   = 2000.0;
+    static constexpr double CLEAR_MS  = 2400.0;
+    static constexpr double REMOVE_MS = 2600.0;
+
     // Spawns a bomb at (u, v, h), reporting it created; the arguments
     // are masked to bytes.
     static void spawn(const EntityContext &ctx, EntityList<Bomb> &bombs,

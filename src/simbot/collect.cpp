@@ -1,10 +1,10 @@
 /* collect: walk to a gem not yet taken, while the quota is short.
  *   pre:  the gem is not taken; gems held < quota; the MoveGraph reaches it
  *   eff:  the gem taken, one more held, the player on it
- *   do:   GoTo the gem. */
+ *   do:   a RouteAttempt to the gem. */
 #include <stdio.h>
 #include "actions.h"
-#include "goto.h"
+#include "routeattempt.h"
 #include "survey.h"
 
 namespace simbot {
@@ -34,7 +34,7 @@ public:
             s.after.at = to;
             s.after.taken.add(i);
             s.after.gems++;
-            s.ms = ms;
+            s.ms = ms * (1 + foeRisk(f, survey));
             char buf[48];
             snprintf(buf, sizeof(buf), "collect g%zu (%d,%d)", i, c.u, c.v);
             s.what = buf;
@@ -44,7 +44,7 @@ public:
 
     std::unique_ptr<Attempt> attempt(const Step &step, const Survey &survey) const override
     {
-        return std::make_unique<GoTo>(survey.gems()[step.arg], survey.graph());
+        return std::make_unique<RouteAttempt>(Goal{survey.gems()[step.arg]}, survey.graph());
     }
 };
 

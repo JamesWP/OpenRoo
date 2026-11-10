@@ -47,9 +47,6 @@
 #include "movableentity.h"
 #include "logger.h"
 
-static const double K_FUSE_MS   = 2000.0;
-static const double K_CLEAR_MS  = 2400.0;
-static const double K_REMOVE_MS = 2600.0;
 
 /* Diagnostics, read by value. */
 static int s_diag_bomb    = 0;
@@ -220,7 +217,7 @@ void Bomb::tick(const EntityContext &ctx, PlayEvents &events)
 
     // Roll: still fusing.
     diff = now_ - droppedAt_;
-    if (!(diff >= K_FUSE_MS)) {
+    if (!(diff >= FUSE_MS)) {
         pendingMove_ = facing_;
         updateMovement(map, events);
         if (moveDir_ != 0)
@@ -278,7 +275,7 @@ void Bomb::tick(const EntityContext &ctx, PlayEvents &events)
 
     // Clear: the kill zone closes.
     diff = now_ - droppedAt_;
-    if (diff >= K_CLEAR_MS && zoneCleared_ == 0) {
+    if (diff >= CLEAR_MS && zoneCleared_ == 0) {
         for (int u = (int)cellU_ - 1; u <= (int)cellU_ + 1; ++u) {
             for (int v = (int)cellV_ - 1; v <= (int)cellV_ + 1; ++v) {
                 Tile *t = map.tile(u, v);
@@ -295,7 +292,7 @@ void Bomb::tick(const EntityContext &ctx, PlayEvents &events)
 
     // Remove.
     diff = now_ - droppedAt_;
-    if (diff >= K_REMOVE_MS && zoneCleared_ == 0) {
+    if (diff >= REMOVE_MS && zoneCleared_ == 0) {
         zoneCleared_ = 1;
         moveState_   = 4;  // despawn
         updateMovement(map, events);

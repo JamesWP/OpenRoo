@@ -1,5 +1,6 @@
 #include "planner.h"
 #include <stdio.h>
+#include "actions.h"
 #include "survey.h"
 #include "tile.h"
 #include "world.h"
@@ -11,6 +12,10 @@ namespace {
 /* What an estimate counts a leg there is no way for. */
 const double NO_WAY_MS = 600000.0;
 const double ESTIMATE_WEIGHT = 1.5;
+/* What an estimate counts killing a foe, and fetching bombs, before it is
+ * planned. */
+const double KILL_ESTIMATE_MS   = 5000;
+const double PICKUP_ESTIMATE_MS = 5000;
 
 }  // namespace
 
@@ -25,6 +30,15 @@ Facts factsOf(const World &w, const Survey &survey)
         if (w.map()->tile(c.u, c.v)->contents() != CONTENTS_CRYSTAL)
             f.taken.add(i);
     }
+    for (size_t i = 0; i < survey.pickups().size(); i++) {
+        const Cell c = survey.pickups()[i];
+        if (w.map()->tile(c.u, c.v)->contents() != CONTENTS_GRANT_09)
+            f.pickups.add(i);
+    }
+    f.bombs = w.player()->bombsCarried();
+    for (size_t i = 0; i < survey.foes().size(); i++)
+        if (!foeDead(w, survey.foes()[i]))
+            f.alive |= (uint64_t)1 << i;
     return f;
 }
 
@@ -57,7 +71,7 @@ double Planner::estimate(const Facts &f) const
         return NO_WAY_MS;
     const MoveGraph &g = survey_.graph();
     int at = f.at;
-    GemSet taken = f.taken;
+    IndexSet taken = f.taken;
     double ms = 0;
     for (int need = survey_.quota() - f.gems; need > 0; need--) {
         int bestGem = -1, bestAt = -1;
@@ -80,7 +94,18 @@ double Planner::estimate(const Facts &f) const
         taken.add(bestGem);
     }
     double t;
-    return g.arrive(at, survey_.exit(), &t) < 0 ? ms + NO_WAY_MS : ms + t;
+    if (g.arrive(at, survey_.exit(), &t) < 0)
+        return ms + NO_WAY_MS;
+    ms += t;
+    // The foes: the risk on the walk to come, or killing them first,
+    // whichever is less.
+    const double risk = foeRisk(f, survey_) * ms;
+    if (risk > 0) {
+        const int alive = __builtin_popcountll(f.alive);
+        const double remove = alive * KILL_ESTIMATE_MS + (f.bombs >= alive ? 0 : PICKUP_ESTIMATE_MS);
+        ms += risk < remove ? risk : remove;
+    }
+    return ms;
 }
 
 bool Planner::run(Work &work)

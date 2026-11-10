@@ -1,4 +1,6 @@
 #include "routing.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include "schedule.h"
 #include "world.h"
 
@@ -16,40 +18,70 @@ Expect expectOf(const World &w)
     return {w.now(), p->cellU(), p->cellV(), p->heightCell(), p->facing(), p->moveDir()};
 }
 
-Route::Route(const World &start, Cell target, const MoveGraph &guide, size_t maxPlaces,
+namespace {
+
+/* The estimate for a place the MoveGraph has no way on from (it is only an
+ * estimate): far, not never. */
+const double NO_WAY_MS = 60000;
+/* From the drop till the blast is gone, and a tick. */
+const double BLAST_OVER_MS = Bomb::CLEAR_MS + 20;
+/* How near the foe must be for a drop to be tried: the bomb rolls, and the
+ * foe comes on. */
+const int DROP_REACH = 4;
+/* The moves made after a drop, to get clear of the blast, before it is
+ * waited out where the player stands. */
+const int ESCAPE_MOVES = 2;
+
+}  // namespace
+
+Route::Route(const World &start, Goal goal, const MoveGraph &guide, size_t maxPlaces,
              int shortWaits, int timedWaits)
-    : target_(target), guide_(&guide), toTarget_(&guide.timesTo(target)),
-      maxPlaces_(maxPlaces), shortWaits_(shortWaits), timedWaits_(timedWaits), start_(std::make_unique<World>(start))
+    : goal_(goal), guide_(&guide), toCell_(&guide.timesTo(goal.cell)), maxPlaces_(maxPlaces),
+      shortWaits_(shortWaits), timedWaits_(timedWaits), start_(std::make_unique<World>(start))
 {
     Node root;
     root.now   = start.now();
     root.place = placeOf(start);
     root.world = std::make_unique<World>(start);
     nodes_.push_back(std::move(root));
-    best_[{nodes_[0].place, 0}] = 0;
+    best_[keyOf(nodes_[0])] = 0;
     push(0);
 }
 
 Route::~Route() = default;
 
-namespace {
+bool Route::reached(const Node &n) const
+{
+    if (!goal_.kill)
+        return abs(n.place.u - goal_.cell.u) + abs(n.place.v - goal_.cell.v) <= goal_.near;
+    return n.dropAt >= 0 && n.now >= n.dropAt + BLAST_OVER_MS && foeDead(*n.world, goal_.foe);
+}
 
-/* The estimate for a place the MoveGraph has no way on from (it is only an
- * estimate): far, not never. */
-const double NO_WAY_MS = 60000;
-/* The move after WAIT: a wait till the schedule's next wait time
- * (schedule.h). */
-const int TIMED_WAIT = WAIT + 1;
-
-}  // namespace
+bool Route::mayDrop(const Node &n) const
+{
+    if (!goal_.kill || n.dropAt >= 0 || n.world->player()->bombsCarried() == 0)
+        return false;
+    const Foe *f = findFoe(*n.world, goal_.foe);
+    return f && abs(f->cellU() - n.place.u) + abs(f->cellV() - n.place.v) <= DROP_REACH;
+}
 
 void Route::push(int id)
 {
-    const int g = guide_->find(nodes_[id].place);
-    double h = g < 0 ? -1 : (*toTarget_)[g];
-    if (h < 0)
-        h = NO_WAY_MS;
-    open_.push({nodes_[id].now + h, id});
+    const Node &n = nodes_[id];
+    double h;
+    if (n.dropAt >= 0) {
+        h = n.dropAt + BLAST_OVER_MS - n.now;
+        if (h < 0)
+            h = 0;
+    } else {
+        const int g = guide_->find(n.place);
+        h = g < 0 ? -1 : (*toCell_)[g];
+        if (h < 0)
+            h = NO_WAY_MS;
+        if (goal_.kill)
+            h += BLAST_OVER_MS;
+    }
+    open_.push({n.now + h, id});
 }
 
 Route::Status Route::run(Work &work)
@@ -62,11 +94,11 @@ Route::Status Route::run(Work &work)
             }
             const int at = open_.top().second;
             open_.pop();
-            if (best_[{nodes_[at].place, nodes_[at].waited}] != at) {
+            if (best_[keyOf(nodes_[at])] != at) {
                 nodes_[at].world.reset();   // a sooner way there was found since
                 continue;
             }
-            if (nodes_[at].place.cell() == target_) {
+            if (reached(nodes_[at])) {
                 found(at);
                 break;
             }
@@ -74,44 +106,64 @@ Route::Status Route::run(Work &work)
             move_ = 0;
         }
         // One move a turn, so the work is checked between them: the four
-        // steps, a short wait, then a wait till the next wait time.
-        if (move_ <= TIMED_WAIT && nodes_.size() < maxPlaces_) {
+        // steps, a short wait, a wait till the next wait time, a drop.
+        if (nodes_.size() >= maxPlaces_)
+            capped_ = true;
+        if (move_ <= DROP && nodes_.size() < maxPlaces_) {
             const int at = expanding_;
             const int kind = move_++;
-            const int waited = nodes_[at].waited;
+            const Node &from = nodes_[at];
             Played p;
             std::unique_ptr<World> next;
-            if (kind < MOVES || (kind == WAIT && waited < shortWaits_)) {
-                next = std::make_unique<World>(*nodes_[at].world);
+            if (from.dropAt >= 0) {
+                // After the drop: a step or two clear, or the blast waited out.
+                if (kind < MOVES && from.escape < ESCAPE_MOVES) {
+                    next = std::make_unique<World>(*from.world);
+                    p = play(*next, (Move)kind, &work);
+                } else if (kind == TIMED_WAIT) {
+                    next = std::make_unique<World>(*from.world);
+                    p = waitUntil(*next, from.dropAt + BLAST_OVER_MS, &work);
+                }
+            } else if (kind < MOVES || (kind == WAIT && from.waited < shortWaits_) ||
+                       (kind == DROP && mayDrop(from))) {
+                next = std::make_unique<World>(*from.world);
                 p = play(*next, (Move)kind, &work);
-            } else if (kind == TIMED_WAIT && waited < timedWaits_) {
-                const World &from = *nodes_[at].world;
-                for (double t : waitTimes(from, nodes_[at].place.cell()))
-                    if (t > from.now()) {
-                        next = std::make_unique<World>(from);
+            } else if (kind == TIMED_WAIT && from.waited < timedWaits_) {
+                for (double t : waitTimes(*from.world, from.place.cell()))
+                    if (t > from.world->now()) {
+                        next = std::make_unique<World>(*from.world);
                         p = waitUntil(*next, t, &work);
                         break;
                     }
             }
+            if (next && kind == DROP && p.kind == Played::Moved)
+                drops_++;
+            if (next && p.kind == Played::Died && from.dropAt >= 0)
+                diedAfterDrop_++;
             if (!next || p.kind != Played::Moved)
-                continue;
-            const Move m = kind < MOVES ? (Move)kind : WAIT;
-            const Place place = placeOf(*next);
-            const int waitedNow = m == WAIT ? waited + 1 : 0;
-            auto it = best_.find({place, waitedNow});
-            if (it != best_.end() && nodes_[it->second].now <= next->now())
                 continue;
             Node n;
             n.parent = at;
-            n.move   = m;
+            n.move   = (Move)kind;
             n.ticks  = p.ticks;
-            n.waited = waitedNow;
+            n.waited = kind == WAIT || kind == TIMED_WAIT ? from.waited + 1 : 0;
             n.now    = next->now();
-            n.place  = place;
-            n.world  = std::move(next);
+            n.dropAt = kind == DROP ? next->now() : from.dropAt;
+            n.escape = from.dropAt >= 0 ? from.escape + 1 : 0;
+            n.place  = placeOf(*next);
+            // A drop whose blast is over with the foe alive has failed.
+            if (n.dropAt >= 0 && n.now >= n.dropAt + BLAST_OVER_MS && !foeDead(*next, goal_.foe)) {
+                foeLived_++;
+                continue;
+            }
+            auto it = best_.find(keyOf(n));
+            if (it != best_.end() && nodes_[it->second].now <= n.now)
+                continue;
+            n.world = std::move(next);
             const int id = (int)nodes_.size();
+            best_[keyOf(n)] = id;
             nodes_.push_back(std::move(n));
-            best_[{place, waitedNow}] = id;
+            places_++;
             push(id);
             continue;
         }
@@ -120,6 +172,19 @@ Route::Status Route::run(Work &work)
         expanding_ = -1;
     }
     return status_;
+}
+
+std::string Route::summary() const
+{
+    char buf[128];
+    snprintf(buf, sizeof(buf), "places %zu%s", places_, capped_ ? " (capped)" : "");
+    std::string out = buf;
+    if (goal_.kill) {
+        snprintf(buf, sizeof(buf), ", drops %d: foe lived %d, player died %d", drops_, foeLived_,
+                 diedAfterDrop_);
+        out += buf;
+    }
+    return out;
 }
 
 void Route::found(int at)

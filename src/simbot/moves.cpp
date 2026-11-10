@@ -16,14 +16,15 @@ const int WAIT_LIMIT_TICKS = 1800;
 
 const char *moveName(Move m)
 {
-    static const char *const names[] = {"forward", "back", "left", "right", "wait"};
-    return m <= WAIT ? names[m] : "?";
+    static const char *const names[] = {"forward", "back", "left", "right", "wait",
+                                         "timed wait", "drop"};
+    return m <= DROP ? names[m] : "?";
 }
 
 unsigned pressOf(Move m)
 {
     static const unsigned presses[] = {PRESS_FORWARD, PRESS_BACK, PRESS_LEFT, PRESS_RIGHT};
-    return m < MOVES ? presses[m] : 0u;
+    return m < MOVES ? presses[m] : m == DROP ? (unsigned)PRESS_BOMB : 0u;
 }
 
 
@@ -31,6 +32,20 @@ Place placeOf(const World &w)
 {
     const Player *p = w.player();
     return {p->cellU(), p->cellV(), p->heightCell(), p->facing()};
+}
+
+const Foe *findFoe(const World &w, unsigned id)
+{
+    for (const Foe &f : w.foes())
+        if (f.id() == id)
+            return &f;
+    return nullptr;
+}
+
+bool foeDead(const World &w, unsigned id)
+{
+    const Foe *f = findFoe(w, id);
+    return !f || f->moveState() == 4;   // blasted; one that fell is gone soon after
 }
 
 bool dead(const World &w)
@@ -62,12 +77,18 @@ Played play(World &w, Move m, Work *work)
 {
     Played out;
     const Place from = placeOf(w);
+    const unsigned bombs = w.player()->bombsCarried();
     tick(w, pressOf(m), work);
     out.ticks = 1;
-    if (m == WAIT)
+    if (m == WAIT) {
         for (; out.ticks < WAIT_TICKS && !dead(w); out.ticks++)
             tick(w, 0, work);
-    else if (atRest(w) && placeOf(w) == from) {
+    } else if (m == DROP) {
+        if (w.player()->bombsCarried() == bombs) {
+            out.kind = Played::Refused;
+            return out;
+        }
+    } else if (atRest(w) && placeOf(w) == from) {
         out.kind = Played::Refused;
         return out;
     }

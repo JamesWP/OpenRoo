@@ -42,6 +42,8 @@ public:
     virtual ~Attempt() = default;
     /* This frame's share, the live World as it is before the next tick. */
     virtual Status act(const World &live, Work &work, unsigned *presses) = 0;
+    /* Why it ended as it did, for the log; "" if nothing to say. */
+    virtual std::string why() const { return ""; }
 };
 
 class Action {
@@ -51,6 +53,11 @@ public:
     virtual void offer(const Facts &f, const Survey &survey, std::vector<Step> &out) const = 0;
     virtual std::unique_ptr<Attempt> attempt(const Step &step, const Survey &survey) const = 0;
 };
+
+/* What walking among the foes still alive is reckoned to cost, when bombs
+ * are to be had to kill them: each ms of a step counts this many more (one
+ * for each foe), so the planner kills them first where it can. */
+double foeRisk(const Facts &f, const Survey &survey);
 
 /* Every Action, in the order the planner offers them. */
 const std::vector<const Action *> &actions();

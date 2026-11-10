@@ -16,14 +16,27 @@ public:
 
     const MoveGraph &graph() const { return graph_; }
     /* The cells the level's gems lie on at the start, in grid order: a gem
-     * is known by its index here (the first GemSet::MAX). */
+     * is known by its index here (the first IndexSet::MAX). */
     const std::vector<Cell> &gems() const { return gems_; }
+    /* The cells of the bomb pickups (3 bombs each) at the start, known by
+     * their index like the gems. */
+    const std::vector<Cell> &pickups() const { return pickups_; }
+    /* The foes a bomb kills (the catchers; throwers are proof against
+     * blasts) at the start, by Listed id, and the cell each was last seen
+     * on (see), known by their index here (the first 64). */
+    const std::vector<unsigned> &foes() const { return foes_; }
+    Cell seen(int i) const { return seen_[i]; }
+    /* Notes where the foes are now. */
+    void see(const World &w);
     Cell exit() const { return exit_; }
     int  quota() const { return quota_; }
 
 private:
     MoveGraph         graph_;
     std::vector<Cell> gems_;
+    std::vector<Cell> pickups_;
+    std::vector<unsigned> foes_;
+    std::vector<Cell> seen_;
     Cell              exit_;
     int               quota_ = 0;
 };

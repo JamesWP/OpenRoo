@@ -24,10 +24,12 @@ unsigned SimBot::act(const bot::BotView &, const World &world)
                 unreached += (unreached.empty() ? "" : " ") + std::to_string(c.u) + "," +
                              std::to_string(c.v);
         }
-        char buf[128];
+        char buf[192];
         snprintf(buf, sizeof(buf),
-                 "\"places\":%zu,\"moves\":%ld,\"breaking\":%ld,\"gems\":%zu,\"quota\":%d,",
-                 g.size(), g.played(), g.breaking(), survey_->gems().size(), survey_->quota());
+                 "\"places\":%zu,\"moves\":%ld,\"breaking\":%ld,\"gems\":%zu,\"quota\":%d,"
+                 "\"pickups\":%zu,\"foes\":%zu,",
+                 g.size(), g.played(), g.breaking(), survey_->gems().size(), survey_->quota(),
+                 survey_->pickups().size(), survey_->foes().size());
         log_.write(ticks_, "survey", buf + std::string("\"unreached\":") + SimLog::quote(unreached));
     }
     Work work;
@@ -51,7 +53,9 @@ unsigned SimBot::decide(const World &world, Work &work)
             if (s == Attempt::Thinking)
                 return 0;
             log_.write(ticks_, s == Attempt::Done ? "done" : "impossible",
-                       "\"step\":" + SimLog::quote(step_.what));
+                       "\"step\":" + SimLog::quote(step_.what) +
+                           (attempt_->why().empty() ? ""
+                                                    : ",\"why\":" + SimLog::quote(attempt_->why())));
             if (s == Attempt::Impossible) {
                 const Facts now = factsOf(world, *survey_);
                 if (!(now == ruledAt_))
@@ -65,6 +69,7 @@ unsigned SimBot::decide(const World &world, Work &work)
         if (!atRest(world) || ticks_ < retryAt_)
             return 0;
         if (!planner_) {
+            survey_->see(world);
             const Facts now = factsOf(world, *survey_);
             if (!(now == ruledAt_))
                 ruled_.clear();
