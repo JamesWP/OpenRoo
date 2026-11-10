@@ -34,15 +34,16 @@ struct Expect {
 };
 Expect expectOf(const World &w);
 
-/* What a Route is for: the player at rest on cell, or within near steps of
- * it (with track, of foe, wherever it has come to: cell is only where it
- * was, to guide the search); or, with kill, foe (a Listed id) killed by a bomb the player drops
+/* What a Route is for: the player at rest on cell, or, with nearMs, where
+ * the MoveGraph has it within nearMs of it (with track, of foe, wherever it
+ * has come to: cell is only where it was, to guide the search); or, with
+ * kill, foe (a Listed id) killed by a bomb the player drops
  * near it (a DROP, a move or two clear, and the blast waited out: so a foe
  * chasing the player walks into it), the player alive and at rest, the cell
  * then the foe's, to guide the search. */
 struct Goal {
     Cell     cell;
-    int      near = 0;
+    double   nearMs = -1;
     bool     track = false;
     bool     kill = false;
     unsigned foe = 0;
@@ -50,10 +51,8 @@ struct Goal {
 
 class Route {
 public:
-    /* maxWork: the work it may take in all before it gives up (0: no
-     * limit), as it does after maxPlaces places. */
     Route(const World &start, Goal goal, const MoveGraph &guide, size_t maxPlaces = 6000,
-          int shortWaits = 0, int timedWaits = 0, long maxWork = 0);
+          int shortWaits = 0, int timedWaits = 0);
     ~Route();
 
     enum Status { Searching, Found, NoWay };
@@ -92,8 +91,7 @@ private:
     size_t maxPlaces_;
     int    shortWaits_;
     int    timedWaits_;
-    long   maxWork_;
-    long   spent_ = 0;
+    long   spent_ = 0;    // the work it has taken
     std::unique_ptr<World> start_;
     std::vector<Node> nodes_;
     using Entry = std::pair<double, int>;

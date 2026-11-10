@@ -27,9 +27,14 @@ public:
         : goal_(goal), graph_(&graph), waits_(goal.kill) {}
     Status act(const World &live, Work &work, unsigned *presses) override;
     std::string why() const override { return why_; }
+    std::vector<unsigned> requiresDead() const override { return requiresDead_; }
 
 private:
     bool done(const World &live) const;
+    /* For a kill: whether every way near the foe on the MoveGraph passes
+     * another foe (on its cell or beside it), and if so the first one on
+     * the quickest way. */
+    bool blockedBy(const World &w, const Goal &goal, unsigned *foe) const;
 
     Goal goal_;
     const MoveGraph *graph_;
@@ -39,6 +44,7 @@ private:
     bool   waits_;         // the Route may wait (routing.h)
     int    routes_ = 0;    // Routes pressed to their end without the goal
     std::string why_;      // the last Route's summary
+    std::vector<unsigned> requiresDead_;
     bool   approach_ = false;       // the Route walks near the foe, to kill it from there
     bool   approachWaits_ = false;  // and may wait
 };

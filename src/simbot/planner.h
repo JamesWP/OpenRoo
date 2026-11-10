@@ -7,7 +7,8 @@
  * frame (work.h).
  *
  * Steps found impossible as things stand are left out (Attempt::Impossible);
- * the caller clears them when the facts change. */
+ * the caller clears them when the facts change.  Steps with a Requirement
+ * learned are offered only once it holds. */
 #pragma once
 
 #include <map>
@@ -31,10 +32,14 @@ struct Plan {
 };
 
 using Ruled = std::set<std::pair<const Action *, int>>;
+/* Requirements learned (Attempt::requiresDead): for a step, the foes (bits
+ * of Facts::alive) that must be dead before it is offered. */
+using Requires = std::map<std::pair<const Action *, int>, uint64_t>;
 
 class Planner {
 public:
-    Planner(const Survey &survey, const Facts &start, const Ruled &out, int maxNodes = 4000);
+    Planner(const Survey &survey, const Facts &start, const Ruled &out, const Requires &needs,
+            int maxNodes = 4000);
     /* Plans on with work; true once finished, the plan found or not. */
     bool run(Work &work);
     const Plan &plan() const { return plan_; }
@@ -50,6 +55,7 @@ private:
 
     const Survey &survey_;
     Ruled         out_;
+    Requires      requires_;
     int           maxNodes_;
     std::vector<Node> nodes_;
     using Entry = std::tuple<double, int, int>;   // f, fewer gems, node

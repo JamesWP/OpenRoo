@@ -25,9 +25,9 @@ namespace {
 const double NO_WAY_MS = 60000;
 /* From the drop till the blast is gone, and a tick. */
 const double BLAST_OVER_MS = Bomb::CLEAR_MS + 20;
-/* How near the foe must be for a drop to be tried: the bomb rolls, and the
- * foe comes on. */
-const int DROP_REACH = 4;
+/* How near the foe must be for a drop to be tried, on the MoveGraph: the
+ * bomb rolls, and the foe comes on. */
+const double DROP_NEAR_MS = 1200;
 /* The moves made after a drop, to get clear of the blast, before it is
  * waited out where the player stands. */
 const int ESCAPE_MOVES = 2;
@@ -35,9 +35,9 @@ const int ESCAPE_MOVES = 2;
 }  // namespace
 
 Route::Route(const World &start, Goal goal, const MoveGraph &guide, size_t maxPlaces,
-             int shortWaits, int timedWaits, long maxWork)
+             int shortWaits, int timedWaits)
     : goal_(goal), guide_(&guide), toCell_(&guide.timesTo(goal.cell)), maxPlaces_(maxPlaces),
-      shortWaits_(shortWaits), timedWaits_(timedWaits), maxWork_(maxWork), start_(std::make_unique<World>(start))
+      shortWaits_(shortWaits), timedWaits_(timedWaits), start_(std::make_unique<World>(start))
 {
     Node root;
     root.now   = start.now();
@@ -60,7 +60,10 @@ bool Route::reached(const Node &n) const
                 return true;   // gone: nothing left to come near
             c = {f->cellU(), f->cellV()};
         }
-        return abs(n.place.u - c.u) + abs(n.place.v - c.v) <= goal_.near;
+        if (goal_.nearMs < 0)
+            return n.place.cell() == c;
+        const double t = guide_->timeTo(guide_->find(n.place), c);
+        return t >= 0 && t <= goal_.nearMs;
     }
     return n.dropAt >= 0 && n.now >= n.dropAt + BLAST_OVER_MS && foeDead(*n.world, goal_.foe);
 }
@@ -70,7 +73,10 @@ bool Route::mayDrop(const Node &n) const
     if (!goal_.kill || n.dropAt >= 0 || n.world->player()->bombsCarried() == 0)
         return false;
     const Foe *f = findFoe(*n.world, goal_.foe);
-    return f && abs(f->cellU() - n.place.u) + abs(f->cellV() - n.place.v) <= DROP_REACH;
+    if (!f)
+        return false;
+    const double t = guide_->timeTo(guide_->find(n.place), {f->cellU(), f->cellV()});
+    return t >= 0 && t <= DROP_NEAR_MS;
 }
 
 void Route::push(int id)
@@ -96,11 +102,6 @@ Route::Status Route::run(Work &work)
 {
     const long before = work.used;
     while (status_ == Searching && !work.out()) {
-        if (maxWork_ > 0 && spent_ + work.used - before > maxWork_) {
-            capped_ = true;
-            status_ = NoWay;
-            break;
-        }
         if (expanding_ < 0) {
             if (open_.empty()) {
                 status_ = NoWay;

@@ -162,6 +162,51 @@ const std::vector<double> &MoveGraph::timesTo(Cell c) const
     return t;
 }
 
+std::vector<int> MoveGraph::path(int from, const std::function<bool(int)> &goal,
+                                 const std::function<bool(int)> &blocked) const
+{
+    std::vector<double> t(places_.size(), -1);
+    std::vector<int> parent(places_.size(), -1);
+    using Entry = std::pair<double, int>;
+    std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> open;
+    t[from] = 0;
+    open.push({0, from});
+    while (!open.empty()) {
+        const auto [ms, at] = open.top();
+        open.pop();
+        if (ms > t[at])
+            continue;
+        if (goal(at)) {
+            std::vector<int> out;
+            for (int p = at; p >= 0; p = parent[p])
+                out.push_back(p);
+            return {out.rbegin(), out.rend()};
+        }
+        for (const Edge &e : edges_[at]) {
+            const double next = ms + e.ms;
+            if (blocked(e.to) || (t[e.to] >= 0 && next >= t[e.to]))
+                continue;
+            t[e.to] = next;
+            parent[e.to] = at;
+            open.push({next, e.to});
+        }
+    }
+    return {};
+}
+
+double MoveGraph::timeTo(int at, Cell c) const
+{
+    double best = -1;
+    if (at < 0)
+        return best;
+    for (const Cell &d : {Cell{0, 0}, Cell{1, 0}, Cell{-1, 0}, Cell{0, 1}, Cell{0, -1}}) {
+        const double t = timesTo({c.u + d.u, c.v + d.v})[at];
+        if (t >= 0 && (best < 0 || t < best))
+            best = t;
+    }
+    return best;
+}
+
 int MoveGraph::arrive(int from, Cell c, double *ms) const
 {
     const std::vector<double> &t = times(from);

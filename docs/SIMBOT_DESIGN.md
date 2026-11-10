@@ -29,10 +29,10 @@ played on it. They are not game rules, so they are kept apart: in
 `entities/whatif.{h,cpp}`, namespace `whatif`, each named `whatif::…`
 (`whatif::removeFoe`, `whatif::spendBlock`). No game code calls them.
 
-**Requirements.** An Action that cannot find a way reports why, as a fact:
-the step was impossible but becomes possible on a what-if copy without
-foe f, so `dead(f)` is added to that Action's preconditions; likewise
-`spent(b)`. If nothing found makes it possible, the Action is marked
+**Requirements.** An Action that cannot find a way reports why, as a fact,
+at once rather than after a long search: a kill whose every way near the
+foe on the MoveGraph passes another foe g requires `dead(g)`, so the
+planner kills g first; likewise `spent(b)`. If nothing found makes it possible, the Action is marked
 impossible as things stand. A learned condition holds until a fact it
 depends on changes. The planner then plans around it.
 

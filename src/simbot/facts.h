@@ -31,7 +31,7 @@ struct Facts {
     int      gems = 0;    // held
     IndexSet pickups;     // taken
     int      bombs = 0;   // held
-    uint64_t alive = 0;   // a bit per Survey::foes, but for the spared
+    uint64_t alive = 0;   // a bit per Survey::foes
     bool     done = false;
 
     auto key() const { return std::make_tuple(at, taken, gems, pickups, bombs, alive, done); }

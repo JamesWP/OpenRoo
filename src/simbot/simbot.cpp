@@ -56,30 +56,27 @@ unsigned SimBot::decide(const World &world, Work &work)
                        "\"step\":" + SimLog::quote(step_.what) +
                            (attempt_->why().empty() ? ""
                                                     : ",\"why\":" + SimLog::quote(attempt_->why())));
-            if (s == Attempt::Impossible) {
+            if (s == Attempt::Impossible && learn(*attempt_)) {
+                // A Requirement learned: the planner plans to meet it.
+            } else if (s == Attempt::Impossible) {
                 const Facts now = factsOf(world, *survey_);
                 if (!(now == ruledAt_))
                     ruled_.clear();
                 ruledAt_ = now;
                 ruled_.insert({step_.action, step_.arg});
-                if (std::string(step_.action->name()) == "kill") {
-                    survey_->spare(step_.arg);
-                    spareUntil_ = ticks_ + SPARE_TICKS;
-                }
+
             }
             attempt_.reset();
             continue;
         }
         if (!atRest(world) || ticks_ < retryAt_)
             return 0;
-        if (ticks_ >= spareUntil_)
-            survey_->spareNone();
         if (!planner_) {
             survey_->see(world);
             const Facts now = factsOf(world, *survey_);
             if (!(now == ruledAt_))
                 ruled_.clear();
-            planner_ = std::make_unique<Planner>(*survey_, now, ruled_);
+            planner_ = std::make_unique<Planner>(*survey_, now, ruled_, requires_);
         }
         if (!planner_->run(work))
             return 0;
@@ -101,6 +98,30 @@ unsigned SimBot::decide(const World &world, Work &work)
         if (work.out())
             return 0;
     }
+}
+
+bool SimBot::learn(const Attempt &a)
+{
+    const std::vector<unsigned> dead = a.requiresDead();
+    if (dead.empty())
+        return false;
+    uint64_t bits = 0;
+    for (unsigned id : dead) {
+        size_t i = 0;
+        while (i < survey_->foes().size() && survey_->foes()[i] != id)
+            i++;
+        if (i == survey_->foes().size())
+            return false;   // one no bomb kills (a thrower): no way to meet it
+        bits |= (uint64_t)1 << i;
+    }
+    requires_[{step_.action, step_.arg}] |= bits;
+    std::string names;
+    for (size_t i = 0; i < survey_->foes().size(); i++)
+        if (bits >> i & 1)
+            names += (names.empty() ? "f" : " f") + std::to_string(i);
+    log_.write(ticks_, "requires", "\"step\":" + SimLog::quote(step_.what) +
+                                       ",\"dead\":" + SimLog::quote(names));
+    return true;
 }
 
 std::vector<bot::Thought> SimBot::thoughts() const

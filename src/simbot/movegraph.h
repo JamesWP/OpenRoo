@@ -14,6 +14,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <functional>
 #include <map>
 #include <vector>
 #include "moves.h"
@@ -56,9 +57,18 @@ public:
     /* The least ms from every place to a place on cell c (< 0: no way),
      * worked out the first time it is asked for. */
     const std::vector<double> &timesTo(Cell c) const;
+    /* The least ms from place at to cell c or one beside it (a foe's, which
+     * the player may not stand on); < 0: no way, or at is -1. */
+    double timeTo(int at, Cell c) const;
     /* The quickest arrival on cell c from place from: the place, -1 if
      * there is none, and its ms. */
     int arrive(int from, Cell c, double *ms) const;
+
+    /* The quickest way from place from to a place goal accepts, through no
+     * place blocked accepts (from aside): the places along it, from first;
+     * empty if there is none. */
+    std::vector<int> path(int from, const std::function<bool(int)> &goal,
+                          const std::function<bool(int)> &blocked) const;
 
     /* The moves played to build it, and the edges that break a tile. */
     long played() const { return played_; }

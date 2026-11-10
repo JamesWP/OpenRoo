@@ -27,10 +27,10 @@ public:
 private:
     /* Ticks without a plan before trying again. */
     static const unsigned long RETRY_TICKS = 60;
-    // How long a foe whose kill was Impossible is spared (Survey::spared).
-    static const unsigned long SPARE_TICKS = 30 * 60;
 
     unsigned decide(const World &world, Work &work);
+    /* Keeps a Requirement the Attempt found, if it gave one that can be met. */
+    bool learn(const Attempt &a);
 
     SimLog                   log_;
     std::unique_ptr<Survey>  survey_;
@@ -40,7 +40,8 @@ private:
     Step                     step_;
     Ruled                    ruled_;       // steps impossible as things stand
     Facts                    ruledAt_;     // the facts they were found so in
-    unsigned long            ticks_ = 0, retryAt_ = 0, spareUntil_ = 0;
+    Requires                 requires_;    // Requirements learned, for the level
+    unsigned long            ticks_ = 0, retryAt_ = 0;
     std::string              note_;
 };
 

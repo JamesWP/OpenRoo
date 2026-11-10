@@ -1,5 +1,7 @@
 #include "routeattempt.h"
 #include <stdlib.h>
+#include <map>
+#include <string>
 #include "world.h"
 
 namespace simbot {
@@ -13,21 +15,50 @@ const int FOE_WAITS = 8;
 const int TIMED_WAITS = 4;
 /* A kill's Routes are searched no further: it is near the foe or nowhere. */
 const size_t KILL_PLACES = 3000;
-/* What a kill's searches (the walk near, the kill) may each take: the
- * player stands meanwhile, so 2 s of frames at most. */
-const long KILL_WORK = 120 * FRAME_WORK;
 /* Routes pressed to their end with the goal not come about, before it is
  * given up on. */
 const int MAX_ROUTES = 3;
-/* A kill is searched from within this many steps of the foe; from farther,
- * the player walks there first. */
-const int APPROACH_NEAR = 3;
+/* A kill is searched from within this many ms of the foe on the MoveGraph;
+ * from farther, the player walks there first. */
+const double APPROACH_MS = 1000;
 
 }  // namespace
 
 bool RouteAttempt::done(const World &live) const
 {
     return goal_.kill ? foeDead(live, goal_.foe) : placeOf(live).cell() == goal_.cell;
+}
+
+bool RouteAttempt::blockedBy(const World &w, const Goal &goal, unsigned *foe) const
+{
+    const MoveGraph &g = *graph_;
+    const int from = g.find(placeOf(w));
+    if (from < 0)
+        return false;
+    // The cells each other foe stands on or beside.
+    std::map<Cell, unsigned> zone;
+    for (const Foe &o : w.foes()) {
+        if (o.id() == goal.foe || o.moveState() != 0)
+            continue;
+        const Cell c{o.cellU(), o.cellV()};
+        for (const Cell &d : {Cell{0, 0}, Cell{1, 0}, Cell{-1, 0}, Cell{0, 1}, Cell{0, -1}})
+            zone[{c.u + d.u, c.v + d.v}] = o.id();
+    }
+    auto near = [&](int p) {
+        const double t = g.timeTo(p, goal.cell);
+        return t >= 0 && t <= APPROACH_MS;
+    };
+    auto inZone = [&](int p) { return zone.count(g.place(p).cell()) > 0; };
+    if (!g.path(from, near, inZone).empty())
+        return false;
+    for (int p : g.path(from, near, [](int) { return false; })) {
+        auto it = zone.find(g.place(p).cell());
+        if (p != from && it != zone.end()) {
+            *foe = it->second;
+            return true;
+        }
+    }
+    return false;   // no way even without them: the search will find so
 }
 
 Attempt::Status RouteAttempt::act(const World &live, Work &work, unsigned *presses)
@@ -51,21 +82,26 @@ Attempt::Status RouteAttempt::act(const World &live, Work &work, unsigned *press
             if (!f)
                 return Thinking;   // gone while standing: done next frame
             goal.cell = {f->cellU(), f->cellV()};
-            const Place p = placeOf(ahead);
-            if (abs(p.u - goal.cell.u) + abs(p.v - goal.cell.v) > APPROACH_NEAR) {
+            unsigned blocker;
+            if (blockedBy(ahead, goal, &blocker)) {
+                requiresDead_ = {blocker};
+                why_ = "foe " + std::to_string(blocker) + " is in the way";
+                return Impossible;
+            }
+            const double t = graph_->timeTo(graph_->find(placeOf(ahead)), goal.cell);
+            if (t < 0 || t > APPROACH_MS) {
                 // Far: walk near it first (it may come to meet the player),
                 // then the kill from there.
                 goal.kill = false;
                 goal.track = true;
-                goal.near = APPROACH_NEAR;
+                goal.nearMs = APPROACH_MS;
                 approach_ = true;
             }
         }
         const bool waits = waits_ && (!approach_ || approachWaits_);
         route_ = std::make_unique<Route>(ahead, goal, *graph_, goal.kill ? KILL_PLACES : 6000,
                                          waits && !ahead.foes().empty() ? FOE_WAITS : 0,
-                                         waits ? TIMED_WAITS : 0,
-                                         goal_.kill ? KILL_WORK : 0);
+                                         waits ? TIMED_WAITS : 0);
         at_ = 0;
     }
     const Route::Status status = route_->run(work);

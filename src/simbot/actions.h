@@ -44,6 +44,9 @@ public:
     virtual Status act(const World &live, Work &work, unsigned *presses) = 0;
     /* Why it ended as it did, for the log; "" if nothing to say. */
     virtual std::string why() const { return ""; }
+    /* Impossible, what would make it possible: the foes (Listed ids) that
+     * must be dead first.  Empty if nothing is known to. */
+    virtual std::vector<unsigned> requiresDead() const { return {}; }
 };
 
 class Action {

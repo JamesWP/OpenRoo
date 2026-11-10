@@ -37,7 +37,7 @@ Facts factsOf(const World &w, const Survey &survey)
     }
     f.bombs = w.player()->bombsCarried();
     for (size_t i = 0; i < survey.foes().size(); i++)
-        if (!foeDead(w, survey.foes()[i]) && !(survey.spared() >> i & 1))
+        if (!foeDead(w, survey.foes()[i]))
             f.alive |= (uint64_t)1 << i;
     return f;
 }
@@ -53,8 +53,9 @@ std::string Plan::describe() const
     return out;
 }
 
-Planner::Planner(const Survey &survey, const Facts &start, const Ruled &out, int maxNodes)
-    : survey_(survey), out_(out), maxNodes_(maxNodes)
+Planner::Planner(const Survey &survey, const Facts &start, const Ruled &out,
+                 const Requires &needs, int maxNodes)
+    : survey_(survey), out_(out), requires_(needs), maxNodes_(maxNodes)
 {
     Node root;
     root.facts = start;
@@ -137,6 +138,9 @@ bool Planner::run(Work &work)
         for (Step &s : next) {
             if (out_.count({s.action, s.arg}) && at == 0)
                 continue;   // impossible now, from here
+            auto r = requires_.find({s.action, s.arg});
+            if (r != requires_.end() && (r->second & nodes_[at].facts.alive))
+                continue;   // a foe it needs dead is alive
             Node n;
             n.facts  = s.after;
             n.ms     = nodes_[at].ms + s.ms;
