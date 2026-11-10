@@ -42,17 +42,24 @@ bool atRest(const World &w)
            !p->launched() && p->teleportPhase() == 0;
 }
 
-void tick(World &w, unsigned presses)
+long tickCost(const World &w)
 {
+    return 1 + 15 * (long)w.foes().size();
+}
+
+void tick(World &w, unsigned presses, Work *work)
+{
+    if (work)
+        work->spend(tickCost(w));
     PlayEvents unheard;
     w.tick(w.tickStep()->value, presses, true, unheard);
 }
 
-Played play(World &w, Move m)
+Played play(World &w, Move m, Work *work)
 {
     Played out;
     const Place from = placeOf(w);
-    tick(w, pressOf(m));
+    tick(w, pressOf(m), work);
     out.ticks = 1;
     if (atRest(w) && placeOf(w) == from) {
         out.kind = Played::Refused;
@@ -67,7 +74,7 @@ Played play(World &w, Move m)
             out.kind = Played::Unsettled;
             return out;
         }
-        tick(w, 0);
+        tick(w, 0, work);
         out.ticks++;
     }
     out.kind = Played::Moved;

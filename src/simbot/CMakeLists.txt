@@ -1,10 +1,16 @@
 add_library(simbot OBJECT
     actions.cpp
-    planner.cpp
+    collect.cpp
+    exit.cpp
+    goto.cpp
+    movegraph.cpp
     moves.cpp
-    reach.cpp
-    simbot.cpp)
+    planner.cpp
+    routing.cpp
+    simbot.cpp
+    simlog.cpp
+    survey.cpp)
 target_include_directories(simbot PUBLIC .)
 target_link_libraries(simbot
     PUBLIC botapi
-    PRIVATE entities level log)
+    PRIVATE entities level log sysdev)

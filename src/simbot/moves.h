@@ -6,6 +6,7 @@
 #pragma once
 
 #include <tuple>
+#include "work.h"
 
 class World;
 
@@ -17,12 +18,19 @@ const char *moveName(Move m);
 /* The move's press (presses.h). */
 unsigned pressOf(Move m);
 
+struct Cell {
+    int u = 0, v = 0;
+    bool operator==(const Cell &o) const { return u == o.u && v == o.v; }
+    bool operator<(const Cell &o) const { return u != o.u ? u < o.u : v < o.v; }
+};
+
 /* Where the player stands at rest: its cell, height and facing. */
 struct Place {
     int u = 0, v = 0, h = 0, facing = 0;
     auto key() const { return std::make_tuple(u, v, h, facing); }
     bool operator<(const Place &o) const { return key() < o.key(); }
     bool operator==(const Place &o) const { return key() == o.key(); }
+    Cell cell() const { return {u, v}; }
 };
 
 Place placeOf(const World &w);
@@ -33,8 +41,8 @@ bool atRest(const World &w);
 bool dead(const World &w);
 
 /* One tick of w, its own step long, with presses held and play running;
- * its sounds go unheard. */
-void tick(World &w, unsigned presses);
+ * its sounds go unheard.  With work, charged to it. */
+void tick(World &w, unsigned presses, Work *work = nullptr);
 
 /* What came of a move. */
 struct Played {
@@ -46,6 +54,6 @@ struct Played {
 /* Plays m on w, the player at rest.  Refused if the player is at rest on
  * the tick after the press where it was; Unsettled if it is not at rest
  * within the limit (held on a sticky pad, say). */
-Played play(World &w, Move m);
+Played play(World &w, Move m, Work *work = nullptr);
 
 }  // namespace simbot

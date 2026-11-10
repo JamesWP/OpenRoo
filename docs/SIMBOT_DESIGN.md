@@ -3,10 +3,11 @@
 **Plan, then act.** The planner (GOAP, A*) searches over *Facts*: the
 player's place (the start, gems, pickups, switches, sites, the exit),
 gems taken, bombs and glides held, foes alive, blocks spent, bridges
-extended. An *Action* is both halves of one step: what the planner sees
-(preconditions, effects, an estimated cost) and its doing (searching
-copies of the World for the presses that bring its effects about, then
-pressing them). Plans are written `collect g3 (5,4) ~2.1s → blast b1 from
+extended. An *Action* is both halves of one kind of step: what the planner sees
+(preconditions, effects, an estimated cost) and its doing. A *Step* is one
+planned (`collect g3`); an *Attempt* is a Step being done: searching copies
+of the World for the presses that bring its effects about, then pressing
+them. Plans are written `collect g3 (5,4) ~2.1s → blast b1 from
 (6,7) ~3.0s → exit (9,9) ~1.5s`. Only the first step is done; the planner
 plans again whenever the facts change.
 
@@ -23,7 +24,7 @@ played on it. They are not game rules, so they are kept apart: in
 `entities/whatif.{h,cpp}`, namespace `whatif`, each named `whatif::…`
 (`whatif::removeFoe`, `whatif::spendBlock`). No game code calls them.
 
-**Blockers.** An Action that cannot find a way reports why, as a fact:
+**Requirements.** An Action that cannot find a way reports why, as a fact:
 the step was impossible but becomes possible on a what-if copy without
 foe f, so `dead(f)` is added to that Action's preconditions; likewise
 `spent(b)`. If nothing found makes it possible, the Action is marked
@@ -41,7 +42,7 @@ done (nodes, ticks played), never wall time, so runs are deterministic.
   budget.
 - **The sim log**, one JSON line per event: plans, Actions started,
   finished or blocked, what each learned, and the work each frame took.
-- **Debug UI panel:** the plan, the step under way, its blockers, and the
+- **Debug UI panel:** the plan, the step under way, its requirements, and the
   MoveGraph drawn over the level.
 - **`KAROO_BOT_STOP`=frame:** stops a run at a frame. On the fixed clock
   the run plays out the same, so any decision can be reproduced and

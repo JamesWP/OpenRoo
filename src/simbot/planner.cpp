@@ -1,75 +1,27 @@
 #include "planner.h"
-#include <map>
-#include <queue>
+#include <stdio.h>
+#include "survey.h"
 #include "tile.h"
 #include "world.h"
 
 namespace simbot {
 
-Planning::Planning(const World &start)
-{
-    const LevelMap *map = start.map();
-    for (int v = 0; v < map->extentV(); v++)
-        for (int u = 0; u < map->extentU(); u++)
-            if (map->tile(u, v)->contents() == CONTENTS_CRYSTAL)
-                gems_.push_back({u, v});
-    exit_ = {start.player()->markerCellU(), start.player()->markerCellV()};
-    const Place p = placeOf(start);
-    start_ = {p.u, p.v};
-    samples_[{p.u, p.v}] = std::make_unique<World>(start);
-    const Reach r(start, targets());
-    for (int a : r.arrivals())
-        samples_[{r.place(a).u, r.place(a).v}] = std::make_unique<World>(r.world(a));
-}
+namespace {
 
-std::vector<Cell> Planning::targets() const
-{
-    std::vector<Cell> t = gems_;
-    t.push_back(exit_);
-    return t;
-}
+/* What an estimate counts a leg there is no way for. */
+const double NO_WAY_MS = 600000.0;
+const double ESTIMATE_WEIGHT = 1.5;
 
-double Planning::legMs(Cell from, Cell to)
-{
-    const Key f{from.u, from.v}, t{to.u, to.v};
-    if (f == t)
-        return 0;
-    auto it = legs_.find(f);
-    if (it == legs_.end()) {
-        std::map<Key, double> &legs = legs_[f];
-        auto sample = samples_.find(f);
-        if (sample != samples_.end()) {
-            const Reach r(*sample->second, targets());
-            for (int a : r.arrivals())
-                legs[{r.place(a).u, r.place(a).v}] = r.ms(a);
-        }
-        it = legs_.find(f);
-    }
-    auto leg = it->second.find(t);
-    return leg == it->second.end() ? -1 : leg->second;
-}
+}  // namespace
 
-Planning::~Planning() = default;
-
-void Planning::begin(const World &w)
-{
-    from_ = &w;
-    reach_.reset();
-}
-
-const Reach &Planning::reach()
-{
-    if (!reach_)
-        reach_ = std::make_unique<Reach>(*from_, targets());
-    return *reach_;
-}
-
-Facts factsOf(const World &w, const Planning &planning)
+Facts factsOf(const World &w, const Survey &survey)
 {
     Facts f;
-    f.at = placeOf(w);
-    for (size_t i = 0; i < planning.gems().size() && i < 64; i++) {
-        const Cell c = planning.gems()[i];
+    f.at   = survey.graph().find(placeOf(w));
+    f.gems = w.player()->gemsCollected();
+    f.done = w.completed();
+    for (size_t i = 0; i < survey.gems().size(); i++) {
+        const Cell c = survey.gems()[i];
         if (w.map()->tile(c.u, c.v)->contents() != CONTENTS_CRYSTAL)
             f.taken |= (uint64_t)1 << i;
     }
@@ -79,97 +31,103 @@ Facts factsOf(const World &w, const Planning &planning)
 std::string Plan::describe() const
 {
     std::string out;
-    for (const PlanStep &s : steps)
-        out += (out.empty() ? "" : ", ") + s.what;
+    for (const Step &s : steps) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), " ~%.1fs", s.ms / 1000);
+        out += (out.empty() ? "" : " -> ") + s.what + buf;
+    }
     return out;
 }
 
-namespace {
-
-struct State {
-    std::unique_ptr<World> world;
-    Facts  facts;
-    double ms = 0;      // from the start
-    int    parent = -1;
-    const char *action = "";
-    std::string what;
-    std::vector<unsigned> presses;   // from the parent
-};
-
-}  // namespace
-
-Plan makePlan(const World &start, const std::vector<const Action *> &actions, const Goal &goal,
-              int maxStates)
+Planner::Planner(const Survey &survey, const Facts &start, const Ruled &out, int maxNodes)
+    : survey_(survey), out_(out), maxNodes_(maxNodes)
 {
-    Plan plan;
-    Planning planning(start);
-    std::vector<State> states;
-    State root;
-    root.world = std::make_unique<World>(start);
-    root.facts = factsOf(start, planning);
-    states.push_back(std::move(root));
+    Node root;
+    root.facts = start;
+    nodes_.push_back(root);
+    seen_[start] = 0;
+    open_.push({ESTIMATE_WEIGHT * estimate(start), -start.gems, 0});
+}
 
-    // By f = ms + estimate, ties to the state made first.
-    using Entry = std::pair<double, int>;
-    std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> open;
-    std::map<Facts, double> seen;   // the least ms each facts were come to in
-    open.push({goal.estimate(start, planning), 0});
-    seen[states[0].facts] = 0;
-
-    int found = -1;
-    while (!open.empty() && plan.expanded < maxStates) {
-        const int at = open.top().second;
-        open.pop();
-        if (seen[states[at].facts] < states[at].ms)
-            continue;   // come to sooner since
-        const World &from = *states[at].world;   // states grows below; the World stays put
-        if (goal.reached(from)) {
-            found = at;
-            break;
-        }
-        plan.expanded++;
-        planning.begin(from);
-        std::vector<Action::Successor> next;
-        for (const Action *a : actions) {
-            const size_t before = next.size();
-            a->expand(from, planning, next);
-            for (size_t i = before; i < next.size(); i++) {
-                Action::Successor &n = next[i];
-                State t;
-                t.facts   = factsOf(*n.world, planning);
-                t.ms      = n.world->now() - start.now();
-                t.parent  = at;
-                t.action  = a->name();
-                t.what    = std::move(n.what);
-                t.presses = std::move(n.presses);
-                auto it = seen.find(t.facts);
-                if (it != seen.end() && it->second <= t.ms)
-                    continue;
-                seen[t.facts] = t.ms;
-                const double f = t.ms + goal.estimate(*n.world, planning);
-                t.world = std::move(n.world);
-                states.push_back(std::move(t));
-                open.push({f, (int)states.size() - 1});
+double Planner::estimate(const Facts &f) const
+{
+    if (f.done)
+        return 0;
+    if (f.at < 0)
+        return NO_WAY_MS;
+    const MoveGraph &g = survey_.graph();
+    int at = f.at;
+    uint64_t taken = f.taken;
+    double ms = 0;
+    for (int need = survey_.quota() - f.gems; need > 0; need--) {
+        int bestGem = -1, bestAt = -1;
+        double best = 0;
+        for (size_t i = 0; i < survey_.gems().size(); i++) {
+            if (taken >> i & 1)
+                continue;
+            double t;
+            const int p = g.arrive(at, survey_.gems()[i], &t);
+            if (p >= 0 && (bestGem < 0 || t < best)) {
+                bestGem = (int)i;
+                bestAt  = p;
+                best    = t;
             }
         }
-        // Its successors are made: only they need a World now.
-        if (at != 0)
-            states[at].world.reset();
+        if (bestGem < 0)
+            return ms + NO_WAY_MS;
+        ms += best;
+        at = bestAt;
+        taken |= (uint64_t)1 << bestGem;
     }
-    if (found < 0)
-        return plan;
+    double t;
+    return g.arrive(at, survey_.exit(), &t) < 0 ? ms + NO_WAY_MS : ms + t;
+}
 
-    plan.found = true;
-    plan.ms    = states[found].ms;
-    std::vector<int> chain;
-    for (int n = found; n > 0; n = states[n].parent)
-        chain.push_back(n);
-    for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
-        const State &s = states[*it];
-        plan.steps.push_back({s.action, s.what, s.ms - states[s.parent].ms});
-        plan.presses.insert(plan.presses.end(), s.presses.begin(), s.presses.end());
+bool Planner::run(Work &work)
+{
+    while (!finished_ && !work.out()) {
+        if (open_.empty() || plan_.nodes >= maxNodes_) {
+            finished_ = true;
+            break;
+        }
+        const int at = std::get<2>(open_.top());
+        open_.pop();
+        if (seen_[nodes_[at].facts] < nodes_[at].ms)
+            continue;   // come to sooner since
+        if (nodes_[at].facts.done) {
+            plan_.found = true;
+            plan_.ms    = nodes_[at].ms;
+            std::vector<Step> back;
+            for (int n = at; n > 0; n = nodes_[n].parent)
+                back.push_back(nodes_[n].step);
+            plan_.steps.assign(back.rbegin(), back.rend());
+            finished_ = true;
+            break;
+        }
+        plan_.nodes++;
+        work.spend(PLAN_NODE_WORK);
+        std::vector<Step> next;
+        for (const Action *a : actions())
+            a->offer(nodes_[at].facts, survey_, next);
+        for (Step &s : next) {
+            if (out_.count({s.action, s.arg}) && at == 0)
+                continue;   // impossible now, from here
+            Node n;
+            n.facts  = s.after;
+            n.ms     = nodes_[at].ms + s.ms;
+            n.parent = at;
+            n.step   = std::move(s);
+            auto it = seen_.find(n.facts);
+            if (it != seen_.end() && it->second <= n.ms)
+                continue;
+            seen_[n.facts] = n.ms;
+            const double f = n.ms + ESTIMATE_WEIGHT * estimate(n.facts);
+            const int gems = n.facts.gems;
+            nodes_.push_back(std::move(n));
+            open_.push({f, -gems, (int)nodes_.size() - 1});
+        }
     }
-    return plan;
+    return finished_;
 }
 
 }  // namespace simbot

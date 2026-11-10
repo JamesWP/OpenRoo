@@ -1,119 +1,62 @@
-/* The planner, GOAP: the cheapest sequence of actions from a World to a goal,
- * cost being ms of play.
+/* The planner: GOAP, A* over Facts (facts.h) to the level done, by the
+ * Actions' planning halves.  Nothing is played: the costs are the Actions'
+ * estimates, its guide the rest of the quota (nearest gem first) and the
+ * exit, timed on the MoveGraph, weighed ESTIMATE_WEIGHT times over, and a
+ * tie goes to the state with more gems: only the first step is acted on,
+ * so a good plan found soon beats the best one.  It runs a little each
+ * frame (work.h).
  *
- * Its states are Worlds: each is the one before with an action played out on
- * a copy, so an action's preconditions and effects are whatever the game
- * makes of it, never a model of the game.  The facts the search goes by are
- * read off each World (Facts): where the player stands and which of the
- * start's gems are taken.  A state whose facts were come to sooner is not
- * searched again.  The search is A*, the goal's estimate its heuristic (a
- * guide, not a bound: the plans are good rather than the quickest), with
- * a budget in states expanded, so it is deterministic.
- *
- * An action offers, from a state, the states it leads to (Action::expand),
- * each with the presses that get there.  The actions share what is costly to
- * work out once per state (Planning): the quickest ways about from it
- * (reach.h). */
+ * Steps found impossible as things stand are left out (Attempt::Impossible);
+ * the caller clears them when the facts change. */
 #pragma once
 
 #include <map>
-#include <memory>
-#include <stdint.h>
-#include <string>
+#include <queue>
+#include <set>
 #include <tuple>
+#include <string>
+#include <utility>
 #include <vector>
-#include "reach.h"
-
-class World;
+#include "actions.h"
 
 namespace simbot {
 
-/* What the planner shares with the actions while one plan is made. */
-class Planning {
-public:
-    explicit Planning(const World &start);
-    ~Planning();
-
-    /* The cells the start's gems lie on, in grid order. */
-    const std::vector<Cell> &gems() const { return gems_; }
-    Cell exit() const { return exit_; }
-    /* The least ms from rest on one cell to another (a gem's, the exit's,
-     * the start's) on the level as it started: what the estimates go by.
-     * Found by a reach from where the start's reach first came to the
-     * cell, once for each.  < 0 if there is no way. */
-    double legMs(Cell from, Cell to);
-
-    /* The state about to be expanded: what follows is of it. */
-    void begin(const World &w);
-    /* The quickest ways about from it, the Worlds on the gems and the exit
-     * kept: worked out when first asked for. */
-    const Reach &reach();
-
-private:
-    using Key = std::pair<int, int>;
-    std::vector<Cell> targets() const;
-
-    std::vector<Cell> gems_;
-    Cell              exit_;
-    Cell              start_;
-    std::map<Key, std::unique_ptr<World>> samples_;    // the player at rest on the cell
-    std::map<Key, std::map<Key, double>>  legs_;       // from a cell, to each target
-    const World      *from_ = nullptr;
-    std::unique_ptr<Reach> reach_;
-};
-
-/* The facts a state is searched by. */
-struct Facts {
-    Place    at;
-    uint64_t taken = 0;   // a bit per gem of Planning::gems (the first 64)
-    auto key() const { return std::make_tuple(at.key(), taken); }
-    bool operator<(const Facts &o) const { return key() < o.key(); }
-};
-
-Facts factsOf(const World &w, const Planning &planning);
-
-class Action {
-public:
-    struct Successor {
-        std::unique_ptr<World> world;
-        std::string            what;      // for the note: "gem (3,4)"
-        std::vector<unsigned>  presses;   // each tick's, from the state
-    };
-
-    virtual ~Action() = default;
-    virtual const char *name() const = 0;
-    virtual void expand(const World &from, Planning &planning, std::vector<Successor> &out) const = 0;
-};
-
-class Goal {
-public:
-    virtual ~Goal() = default;
-    virtual const char *name() const = 0;
-    virtual bool reached(const World &w) const = 0;
-    /* An estimate of the ms from w to the goal. */
-    virtual double estimate(const World &w, Planning &planning) const = 0;
-};
-
-struct PlanStep {
-    const char *action = "";
-    std::string what;
-    double      ms = 0;     // its own
-};
-
 struct Plan {
     bool found = false;
-    std::vector<PlanStep> steps;
-    std::vector<unsigned> presses;   // every tick's, from the start
+    std::vector<Step> steps;
     double ms = 0;
-    int    expanded = 0;
-
-    /* "gem (3,4), gem (5,1), exit (9,9)". */
+    int    nodes = 0;
+    /* "collect g3 (5,4) ~2.1s -> exit (9,9) ~1.5s". */
     std::string describe() const;
 };
 
-/* The cheapest plan to the goal by the actions, expanding at most
- * maxStates states. */
-Plan makePlan(const World &start, const std::vector<const Action *> &actions, const Goal &goal,
-              int maxStates = 200);
+using Ruled = std::set<std::pair<const Action *, int>>;
+
+class Planner {
+public:
+    Planner(const Survey &survey, const Facts &start, const Ruled &out, int maxNodes = 4000);
+    /* Plans on with work; true once finished, the plan found or not. */
+    bool run(Work &work);
+    const Plan &plan() const { return plan_; }
+
+private:
+    struct Node {
+        Facts  facts;
+        double ms = 0;
+        int    parent = -1;
+        Step   step;
+    };
+    double estimate(const Facts &f) const;
+
+    const Survey &survey_;
+    Ruled         out_;
+    int           maxNodes_;
+    std::vector<Node> nodes_;
+    using Entry = std::tuple<double, int, int>;   // f, fewer gems, node
+    std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> open_;
+    std::map<Facts, double> seen_;
+    Plan plan_;
+    bool finished_ = false;
+};
 
 }  // namespace simbot

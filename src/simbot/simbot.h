@@ -1,44 +1,45 @@
-/* SimBot: a player bot that plays ahead on copies of the level (world.h)
- * and nothing else: no model of the game's rules of its own.
- *
- * From rest it plans (planner.h) the presses of every tick to the goal, plays
- * them out on a copy to know the World it expects before each, and then
- * presses them.  It plans again whenever the game is not where it expected
- * (on the variable clock of interactive play, say), and, with no plan,
- * every PLAN_TICKS while at rest. */
+/* SimBot: the policy (docs/SIMBOT_DESIGN.md).  It surveys the level once
+ * (survey.h), then within each frame's work (work.h): plans from the facts
+ * as they are (planner.h), and makes an Attempt at the plan's first step
+ * (actions.h).  When the step is done it plans again; when it is impossible,
+ * that step is left out of the next plan, until the facts change. */
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
+#include "actions.h"
+#include "planner.h"
 #include "policy.h"
+#include "simlog.h"
+#include "survey.h"
 
 namespace simbot {
 
 class SimBot : public bot::Policy {
 public:
+    SimBot();
+    ~SimBot();
     unsigned act(const bot::BotView &view, const World &world) override;
     std::string note() const override { return note_; }
     std::vector<bot::Thought> thoughts() const override;
 
 private:
-    /* What must match before each press: the clock, and the player's cell,
-     * height, facing and move under way. */
-    struct Expect {
-        double now;
-        int    u, v, h, facing, moveDir;
-        bool operator==(const Expect &o) const;
-    };
-    static Expect expectOf(const World &w);
-    void plan(const World &world);
+    /* Ticks without a plan before trying again. */
+    static const unsigned long RETRY_TICKS = 60;
 
-    std::vector<unsigned> presses_;
-    std::vector<Expect>   expect_;
-    size_t                at_ = 0;
-    unsigned long         ticks_ = 0, lastTry_ = 0;
-    bool                  tried_ = false;
-    int                   plans_ = 0;
-    std::string           note_, planned_;
-    double                planMs_ = 0;
+    unsigned decide(const World &world, Work &work);
+
+    SimLog                   log_;
+    std::unique_ptr<Survey>  survey_;
+    std::unique_ptr<Planner> planner_;
+    Plan                     plan_;
+    std::unique_ptr<Attempt> attempt_;
+    Step                     step_;
+    Ruled                    ruled_;       // steps impossible as things stand
+    Facts                    ruledAt_;     // the facts they were found so in
+    unsigned long            ticks_ = 0, retryAt_ = 0;
+    std::string              note_;
 };
 
 }  // namespace simbot
