@@ -4,8 +4,13 @@
  * cell, a little each frame (work.h).  The first way to a place is the only
  * one kept (of ways as quick, the one with the fewest presses), but for
  * waiting: a place waited on is a node of its own for each wait in a row.  Two waits: a short one, up to shortWaits in a row (for a
- * foe to pass), and till the next of the schedule's wait times
- * (schedule.h), up to timedWaits.
+ * foe to pass, so only with one near), and till the next of the schedule's
+ * wait times (schedule.h), up to timedWaits.  A step from a place where
+ * nothing about it runs on the clock (no lift, platform, moving bridge or
+ * bomb near, the falling tiles as they were) lands where it did before, as
+ * soon: once seen (or as the MoveGraph has it, till a step played lands
+ * otherwise), it is not played unless it would come somewhere sooner than
+ * known.
  *
  * Found, it holds the presses of each tick and the World expected before
  * each (Expect), so the one pressing them can tell when the game goes
@@ -99,6 +104,19 @@ private:
     /* Whether the player stands a while there unharmed (SAFE_MS). */
     bool safe(const Node &n) const;
     bool mayDrop(const Node &n) const;
+    /* Whether a foe may come beside the player, standing at n, within its
+     * short waits. */
+    bool foeNear(const Node &n) const;
+    /* Whether a step from place from in w, landing on to, lands so every
+     * time it is made with the falling tiles as they are: nothing on the
+     * clock near either (a lift, a platform's track, a moving bridge, a
+     * bomb), the player carried by nothing. */
+    bool still(const World &w, const Place &from, const Place &to) const;
+    /* A step from n, as stepsSeen_ holds it: the place, the move, the
+     * falling tiles and the way each bridge goes next; false if it is
+     * never kept (in the air, after a drop, a trap). */
+    using StepKey = std::tuple<Place, int, uint64_t, uint64_t>;
+    bool stillKey(const Node &n, int move, StepKey *key) const;
     void found(int at);
     void push(int id);
     /* The place, riding a lift at its height to the nearest whole. */
@@ -122,6 +140,17 @@ private:
     using Entry = std::tuple<double, int, int>;   // f, presses, node
     std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> open_;
     std::map<Key, int> best_;
+    /* Where a still step lands, and in how long (still). */
+    struct Seen {
+        Place  to;
+        double ms;
+    };
+    std::map<StepKey, Seen> stepsSeen_;
+    /* Where the MoveGraph has a still step land (the falling tiles all
+     * up, as it has them), if it has one way for it. */
+    bool graphStep(const Node &n, int move, Seen *out) const;
+    bool   graphWrong_ = false;   // a step played landed elsewhere than it said
+    int    skipped_ = 0;   // steps not played: seen, and no sooner
     int    expanding_ = -1;   // the node whose moves are being played
     int    move_ = 0;         // its next move
     Status status_ = Searching;

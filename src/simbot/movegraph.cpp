@@ -278,6 +278,12 @@ int MoveGraph::find(const Place &p) const
     return here.empty() ? -1 : here.front();
 }
 
+int MoveGraph::exactly(const Place &p) const
+{
+    auto it = index_.find(p);
+    return it == index_.end() ? -1 : it->second;
+}
+
 const std::vector<int> &MoveGraph::on(Cell c) const
 {
     static const std::vector<int> none;

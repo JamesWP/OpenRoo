@@ -56,6 +56,8 @@ public:
     /* The place's index, or -1; with any height and facing on its cell if
      * not that one. */
     int find(const Place &p) const;
+    /* The place's index, or -1: that place only. */
+    int exactly(const Place &p) const;
     /* The places on a cell (on the ground: not in the air above it). */
     const std::vector<int> &on(Cell c) const;
 
