@@ -71,7 +71,23 @@ bool gliding(const World &w)
 
 bool dead(const World &w)
 {
-    return w.player()->moveState() != 0;
+    // Dying with no move state: a fall of one tick lands on the player's
+    // own mark on the tile (movableentity.cpp), and it stands there dying
+    // for good.
+    return w.player()->moveState() != 0 || w.player()->dyingStarted() != 0;
+}
+
+int carried(const World &w)
+{
+    const Player *p = w.player();
+    if (p->ridingPlatform()) {
+        const unsigned slot = w.map()->tile(p->cellU(), p->cellV())->platformSlot();
+        return slot < w.platforms().size() ? w.platforms()[slot].state() : 0;
+    }
+    for (const LiftObject &l : w.lifts())
+        if (l.cellU() == p->cellU() && l.cellV() == p->cellV())
+            return l.state();
+    return 0;
 }
 
 bool atRest(const World &w)

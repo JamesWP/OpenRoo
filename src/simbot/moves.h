@@ -60,6 +60,9 @@ bool foeDead(const World &w, unsigned id);
 bool atRest(const World &w);
 bool gliding(const World &w);
 bool dead(const World &w);
+/* The way the lift or platform the player stands on is going: 0 none (or
+ * parked), 1 up or out along its track, 2 back. */
+int carried(const World &w);
 
 /* One tick of w, its own step long, with presses held and play running;
  * its sounds go unheard.  With work, charged to it. */

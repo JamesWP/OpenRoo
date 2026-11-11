@@ -89,7 +89,7 @@ Route::~Route() = default;
 Route::Key Route::keyOf(const Node &n) const
 {
     if (n.dropAt < 0)
-        return {n.place, n.waited, false, {}, {}};
+        return {n.place, n.waited, carried(*n.world), false, {}, {}};
     Cell foe{-1, -1}, bomb{-1, -1};
     if (const Foe *f = findFoe(*n.world, goal_.foe))
         foe = {f->cellU(), f->cellV()};
@@ -97,7 +97,7 @@ Route::Key Route::keyOf(const Node &n) const
         const Bomb &b = n.world->bombs()[n.world->bombs().size() - 1];
         bomb = {b.cellU(), b.cellV()};
     }
-    return {n.place, n.waited, true, foe, bomb};
+    return {n.place, n.waited, carried(*n.world), true, foe, bomb};
 }
 
 bool Route::safe(const Node &n) const
@@ -224,7 +224,10 @@ Route::Status Route::run(Work &work)
             n.move   = (Move)kind;
             n.ticks  = p.ticks;
             n.stepAt = p.stepAt;
-            n.waited = kind == WAIT || kind == TIMED_WAIT ? from.waited + 1 : 0;
+            n.place  = placeOf(*next);
+            // Waits in a row where the player stands: carried off by a lift
+            // or a platform, it stands somewhere new.
+            n.waited = (kind == WAIT || kind == TIMED_WAIT) && n.place == from.place ? from.waited + 1 : 0;
             n.now    = next->now();
             // Facing the way it goes rather than backing, when it is no
             // slower: a step back counts a little more.
@@ -232,7 +235,6 @@ Route::Status Route::run(Work &work)
             n.dropAt = kind == DROP || kind == DROP_BACK ? next->now() - (p.ticks - 1) * next->tickStep()->value
                                                          : from.dropAt;
             n.escape = from.dropAt >= 0 ? from.escape + 1 : 0;
-            n.place  = placeOf(*next);
             // A drop whose blast is over with the foe alive has failed.
             if (n.dropAt >= 0 && n.now >= n.dropAt + BLAST_OVER_MS && !foeDead(*next, goal_.foe)) {
                 foeLived_++;

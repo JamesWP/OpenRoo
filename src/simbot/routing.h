@@ -89,7 +89,7 @@ private:
         int    escape = 0;    // moves made since
         Place  place;
         std::unique_ptr<World> world;
-        std::tuple<Place, int, bool, Cell, Cell> key;   // Key
+        std::tuple<Place, int, int, bool, Cell, Cell> key;   // Key
     };
     bool reached(const Node &n) const;
     /* Whether the player stands a while there unharmed (SAFE_MS). */
@@ -97,9 +97,10 @@ private:
     bool mayDrop(const Node &n) const;
     void found(int at);
     void push(int id);
-    /* Place and waited; after a drop, with the foe's cell and the bomb's
-     * (the drop's time aside: where they are is what matters). */
-    using Key = std::tuple<Place, int, bool, Cell, Cell>;
+    /* Place, waited and the way what it rides is going (carried); after a
+     * drop, with the foe's cell and the bomb's (the drop's time aside: where
+     * they are is what matters). */
+    using Key = std::tuple<Place, int, int, bool, Cell, Cell>;
     Key keyOf(const Node &n) const;
 
     Goal   goal_;

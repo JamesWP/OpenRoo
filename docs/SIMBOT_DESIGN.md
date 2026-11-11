@@ -17,7 +17,11 @@ player can rest on, on a copy of the World with the foes removed, giving
 which places lead to which and how long each takes. Each move is also
 played after waiting, but only till the times the game's rules say
 something there changes (a lift beside it parks, glue lets go, a fallen
-tile comes back), worked out from the rules, not played in steps. Falling
+tile comes back), worked out from the rules, not played in steps. A lift
+or platform also gives the times it passes each height or cell, since a
+step off one moving is let through only then: riding, a wait till one is
+how the player gets off part way, and a wait that carries it somewhere
+new leaves that place to be played from in its own turn. Falling
 tiles are put back at every place (`whatif::restoreFallings`), and an edge
 notes the one-time tiles it breaks. On a level with foes and bombs to
 be had, it also records where a bomb dropped at each place blows, dropped

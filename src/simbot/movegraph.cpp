@@ -207,7 +207,8 @@ MoveGraph::MoveGraph(const World &start, bool blasts, bool glides)
                 blasts_[at][k] = blastOf(*world, k ? DROP_BACK : DROP);
         }
         std::set<int> reached{at};
-        // An edge to where next is, if that place is not reached from at yet.
+        // An edge to where next is, if that place is not reached from at yet;
+        // whether the place is new (to be played from in its turn).
         auto reach = [&](std::unique_ptr<World> next, int w, Move m) {
             const uint64_t breaks = onceDown(*next) & ~down0;
             // A glider picked up on the way counts against it: none spent.
@@ -215,7 +216,7 @@ MoveGraph::MoveGraph(const World &start, bool blasts, bool glides)
             const Edge e{-1, w, m, next->now() - t0, breaks, glides ? used : 0};
             if (gliding(*next)) {
                 takeOff(at, std::move(next), e);
-                return;
+                return false;
             }
             const Place to = placeOf(*next);
             int i = add(to);
@@ -223,12 +224,13 @@ MoveGraph::MoveGraph(const World &start, bool blasts, bool glides)
             if (!fresh)
                 i = index_[to];
             if (!reached.insert(i).second)
-                return;
+                return false;
             breaking_ += breaks != 0;
             edges_[at].push_back(e);
             edges_[at].back().to = i;
             if (fresh)
                 open.push_back({i, std::move(next)});
+            return fresh;
         };
         // waited: at's World after w waits, each till the next wait time.
         auto waited = std::make_unique<World>(*world);
@@ -240,7 +242,16 @@ MoveGraph::MoveGraph(const World &start, bool blasts, bool glides)
                 played_++;
                 if (waitUntil(*waited, times[w - 1]).kind != Played::Moved)
                     break;
-                reach(std::make_unique<World>(*waited), w, WAIT);
+                const bool fresh = reach(std::make_unique<World>(*waited), w, WAIT);
+                // Carried off by a lift or a platform: a new place is played
+                // from in its own turn, and the waits go no further; one known
+                // (come to at another time, the lift going the other way,
+                // say) is ridden on through, its moves its own.
+                if (!(placeOf(*waited) == places_[at])) {
+                    if (fresh)
+                        break;
+                    continue;
+                }
             }
             for (int m = 0; m < MOVES; m++) {
                 auto next = std::make_unique<World>(*waited);

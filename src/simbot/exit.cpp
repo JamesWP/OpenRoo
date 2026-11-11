@@ -29,6 +29,7 @@ public:
         *presses = 0;
         return Pressing;
     }
+    std::string why() const override { return walk_.why(); }
 
 private:
     RouteAttempt walk_;

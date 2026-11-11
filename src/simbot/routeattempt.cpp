@@ -11,8 +11,9 @@ namespace {
 const int MAX_LEAD = 600;
 /* Waits in a row for a foe to pass: 2 s. */
 const int FOE_WAITS = 8;
-/* Timed waits in a row (schedule.h): two lifts' cycles. */
-const int TIMED_WAITS = 4;
+/* Timed waits in a row (schedule.h): with a lift or a platform passing
+ * each height or cell, each way, a cycle or so. */
+const int TIMED_WAITS = 24;
 /* A kill's Routes are searched no further: it is near the foe or nowhere. */
 const size_t KILL_PLACES = 3000;
 /* Routes pressed to their end with the goal not come about, before it is
