@@ -1,12 +1,12 @@
 /* The planner: GOAP, A* over Facts (facts.h), by the Actions' planning
- * halves, for each of its Aims in turn.  Nothing is played: the costs are
- * the Actions' estimates.  An Aim other than the last is planned for by
+ * halves, for each of its sub-goals in turn.  Nothing is played: the costs are
+ * the Actions' estimates.  A sub-goal other than the last is planned for by
  * the clock alone, to the facts with the least of it left, soonest; the
  * last (the level done) is guided by the rest of the quota (nearest gem
  * first) and the exit, timed on the MoveGraph, weighed ESTIMATE_WEIGHT
  * times over, and a tie goes to the state with more gems: only the first
  * step is acted on, so a good plan found soon beats the best one.  The order
- * of the gems the last Aim's steps collect first is then polished.  It runs
+ * of the gems the last sub-goal's steps collect first is then polished.  It runs
  * a little each frame (work.h).
  *
  * Steps found impossible as things stand are left out (Attempt::Impossible);
@@ -41,7 +41,7 @@ struct Plan {
 /* What a plan is for: left, how far the facts are from it (0: met).  A
  * search for one ends where it is met, or after maxNodes at the facts with
  * the least left, soonest (no steps, if none has less than its start). */
-struct Aim {
+struct SubGoal {
     std::function<int(const Facts &)> left;
     int maxNodes = 4000;
 };
@@ -53,12 +53,12 @@ using Requires = std::map<std::pair<const Action *, int>, uint64_t>;
 
 class Planner {
 public:
-    /* aims: planned for in turn, each from where the last one's steps end;
+    /* sub-goals: planned for in turn, each from where the last one's steps end;
      * the last is the level done, planned again from start if it cannot be
      * met from there.  rest: the steps left of the last plan, kept to if
-     * they can still be taken, come as near each Aim and no new plan is
+     * they can still be taken, come as near each sub-goal and no new plan is
      * quicker (so the order holds from one plan to the next). */
-    Planner(const Survey &survey, const Facts &start, const std::vector<Aim> &aims,
+    Planner(const Survey &survey, const Facts &start, const std::vector<SubGoal> &subGoals,
             const Ruled &out, const Requires &needs, const std::vector<Step> &rest = {});
     /* Plans on with work; true once finished, the plan found or not. */
     bool run(Work &work);
@@ -72,13 +72,13 @@ private:
         Step   step;
     };
     double estimate(const Facts &f) const;
-    /* A search for aims_[aim_] from f. */
+    /* A search for subGoals_[subGoal_] from f. */
     void begin(const Facts &f);
-    /* The search for aims_[aim_] ended at node at (-1: not met). */
+    /* The search for subGoals_[subGoal_] ended at node at (-1: not met). */
     void end(int at, Work &work);
     /* The steps to node at. */
     std::vector<Step> pathTo(int at) const;
-    /* The least each Aim but the last comes to on steps from start. */
+    /* The least each sub-goal but the last comes to on steps from start. */
     std::vector<int> nearest(const Facts &start, const std::vector<Step> &steps) const;
     /* The gems steps (from start) collect first put in a quicker order, by
      * random edits (one moved, a stretch turned about, two swapped) kept
@@ -92,15 +92,15 @@ private:
 
     const Survey &survey_;
     Facts         start_;
-    std::vector<Aim> aims_;
+    std::vector<SubGoal> subGoals_;
     Ruled         out_;
     Requires      requires_;
     std::vector<Step> rest_;
-    size_t        aim_ = 0;          // the Aim being planned for
-    std::vector<Step> before_;       // the steps for the Aims before it
+    size_t        subGoal_ = 0;      // the sub-goal being planned for
+    std::vector<Step> before_;       // the steps for the sub-goals before it
     double        beforeMs_ = 0;
-    bool          again_ = false;    // the last Aim planned again from start_
-    int           aimNodes_ = 0;     // nodes the search for it has expanded
+    bool          again_ = false;    // the last sub-goal planned again from start_
+    int           subGoalNodes_ = 0;     // nodes the search for it has expanded
     int           best_ = 0;         // its node with the least left, soonest
     std::vector<Node> nodes_;
     using Entry = std::tuple<double, int, int>;   // f, fewer gems, node

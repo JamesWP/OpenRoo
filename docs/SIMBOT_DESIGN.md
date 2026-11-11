@@ -11,6 +11,13 @@ them. Plans are written `collect g3 (5,4) ~2.1s → blast b1 from
 (6,7) ~3.0s → exit (9,9) ~1.5s`. Only the first step is done; the planner
 plans again whenever the facts change.
 
+**Sub-goals.** A plan is made for a list of sub-goals in turn, each
+planned from where the last one's steps end. A sub-goal says how far the
+facts are from it (0: met); if one can't be met within its search, the
+plan goes as near as it can soonest. The bot's are: as few foes alive as
+can be, then the level done. The planner knows nothing of either: that
+a kill needs bombs, and a pickup gives them, is in the Actions.
+
 **Survey.** The one-off work at the start of a level, with a large budget.
 The first part is the *MoveGraph*: every move played from every place the
 player can rest on, on a copy of the World with the foes removed, giving

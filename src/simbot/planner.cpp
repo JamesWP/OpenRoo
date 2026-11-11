@@ -98,9 +98,9 @@ std::string Plan::describe() const
     return out;
 }
 
-Planner::Planner(const Survey &survey, const Facts &start, const std::vector<Aim> &aims,
+Planner::Planner(const Survey &survey, const Facts &start, const std::vector<SubGoal> &subGoals,
                  const Ruled &out, const Requires &needs, const std::vector<Step> &rest)
-    : survey_(survey), start_(start), aims_(aims), out_(out), requires_(needs), rest_(rest)
+    : survey_(survey), start_(start), subGoals_(subGoals), out_(out), requires_(needs), rest_(rest)
 {
     begin(start);
 }
@@ -110,7 +110,7 @@ void Planner::begin(const Facts &f)
     nodes_.clear();
     seen_.clear();
     open_ = {};
-    aimNodes_ = 0;
+    subGoalNodes_ = 0;
     best_ = 0;
     Node root;
     root.facts = f;
@@ -130,10 +130,10 @@ std::vector<Step> Planner::pathTo(int at) const
 std::vector<int> Planner::nearest(const Facts &start, const std::vector<Step> &steps) const
 {
     std::vector<int> least;
-    for (size_t a = 0; a + 1 < aims_.size(); a++) {
-        int l = aims_[a].left(start);
+    for (size_t a = 0; a + 1 < subGoals_.size(); a++) {
+        int l = subGoals_[a].left(start);
         for (const Step &st : steps)
-            l = std::min(l, aims_[a].left(st.after));
+            l = std::min(l, subGoals_[a].left(st.after));
         least.push_back(l);
     }
     return least;
@@ -141,7 +141,7 @@ std::vector<int> Planner::nearest(const Facts &start, const std::vector<Step> &s
 
 void Planner::end(int at, Work &work)
 {
-    const bool last = aim_ + 1 == aims_.size();
+    const bool last = subGoal_ + 1 == subGoals_.size();
     if (!last) {
         // Not met: as near as it came.
         if (at < 0)
@@ -149,13 +149,13 @@ void Planner::end(int at, Work &work)
         const std::vector<Step> steps = pathTo(at);
         before_.insert(before_.end(), steps.begin(), steps.end());
         beforeMs_ += nodes_[at].ms;
-        aim_++;
+        subGoal_++;
         const Facts from = nodes_[at].facts;   // begin clears the nodes
         begin(from);
         return;
     }
     if (at < 0) {
-        // Not met from where the Aims before it end: from the start, once.
+        // Not met from where the sub-goals before it end: from the start, once.
         if (!before_.empty() && !again_) {
             again_ = true;
             before_.clear();
@@ -173,7 +173,7 @@ void Planner::end(int at, Work &work)
     plan_.steps = before_;
     plan_.steps.insert(plan_.steps.end(), steps.begin(), steps.end());
     plan_.ms = beforeMs_ + ms;
-    // The last plan's rest, if it comes as near each Aim, and no slower.
+    // The last plan's rest, if it comes as near each sub-goal, and no slower.
     std::vector<Step> kept;
     double keptMs;
     if (!rest_.empty() && reoffer(start_, rest_, kept, keptMs) && kept.back().after.done &&
@@ -287,9 +287,9 @@ double Planner::estimate(const Facts &f) const
 bool Planner::run(Work &work)
 {
     while (!finished_ && !work.out()) {
-        const Aim &aim = aims_[aim_];
-        const bool last = aim_ + 1 == aims_.size();
-        if (open_.empty() || aimNodes_ >= aim.maxNodes) {
+        const SubGoal &sub = subGoals_[subGoal_];
+        const bool last = subGoal_ + 1 == subGoals_.size();
+        if (open_.empty() || subGoalNodes_ >= sub.maxNodes) {
             end(-1, work);
             continue;
         }
@@ -298,17 +298,17 @@ bool Planner::run(Work &work)
         const Node &node = nodes_[at];
         if (seen_[node.facts] < node.ms)
             continue;   // come to sooner since
-        const int left = aim.left(node.facts);
+        const int left = sub.left(node.facts);
         if (left == 0) {
             end(at, work);
             continue;
         }
         // Taken by the clock: the first with the least left is the soonest.
-        if (left < aim.left(nodes_[best_].facts))
+        if (left < sub.left(nodes_[best_].facts))
             best_ = at;
         if (node.facts.done)
             continue;   // nothing after the level is done
-        aimNodes_++;
+        subGoalNodes_++;
         plan_.nodes++;
         work.spend(PLAN_NODE_WORK);
         std::vector<Step> next;
