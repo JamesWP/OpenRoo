@@ -2,8 +2,8 @@
  * (moves.h) on copies of the World, foes and all: A* on the clock over
  * places, guided by the MoveGraph's time from each place to the goal's
  * cell, a little each frame (work.h).  The first way to a place is the only
- * one kept, but for waiting: a place waited on is a node of its own for each
- * wait in a row.  Two waits: a short one, up to shortWaits in a row (for a
+ * one kept (of ways as quick, the one with the fewest presses), but for
+ * waiting: a place waited on is a node of its own for each wait in a row.  Two waits: a short one, up to shortWaits in a row (for a
  * foe to pass), and till the next of the schedule's wait times
  * (schedule.h), up to timedWaits.
  *
@@ -88,6 +88,7 @@ private:
         int    waited = 0;    // waits in a row that came to it
         double now = 0;
         double cost = 0;      // what the search counts: now, a step back a little more
+        int    presses = 0;   // moves made, waits aside: of ways as quick, the fewest
         double dropAt = -1;   // when the bomb was dropped, if it was
         int    escape = 0;    // moves made since
         Place  place;
@@ -100,7 +101,9 @@ private:
     bool mayDrop(const Node &n) const;
     void found(int at);
     void push(int id);
-    /* Place, waited and the way what it rides is going (carried); after a
+    /* The place, riding a lift at its height to the nearest whole. */
+    Place keyPlace(const Node &n) const;
+    /* keyPlace, waited and the way what it rides is going (carried); after a
      * drop, with the foe's cell and the bomb's (the drop's time aside: where
      * they are is what matters); for a trap, the clock and the falling
      * tiles. */
@@ -116,7 +119,7 @@ private:
     long   spent_ = 0;    // the work it has taken
     std::unique_ptr<World> start_;
     std::vector<Node> nodes_;
-    using Entry = std::pair<double, int>;
+    using Entry = std::tuple<double, int, int>;   // f, presses, node
     std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> open_;
     std::map<Key, int> best_;
     int    expanding_ = -1;   // the node whose moves are being played

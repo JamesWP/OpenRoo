@@ -1,5 +1,6 @@
 #include "routing.h"
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include "schedule.h"
 #include "world.h"
@@ -90,6 +91,21 @@ Route::Route(const World &start, Goal goal, const MoveGraph &guide, size_t maxPl
 
 Route::~Route() = default;
 
+Place Route::keyPlace(const Node &n) const
+{
+    // Riding a lift, the player's height is the lift's cut down to a whole
+    // one, which a move ending just before the lift comes to a height reads
+    // as the one below: a turn and a wait ending a tick apart would read a
+    // height apart.  The lift's own height, to the nearest whole, is where
+    // the player is.
+    Place at = n.place;
+    if (!at.air && carried(*n.world) != 0)
+        for (const LiftObject &l : n.world->lifts())
+            if (l.cellU() == at.u && l.cellV() == at.v)
+                at.h = (int)lroundf(l.height());
+    return at;
+}
+
 Route::Key Route::keyOf(const Node &n) const
 {
     if (goal_.trap) {
@@ -110,7 +126,7 @@ Route::Key Route::keyOf(const Node &n) const
                 {(int)(uint32_t)bits, (int)(uint32_t)(bits >> 32)}};
     }
     if (n.dropAt < 0)
-        return {n.place, n.waited, carried(*n.world), false, {}, {}};
+        return {keyPlace(n), n.waited, carried(*n.world), false, {}, {}};
     Cell foe{-1, -1}, bomb{-1, -1};
     if (const Foe *f = findFoe(*n.world, goal_.foe))
         foe = {f->cellU(), f->cellV()};
@@ -181,7 +197,7 @@ void Route::push(int id)
         if (goal_.kill)
             h += BLAST_OVER_MS;
     }
-    open_.push({n.cost + h, id});
+    open_.push({n.cost + h, n.presses, id});
 }
 
 Route::Status Route::run(Work &work)
@@ -193,7 +209,7 @@ Route::Status Route::run(Work &work)
                 status_ = NoWay;
                 break;
             }
-            const int at = open_.top().second;
+            const int at = std::get<2>(open_.top());
             open_.pop();
             if (best_[nodes_[at].key] != at) {
                 nodes_[at].world.reset();   // a sooner way there was found since
@@ -257,6 +273,7 @@ Route::Status Route::run(Work &work)
             // Facing the way it goes rather than backing, when it is no
             // slower: a step back counts a little more.
             n.cost   = from.cost + (n.now - from.now) + (kind == BACK ? BACK_MS : 0);
+            n.presses = from.presses + (kind == WAIT || kind == TIMED_WAIT ? 0 : 1);
             n.dropAt = kind == DROP || kind == DROP_BACK ? next->now() - (p.ticks - 1) * next->tickStep()->value
                                                          : from.dropAt;
             n.escape = from.dropAt >= 0 ? from.escape + 1 : 0;
@@ -272,7 +289,9 @@ Route::Status Route::run(Work &work)
             n.world = std::move(next);
             const Key key = keyOf(n);
             auto it = best_.find(key);
-            if (it != best_.end() && nodes_[it->second].cost <= n.cost)
+            if (it != best_.end() &&
+                (nodes_[it->second].cost < n.cost ||
+                 (nodes_[it->second].cost == n.cost && nodes_[it->second].presses <= n.presses)))
                 continue;
             const int id = (int)nodes_.size();
             best_[key] = id;
