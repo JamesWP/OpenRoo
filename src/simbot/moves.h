@@ -68,7 +68,8 @@ int carried(const World &w);
  * its sounds go unheard.  With work, charged to it. */
 void tick(World &w, unsigned presses, Work *work = nullptr);
 
-/* What came of a move. */
+/* What came of a move: one that falls into a gap only to be caught no lower
+ * (by a platform on its way) is Refused. */
 struct Played {
     enum Kind { Moved, Refused, Died, Unsettled };
     Kind kind = Refused;

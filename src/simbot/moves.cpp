@@ -134,8 +134,10 @@ Played play(World &w, Move m, Work *work)
     // In the air, a turn is followed by a step: the four moves are the four
     // ways.
     const bool turnThenStep = from.air && (m == LEFT || m == RIGHT);
+    bool fell = false;
     for (;;) {
         while (!atRest(w)) {
+            fell = fell || w.player()->falling() != 0;
             if (dead(w)) {
                 out.kind = Played::Died;
                 return out;
@@ -152,6 +154,16 @@ Played play(World &w, Move m, Work *work)
         out.stepAt = out.ticks;
         tick(w, PRESS_FORWARD, work);
         out.ticks++;
+    }
+    // A step onto a platform's track where it is not: the player falls into
+    // the gap and is caught by it on its way, no lower.  Let through, but it
+    // looks wrong: waited for instead.
+    const Place at = placeOf(w);
+    const int under = (signed char)w.map()->tile(at.u, at.v)->objectMarker();
+    if (fell && !from.air && at.h >= from.h &&
+        (under == TILE_PLATFORM_U || under == TILE_PLATFORM_V || under == TILE_PLATFORM_TRACK)) {
+        out.kind = Played::Refused;
+        return out;
     }
     out.kind = Played::Moved;
     return out;
