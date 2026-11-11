@@ -43,6 +43,10 @@ const int ESCAPE_MOVES = 2;
 /* What a step back counts above its time: enough to choose the step
  * forward over it, no more. */
 const double BACK_MS = 1;
+/* What a turn counts above its time while what the player rides is on the
+ * move: turns there only pass the time, as a wait does, and played as such
+ * they spin the player round and round. */
+const double RIDE_TURN_MS = 100;
 
 }  // namespace
 
@@ -256,7 +260,10 @@ Route::Status Route::run(Work &work)
             n.now    = next->now();
             // Facing the way it goes rather than backing, when it is no
             // slower: a step back counts a little more.
-            n.cost   = from.cost + (n.now - from.now) + (kind == BACK ? BACK_MS : 0);
+            const bool rideTurn = (kind == LEFT || kind == RIGHT) && !from.place.air &&
+                                  carried(*from.world) != 0;
+            n.cost   = from.cost + (n.now - from.now) + (kind == BACK ? BACK_MS : 0) +
+                     (rideTurn ? RIDE_TURN_MS : 0);
             n.dropAt = kind == DROP || kind == DROP_BACK ? next->now() - (p.ticks - 1) * next->tickStep()->value
                                                          : from.dropAt;
             n.escape = from.dropAt >= 0 ? from.escape + 1 : 0;
