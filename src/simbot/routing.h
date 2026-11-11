@@ -84,6 +84,7 @@ private:
         int    stepAt = -1;   // Played::stepAt
         int    waited = 0;    // waits in a row that came to it
         double now = 0;
+        double cost = 0;      // what the search counts: now, a step back a little more
         double dropAt = -1;   // when the bomb was dropped, if it was
         int    escape = 0;    // moves made since
         Place  place;

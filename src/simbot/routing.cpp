@@ -36,6 +36,9 @@ const double SAFE_MS = 1000;
 /* The moves made after a drop, to get clear of the blast, before it is
  * waited out where the player stands. */
 const int ESCAPE_MOVES = 2;
+/* What a step back counts above its time: enough to choose the step
+ * forward over it, no more. */
+const double BACK_MS = 1;
 
 }  // namespace
 
@@ -72,6 +75,7 @@ Route::Route(const World &start, Goal goal, const MoveGraph &guide, size_t maxPl
 {
     Node root;
     root.now   = start.now();
+    root.cost  = root.now;
     root.place = placeOf(start);
     root.world = std::make_unique<World>(start);
     nodes_.push_back(std::move(root));
@@ -152,7 +156,7 @@ void Route::push(int id)
         if (goal_.kill)
             h += BLAST_OVER_MS;
     }
-    open_.push({n.now + h, id});
+    open_.push({n.cost + h, id});
 }
 
 Route::Status Route::run(Work &work)
@@ -222,6 +226,9 @@ Route::Status Route::run(Work &work)
             n.stepAt = p.stepAt;
             n.waited = kind == WAIT || kind == TIMED_WAIT ? from.waited + 1 : 0;
             n.now    = next->now();
+            // Facing the way it goes rather than backing, when it is no
+            // slower: a step back counts a little more.
+            n.cost   = from.cost + (n.now - from.now) + (kind == BACK ? BACK_MS : 0);
             n.dropAt = kind == DROP || kind == DROP_BACK ? next->now() - (p.ticks - 1) * next->tickStep()->value
                                                          : from.dropAt;
             n.escape = from.dropAt >= 0 ? from.escape + 1 : 0;
@@ -234,7 +241,7 @@ Route::Status Route::run(Work &work)
             n.world = std::move(next);
             const Key key = keyOf(n);
             auto it = best_.find(key);
-            if (it != best_.end() && nodes_[it->second].now <= n.now)
+            if (it != best_.end() && nodes_[it->second].cost <= n.cost)
                 continue;
             const int id = (int)nodes_.size();
             best_[key] = id;
