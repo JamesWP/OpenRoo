@@ -1,5 +1,6 @@
 #include "planner.h"
 #include <stdio.h>
+#include <algorithm>
 #include <map>
 #include <stdlib.h>
 #include "actions.h"
@@ -20,7 +21,41 @@ const double KILL_ESTIMATE_MS   = 5000;
 const double PICKUP_ESTIMATE_MS = 5000;
 const double GLIDER_ESTIMATE_MS = 2000;
 
+/* Passes over a plan's gem order (polish) at most. */
+const int POLISH_PASSES = 4;
+/* What a polished order must save to be taken. */
+const double POLISH_MIN_MS = 1;
+
+/* The time of a leg by MoveGraph::timeTo, for a given number of charges:
+ * walking, and the quickest way (gliding as it may) with the charges it
+ * spends. */
+struct Leg {
+    float   walk = -1, any = -1;
+    uint8_t glides = 0;
+    double ms(int &charges) const
+    {
+        if (charges > 0 && any >= 0 && glides <= charges) {
+            charges -= glides;
+            return any;
+        }
+        return walk;
+    }
+};
+
+Leg legOf(const MoveGraph &g, int from, Cell to)
+{
+    Leg l;
+    l.walk = (float)g.timeTo(from, to, 0);
+    int used;
+    l.any = (float)g.timeTo(from, to, 255, &used);
+    l.glides = (uint8_t)used;
+    return l;
+}
+
 }  // namespace
+
+const Action &collectAction();
+const Action &exitAction();
 
 Facts factsOf(const World &w, const Survey &survey)
 {
@@ -63,8 +98,8 @@ std::string Plan::describe() const
 }
 
 Planner::Planner(const Survey &survey, const Facts &start, const Ruled &out,
-                 const Requires &needs, int maxNodes)
-    : survey_(survey), out_(out), requires_(needs), maxNodes_(maxNodes)
+                 const Requires &needs, const std::vector<Step> &rest, int maxNodes)
+    : survey_(survey), out_(out), requires_(needs), rest_(rest), maxNodes_(maxNodes)
 {
     Node root;
     root.facts = start;
@@ -191,6 +226,16 @@ bool Planner::run(Work &work)
             for (int n = at; n > 0; n = nodes_[n].parent)
                 back.push_back(nodes_[n].step);
             plan_.steps.assign(back.rbegin(), back.rend());
+            polish(work);
+            std::vector<Step> kept;
+            double ms;
+            if (!rest_.empty() && reoffer(nodes_[0].facts, rest_, kept, ms) && kept.back().after.done &&
+                ms <= plan_.ms) {
+                plan_.steps = std::move(kept);
+                plan_.ms = ms;
+                plan_.polished = 0;
+                plan_.kept = true;
+            }
             finished_ = true;
             break;
         }
@@ -221,6 +266,145 @@ bool Planner::run(Work &work)
         }
     }
     return finished_;
+}
+
+}  // namespace simbot
+
+namespace simbot {
+
+void Planner::polish(Work &work)
+{
+    // The gems the plan collects first, one after another, and what comes
+    // after them: the exit (its leg counted), nothing, or another step (the
+    // last gem kept last, so that step goes as planned).
+    std::vector<Step> &steps = plan_.steps;
+    size_t n = 0;
+    while (n < steps.size() && steps[n].action == &collectAction())
+        n++;
+    const bool exit = n < steps.size() && steps[n].action == &exitAction();
+    const bool keepLast = n < steps.size() && !exit;
+    if (n < 3)
+        return;
+    const MoveGraph &g = survey_.graph();
+    const std::vector<Cell> &gems = survey_.gems();
+    const Facts &start = nodes_[0].facts;
+    // Legs between them (from the place a gem is come to: MoveGraph::arrive),
+    // from the start, and to the exit; index n is the start.
+    std::vector<int> gem(n);
+    for (size_t i = 0; i < n; i++)
+        gem[i] = steps[i].arg;
+    std::vector<std::vector<Leg>> leg(n + 1, std::vector<Leg>(n + 1));
+    std::vector<Leg> toExit(n);
+    for (size_t i = 0; i <= n; i++) {
+        const int from = i == n ? start.at : g.on(gems[gem[i]]).front();
+        for (size_t j = 0; j < n; j++)
+            if (j != i)
+                leg[i][j] = legOf(g, from, gems[gem[j]]);
+        if (exit && i < n)
+            toExit[i] = legOf(g, from, survey_.exit());
+    }
+    work.spend(PLAN_NODE_WORK * (long)n);
+    const double NONE = 1e18;
+    auto tour = [&](const std::vector<int> &order) {
+        int charges = start.glides;
+        int at = (int)n;
+        double ms = 0;
+        for (int i : order) {
+            const double t = leg[at][i].ms(charges);
+            if (t < 0)
+                return NONE;
+            ms += t;
+            at = i;
+        }
+        if (exit) {
+            const double t = toExit[at].ms(charges);
+            if (t < 0)
+                return NONE;
+            ms += t;
+        }
+        return ms;
+    };
+    std::vector<int> order(n);
+    for (size_t i = 0; i < n; i++)
+        order[i] = (int)i;
+    const double planned = tour(order);
+    double best = planned;
+    // Moving one gem elsewhere in the order, and turning a stretch of it
+    // about, while either is quicker.
+    const int m = (int)n - (keepLast ? 1 : 0);
+    for (int pass = 0; pass < POLISH_PASSES; pass++) {
+        bool better = false;
+        for (int i = 0; i < m; i++)
+            for (int j = 0; j < m; j++) {
+                if (i == j)
+                    continue;
+                std::vector<int> o = order;
+                const int x = o[i];
+                o.erase(o.begin() + i);
+                o.insert(o.begin() + j, x);
+                const double t = tour(o);
+                if (t < best - POLISH_MIN_MS) {
+                    best = t;
+                    order = o;
+                    better = true;
+                }
+            }
+        for (int i = 0; i < m; i++)
+            for (int j = i + 2; j <= m; j++) {
+                std::vector<int> o = order;
+                std::reverse(o.begin() + i, o.begin() + j);
+                const double t = tour(o);
+                if (t < best - POLISH_MIN_MS) {
+                    best = t;
+                    order = o;
+                    better = true;
+                }
+            }
+        work.spend(PLAN_NODE_WORK * (long)m);
+        if (!better)
+            break;
+    }
+    if (best >= planned)
+        return;
+    // The steps offered again in the new order, then the rest as planned.
+    std::vector<Step> in;
+    for (int i : order)
+        in.push_back(steps[i]);
+    in.insert(in.end(), steps.begin() + n, steps.end());
+    std::vector<Step> out;
+    double ms;
+    if (!reoffer(start, in, out, ms) || ms >= plan_.ms)
+        return;   // offered no more that way, or no quicker: the plan as found
+    steps = std::move(out);
+    plan_.ms = ms;
+    plan_.polished = planned - best;
+}
+
+}  // namespace simbot
+
+namespace simbot {
+
+bool Planner::reoffer(Facts f, const std::vector<Step> &steps, std::vector<Step> &out,
+                      double &ms) const
+{
+    out.clear();
+    ms = 0;
+    for (const Step &st : steps) {
+        auto r = requires_.find({st.action, st.arg});
+        if (out_.count({st.action, st.arg}) ||
+            (r != requires_.end() && (r->second & f.alive)))
+            return false;
+        std::vector<Step> offered;
+        st.action->offer(f, survey_, offered);
+        auto it = std::find_if(offered.begin(), offered.end(),
+                               [&](const Step &o) { return o.arg == st.arg; });
+        if (it == offered.end())
+            return false;
+        f = it->after;
+        ms += it->ms;
+        out.push_back(std::move(*it));
+    }
+    return !out.empty();
 }
 
 }  // namespace simbot

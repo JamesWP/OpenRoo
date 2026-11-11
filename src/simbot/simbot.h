@@ -38,6 +38,7 @@ private:
     Plan                     plan_;
     std::unique_ptr<Attempt> attempt_;
     Step                     step_;
+    std::vector<Step>        rest_;   // the plan's steps after step_, it done
     Ruled                    ruled_;       // steps impossible as things stand
     Facts                    ruledAt_;     // the facts they were found so in
     Requires                 requires_;    // Requirements learned, for the level

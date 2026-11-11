@@ -73,6 +73,11 @@ unsigned SimBot::decide(const World &world, Work &work)
                        "\"step\":" + SimLog::quote(step_.what) +
                            (attempt_->why().empty() ? ""
                                                     : ",\"why\":" + SimLog::quote(attempt_->why())));
+            // Done, the rest of the plan is kept to, unless a new one is
+            // quicker.
+            rest_.clear();
+            if (s == Attempt::Done && !plan_.steps.empty())
+                rest_.assign(plan_.steps.begin() + 1, plan_.steps.end());
             if (s == Attempt::Impossible && learn(*attempt_)) {
                 // A Requirement learned: the planner plans to meet it.
             } else if (s == Attempt::Impossible) {
@@ -93,15 +98,16 @@ unsigned SimBot::decide(const World &world, Work &work)
             const Facts now = factsOf(world, *survey_);
             if (!(now == ruledAt_))
                 ruled_.clear();
-            planner_ = std::make_unique<Planner>(*survey_, now, ruled_, requires_);
+            planner_ = std::make_unique<Planner>(*survey_, now, ruled_, requires_, rest_);
         }
         if (!planner_->run(work))
             return 0;
         plan_ = planner_->plan();
         planner_.reset();
-        char buf[64];
-        snprintf(buf, sizeof(buf), "\"found\":%s,\"nodes\":%d,\"ms\":%.0f,",
-                 plan_.found ? "true" : "false", plan_.nodes, plan_.ms);
+        char buf[128];
+        snprintf(buf, sizeof(buf), "\"found\":%s,\"nodes\":%d,\"ms\":%.0f,\"polished\":%.0f,\"kept\":%s,",
+                 plan_.found ? "true" : "false", plan_.nodes, plan_.ms, plan_.polished,
+                 plan_.kept ? "true" : "false");
         log_.write(ticks_, "plan", buf + std::string("\"plan\":") + SimLog::quote(plan_.describe()));
         if (!plan_.found) {
             note_ = "no plan";

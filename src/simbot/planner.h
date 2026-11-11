@@ -3,8 +3,8 @@
  * estimates, its guide the rest of the quota (nearest gem first) and the
  * exit, timed on the MoveGraph, weighed ESTIMATE_WEIGHT times over, and a
  * tie goes to the state with more gems: only the first step is acted on,
- * so a good plan found soon beats the best one.  It runs a little each
- * frame (work.h).
+ * so a good plan found soon beats the best one; the order of the gems it
+ * collects first is then polished.  It runs a little each frame (work.h).
  *
  * Steps found impossible as things stand are left out (Attempt::Impossible);
  * the caller clears them when the facts change.  Steps with a Requirement
@@ -27,6 +27,9 @@ struct Plan {
     std::vector<Step> steps;
     double ms = 0;
     int    nodes = 0;
+    double polished = 0;   // the ms the gem order's polish saved
+    bool   kept = false;   // the last plan's rest, kept to
+
     /* "collect g3 (5,4) ~2.1s -> exit (9,9) ~1.5s". */
     std::string describe() const;
 };
@@ -38,8 +41,11 @@ using Requires = std::map<std::pair<const Action *, int>, uint64_t>;
 
 class Planner {
 public:
+    /* rest: the steps left of the last plan, kept to if they can still be
+     * taken and no new plan is quicker (so the order holds from one plan to
+     * the next). */
     Planner(const Survey &survey, const Facts &start, const Ruled &out, const Requires &needs,
-            int maxNodes = 4000);
+            const std::vector<Step> &rest = {}, int maxNodes = 4000);
     /* Plans on with work; true once finished, the plan found or not. */
     bool run(Work &work);
     const Plan &plan() const { return plan_; }
@@ -52,10 +58,19 @@ private:
         Step   step;
     };
     double estimate(const Facts &f) const;
+    /* The gems the plan collects first put in a quicker order where moving
+     * one elsewhere, or turning a stretch about, makes one (by the
+     * MoveGraph's times), the steps offered again in it. */
+    void polish(Work &work);
+    /* steps offered again from f, each by its Action and arg, into out with
+     * their ms; false if one is offered no more. */
+    bool reoffer(Facts f, const std::vector<Step> &steps, std::vector<Step> &out,
+                 double &ms) const;
 
     const Survey &survey_;
     Ruled         out_;
     Requires      requires_;
+    std::vector<Step> rest_;
     int           maxNodes_;
     std::vector<Node> nodes_;
     using Entry = std::tuple<double, int, int>;   // f, fewer gems, node
