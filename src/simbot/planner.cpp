@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <map>
 #include <random>
+#include <set>
 #include <stdlib.h>
 #include "actions.h"
 #include "survey.h"
@@ -207,15 +208,28 @@ double Planner::estimate(const Facts &f) const
     const int ANY = 255;   // glider charges: as many as it likes
     const int needed = survey_.quota() - f.gems;
     const int here = g.region(f.at);
-    const int out = g.on(survey_.exit()).empty() ? -1 : g.region(g.on(survey_.exit()).front());
-    if (!g.regionReaches(here, out))
+    // A cell's places may be in more than one region (a facing may lead off
+    // a ledge): each of its regions, any of them.
+    auto regionsOf = [&](Cell c) {
+        std::set<int> rs;
+        for (int p : g.on(c))
+            rs.insert(g.region(p));
+        return rs;
+    };
+    const std::set<int> outs = regionsOf(exit);
+    auto reachesExit = [&](int r) {
+        for (int o : outs)
+            if (g.regionReaches(r, o))
+                return true;
+        return false;
+    };
+    if (!reachesExit(here))
         return NO_WAY_MS;
-    std::map<int, int> count;   // gems left, by region
-    // A gem's region: that of the first place on its cell (-1: none).
-    auto regionOf = [&](Cell c) { return g.on(c).empty() ? -1 : g.region(g.on(c).front()); };
+    std::map<int, int> count;   // gems left, by region: in each of a gem's
     for (size_t i = 0; i < gems.size(); i++)
-        if (!f.taken.has(i) && regionOf(gems[i]) >= 0)
-            count[regionOf(gems[i])]++;
+        if (!f.taken.has(i))
+            for (int r : regionsOf(gems[i]))
+                count[r]++;
     std::map<int, int> most;    // by region
     auto mostFrom = [&](int r) {
         int m = 0;
@@ -226,7 +240,7 @@ double Planner::estimate(const Facts &f) const
         return m + (c == count.end() ? 0 : c->second);
     };
     for (const auto &[r, n] : count)   // ascending: sinks first
-        if (g.regionReaches(r, out))
+        if (reachesExit(r))
             most[r] = mostFrom(r);
     if (mostFrom(here) < needed)
         return NO_WAY_MS;
@@ -244,10 +258,10 @@ double Planner::estimate(const Facts &f) const
             if (taken.has(i))
                 continue;
             int spent;
-            const double t = g.timeTo(at, gems[i], ANY, &spent);
-            if (t < 0 || g.on(gems[i]).empty())
+            double t;
+            const int p = g.arrive(at, gems[i], &t, ANY, &spent);
+            if (p < 0)
                 continue;
-            const int p = g.on(gems[i]).front();
             const int ri = g.region(p);
             auto m = most.find(ri);
             const int rank = ri == r ? 2 : m != most.end() && m->second >= need ? 1 : 0;

@@ -422,7 +422,19 @@ double MoveGraph::timeBeside(int at, Cell c) const
 int MoveGraph::arrive(int from, Cell c, double *ms, int glides, int *used) const
 {
     *ms = timeTo(from, c, glides, used);
-    return *ms < 0 || on(c).empty() ? -1 : on(c).front();
+    if (*ms < 0 || on(c).empty())
+        return -1;
+    // Of the places on it that can be come to, one whose region leads to
+    // the others' (a facing may lead off a ledge, for good).
+    const int r = region(from);
+    int best = -1;
+    for (int p : on(c)) {
+        if (!regionReaches(r, region(p)))
+            continue;
+        if (best < 0 || (region(p) != region(best) && regionReaches(region(p), region(best))))
+            best = p;
+    }
+    return best >= 0 ? best : on(c).front();
 }
 
 std::vector<int> MoveGraph::path(int from, const std::function<bool(int)> &goal,

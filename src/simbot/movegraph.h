@@ -76,8 +76,9 @@ public:
     /* The least ms from place at to cell c or one beside it (a foe's, which
      * the player may not stand on), never gliding (a foe does not). */
     double timeBeside(int at, Cell c) const;
-    /* The arrival on cell c from place from, by timeTo: a place on it, -1
-     * if there is no way, and its ms. */
+    /* The arrival on cell c from place from, by timeTo: a place on it (of
+     * those come to, one in the region that leads to the most of theirs),
+     * -1 if there is no way, and its ms. */
     int arrive(int from, Cell c, double *ms, int glides = 0, int *used = nullptr) const;
 
     /* The quickest way from place from to a place goal accepts, through no

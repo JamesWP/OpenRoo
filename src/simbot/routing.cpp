@@ -84,6 +84,11 @@ Route::Route(const World &start, Goal goal, const MoveGraph &guide, size_t maxPl
     : goal_(goal), guide_(&guide), toCell_(guide.timesTo(goal.cell)), maxPlaces_(maxPlaces),
       shortWaits_(shortWaits), timedWaits_(timedWaits), start_(std::make_unique<World>(start))
 {
+    const LevelMap *map = start.map();
+    for (int u = 0; u < map->extentU(); u++)
+        for (int v = 0; v < map->extentV(); v++)
+            if (map->tile(u, v)->contents() == CONTENTS_CRYSTAL)
+                gemCells_.push_back({u, v});
     Node root;
     root.now   = start.now();
     root.cost  = root.now;
@@ -157,8 +162,19 @@ bool Route::safe(const Node &n) const
     return true;
 }
 
+bool Route::gemsEnough(const World &w) const
+{
+    int left = w.player()->gemsCollected();
+    for (const Cell &c : gemCells_)
+        left += w.map()->tile(c.u, c.v)->contents() == CONTENTS_CRYSTAL;
+    return left >= w.gemsRequired();
+}
+
 bool Route::reached(const Node &n) const
 {
+    // Never at the cost of the level: a blast may take gems with it.
+    if (!gemsEnough(*n.world))
+        return false;
     if (goal_.trap)
         return foeDead(*n.world, goal_.foe) && safe(n);
     if (!goal_.kill) {
@@ -172,8 +188,10 @@ bool Route::reached(const Node &n) const
         }
         return n.place.cell() == goal_.cell && !n.place.air && safe(n);
     }
+    // Every bomb gone (one dropped before may still be on its way): what
+    // its blast takes is known.
     return n.dropAt >= 0 && n.now >= n.dropAt + BLAST_OVER_MS && foeDead(*n.world, goal_.foe) &&
-           safe(n);
+           n.world->bombs().empty() && safe(n);
 }
 
 bool Route::mayDrop(const Node &n) const

@@ -12,6 +12,9 @@
  * otherwise), it is not played unless it would come somewhere sooner than
  * known.
  *
+ * A goal is never reached with fewer gems held and left than the quota
+ * (a blast may take some).
+ *
  * Found, it holds the presses of each tick and the World expected before
  * each (Expect), so the one pressing them can tell when the game goes
  * otherwise. */
@@ -101,6 +104,9 @@ private:
         std::tuple<Place, int, int, bool, Cell, Cell> key;   // Key
     };
     bool reached(const Node &n) const;
+    /* Whether the gems held and those left (of gemCells_) still make the
+     * quota. */
+    bool gemsEnough(const World &w) const;
     /* Whether the player stands a while there unharmed (SAFE_MS). */
     bool safe(const Node &n) const;
     bool mayDrop(const Node &n) const;
@@ -136,6 +142,7 @@ private:
     int    timedWaits_;
     long   spent_ = 0;    // the work it has taken
     std::unique_ptr<World> start_;
+    std::vector<Cell> gemCells_;   // the gems at the start
     std::vector<Node> nodes_;
     using Entry = std::tuple<double, int, int>;   // f, presses, node
     std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> open_;
