@@ -23,6 +23,8 @@ class MovableEntity : public Listed {
 public:
     // How long a sticky pad holds what it catches, from stuckSince.
     static constexpr double STUCK_MS = 3000.0;
+    // Gliding, it sinks this many heights a ms.
+    static constexpr float GLIDE_RATE = 0.004f;
 
      
 

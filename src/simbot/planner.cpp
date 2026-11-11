@@ -1,5 +1,7 @@
 #include "planner.h"
 #include <stdio.h>
+#include <map>
+#include <stdlib.h>
 #include "actions.h"
 #include "survey.h"
 #include "tile.h"
@@ -16,6 +18,7 @@ const double ESTIMATE_WEIGHT = 1.5;
  * planned. */
 const double KILL_ESTIMATE_MS   = 5000;
 const double PICKUP_ESTIMATE_MS = 5000;
+const double GLIDER_ESTIMATE_MS = 2000;
 
 }  // namespace
 
@@ -36,6 +39,12 @@ Facts factsOf(const World &w, const Survey &survey)
             f.pickups.add(i);
     }
     f.bombs = w.player()->bombsCarried();
+    for (size_t i = 0; i < survey.gliders().size(); i++) {
+        const Cell c = survey.gliders()[i];
+        if (w.map()->tile(c.u, c.v)->contents() != CONTENTS_PARAGLIDER)
+            f.gliders.add(i);
+    }
+    f.glides = w.player()->glides();
     for (size_t i = 0; i < survey.foes().size(); i++)
         if (!foeDead(w, survey.foes()[i]))
             f.alive |= (uint64_t)1 << i;
@@ -70,34 +79,89 @@ double Planner::estimate(const Facts &f) const
         return 0;
     if (f.at < 0)
         return NO_WAY_MS;
+    // Regions (MoveGraph::region) are left for good: the most gems to be
+    // had on a way through them that ends at the exit, from each region
+    // with gems (sinks first, so each one's are known before it).
     const MoveGraph &g = survey_.graph();
+    const std::vector<Cell> &gems = survey_.gems();
+    const Cell exit = survey_.exit();
+    const int ANY = 255;   // glider charges: as many as it likes
+    const int needed = survey_.quota() - f.gems;
+    const int here = g.region(f.at);
+    const int out = g.on(survey_.exit()).empty() ? -1 : g.region(g.on(survey_.exit()).front());
+    if (!g.regionReaches(here, out))
+        return NO_WAY_MS;
+    std::map<int, int> count;   // gems left, by region
+    // A gem's region: that of the first place on its cell (-1: none).
+    auto regionOf = [&](Cell c) { return g.on(c).empty() ? -1 : g.region(g.on(c).front()); };
+    for (size_t i = 0; i < gems.size(); i++)
+        if (!f.taken.has(i) && regionOf(gems[i]) >= 0)
+            count[regionOf(gems[i])]++;
+    std::map<int, int> most;    // by region
+    auto mostFrom = [&](int r) {
+        int m = 0;
+        for (const auto &[d, n] : most)
+            if (d != r && g.regionReaches(r, d) && n > m)
+                m = n;
+        auto c = count.find(r);
+        return m + (c == count.end() ? 0 : c->second);
+    };
+    for (const auto &[r, n] : count)   // ascending: sinks first
+        if (g.regionReaches(r, out))
+            most[r] = mostFrom(r);
+    if (mostFrom(here) < needed)
+        return NO_WAY_MS;
+    // A tour on the MoveGraph's times to each cell: the nearest gem in the
+    // region it is in, else the nearest in a region with enough left.
     int at = f.at;
     IndexSet taken = f.taken;
     double ms = 0;
-    for (int need = survey_.quota() - f.gems; need > 0; need--) {
-        int bestGem = -1, bestAt = -1;
+    int glides = 0;   // charges the tour spends
+    for (int need = needed; need > 0; need--) {
+        const int r = g.region(at);
+        int bestGem = -1, bestAt = -1, bestRank = 0, bestSpent = 0;
         double best = 0;
-        for (size_t i = 0; i < survey_.gems().size(); i++) {
+        for (size_t i = 0; i < gems.size(); i++) {
             if (taken.has(i))
                 continue;
-            double t;
-            const int p = g.arrive(at, survey_.gems()[i], &t);
-            if (p >= 0 && (bestGem < 0 || t < best)) {
-                bestGem = (int)i;
-                bestAt  = p;
-                best    = t;
-            }
+            int spent;
+            const double t = g.timeTo(at, gems[i], ANY, &spent);
+            if (t < 0 || g.on(gems[i]).empty())
+                continue;
+            const int p = g.on(gems[i]).front();
+            const int ri = g.region(p);
+            auto m = most.find(ri);
+            const int rank = ri == r ? 2 : m != most.end() && m->second >= need ? 1 : 0;
+            if (bestGem >= 0 && (rank < bestRank || (rank == bestRank && t >= best)))
+                continue;
+            bestGem  = (int)i;
+            bestAt   = p;
+            bestRank = rank;
+            bestSpent = spent;
+            best     = t;
         }
         if (bestGem < 0)
-            return ms + NO_WAY_MS;
+            break;   // stuck on the way: the tour so far
         ms += best;
+        glides += bestSpent;
         at = bestAt;
         taken.add(bestGem);
     }
-    double t;
-    if (g.arrive(at, survey_.exit(), &t) < 0)
-        return ms + NO_WAY_MS;
-    ms += t;
+    int spent;
+    const double last = g.timeTo(at, exit, ANY, &spent);
+    if (last >= 0) {
+        ms += last;
+        glides += spent;
+    }
+    // The gliders to fetch for the charges it lacks.
+    if (glides > f.glides) {
+        int left = 0;
+        for (size_t i = 0; i < survey_.gliders().size(); i++)
+            left += !f.gliders.has(i);
+        if (glides - f.glides > left)
+            return ms + NO_WAY_MS;
+        ms += (glides - f.glides) * GLIDER_ESTIMATE_MS;
+    }
     // The foes: the risk on the walk to come, or killing them first,
     // whichever is less.
     const double risk = foeRisk(f, survey_) * ms;

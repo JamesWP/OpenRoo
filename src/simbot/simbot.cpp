@@ -1,7 +1,9 @@
 #include "simbot.h"
 #include <stdio.h>
+#include <chrono>
 #include "logger.h"
 #include "moves.h"
+#include "tile.h"
 #include "world.h"
 
 namespace simbot {
@@ -13,23 +15,38 @@ unsigned SimBot::act(const bot::BotView &, const World &world)
 {
     ticks_++;
     if (!survey_) {
+        // Wall time, for the log only: nothing is decided by it.
+        const auto began = std::chrono::steady_clock::now();
         survey_ = std::make_unique<Survey>(world);
-        // The gems the MoveGraph has no way to from the start.
+        const double surveyMs =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began)
+                .count();
+        // The gems the MoveGraph has no way to from the start, gliding as
+        // it may.
         std::string unreached;
         const MoveGraph &g = survey_->graph();
         const int from = g.find(placeOf(world));
         for (const Cell &c : survey_->gems()) {
             double ms;
-            if (from < 0 || g.arrive(from, c, &ms) < 0)
+            if (from < 0 || g.arrive(from, c, &ms, 255) < 0)
                 unreached += (unreached.empty() ? "" : " ") + std::to_string(c.u) + "," +
                              std::to_string(c.v);
         }
-        char buf[192];
+        // What moves under the player, and the gliders to be had.
+        int gliders = 0;
+        const LevelMap *map = world.map();
+        for (int v = 0; v < map->extentV(); v++)
+            for (int u = 0; u < map->extentU(); u++)
+                gliders += map->tile(u, v)->contents() == CONTENTS_PARAGLIDER;
+        char buf[320];
         snprintf(buf, sizeof(buf),
                  "\"places\":%zu,\"moves\":%ld,\"breaking\":%ld,\"gems\":%zu,\"quota\":%d,"
-                 "\"pickups\":%zu,\"foes\":%zu,",
+                 "\"pickups\":%zu,\"foes\":%zu,\"lifts\":%zu,\"platforms\":%zu,"
+                 "\"bridges\":%zu,\"gliders\":%d,\"glides\":%d,\"glided\":%ld,\"ms\":%.0f,",
                  g.size(), g.played(), g.breaking(), survey_->gems().size(), survey_->quota(),
-                 survey_->pickups().size(), survey_->foes().size());
+                 survey_->pickups().size(), survey_->foes().size(), world.lifts().size(),
+                 world.platforms().size(), world.bridges().size(), gliders,
+                 (int)world.player()->glides(), g.glided(), surveyMs);
         log_.write(ticks_, "survey", buf + std::string("\"unreached\":") + SimLog::quote(unreached));
     }
     Work work;

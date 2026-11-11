@@ -30,6 +30,11 @@ void restoreFallings(World &w)
     }
 }
 
+void giveGlides(World &w, int glides)
+{
+    w.player()->setGlides((unsigned char)glides);
+}
+
 void giveBomb(World &w)
 {
     Player *p = w.player();

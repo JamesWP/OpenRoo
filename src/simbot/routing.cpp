@@ -58,7 +58,7 @@ bool nearFoe(const MoveGraph &g, const Place &place, Cell foe, int foeH, bool mo
             return true;
         if (!moving)
             continue;
-        const double t = g.timeTo(foeAt, b[k].cell);
+        const double t = g.timeBeside(foeAt, b[k].cell);
         if (t >= 0 && t <= REACH_MS)
             return true;
     }
@@ -67,7 +67,7 @@ bool nearFoe(const MoveGraph &g, const Place &place, Cell foe, int foeH, bool mo
 
 Route::Route(const World &start, Goal goal, const MoveGraph &guide, size_t maxPlaces,
              int shortWaits, int timedWaits)
-    : goal_(goal), guide_(&guide), toCell_(&guide.timesTo(goal.cell)), maxPlaces_(maxPlaces),
+    : goal_(goal), guide_(&guide), toCell_(guide.timesTo(goal.cell)), maxPlaces_(maxPlaces),
       shortWaits_(shortWaits), timedWaits_(timedWaits), start_(std::make_unique<World>(start))
 {
     Node root;
@@ -121,7 +121,7 @@ bool Route::reached(const Node &n) const
                            foeMoving(*n.world, *f)) &&
                    safe(n);
         }
-        return n.place.cell() == goal_.cell && safe(n);
+        return n.place.cell() == goal_.cell && !n.place.air && safe(n);
     }
     return n.dropAt >= 0 && n.now >= n.dropAt + BLAST_OVER_MS && foeDead(*n.world, goal_.foe) &&
            safe(n);
@@ -196,11 +196,12 @@ Route::Status Route::run(Work &work)
                     next = std::make_unique<World>(*from.world);
                     p = waitUntil(*next, from.dropAt + BLAST_OVER_MS, &work);
                 }
-            } else if (kind < MOVES || (kind == WAIT && from.waited < shortWaits_) ||
+            } else if (kind < MOVES ||
+                       (kind == WAIT && (from.waited < shortWaits_ || gliding(*from.world))) ||
                        ((kind == DROP || kind == DROP_BACK) && mayDrop(from))) {
                 next = std::make_unique<World>(*from.world);
                 p = play(*next, (Move)kind, &work);
-            } else if (kind == TIMED_WAIT && from.waited < timedWaits_) {
+            } else if (kind == TIMED_WAIT && from.waited < timedWaits_ && !gliding(*from.world)) {
                 for (double t : waitTimes(*from.world, from.place.cell()))
                     if (t > from.world->now()) {
                         next = std::make_unique<World>(*from.world);
@@ -218,6 +219,7 @@ Route::Status Route::run(Work &work)
             n.parent = at;
             n.move   = (Move)kind;
             n.ticks  = p.ticks;
+            n.stepAt = p.stepAt;
             n.waited = kind == WAIT || kind == TIMED_WAIT ? from.waited + 1 : 0;
             n.now    = next->now();
             n.dropAt = kind == DROP || kind == DROP_BACK ? next->now() - (p.ticks - 1) * next->tickStep()->value
@@ -271,8 +273,11 @@ void Route::found(int at)
         chain.push_back(n);
     for (auto it = chain.rbegin(); it != chain.rend(); ++it) {
         const Node &n = nodes_[*it];
-        presses_.push_back(pressOf(n.move));
-        presses_.insert(presses_.end(), n.ticks - 1, 0u);
+        Played p;
+        p.ticks  = n.ticks;
+        p.stepAt = n.stepAt;
+        const std::vector<unsigned> ps = pressesOf(n.move, p);
+        presses_.insert(presses_.end(), ps.begin(), ps.end());
     }
     // The World before each press, played once more from the start.
     World w(*start_);

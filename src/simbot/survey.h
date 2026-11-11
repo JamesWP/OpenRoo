@@ -21,6 +21,8 @@ public:
     /* The cells of the bomb pickups (3 bombs each) at the start, known by
      * their index like the gems. */
     const std::vector<Cell> &pickups() const { return pickups_; }
+    /* The cells of the gliders (a glider charge each), likewise. */
+    const std::vector<Cell> &gliders() const { return gliders_; }
     /* The foes a bomb kills (the catchers; throwers are proof against
      * blasts) at the start, by Listed id, and the cell each was last seen
      * on (see), known by their index here (the first 64). */
@@ -36,6 +38,7 @@ private:
     MoveGraph         graph_;
     std::vector<Cell> gems_;
     std::vector<Cell> pickups_;
+    std::vector<Cell> gliders_;
     std::vector<unsigned> foes_;
     std::vector<Cell> seen_;
     Cell              exit_;

@@ -8,6 +8,7 @@ add_library(simbot OBJECT
     pickup.cpp
     moves.cpp
     planner.cpp
+    gliding.cpp
     routing.cpp
     schedule.cpp
     simbot.cpp

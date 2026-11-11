@@ -44,7 +44,7 @@ public:
         if (f.done || f.at < 0 || f.gems < survey.quota())
             return;
         double ms;
-        if (survey.graph().arrive(f.at, survey.exit(), &ms) < 0)
+        if (survey.graph().arrive(f.at, survey.exit(), &ms, f.glides) < 0)
             return;
         Step s;
         s.action = this;

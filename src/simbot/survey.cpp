@@ -23,9 +23,24 @@ bool bombsForFoes(const World &w)
     return false;
 }
 
+/* Whether the player may ever glide: glider charges in hand, or a glider
+ * to pick up. */
+bool glidesToBe(const World &w)
+{
+    if (w.player()->glides() > 0)
+        return true;
+    const LevelMap *map = w.map();
+    for (int v = 0; v < map->extentV(); v++)
+        for (int u = 0; u < map->extentU(); u++)
+            if (map->tile(u, v)->contents() == CONTENTS_PARAGLIDER)
+                return true;
+    return false;
+}
+
 }  // namespace
 
-Survey::Survey(const World &start) : graph_(start, bombsForFoes(start))
+Survey::Survey(const World &start)
+    : graph_(start, bombsForFoes(start), glidesToBe(start))
 {
     const LevelMap *map = start.map();
     for (int v = 0; v < map->extentV(); v++)
@@ -35,6 +50,9 @@ Survey::Survey(const World &start) : graph_(start, bombsForFoes(start))
             else if (map->tile(u, v)->contents() == CONTENTS_GRANT_09 &&
                      pickups_.size() < IndexSet::MAX)
                 pickups_.push_back({u, v});
+            else if (map->tile(u, v)->contents() == CONTENTS_PARAGLIDER &&
+                     gliders_.size() < IndexSet::MAX)
+                gliders_.push_back({u, v});
     exit_  = {start.player()->markerCellU(), start.player()->markerCellV()};
     quota_ = start.gemsRequired();
     for (const Foe &f : start.foes())

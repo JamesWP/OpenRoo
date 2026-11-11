@@ -24,7 +24,8 @@ public:
                 continue;
             const Cell c = survey.gems()[i];
             double ms;
-            const int to = survey.graph().arrive(f.at, c, &ms);
+            int used;
+            const int to = survey.graph().arrive(f.at, c, &ms, f.glides, &used);
             if (to < 0)
                 continue;
             Step s;
@@ -34,6 +35,7 @@ public:
             s.after.at = to;
             s.after.taken.add(i);
             s.after.gems++;
+            s.after.glides -= used;
             s.ms = ms * (1 + foeRisk(f, survey));
             char buf[48];
             snprintf(buf, sizeof(buf), "collect g%zu (%d,%d)", i, c.u, c.v);

@@ -26,7 +26,8 @@ const double HELD_MS = 500;
 
 bool RouteAttempt::done(const World &live) const
 {
-    return goal_.kill ? foeDead(live, goal_.foe) : placeOf(live).cell() == goal_.cell;
+    const Place at = placeOf(live);
+    return goal_.kill ? foeDead(live, goal_.foe) : at.cell() == goal_.cell && !at.air;
 }
 
 bool RouteAttempt::blockedBy(const World &w, const Goal &goal, int foeH, bool moving,
@@ -38,15 +39,16 @@ bool RouteAttempt::blockedBy(const World &w, const Goal &goal, int foeH, bool mo
         return false;
     // Each other foe's time to every place, on the player's MoveGraph: it
     // holds a place it comes to no later than the player.
-    std::vector<std::pair<unsigned, const std::vector<double> *>> others;
+    std::vector<std::pair<unsigned, MoveGraph::Table>> others;
     for (const Foe &o : w.foes()) {
         if (o.id() == goal.foe || o.moveState() != 0)
             continue;
         const int at = g.find({o.cellU(), o.cellV(), o.heightCell(), 0});
         if (at >= 0)
-            others.push_back({o.id(), &g.times(at)});
+            others.push_back({o.id(), g.times(at)});
     }
-    const std::vector<double> &mine = g.times(from);
+    const MoveGraph::Table mineTable = g.times(from);
+    const std::vector<double> &mine = *mineTable;
     auto heldBy = [&](int p, unsigned *id) {
         for (const auto &[oid, t] : others)
             if ((*t)[p] >= 0 && (mine[p] < 0 || (*t)[p] <= mine[p] + HELD_MS)) {

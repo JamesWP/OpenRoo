@@ -1,7 +1,7 @@
 /* Facts: the level as the planner sees it.  Where the player stands (a
  * place of the MoveGraph), which of the survey's gems are taken and how
- * many the player holds, which of its bomb pickups are taken and how many
- * bombs the player holds, which of its foes are alive, and whether the
+ * many the player holds, which of its bomb pickups and gliders are taken
+ * and how many bombs and glider charges the player holds, which of its foes are alive, and whether the
  * level is done. */
 #pragma once
 
@@ -31,10 +31,12 @@ struct Facts {
     int      gems = 0;    // held
     IndexSet pickups;     // taken
     int      bombs = 0;   // held
+    IndexSet gliders;     // taken
+    int      glides = 0;  // glider charges held
     uint64_t alive = 0;   // a bit per Survey::foes
     bool     done = false;
 
-    auto key() const { return std::make_tuple(at, taken, gems, pickups, bombs, alive, done); }
+    auto key() const { return std::make_tuple(at, taken, gems, pickups, bombs, gliders, glides, alive, done); }
     bool operator<(const Facts &o) const { return key() < o.key(); }
     bool operator==(const Facts &o) const { return key() == o.key(); }
 };

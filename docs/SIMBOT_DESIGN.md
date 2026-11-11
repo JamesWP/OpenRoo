@@ -21,7 +21,21 @@ tile comes back), worked out from the rules, not played in steps. Falling
 tiles are put back at every place (`whatif::restoreFallings`), and an edge
 notes the one-time tiles it breaks. On a level with foes and bombs to
 be had, it also records where a bomb dropped at each place blows, dropped
-standing or stepping back (it rolls, and falls off ledges). The planner's
+standing or stepping back (it rolls, and falls off ledges).
+
+Gliding is part of the MoveGraph too. A place in the air is a cell, facing
+and height where the player glides with no step under way; in the air LEFT
+and RIGHT turn and then step. Air places are worked out by the rules
+(`simbot/gliding.h`), not played: each move's time and drop are played once
+where a glide begins, an air place is kept at the highest the player comes
+to it, and only a landing on a new ground place is played, to know where
+it truly ends. The player is given glider charges at every place, and an
+edge notes the charges it spends.
+
+*Regions* are the MoveGraph's strongly connected components: a drop or a
+glide leaves one for good. The planner's estimate uses them: no way if no
+chain of regions to the exit still holds enough gems, and a tour that
+finishes the region it is in first. The planner's
 costs come from it, and it guides the Attempts' searches (A*). Other precomputed structures go here too as
 they are needed.
 

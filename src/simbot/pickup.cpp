@@ -1,6 +1,7 @@
-/* pickup: walk to a bomb pickup not yet taken.
+/* pickup: walk to a bomb pickup, or a glider, not yet taken.
  *   pre:  the pickup is not taken; the MoveGraph reaches it
- *   eff:  the pickup taken, three more bombs held, the player on it
+ *   eff:  the pickup taken, three more bombs held (a glider: one more
+ *         charge), the player on it
  *   do:   a RouteAttempt to the pickup. */
 #include <stdio.h>
 #include "actions.h"
@@ -11,23 +12,28 @@ namespace simbot {
 
 namespace {
 
-/* The bombs a pickup holds (player.cpp). */
-const int PICKUP_BOMBS = 3;
+/* What a pickup holds (player.cpp): bombs, or glider charges. */
+const int PICKUP_BOMBS   = 3;
+const int GLIDER_CHARGES = 1;
 
 class Pickup : public Action {
 public:
-    const char *name() const override { return "pickup"; }
+    explicit Pickup(bool glider) : glider_(glider) {}
+    const char *name() const override { return glider_ ? "glider" : "pickup"; }
 
     void offer(const Facts &f, const Survey &survey, std::vector<Step> &out) const override
     {
         if (f.done || f.at < 0)
             return;
-        for (size_t i = 0; i < survey.pickups().size(); i++) {
-            if (f.pickups.has(i))
+        const std::vector<Cell> &cells = glider_ ? survey.gliders() : survey.pickups();
+        const IndexSet &taken = glider_ ? f.gliders : f.pickups;
+        for (size_t i = 0; i < cells.size(); i++) {
+            if (taken.has(i))
                 continue;
-            const Cell c = survey.pickups()[i];
+            const Cell c = cells[i];
             double ms;
-            const int to = survey.graph().arrive(f.at, c, &ms);
+            int used;
+            const int to = survey.graph().arrive(f.at, c, &ms, f.glides, &used);
             if (to < 0)
                 continue;
             Step s;
@@ -35,11 +41,18 @@ public:
             s.arg    = (int)i;
             s.after  = f;
             s.after.at = to;
-            s.after.pickups.add(i);
-            s.after.bombs += PICKUP_BOMBS;
+            s.after.glides -= used;
+            if (glider_) {
+                s.after.gliders.add(i);
+                s.after.glides += GLIDER_CHARGES;
+            } else {
+                s.after.pickups.add(i);
+                s.after.bombs += PICKUP_BOMBS;
+            }
             s.ms = ms * (1 + foeRisk(f, survey));
             char buf[48];
-            snprintf(buf, sizeof(buf), "pickup b%zu (%d,%d)", i, c.u, c.v);
+            snprintf(buf, sizeof(buf), glider_ ? "glider p%zu (%d,%d)" : "pickup b%zu (%d,%d)", i,
+                     c.u, c.v);
             s.what = buf;
             out.push_back(std::move(s));
         }
@@ -47,15 +60,25 @@ public:
 
     std::unique_ptr<Attempt> attempt(const Step &step, const Survey &survey) const override
     {
-        return std::make_unique<RouteAttempt>(Goal{survey.pickups()[step.arg]}, survey.graph());
+        const std::vector<Cell> &cells = glider_ ? survey.gliders() : survey.pickups();
+        return std::make_unique<RouteAttempt>(Goal{cells[step.arg]}, survey.graph());
     }
+
+private:
+    bool glider_;
 };
 
 }  // namespace
 
 const Action &pickupAction()
 {
-    static const Pickup a;
+    static const Pickup a(false);
+    return a;
+}
+
+const Action &gliderAction()
+{
+    static const Pickup a(true);
     return a;
 }
 

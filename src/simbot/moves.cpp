@@ -34,10 +34,20 @@ unsigned pressOf(Move m)
 }
 
 
+std::vector<unsigned> pressesOf(Move m, const Played &p)
+{
+    std::vector<unsigned> out(p.ticks, 0u);
+    if (!out.empty())
+        out[0] = pressOf(m);
+    if (p.stepAt >= 0 && p.stepAt < p.ticks)
+        out[p.stepAt] = PRESS_FORWARD;
+    return out;
+}
+
 Place placeOf(const World &w)
 {
     const Player *p = w.player();
-    return {p->cellU(), p->cellV(), p->heightCell(), p->facing()};
+    return {p->cellU(), p->cellV(), p->heightCell(), p->facing(), p->gliding() != 0};
 }
 
 const Foe *findFoe(const World &w, unsigned id)
@@ -54,6 +64,11 @@ bool foeDead(const World &w, unsigned id)
     return !f || f->moveState() == 4;   // blasted; one that fell is gone soon after
 }
 
+bool gliding(const World &w)
+{
+    return w.player()->gliding() != 0;
+}
+
 bool dead(const World &w)
 {
     return w.player()->moveState() != 0;
@@ -62,8 +77,9 @@ bool dead(const World &w)
 bool atRest(const World &w)
 {
     const Player *p = w.player();
-    return !dead(w) && p->moveDir() == 0 && p->falling() == 0 && p->gliding() == 0 &&
-           !p->launched() && p->teleportPhase() == 0;
+    if (dead(w) || p->moveDir() != 0 || p->launched() || p->teleportPhase() != 0)
+        return false;
+    return p->gliding() != 0 || p->falling() == 0;
 }
 
 long tickCost(const World &w)
@@ -98,16 +114,26 @@ Played play(World &w, Move m, Work *work)
         out.kind = Played::Refused;
         return out;
     }
-    while (!atRest(w)) {
-        if (dead(w)) {
-            out.kind = Played::Died;
-            return out;
+    // In the air, a turn is followed by a step: the four moves are the four
+    // ways.
+    const bool turnThenStep = from.air && (m == LEFT || m == RIGHT);
+    for (;;) {
+        while (!atRest(w)) {
+            if (dead(w)) {
+                out.kind = Played::Died;
+                return out;
+            }
+            if (out.ticks >= MOVE_TICKS) {
+                out.kind = Played::Unsettled;
+                return out;
+            }
+            tick(w, 0, work);
+            out.ticks++;
         }
-        if (out.ticks >= MOVE_TICKS) {
-            out.kind = Played::Unsettled;
-            return out;
-        }
-        tick(w, 0, work);
+        if (!turnThenStep || out.stepAt >= 0 || !gliding(w))
+            break;
+        out.stepAt = out.ticks;
+        tick(w, PRESS_FORWARD, work);
         out.ticks++;
     }
     out.kind = Played::Moved;

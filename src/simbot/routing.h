@@ -81,6 +81,7 @@ private:
         int    parent = -1;
         Move   move = FORWARD;
         int    ticks = 0;
+        int    stepAt = -1;   // Played::stepAt
         int    waited = 0;    // waits in a row that came to it
         double now = 0;
         double dropAt = -1;   // when the bomb was dropped, if it was
@@ -102,7 +103,7 @@ private:
 
     Goal   goal_;
     const MoveGraph *guide_;
-    const std::vector<double> *toCell_;
+    MoveGraph::Table toCell_;
     size_t maxPlaces_;
     int    shortWaits_;
     int    timedWaits_;

@@ -30,14 +30,16 @@ public:
             const Cell c = survey.seen((int)i);
             // The quickest arrival on its cell or one beside it.
             const Cell near[] = {c, {c.u + 1, c.v}, {c.u - 1, c.v}, {c.u, c.v + 1}, {c.u, c.v - 1}};
-            int to = -1;
+            int to = -1, used = 0;
             double best = 0;
             for (const Cell &n : near) {
                 double ms;
-                const int p = survey.graph().arrive(f.at, n, &ms);
+                int u;
+                const int p = survey.graph().arrive(f.at, n, &ms, f.glides, &u);
                 if (p >= 0 && (to < 0 || ms < best)) {
                     to = p;
                     best = ms;
+                    used = u;
                 }
             }
             if (to < 0)
@@ -49,6 +51,7 @@ public:
             s.after.at = to;
             s.after.alive &= ~((uint64_t)1 << i);
             s.after.bombs--;
+            s.after.glides -= used;
             s.ms = best + Bomb::CLEAR_MS;
             char buf[48];
             snprintf(buf, sizeof(buf), "kill f%zu (%d,%d)", i, c.u, c.v);
