@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <algorithm>
 #include <map>
+#include <random>
 #include <stdlib.h>
 #include "actions.h"
 #include "survey.h"
@@ -15,14 +16,14 @@ namespace {
 /* What an estimate counts a leg there is no way for. */
 const double NO_WAY_MS = 600000.0;
 const double ESTIMATE_WEIGHT = 1.5;
-/* What an estimate counts killing a foe, and fetching bombs, before it is
- * planned. */
-const double KILL_ESTIMATE_MS   = 5000;
-const double PICKUP_ESTIMATE_MS = 5000;
+/* What an estimate counts fetching a glider, before it is planned. */
 const double GLIDER_ESTIMATE_MS = 2000;
 
-/* Passes over a plan's gem order (polish) at most. */
-const int POLISH_PASSES = 4;
+/* Random edits to a plan's gem order (polish) at most, at most so many in
+ * a row none quicker, and the seed. */
+const int      POLISH_EDITS = 20000;
+const int      POLISH_STALE = 3000;
+const unsigned POLISH_SEED  = 1;
 /* What a polished order must save to be taken. */
 const double POLISH_MIN_MS = 1;
 
@@ -97,15 +98,98 @@ std::string Plan::describe() const
     return out;
 }
 
-Planner::Planner(const Survey &survey, const Facts &start, const Ruled &out,
-                 const Requires &needs, const std::vector<Step> &rest, int maxNodes)
-    : survey_(survey), out_(out), requires_(needs), rest_(rest), maxNodes_(maxNodes)
+Planner::Planner(const Survey &survey, const Facts &start, const std::vector<Aim> &aims,
+                 const Ruled &out, const Requires &needs, const std::vector<Step> &rest)
+    : survey_(survey), start_(start), aims_(aims), out_(out), requires_(needs), rest_(rest)
 {
+    begin(start);
+}
+
+void Planner::begin(const Facts &f)
+{
+    nodes_.clear();
+    seen_.clear();
+    open_ = {};
+    aimNodes_ = 0;
+    best_ = 0;
     Node root;
-    root.facts = start;
+    root.facts = f;
     nodes_.push_back(root);
-    seen_[start] = 0;
-    open_.push({ESTIMATE_WEIGHT * estimate(start), -start.gems, 0});
+    seen_[f] = 0;
+    open_.push({0, -f.gems, 0});
+}
+
+std::vector<Step> Planner::pathTo(int at) const
+{
+    std::vector<Step> back;
+    for (int n = at; n > 0; n = nodes_[n].parent)
+        back.push_back(nodes_[n].step);
+    return {back.rbegin(), back.rend()};
+}
+
+std::vector<int> Planner::nearest(const Facts &start, const std::vector<Step> &steps) const
+{
+    std::vector<int> least;
+    for (size_t a = 0; a + 1 < aims_.size(); a++) {
+        int l = aims_[a].left(start);
+        for (const Step &st : steps)
+            l = std::min(l, aims_[a].left(st.after));
+        least.push_back(l);
+    }
+    return least;
+}
+
+void Planner::end(int at, Work &work)
+{
+    const bool last = aim_ + 1 == aims_.size();
+    if (!last) {
+        // Not met: as near as it came.
+        if (at < 0)
+            at = best_;
+        const std::vector<Step> steps = pathTo(at);
+        before_.insert(before_.end(), steps.begin(), steps.end());
+        beforeMs_ += nodes_[at].ms;
+        aim_++;
+        const Facts from = nodes_[at].facts;   // begin clears the nodes
+        begin(from);
+        return;
+    }
+    if (at < 0) {
+        // Not met from where the Aims before it end: from the start, once.
+        if (!before_.empty() && !again_) {
+            again_ = true;
+            before_.clear();
+            beforeMs_ = 0;
+            begin(start_);
+            return;
+        }
+        finished_ = true;
+        return;
+    }
+    plan_.found = true;
+    std::vector<Step> steps = pathTo(at);
+    double ms = nodes_[at].ms;
+    plan_.polished = polish(nodes_[0].facts, steps, ms, work);
+    plan_.steps = before_;
+    plan_.steps.insert(plan_.steps.end(), steps.begin(), steps.end());
+    plan_.ms = beforeMs_ + ms;
+    // The last plan's rest, if it comes as near each Aim, and no slower.
+    std::vector<Step> kept;
+    double keptMs;
+    if (!rest_.empty() && reoffer(start_, rest_, kept, keptMs) && kept.back().after.done &&
+        keptMs <= plan_.ms) {
+        const std::vector<int> a = nearest(start_, kept), b = nearest(start_, plan_.steps);
+        bool asNear = true;
+        for (size_t i = 0; i < a.size(); i++)
+            asNear = asNear && a[i] <= b[i];
+        if (asNear) {
+            plan_.steps = std::move(kept);
+            plan_.ms = keptMs;
+            plan_.polished = 0;
+            plan_.kept = true;
+        }
+    }
+    finished_ = true;
 }
 
 double Planner::estimate(const Facts &f) const
@@ -197,55 +281,41 @@ double Planner::estimate(const Facts &f) const
             return ms + NO_WAY_MS;
         ms += (glides - f.glides) * GLIDER_ESTIMATE_MS;
     }
-    // The foes: the risk on the walk to come, or killing them first,
-    // whichever is less.
-    const double risk = foeRisk(f, survey_) * ms;
-    if (risk > 0) {
-        const int alive = __builtin_popcountll(f.alive);
-        const double remove = alive * KILL_ESTIMATE_MS + (f.bombs >= alive ? 0 : PICKUP_ESTIMATE_MS);
-        ms += risk < remove ? risk : remove;
-    }
     return ms;
 }
 
 bool Planner::run(Work &work)
 {
     while (!finished_ && !work.out()) {
-        if (open_.empty() || plan_.nodes >= maxNodes_) {
-            finished_ = true;
-            break;
+        const Aim &aim = aims_[aim_];
+        const bool last = aim_ + 1 == aims_.size();
+        if (open_.empty() || aimNodes_ >= aim.maxNodes) {
+            end(-1, work);
+            continue;
         }
         const int at = std::get<2>(open_.top());
         open_.pop();
-        if (seen_[nodes_[at].facts] < nodes_[at].ms)
+        const Node &node = nodes_[at];
+        if (seen_[node.facts] < node.ms)
             continue;   // come to sooner since
-        if (nodes_[at].facts.done) {
-            plan_.found = true;
-            plan_.ms    = nodes_[at].ms;
-            std::vector<Step> back;
-            for (int n = at; n > 0; n = nodes_[n].parent)
-                back.push_back(nodes_[n].step);
-            plan_.steps.assign(back.rbegin(), back.rend());
-            polish(work);
-            std::vector<Step> kept;
-            double ms;
-            if (!rest_.empty() && reoffer(nodes_[0].facts, rest_, kept, ms) && kept.back().after.done &&
-                ms <= plan_.ms) {
-                plan_.steps = std::move(kept);
-                plan_.ms = ms;
-                plan_.polished = 0;
-                plan_.kept = true;
-            }
-            finished_ = true;
-            break;
+        const int left = aim.left(node.facts);
+        if (left == 0) {
+            end(at, work);
+            continue;
         }
+        // Taken by the clock: the first with the least left is the soonest.
+        if (left < aim.left(nodes_[best_].facts))
+            best_ = at;
+        if (node.facts.done)
+            continue;   // nothing after the level is done
+        aimNodes_++;
         plan_.nodes++;
         work.spend(PLAN_NODE_WORK);
         std::vector<Step> next;
         for (const Action *a : actions())
             a->offer(nodes_[at].facts, survey_, next);
         for (Step &s : next) {
-            if (out_.count({s.action, s.arg}) && at == 0)
+            if (out_.count({s.action, s.arg}) && at == 0 && nodes_[0].facts == start_)
                 continue;   // impossible now, from here
             auto r = requires_.find({s.action, s.arg});
             if (r != requires_.end() && (r->second & nodes_[at].facts.alive))
@@ -259,7 +329,7 @@ bool Planner::run(Work &work)
             if (it != seen_.end() && it->second <= n.ms)
                 continue;
             seen_[n.facts] = n.ms;
-            const double f = n.ms + ESTIMATE_WEIGHT * estimate(n.facts);
+            const double f = n.ms + (last ? ESTIMATE_WEIGHT * estimate(n.facts) : 0);
             const int gems = n.facts.gems;
             nodes_.push_back(std::move(n));
             open_.push({f, -gems, (int)nodes_.size() - 1});
@@ -272,22 +342,21 @@ bool Planner::run(Work &work)
 
 namespace simbot {
 
-void Planner::polish(Work &work)
+double Planner::polish(const Facts &start, std::vector<Step> &steps, double &planMs,
+                      Work &work) const
 {
     // The gems the plan collects first, one after another, and what comes
     // after them: the exit (its leg counted), nothing, or another step (the
     // last gem kept last, so that step goes as planned).
-    std::vector<Step> &steps = plan_.steps;
     size_t n = 0;
     while (n < steps.size() && steps[n].action == &collectAction())
         n++;
     const bool exit = n < steps.size() && steps[n].action == &exitAction();
     const bool keepLast = n < steps.size() && !exit;
     if (n < 3)
-        return;
+        return 0;
     const MoveGraph &g = survey_.graph();
     const std::vector<Cell> &gems = survey_.gems();
-    const Facts &start = nodes_[0].facts;
     // Legs between them (from the place a gem is come to: MoveGraph::arrive),
     // from the start, and to the exit; index n is the start.
     std::vector<int> gem(n);
@@ -329,43 +398,44 @@ void Planner::polish(Work &work)
         order[i] = (int)i;
     const double planned = tour(order);
     double best = planned;
-    // Moving one gem elsewhere in the order, and turning a stretch of it
-    // about, while either is quicker.
+    // Random edits, each kept if quicker: a gem moved elsewhere, a stretch
+    // turned about, two gems swapped; till POLISH_EDITS, or POLISH_STALE in
+    // a row none quicker.  A fixed seed: the same plan polishes the same.
     const int m = (int)n - (keepLast ? 1 : 0);
-    for (int pass = 0; pass < POLISH_PASSES; pass++) {
-        bool better = false;
-        for (int i = 0; i < m; i++)
-            for (int j = 0; j < m; j++) {
-                if (i == j)
-                    continue;
-                std::vector<int> o = order;
-                const int x = o[i];
-                o.erase(o.begin() + i);
-                o.insert(o.begin() + j, x);
-                const double t = tour(o);
-                if (t < best - POLISH_MIN_MS) {
-                    best = t;
-                    order = o;
-                    better = true;
-                }
-            }
-        for (int i = 0; i < m; i++)
-            for (int j = i + 2; j <= m; j++) {
-                std::vector<int> o = order;
-                std::reverse(o.begin() + i, o.begin() + j);
-                const double t = tour(o);
-                if (t < best - POLISH_MIN_MS) {
-                    best = t;
-                    order = o;
-                    better = true;
-                }
-            }
-        work.spend(PLAN_NODE_WORK * (long)m);
-        if (!better)
+    std::mt19937 rng(POLISH_SEED);
+    std::vector<int> o;
+    int stale = 0;
+    for (int e = 0; e < POLISH_EDITS && stale < POLISH_STALE && m >= 2; e++) {
+        int i = (int)(rng() % (unsigned)m), j = (int)(rng() % (unsigned)(m - 1));
+        if (j >= i)
+            j++;
+        o = order;
+        switch (rng() % 3) {
+        case 0: {
+            const int x = o[i];
+            o.erase(o.begin() + i);
+            o.insert(o.begin() + j, x);
             break;
+        }
+        case 1:
+            std::reverse(o.begin() + std::min(i, j), o.begin() + std::max(i, j) + 1);
+            break;
+        default:
+            std::swap(o[i], o[j]);
+        }
+        const double t = tour(o);
+        if (t < best - POLISH_MIN_MS) {
+            best = t;
+            order.swap(o);
+            stale = 0;
+        } else {
+            stale++;
+        }
+        if (e % m == m - 1)
+            work.spend(PLAN_NODE_WORK);
     }
     if (best >= planned)
-        return;
+        return 0;
     // The steps offered again in the new order, then the rest as planned.
     std::vector<Step> in;
     for (int i : order)
@@ -373,11 +443,11 @@ void Planner::polish(Work &work)
     in.insert(in.end(), steps.begin() + n, steps.end());
     std::vector<Step> out;
     double ms;
-    if (!reoffer(start, in, out, ms) || ms >= plan_.ms)
-        return;   // offered no more that way, or no quicker: the plan as found
+    if (!reoffer(start, in, out, ms) || ms >= planMs)
+        return 0;   // offered no more that way, or no quicker: the plan as found
     steps = std::move(out);
-    plan_.ms = ms;
-    plan_.polished = planned - best;
+    planMs = ms;
+    return planned - best;
 }
 
 }  // namespace simbot
@@ -395,7 +465,7 @@ bool Planner::reoffer(Facts f, const std::vector<Step> &steps, std::vector<Step>
             (r != requires_.end() && (r->second & f.alive)))
             return false;
         std::vector<Step> offered;
-        st.action->offer(f, survey_, offered);
+        st.action->offer(f, survey_, offered, st.arg);
         auto it = std::find_if(offered.begin(), offered.end(),
                                [&](const Step &o) { return o.arg == st.arg; });
         if (it == offered.end())

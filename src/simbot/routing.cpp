@@ -25,6 +25,10 @@ namespace {
 const double NO_WAY_MS = 60000;
 /* From the drop till the blast is gone, and a tick. */
 const double BLAST_OVER_MS = Bomb::CLEAR_MS + 20;
+/* How far from its cell a trap's Route goes (steps), and the clock in its
+ * Key (a short wait). */
+const int TRAP_REACH = 1;
+const double TRAP_CLOCK_MS = WAIT_TICKS * 1000.0 / 60;
 /* nearFoe: the ms a foe may walk, on the MoveGraph, to come beside where
  * the bomb blows: its fuse. */
 const double REACH_MS = Bomb::FUSE_MS;
@@ -88,6 +92,23 @@ Route::~Route() = default;
 
 Route::Key Route::keyOf(const Node &n) const
 {
+    if (goal_.trap) {
+        // The cell, and the clock, to a short wait, in place of facing,
+        // waited and the foe (about where it was set, where the foe is goes
+        // by the clock), and which
+        // falling tiles are armed or down (the first 32, folded into a
+        // Cell).
+        const Cell clock{(int)(n.now / TRAP_CLOCK_MS), 0};
+        uint64_t bits = 0;
+        const auto &fl = n.world->fallings();
+        for (size_t i = 0; i < fl.size() && i < 32; i++)
+            bits |= (uint64_t)(fl[i].armed() ? 1 : 0) << (2 * i) |
+                    (uint64_t)(fl[i].respawnPending() ? 1 : 0) << (2 * i + 1);
+        Place at = n.place;
+        at.facing = 0;   // which way it faces matters little there
+        return {at, 0, carried(*n.world), true, clock,
+                {(int)(uint32_t)bits, (int)(uint32_t)(bits >> 32)}};
+    }
     if (n.dropAt < 0)
         return {n.place, n.waited, carried(*n.world), false, {}, {}};
     Cell foe{-1, -1}, bomb{-1, -1};
@@ -116,6 +137,8 @@ bool Route::safe(const Node &n) const
 
 bool Route::reached(const Node &n) const
 {
+    if (goal_.trap)
+        return foeDead(*n.world, goal_.foe) && safe(n);
     if (!goal_.kill) {
         if (goal_.track) {
             const Foe *f = findFoe(*n.world, goal_.foe);
@@ -148,6 +171,8 @@ void Route::push(int id)
         h = n.dropAt + BLAST_OVER_MS - n.now;
         if (h < 0)
             h = 0;
+    } else if (goal_.trap) {
+        h = 0;   // no guide: what leads the foe on is found by playing
     } else {
         const int g = guide_->find(n.place);
         h = g < 0 ? -1 : (*toCell_)[g];
@@ -240,6 +265,10 @@ Route::Status Route::run(Work &work)
                 foeLived_++;
                 continue;
             }
+            // A trap is played out about where it was set.
+            if (goal_.trap && std::abs(n.place.u - goal_.cell.u) + std::abs(n.place.v - goal_.cell.v) >
+                                  TRAP_REACH)
+                continue;
             n.world = std::move(next);
             const Key key = keyOf(n);
             auto it = best_.find(key);

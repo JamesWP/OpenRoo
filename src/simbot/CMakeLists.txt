@@ -13,7 +13,8 @@ add_library(simbot OBJECT
     schedule.cpp
     simbot.cpp
     simlog.cpp
-    survey.cpp)
+    survey.cpp
+    trap.cpp)
 target_include_directories(simbot PUBLIC .)
 target_link_libraries(simbot
     PUBLIC botapi

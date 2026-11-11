@@ -51,11 +51,14 @@ bool nearFoe(const MoveGraph &g, const Place &place, Cell foe, int foeH, bool mo
  * search); or, with kill, foe (a Listed id) killed by a bomb the player drops
  * near it (a DROP, a move or two clear, and the blast waited out: so a foe
  * chasing the player walks into it), the player alive and at rest, the cell
- * then the foe's, to guide the search. */
+ * then the foe's, to guide the search; or, with trap, foe killed with no
+ * bomb, the player alive and at rest and never more than a step or two from
+ * cell: the foe led onto a falling tile as it drops. */
 struct Goal {
     Cell     cell;
     bool     track = false;
     bool     kill = false;
+    bool     trap = false;
     unsigned foe = 0;
 };
 
@@ -99,7 +102,8 @@ private:
     void push(int id);
     /* Place, waited and the way what it rides is going (carried); after a
      * drop, with the foe's cell and the bomb's (the drop's time aside: where
-     * they are is what matters). */
+     * they are is what matters); for a trap, the clock and the falling
+     * tiles. */
     using Key = std::tuple<Place, int, int, bool, Cell, Cell>;
     Key keyOf(const Node &n) const;
 

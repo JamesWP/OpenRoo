@@ -16,6 +16,10 @@ const int FOE_WAITS = 8;
 const int TIMED_WAITS = 24;
 /* A kill's Routes are searched no further: it is near the foe or nowhere. */
 const size_t KILL_PLACES = 3000;
+/* Waits in a row for a foe to come on to a trap: 10 s. */
+const int TRAP_WAITS = 40;
+/* A trap's Routes: a search on the clock alone, no guide. */
+const size_t TRAP_PLACES = 4000;
 /* Routes pressed to their end with the goal not come about, before it is
  * given up on. */
 const int MAX_ROUTES = 3;
@@ -28,7 +32,7 @@ const double HELD_MS = 500;
 bool RouteAttempt::done(const World &live) const
 {
     const Place at = placeOf(live);
-    return goal_.kill ? foeDead(live, goal_.foe) : at.cell() == goal_.cell && !at.air;
+    return goal_.kill || goal_.trap ? foeDead(live, goal_.foe) : at.cell() == goal_.cell && !at.air;
 }
 
 bool RouteAttempt::blockedBy(const World &w, const Goal &goal, int foeH, bool moving,
@@ -106,8 +110,9 @@ Attempt::Status RouteAttempt::act(const World &live, Work &work, unsigned *press
             }
         }
         const bool waits = waits_ && (!approach_ || approachWaits_);
-        route_ = std::make_unique<Route>(ahead, goal, *graph_, goal.kill ? KILL_PLACES : 6000,
-                                         waits && !ahead.foes().empty() ? FOE_WAITS : 0,
+        route_ = std::make_unique<Route>(ahead, goal, *graph_,
+                                         goal.kill ? KILL_PLACES : goal.trap ? TRAP_PLACES : 6000,
+                                         waits && !ahead.foes().empty() ? (goal.trap ? TRAP_WAITS : FOE_WAITS) : 0,
                                          waits ? TIMED_WAITS : 0);
         at_ = 0;
     }

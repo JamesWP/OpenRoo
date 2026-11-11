@@ -20,7 +20,8 @@ class Kill : public Action {
 public:
     const char *name() const override { return "kill"; }
 
-    void offer(const Facts &f, const Survey &survey, std::vector<Step> &out) const override
+    void offer(const Facts &f, const Survey &survey, std::vector<Step> &out,
+               int /*only*/) const override
     {
         if (f.done || f.at < 0 || f.bombs == 0)
             return;

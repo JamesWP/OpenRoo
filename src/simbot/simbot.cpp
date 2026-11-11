@@ -59,6 +59,22 @@ unsigned SimBot::act(const bot::BotView &, const World &world)
     return presses;
 }
 
+namespace {
+
+/* The foes are killed first, as many as can be, then the level is done. */
+const int FOES_NODES = 1000;   // the search for kills, at most
+
+const std::vector<Aim> &aims()
+{
+    static const std::vector<Aim> all = {
+        {[](const Facts &f) { return __builtin_popcountll(f.alive); }, FOES_NODES},
+        {[](const Facts &f) { return f.done ? 0 : 1; }},
+    };
+    return all;
+}
+
+}  // namespace
+
 unsigned SimBot::decide(const World &world, Work &work)
 {
     for (;;) {
@@ -98,7 +114,7 @@ unsigned SimBot::decide(const World &world, Work &work)
             const Facts now = factsOf(world, *survey_);
             if (!(now == ruledAt_))
                 ruled_.clear();
-            planner_ = std::make_unique<Planner>(*survey_, now, ruled_, requires_, rest_);
+            planner_ = std::make_unique<Planner>(*survey_, now, aims(), ruled_, requires_, rest_);
         }
         if (!planner_->run(work))
             return 0;

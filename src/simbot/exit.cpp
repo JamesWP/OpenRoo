@@ -40,7 +40,8 @@ class Exit : public Action {
 public:
     const char *name() const override { return "exit"; }
 
-    void offer(const Facts &f, const Survey &survey, std::vector<Step> &out) const override
+    void offer(const Facts &f, const Survey &survey, std::vector<Step> &out,
+               int /*only*/) const override
     {
         if (f.done || f.at < 0 || f.gems < survey.quota())
             return;
@@ -51,7 +52,7 @@ public:
         s.action = this;
         s.after  = f;
         s.after.done = true;
-        s.ms = ms * (1 + foeRisk(f, survey));
+        s.ms = ms;
         char buf[48];
         snprintf(buf, sizeof(buf), "exit (%d,%d)", survey.exit().u, survey.exit().v);
         s.what = buf;

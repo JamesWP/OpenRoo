@@ -21,7 +21,8 @@ public:
     explicit Pickup(bool glider) : glider_(glider) {}
     const char *name() const override { return glider_ ? "glider" : "pickup"; }
 
-    void offer(const Facts &f, const Survey &survey, std::vector<Step> &out) const override
+    void offer(const Facts &f, const Survey &survey, std::vector<Step> &out,
+               int /*only*/) const override
     {
         if (f.done || f.at < 0)
             return;
@@ -49,7 +50,7 @@ public:
                 s.after.pickups.add(i);
                 s.after.bombs += PICKUP_BOMBS;
             }
-            s.ms = ms * (1 + foeRisk(f, survey));
+            s.ms = ms;
             char buf[48];
             snprintf(buf, sizeof(buf), glider_ ? "glider p%zu (%d,%d)" : "pickup b%zu (%d,%d)", i,
                      c.u, c.v);

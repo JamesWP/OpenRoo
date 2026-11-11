@@ -61,7 +61,8 @@ const Foe *findFoe(const World &w, unsigned id)
 bool foeDead(const World &w, unsigned id)
 {
     const Foe *f = findFoe(w, id);
-    return !f || f->moveState() == 4;   // blasted; one that fell is gone soon after
+    // Blasted, or fallen from the map (it is gone soon after).
+    return !f || f->moveState() == 4 || f->heightCell() < 0;
 }
 
 bool gliding(const World &w)

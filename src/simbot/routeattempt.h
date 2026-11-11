@@ -23,8 +23,11 @@ namespace simbot {
 
 class RouteAttempt : public Attempt {
 public:
+    /* A trap's search takes longer, the foe coming on meanwhile: its lead
+     * (ticks) from the first. */
+    static const int TRAP_LEAD = 60;
     RouteAttempt(Goal goal, const MoveGraph &graph)
-        : goal_(goal), graph_(&graph), waits_(goal.kill) {}
+        : goal_(goal), graph_(&graph), lead_(goal.trap ? TRAP_LEAD : 4), waits_(goal.kill || goal.trap) {}
     Status act(const World &live, Work &work, unsigned *presses) override;
     std::string why() const override { return why_; }
     std::vector<unsigned> requiresDead() const override { return requiresDead_; }
@@ -40,7 +43,7 @@ private:
     const MoveGraph *graph_;
     std::unique_ptr<Route> route_;
     size_t at_ = 0;
-    int    lead_ = 4;      // ticks
+    int    lead_;          // ticks
     bool   waits_;         // the Route may wait (routing.h)
     int    routes_ = 0;    // Routes pressed to their end without the goal
     std::string why_;      // the last Route's summary

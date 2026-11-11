@@ -53,14 +53,13 @@ class Action {
 public:
     virtual ~Action() = default;
     virtual const char *name() const = 0;
-    virtual void offer(const Facts &f, const Survey &survey, std::vector<Step> &out) const = 0;
+    /* The steps it can take from f, into out.  only (>= 0): the step of
+     * that arg is all that is wanted, even one the Action would leave out
+     * as unlikely (others may be offered too). */
+    virtual void offer(const Facts &f, const Survey &survey, std::vector<Step> &out,
+                       int only = -1) const = 0;
     virtual std::unique_ptr<Attempt> attempt(const Step &step, const Survey &survey) const = 0;
 };
-
-/* What walking among the foes still alive is reckoned to cost, when bombs
- * are to be had to kill them: each ms of a step counts this many more (one
- * for each foe), so the planner kills them first where it can. */
-double foeRisk(const Facts &f, const Survey &survey);
 
 /* Every Action, in the order the planner offers them. */
 const std::vector<const Action *> &actions();

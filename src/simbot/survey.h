@@ -3,6 +3,7 @@
  * the gems and the exit; more as they are needed. */
 #pragma once
 
+#include <map>
 #include <vector>
 #include "movegraph.h"
 
@@ -28,6 +29,20 @@ public:
      * on (see), known by their index here (the first 64). */
     const std::vector<unsigned> &foes() const { return foes_; }
     Cell seen(int i) const { return seen_[i]; }
+    /* The cells of the falling tiles: a foe stood on one when it drops
+     * falls with it (trap.cpp). */
+    const std::vector<Cell> &fallings() const { return fallings_; }
+    /* Where a foe on cell foe may be trapped (trap.cpp): a falling tile it
+     * comes to, and a stand beside it, not a falling tile, that it comes to
+     * only over falling tiles, by way of that one; with the foe's times to
+     * the tile and the stand on the player's MoveGraph.  Its tiles soonest
+     * first.
+     * Worked out for each cell the first time it is asked for. */
+    struct Stand {
+        Cell   tile, stand;
+        double tileMs, standMs;
+    };
+    const std::vector<Stand> &stands(Cell foe) const;
     /* Notes where the foes are now. */
     void see(const World &w);
 
@@ -41,6 +56,8 @@ private:
     std::vector<Cell> gliders_;
     std::vector<unsigned> foes_;
     std::vector<Cell> seen_;
+    std::vector<Cell> fallings_;
+    mutable std::map<Cell, std::vector<Stand>> stands_;
     Cell              exit_;
     int               quota_ = 0;
 };
