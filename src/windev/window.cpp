@@ -146,8 +146,13 @@ bool Window::create(WindowHandler *handler,
     // cannot change after), so the framebuffer is asked for here, not only
     // when the context is made.
     set_framebuffer_attributes(24, 8);
+    // High pixel density: on a Retina (or other scaled) display the back
+    // buffer is the panel's pixels, not the window's points, so the scene is
+    // drawn sharp rather than upscaled.  Everything sizes itself from
+    // drawableSize(), which is in pixels.
     SDL_Window *win = SDL_CreateWindow(config.title, config.width, config.height,
-                                       SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL);
+                                       SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIDDEN | SDL_WINDOW_OPENGL
+                                       | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (!win) {
         WD_LOG("windev: SDL_CreateWindow failed: %s\n", SDL_GetError());
         return false;
