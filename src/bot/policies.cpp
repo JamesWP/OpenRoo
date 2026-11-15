@@ -3,6 +3,7 @@
 #include "executive.h"
 #include "explore.h"
 #include "motor.h"
+#include "simbot.h"
 
 namespace bot {
 
@@ -10,13 +11,13 @@ namespace {
 
 class Idle : public Policy {
 public:
-    unsigned act(const BotView &) override { return 0; }
+    unsigned act(const BotView &, const World &) override { return 0; }
 };
 
 /* Forward until a second passes on one cell, then a quarter turn right. */
 class Wander : public Policy {
 public:
-    unsigned act(const BotView &view) override
+    unsigned act(const BotView &view, const World &) override
     {
         const int u = view.player.u, v = view.player.v;
         if (u != lastU_ || v != lastV_) {
@@ -40,7 +41,7 @@ private:
 class Path : public Policy {
 public:
     explicit Path(std::vector<Step> path) { motor_.follow(std::move(path)); }
-    unsigned act(const BotView &view) override { return motor_.act(view); }
+    unsigned act(const BotView &view, const World &) override { return motor_.act(view); }
 
 private:
     Motor motor_;
@@ -94,6 +95,8 @@ std::unique_ptr<Policy> makePolicy(const std::string &name)
         return std::make_unique<Explore>();
     if (name == "plan")
         return std::make_unique<Executive>();
+    if (name == "sim")
+        return std::make_unique<simbot::SimBot>();
     if (name == "wander")
         return std::make_unique<Wander>();
     return nullptr;

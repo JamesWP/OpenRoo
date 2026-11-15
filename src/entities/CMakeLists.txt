@@ -9,6 +9,7 @@ add_library(entities OBJECT
     movableentity.cpp
     player.cpp
     platformobject.cpp
+    whatif.cpp
     world.cpp
     worldrules.cpp)
 target_include_directories(entities PUBLIC .)

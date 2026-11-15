@@ -19,7 +19,7 @@ namespace bot {
 class Explore : public Policy {
 public:
     Explore();
-    unsigned act(const BotView &view) override;
+    unsigned act(const BotView &view, const World &world) override;
     void end(const BotView &view) override;
 
 private:

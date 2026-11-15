@@ -13,10 +13,17 @@
  
 
 class Tile;
+class World;
+namespace whatif { void restoreFallings(World &w); }
 
 class FallingTile : public Listed {
 public:
      
+
+    // From when it is armed: it falls FALL_MS after, and comes back (unless
+    // noRespawn) RESPAWN_MS after.
+    static constexpr double FALL_MS    = 1500.0;
+    static constexpr double RESPAWN_MS = 5000.0;
 
     // Spawns a falling tile; the arguments are masked to bytes.
     static void spawn(const EntityContext &ctx, EntityList<FallingTile> &fallings, unsigned int uArg, unsigned int vArg,
@@ -40,6 +47,7 @@ public:
     bool   noRespawn() const                   { return noRespawn_ != 0; }
 
 private:
+    friend void whatif::restoreFallings(World &w);
 
     FallingTile();
 

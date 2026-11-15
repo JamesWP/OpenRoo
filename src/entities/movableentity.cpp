@@ -56,10 +56,8 @@ static const float  K_GRAVITY_HALF = 4.905f;
 static const float  K_GRAVITY_TWO  = 19.62f;
 static const float  K_ARC_BIAS     = 7.2f;
 static const float  K_FALL_ACCEL   = 5.405f;
-static const float  K_GLIDE_RATE   = 0.004f;
 static const float  K_SNAP_EPS     = 0.15f;
 static const double K_LINK_EPS     = 0.25;
-static const double K_STICKY_MS      = 3000.0;
 static const double K_HALF_SEC_MS  = 500.0;
 static const double K_IDLE_MS      = 5000.0;
 static const float  K_GLIDE_DROP   = 2.0f;
@@ -233,7 +231,7 @@ unsigned int MovableEntity::updateMovement(LevelMap &map, PlayEvents &events)
                         events.soundPlay(sound(Sfx::Glue), (float)(int)GU, (float)(int)GH, -(float)(int)GV);
                     anim_ = 9;
                 }
-                if (now_ - stuckSince_ <= K_STICKY_MS) {
+                if (now_ - stuckSince_ <= STUCK_MS) {
                     pendingMove_ = 0;  // stuck: drop the queued move
                 } else {
                     stuckSince_ = 0.0;
@@ -505,7 +503,7 @@ unsigned int MovableEntity::updateMovement(LevelMap &map, PlayEvents &events)
                     events.soundMove(sound(Sfx::Glide), posU_, posY_, -posV_);
                     unsigned char th = CUR->height();
                     if ((float)th < posY_ || posY_ < (float)th - K_HALF_F) {
-                        double h = (double)posY_ - load_double(&tickStepCopy_) * (double)K_GLIDE_RATE;
+                        double h = (double)posY_ - load_double(&tickStepCopy_) * (double)GLIDE_RATE;
                         posY_ = (float)h;
                         heightCell_ = (signed char)((unsigned char)(unsigned)(long long)h + 1);  // PRESERVED: same byte wrap as the free-fall case above
                     } else {

@@ -164,6 +164,7 @@ def play(job):
         "KAROO_BOT_BOMB_LOG": os.path.join(out, "bombs.jsonl"),
         "KAROO_BOT_SIM_LOG": os.path.join(out, "sim.jsonl"),
         "KAROO_BOT_DECISIONS": os.path.join(out, "decisions.jsonl"),
+        "KAROO_SIMBOT_LOG": os.path.join(out, "simbot.jsonl"),
         "KAROO_RECORD_LABEL": name,
         "KAROO_AUTO_EXIT_SECS": str(timeout),
     })

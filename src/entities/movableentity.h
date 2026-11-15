@@ -21,6 +21,11 @@ class FoePath;
 /* One moving entity's shared state.  Foe, Bomb and Player derive from it. */
 class MovableEntity : public Listed {
 public:
+    // How long a sticky pad holds what it catches, from stuckSince.
+    static constexpr double STUCK_MS = 3000.0;
+    // Gliding, it sinks this many heights a ms.
+    static constexpr float GLIDE_RATE = 0.004f;
+
      
 
     // Nonzero once this tick should remove the entity.  Read by GameTick after

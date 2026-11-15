@@ -5,6 +5,7 @@
  *   explore random single moves, logging the nav model's predictions
  *           against the game (explore.h);
  *   plan    the gem quota, then the exit, by the planner (executive.h);
+ *   sim     the same, planned on copies of the level itself (simbot.h);
  *   path:u,v;u,v;...
  *           walks the waypoints with the motor (motor.h), then stands.  Each
  *           waypoint is in line with the one before; the cells between are

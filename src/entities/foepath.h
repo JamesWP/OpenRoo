@@ -4,13 +4,14 @@
 
 #pragma once
 
+#include <deque>
 #include <vector>
 
 class LevelMap;
 class Tile;
 
-/* A search node, 0x44 bytes, zeroed.  FoePath builds and links them; the chase
- * (foe.cpp) reads the result's parent and cell. */
+/* A search node, zeroed.  FoePath builds and links them; the chase (foe.cpp)
+ * reads the result's parent and cell. */
 class PathNode {
 public:
 
@@ -21,18 +22,16 @@ public:
 private:
     friend class FoePath;  // builds, links and frees them
 
-    // PRESERVED: the child scan has no bound, so a ninth child is stored one
-    // past the array, onto next.  Written as that store, so the defect is kept
-    // without an out-of-bounds access.
+    // A node is expanded once, relaxing its four neighbours, so it has at
+    // most four children.  (The game's scan had no bound, a ninth child
+    // landing on next; it never had the ninth.)
     void recordChild(PathNode *node)
     {
-        int i = 0;
-        while (children_[i] != 0 && ++i < 8)
-            ;
-        if (i == 8)
-            next_ = node;  // children[8] is next
-        else
-            children_[i] = node;
+        for (PathNode *&c : children_)
+            if (c == 0) {
+                c = node;
+                return;
+            }
     }
 
     int       f_;            // g + h, the open list's order
@@ -42,20 +41,21 @@ private:
     int       v_;
     int       key_;          // FoePath::cellKey(u, v)
     PathNode *parent_;
-    PathNode *children_[8];  // the nodes relaxed through this one
+    PathNode *children_[4];  // the nodes relaxed through this one
     PathNode *next_;         // the open or closed chain
+    char      list_;         // which chain it is on: 0 none, OPEN or CLOSED
 };
 
 /* One search, made for the call that needs it and gone with it: a foe keeps
- * nothing of its searches but the mode it searches in.  Its nodes are freed
- * when it goes out of scope. */
+ * nothing of its searches but the mode it searches in.  Its nodes live in
+ * a pool of its own, freed when it goes out of scope, and are found by
+ * their cell through an index rather than by walking the chains. */
 class FoePath {
 public:
     // A search of map, in the foe's mode (the foe type, or 0 or 2 for the
     // switch runner; passable() branches on it), giving up after cap nodes.
     FoePath(const LevelMap &map, unsigned char mode, unsigned short cap)
         : map_(&map), mode_(mode), cap_(cap) {}
-    ~FoePath() { releaseLists(); }
     FoePath(const FoePath &) = delete;
     FoePath &operator=(const FoePath &) = delete;
 
@@ -69,7 +69,7 @@ private:
     const LevelMap *map() const { return map_; }
     int       cellKey(int u, int v) const;
     int       passable(int u, int v) const;
-    void      releaseLists();
+    PathNode *newNode();
     int       search(int uFoe, int vFoe, int uTarget, int vTarget);
     PathNode *popBestOpen();
     void      expand(PathNode *node, int goalU, int goalV);
@@ -77,9 +77,11 @@ private:
                     int goalU, int goalV);
     PathNode *findOpen(int key);
     PathNode *findClosed(int key);
+    PathNode *find(int key, char list);
     void      insertOpenByCost(PathNode *node);
     void      propagate(PathNode *node);
     static PathNode *findByKey(PathNode *hdr, int key);
+    enum : char { OPEN = 1, CLOSED = 2 };
 
     const LevelMap *map_;
     unsigned char   mode_;
@@ -89,4 +91,8 @@ private:
     PathNode       *result_{};
     // The cost-propagation worklist, used as a stack.
     std::vector<PathNode *> pending_;
+    std::deque<PathNode>    nodes_;   // every node, the headers too
+    // The node made for each cell, by its key, while the key is one of the
+    // map's cells; null for none.
+    std::vector<PathNode *> byKey_;
 };

@@ -28,8 +28,6 @@
 #include "tile.h"
 #include "logger.h"
 
-static const double FALL_DELAY_MS    = 1500.0;
-static const double RESPAWN_DELAY_MS = 5000.0;
 
 static int s_diag_place     = 0;
 static int s_init           = 0;
@@ -116,7 +114,7 @@ void FallingTile::playAtTile(PlayEvents &events, Sfx sfx, const Tile *t) const
 void FallingTile::tick(const EntityContext &ctx, PlayEvents &events)
 {
     diag_init();
-    const double fallDelay = FALL_DELAY_MS;
+    const double fallDelay = FALL_MS;
 
     tickStepCopy_ = ctx.step;
     now_        = ctx.now;
@@ -156,7 +154,7 @@ void FallingTile::tick(const EntityContext &ctx, PlayEvents &events)
 
     if (respawnPending_ != 0) {
         const double elapsed = now - armedAt_;
-        if (elapsed >= RESPAWN_DELAY_MS && elapsed != RESPAWN_DELAY_MS) {
+        if (elapsed >= RESPAWN_MS && elapsed != RESPAWN_MS) {
             eventTime_     = now;
             justRespawned_ = 1;
 

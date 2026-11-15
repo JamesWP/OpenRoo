@@ -9,6 +9,8 @@
 
 #include "botview.h"
 
+class World;
+
 namespace bot {
 
 /* The player's controls, as Input_Setup registers them in mode 1. */
@@ -28,8 +30,10 @@ struct Thought {
 class Policy {
 public:
     virtual ~Policy() {}
-    /* The presses to hold this tick, while the level is being played. */
-    virtual unsigned act(const BotView &view) = 0;
+    /* The presses to hold this tick, while the level is being played: from
+     * the view, or the level itself (world.h), which a policy may copy and
+     * play ahead on.  The game's next tick takes them. */
+    virtual unsigned act(const BotView &view, const World &world) = 0;
     /* The run is over (botrun.h): the view it ended on. */
     virtual void end(const BotView &) {}
     /* What the policy last made of the level, for the run's summary: why it

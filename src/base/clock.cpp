@@ -109,6 +109,12 @@ static void clock_pace(void)
 
 void clock_setFrameHook(ClockFrameHook fn) { g_frameHook = fn; }
 
+double clock_fixedStepMs(void)
+{
+    if (g_fixed_dt < 0.0) clock_init();
+    return g_fixed_dt > 0.0 ? g_fixed_dt * 1000.0 : g_fakeTime ? 1000.0 / 60.0 : 0.0;
+}
+
 unsigned clock_frame(void) { return g_calls; }
 
 double clock_advance(void)

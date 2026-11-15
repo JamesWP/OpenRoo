@@ -14,6 +14,10 @@ class LiftObject : public Listed {
 public:
      
 
+    // Its speed, in height units a ms, and how long it parks at each end.
+    static constexpr float  HEIGHT_PER_MS = 0.005f;
+    static constexpr double PARK_MS       = 1500.0;
+
     // Spawns a lift; the arguments are masked to bytes.
     static void spawn(const EntityContext &ctx, EntityList<LiftObject> &lifts, unsigned int uArg,
                       unsigned int vArg, unsigned int baseArg, unsigned int topArg);
