@@ -142,7 +142,7 @@ int ExtraObjects::openFile(const char *dir, const char *name)
     objectCount_ = 0;
     entries_    = 0;
 
-    sprintf(path, "%s\\Level3DExtraObjects\\%s.leo", dir_, name);
+    snprintf(path, sizeof path, "%s\\Level3DExtraObjects\\%s.leo", dir_, name);
 
     // Binary, with the '\r's dropped as they are read: the entry after each
     // ';' is a CRLF, which must count as one character.

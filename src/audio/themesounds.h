@@ -62,7 +62,5 @@ public:
     const SoundAssetName *entry(ThemeSound s) const { return &entries_[static_cast<unsigned>(s)]; }
 
 private:
-    uint32_t          unknown4_{};     /* +4  never written */
-    uint16_t           unknown8_{};     /* +8  zeroed by the ctor, never read */
     SoundAssetName entries_[THEME_SOUND_COUNT];
 };

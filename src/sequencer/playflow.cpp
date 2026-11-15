@@ -158,7 +158,7 @@ static void return_to_menu(Game *self, bool lastLevel)
     const char *theme = NULL;
     if (lastLevel) {
         char name[256];
-        sprintf(name, "Final\134%s", self->gameFileName());
+        snprintf(name, sizeof name, "Final\134%s", self->gameFileName());
         Sim_ParseLevelFiles(self, name);
         self->frontEnd()->menu()->push(0);
         self->frontEnd()->menu()->setNode(5);

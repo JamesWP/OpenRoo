@@ -404,7 +404,11 @@ static void upload_draw(GLRenderDevice::Native *n, const PipelineState &st,
     n->lastDraw = b;
     n->lastDrawValid = true;
     gl.BindBuffer(GL_UNIFORM_BUFFER, n->drawUbo);
-    gl.BufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(b), &b);
+    // Fresh storage for each draw (orphaned), not a glBufferSubData: a driver
+    // may wait for every queued draw still reading the block before writing
+    // into it.  macOS's OpenGL (over Metal) does, which made the opaque pass
+    // take 20-35 ms a frame on an M1 instead of ~1 ms.
+    gl.BufferData(GL_UNIFORM_BUFFER, sizeof(b), &b, GL_STREAM_DRAW);
 }
 
 /* Points the program's attributes at `count` vertices of `format` in

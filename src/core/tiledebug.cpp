@@ -167,12 +167,6 @@ static ImU32 contents_color(uint8_t c)
     }
 }
 
-/* A slide's direction byte is not the WS_DIR convention: foe pathing leaves a
- * direction-1 slide towards increasing V, and the Enemy Factory's slides
- * carry the foes away from their spawners.  Each points opposite WS_DIR. */
-static const int SLIDE_DU[5] = { 0,  0, -1,  0, +1 };
-static const int SLIDE_DV[5] = { 0, +1,  0, -1,  0 };
-
 static void draw_slides(const dbg::MapView &m, const LevelMap *map)
 {
     ImDrawList *dl = m.dl;

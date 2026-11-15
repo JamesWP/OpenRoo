@@ -151,7 +151,7 @@ Sim_OpenLevelFile(Game *self, unsigned int levelNo)
     self->session()->setNextLevelBonus(0);
 
     // PRESERVED: path is overwritten before it is read.
-    sprintf(path, "%s.gam", self->gameFileName());
+    snprintf(path, sizeof path, "%s.gam", self->gameFileName());
 
     // The peek: load the next level's map just to read its bonus flag.
     if (self->session()->restartCount() == 0 &&

@@ -19,6 +19,7 @@
 #include <vector>
 #include "windev.h"
 #include "launcher_layout.h"
+#include "appicon_internal.h"
 #include "buildinfo.h"
 
 using namespace windev;
@@ -280,11 +281,7 @@ struct Launcher {
         if (!window) return false;
         SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
         SDL_SetWindowHitTest(window, hit_test, NULL);
-        SDL_Surface *icon = SDL_CreateSurfaceFrom(LAUNCHER_ICON_SIZE, LAUNCHER_ICON_SIZE,
-                                                  SDL_PIXELFORMAT_RGBA32,
-                                                  (void *)launcher_icon_rgba,
-                                                  LAUNCHER_ICON_SIZE * 4);
-        if (icon) { SDL_SetWindowIcon(window, icon); SDL_DestroySurface(icon); }
+        set_app_icon(window);
 
         renderer = SDL_CreateRenderer(window, SDL_SOFTWARE_RENDERER);
         if (!renderer) return false;

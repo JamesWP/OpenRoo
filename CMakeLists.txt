@@ -1,18 +1,22 @@
 cmake_minimum_required(VERSION 3.20)
 
 # The platform to build for: -DOPENROO_PLATFORM=linux (the default on Linux;
-# native), -DOPENROO_PLATFORM=windows (the default on Windows; native, with MSVC
+# native), -DOPENROO_PLATFORM=macos (the default on macOS; native, with the
+# dependencies from Homebrew), -DOPENROO_PLATFORM=windows (the default on
+# Windows; native, with MSVC
 # and the dependencies from vcpkg -- see the `windows` preset in
 # CMakePresets.json) or -DOPENROO_PLATFORM=rg35xx (the Anbernic RG35XX Plus
 # handheld, cross-compiled with the SDK from github.com/JamesWP/rg35xx-plus-sdk;
 # point -DRG35XX_SDK=<dir> at the unpacked SDK, or at that repo's output/host).
 if(CMAKE_HOST_WIN32)
     set(platform_default windows)
+elseif(CMAKE_HOST_APPLE)
+    set(platform_default macos)
 else()
     set(platform_default linux)
 endif()
-set(OPENROO_PLATFORM "${platform_default}" CACHE STRING "linux, windows or rg35xx")
-set_property(CACHE OPENROO_PLATFORM PROPERTY STRINGS linux windows rg35xx)
+set(OPENROO_PLATFORM "${platform_default}" CACHE STRING "linux, macos, windows or rg35xx")
+set_property(CACHE OPENROO_PLATFORM PROPERTY STRINGS linux macos windows rg35xx)
 if(OPENROO_PLATFORM STREQUAL "windows")
     if(NOT CMAKE_HOST_WIN32)
         message(FATAL_ERROR "OPENROO_PLATFORM=windows builds on Windows (see README.md); it is not cross-compiled")
@@ -20,6 +24,10 @@ if(OPENROO_PLATFORM STREQUAL "windows")
 elseif(OPENROO_PLATFORM STREQUAL "linux")
     if(CMAKE_HOST_WIN32)
         message(FATAL_ERROR "OPENROO_PLATFORM=linux builds on Linux (or WSL)")
+    endif()
+elseif(OPENROO_PLATFORM STREQUAL "macos")
+    if(NOT CMAKE_HOST_APPLE)
+        message(FATAL_ERROR "OPENROO_PLATFORM=macos builds on macOS (see README.md); it is not cross-compiled")
     endif()
 elseif(OPENROO_PLATFORM STREQUAL "rg35xx")
     set(RG35XX_SDK "$ENV{RG35XX_SDK}" CACHE PATH "The RG35XX Plus SDK (holding share/buildroot/toolchainfile.cmake)")
@@ -31,7 +39,7 @@ elseif(OPENROO_PLATFORM STREQUAL "rg35xx")
         set(CMAKE_TOOLCHAIN_FILE "${RG35XX_SDK}/share/buildroot/toolchainfile.cmake")
     endif()
 else()
-    message(FATAL_ERROR "OPENROO_PLATFORM must be linux, windows or rg35xx, not '${OPENROO_PLATFORM}'")
+    message(FATAL_ERROR "OPENROO_PLATFORM must be linux, macos, windows or rg35xx, not '${OPENROO_PLATFORM}'")
 endif()
 
 # The intro movie needs FFmpeg, which the rg35xx SDK does not have.
@@ -93,6 +101,7 @@ endforeach()
 if(WIN32)
     add_executable(OpenRoo WIN32 src/app/exemain_windows.cpp)
 else()
+    # Linux, macOS and the rg35xx share the POSIX entry point.
     add_executable(OpenRoo src/app/exemain_linux.cpp)
 endif()
 set_target_properties(OpenRoo PROPERTIES OUTPUT_NAME OpenRoo)
@@ -117,6 +126,17 @@ if(OPENROO_PLATFORM STREQUAL "rg35xx")
                 "${PROJECT_SOURCE_DIR}/data/rg35xx/openroo.ini.default" "${pkg}"
         DEPENDS OpenRoo
         COMMENT "Packaging ${pkg}")
+endif()
+
+if(OPENROO_PLATFORM STREQUAL "macos")
+    # build/OpenRoo.app, for the Dock and Finder: the game, its icon and a copy
+    # of game/ (see tools/make_macos_app.py).  On request only.
+    add_custom_target(macos-app
+        COMMAND ${Python3_EXECUTABLE} "${PROJECT_SOURCE_DIR}/tools/make_macos_app.py"
+                --exe $<TARGET_FILE:OpenRoo> --out "${CMAKE_BINARY_DIR}/OpenRoo.app"
+                --version ${PROJECT_VERSION}
+        DEPENDS OpenRoo
+        COMMENT "Packaging ${CMAKE_BINARY_DIR}/OpenRoo.app")
 endif()
 
 # Only the platform groups may include SDL.

@@ -12,7 +12,7 @@ void setLog(LogFn fn) { g_log = fn; }
 struct PlayerState {};
 
 Player::Player() : state_(NULL), playing_(false) {}
-Player::~Player() {}
+Player::~Player() { delete state_; }
 
 bool Player::load(const char *path, bool show)
 {

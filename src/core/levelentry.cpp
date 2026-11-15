@@ -33,8 +33,8 @@ void LevelEntry_PrepareAssets(Game *g, Renderer *renderer)
 
     // 2. The loading screen.
     char thm[0x100], bmp[0x124];
-    sprintf(thm, "themes\\%s.thm", map->mapName());
-    sprintf(bmp, "bitmaps\\%s.bmp", map->mapName());
+    snprintf(thm, sizeof thm, "themes\\%s.thm", map->mapName());
+    snprintf(bmp, sizeof bmp, "bitmaps\\%s.bmp", map->mapName());
     bool ok = Image_LoadBMP(bmp, renderer->loadingImage);
     d3d->PresentImage(ok ? renderer->loadingImage : renderer->fallbackImage);
 

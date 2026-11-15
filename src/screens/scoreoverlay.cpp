@@ -111,15 +111,15 @@ void Score_DrawHighScoreTable(const MenuArt *art, const FrontEnd *frontEnd, Them
         const HighScoreRecord *rec = frontEnd->highScores()->record(row);
         const float y = ((float)dy + 180.0f) * w * VSCALE;
 
-        sprintf(buf, "%s", rec->name);
+        snprintf(buf, sizeof buf, "%s", rec->name);
         text->drawLeft(xName, y, cellW, cellH, 0.75f, buf, d3d, 0,
                        THEME_COL(THEME_COLOR_MENUHIGHSCORESENTRIES));
 
-        sprintf(buf, "%d", (unsigned)rec->level);
+        snprintf(buf, sizeof buf, "%d", (unsigned)rec->level);
         text->drawRight(xLevel, y, cellW, cellH, 0.75f, buf, d3d, 0,
                         THEME_COL(THEME_COLOR_MENUHIGHSCORESENTRIES));
 
-        sprintf(buf, "%d", rec->score);
+        snprintf(buf, sizeof buf, "%d", rec->score);
         text->drawRight(xScore, y, cellW, cellH, 0.75f, buf, d3d, 0,
                         THEME_COL(THEME_COLOR_MENUHIGHSCORESENTRIES));
 
@@ -196,7 +196,7 @@ static void draw_summary(const Session *session, ThemeAssetBlock *theme, RenderD
         text->drawLeft(xLabel, y, cellW, cellH, 0.75f, r.label, d3d, 0,
                        THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
 
-        sprintf(buf, "%d", row_value(session->tally(), r.row));
+        snprintf(buf, sizeof buf, "%d", row_value(session->tally(), r.row));
         text->drawRight(r.mul ? xValue : xProd, y, cellW, cellH, 0.75f,
                         buf, d3d, 0,
                         THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
@@ -204,7 +204,7 @@ static void draw_summary(const Session *session, ThemeAssetBlock *theme, RenderD
         if (r.mul) {
             text->drawLeft(xValue, y, cellW, cellH, 0.75f, r.mul, d3d, 0,
                            THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
-            sprintf(buf, "%d", session->tally()->shownScore[r.row]);
+            snprintf(buf, sizeof buf, "%d", session->tally()->shownScore[r.row]);
             text->drawRight(xProd, y, cellW, cellH, 0.75f, buf, d3d, 0,
                             THEME_COL(THEME_COLOR_MENUSUMMARYENTRIES));
         }
