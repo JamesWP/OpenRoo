@@ -194,10 +194,38 @@ def play(job):
              "level_index": level, "level": name}
     s["seed"] = seed
     s["wall_s"] = round(wall, 2)
+    if s["outcome"] != PASS:
+        s["failure"] = failure_kind(s, os.path.join(out, "simbot.jsonl"))
     s["exit_code"] = rc
     with open(os.path.join(out, "summary.json"), "w") as f:
         json.dump(s, f, indent=2)
     return s
+
+
+def failure_kind(s, log):
+    """Which kind of failure a level that did not complete was, from its
+    sim log (simbot.jsonl): "out of time"; "no plan" (the last plan found
+    none, and nothing was begun since); "died thinking" (no presses under
+    way: the bot stood while it searched); "died pressing"; or else the
+    outcome itself (stuck with a plan, a crash)."""
+    if s["outcome"] == "timeout":
+        return "out of time"
+    planless = False
+    pressing = False
+    if os.path.exists(log):
+        with open(log) as f:
+            for line in f:
+                e = json.loads(line)
+                ev = e.get("event")
+                if ev == "plan":
+                    planless = not e.get("found")
+                elif ev == "pressing":
+                    pressing = e.get("on", False)
+    if planless:
+        return "no plan"
+    if s["outcome"] == "death":
+        return "died pressing" if pressing else "died thinking"
+    return s["outcome"]
 
 
 def key(s):
@@ -273,6 +301,14 @@ def summarise(results):
                  sum(t["total_s"] for t in think)))
     for k in sorted(by, key=lambda k: -by[k]):
         print("  %-20s %d" % (k, by[k]))
+    kinds = {}
+    for s in results:
+        if "failure" in s:
+            kinds[s["failure"]] = kinds.get(s["failure"], 0) + 1
+    if kinds:
+        print("by kind of failure:")
+        for k in sorted(kinds, key=lambda k: -kinds[k]):
+            print("  %-20s %d" % (k, kinds[k]))
 
 
 def cmd_run(args):
@@ -323,11 +359,13 @@ def compare(a, b, name_a, name_b):
         sa, sb = ia[k], ib[k]
         oa, ob = sa["outcome"], sb["outcome"]
         ca, cb = sa.get("death_cause", ""), sb.get("death_cause", "")
-        if (oa, ca) == (ob, cb):
+        fa, fb = sa.get("failure", ""), sb.get("failure", "")
+        if (oa, ca) == (ob, cb) and (not fa or not fb or fa == fb):
             continue
         rank = 0 if oa == PASS and ob != PASS else 2 if ob == PASS and oa != PASS else 1
         name = sb.get("level", "?")
-        rows.append((rank, k, name, oa + (":" + ca if ca else ""), ob + (":" + cb if cb else "")))
+        rows.append((rank, k, name, oa + (":" + ca if ca else "") + (" (%s)" % fa if fa else ""),
+                     ob + (":" + cb if cb else "") + (" (%s)" % fb if fb else "")))
     rows.sort(key=lambda r: r[0])
     regressions = sum(1 for r in rows if r[0] == 0)
     fixes = sum(1 for r in rows if r[0] == 2)
@@ -336,6 +374,15 @@ def compare(a, b, name_a, name_b):
     print("%s: %d/%d completed, %s: %d/%d completed; %d regressed, %d fixed, %d otherwise changed"
           % (name_a, pa, len(a), name_b, pb, len(b), regressions, fixes,
              len(rows) - regressions - fixes))
+    ka, kb = {}, {}
+    for side, counts in ((a, ka), (b, kb)):
+        for s in side:
+            if "failure" in s:
+                counts[s["failure"]] = counts.get(s["failure"], 0) + 1
+    if ka or kb:
+        print("by kind of failure (%s -> %s):" % (name_a, name_b))
+        for k in sorted(set(ka) | set(kb), key=lambda k: -(ka.get(k, 0) + kb.get(k, 0))):
+            print("  %-20s %3s -> %d" % (k, ka.get(k, "-") if ka else "-", kb.get(k, 0)))
     tag = {0: "REGRESSED", 1: "changed", 2: "fixed"}
     for rank, k, name, oa, ob in rows:
         print("  %-9s %-6s %-30s %s -> %s" % (tag[rank], k, name[:30], oa, ob))

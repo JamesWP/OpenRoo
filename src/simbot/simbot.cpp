@@ -50,7 +50,11 @@ unsigned SimBot::act(const bot::BotView &, const World &world)
         log_.write(ticks_, "survey", buf + std::string("\"unreached\":") + SimLog::quote(unreached));
     }
     Work work;
+    pressing_ = false;
     const unsigned presses = decide(world, work);
+    if (pressing_ != pressed_)
+        log_.write(ticks_, "pressing", pressing_ ? "\"on\":true" : "\"on\":false");
+    pressed_ = pressing_;
     if (work.used > 0) {
         char buf[48];
         snprintf(buf, sizeof(buf), "\"used\":%ld", work.used);
@@ -81,8 +85,10 @@ unsigned SimBot::decide(const World &world, Work &work)
         if (attempt_) {
             unsigned presses = 0;
             const Attempt::Status s = attempt_->act(world, work, &presses);
-            if (s == Attempt::Pressing)
+            if (s == Attempt::Pressing) {
+                pressing_ = true;
                 return presses;
+            }
             if (s == Attempt::Thinking)
                 return 0;
             log_.write(ticks_, s == Attempt::Done ? "done" : "impossible",
