@@ -67,7 +67,6 @@ int ThemeSoundTable::releaseAll()
 
 ThemeSoundTable::ThemeSoundTable()
 {
-    unknown8_  = 0;
     releaseAll();
 }
 

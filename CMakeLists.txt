@@ -87,12 +87,6 @@ if(MSVC)
     include_directories(BEFORE cmake/msvc)  # the POSIX <strings.h>
 else()
     add_compile_options(-Wall -Wextra -Werror)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        # Clang only (GCC has no such warning): the reverse-engineered classes
-        # keep the original's unread fields (field_14, unknown4_, ...) to
-        # document its layout.
-        add_compile_options(-Wno-unused-private-field)
-    endif()
 endif()
 
 # One directory under src/ is one group.  Each group declares the groups it

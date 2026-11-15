@@ -49,9 +49,7 @@ private:
     void playAtTile(PlayEvents &events, Sfx sfx, const Tile *t) const;
 
     double              now_;             // the clock, as this tick began
-    unsigned char       field_14;
     TickStep         tickStepCopy_;       // this tick's step
-    unsigned char       field_1d[8];
     float               posU_;
     float               posY_;
     float               posV_;            // negated
@@ -62,7 +60,6 @@ private:
     int                 justFell_;        // set for the fall tick
     double              eventTime_;       // the clock at the last fall or respawn
     int                 respawnPending_;
-    unsigned char       field_4c;
     int                 armed_;
     int                 noRespawn_;       // the tile's param: nonzero never respawns
     double              armedAt_;

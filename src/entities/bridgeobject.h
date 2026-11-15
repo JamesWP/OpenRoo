@@ -77,9 +77,7 @@ private:
     BridgeObject();
 
     double              now_;         // the clock, as this tick began
-    unsigned char       field_14;
     TickStep         tickStepCopy_;   // this tick's step
-    unsigned char       field_1d[8];
     float               posU_;        // the live position:
     float               posY_;        // the deck's far point
     float               posV_;

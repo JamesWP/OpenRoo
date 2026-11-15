@@ -41,9 +41,7 @@ private:
     LiftObject();
 
     double              now_;         // the clock, as this tick began
-    unsigned char       field_14;
     TickStep         tickStepCopy_;   // this tick's step
-    unsigned char       field_1d[8];
     float               posU_;
     float               height_;      // the live height
     float               posV_;

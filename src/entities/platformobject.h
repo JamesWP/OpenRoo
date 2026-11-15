@@ -48,16 +48,13 @@ private:
     void vacate(LevelMap &map);
 
     double              now_;           // the clock, as this tick began
-    unsigned char       field_14;
     TickStep         tickStepCopy_;     // this tick's step
-    unsigned char       field_1d[8];
     float               posU_;          // read by the renderer
     float               posY_;
     float               posV_;
     signed char         cellU_;
     signed char         cellV_;
     signed char         heightCell_;
-    unsigned char       field_34[4];    // never written
     unsigned char       span_;          // limit - trackStart
     signed char         originU_;
     signed char         originV_;
