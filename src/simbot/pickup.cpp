@@ -62,7 +62,7 @@ public:
     std::unique_ptr<Attempt> attempt(const Step &step, const Survey &survey) const override
     {
         const std::vector<Cell> &cells = glider_ ? survey.gliders() : survey.pickups();
-        return std::make_unique<RouteAttempt>(Goal{cells[step.arg]}, survey);
+        return std::make_unique<RouteAttempt>(std::make_shared<Goal>(cells[step.arg]), survey);
     }
 
 private:

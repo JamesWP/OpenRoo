@@ -9,8 +9,8 @@
  * and the next has twice the lead.
  *
  * Waiting multiplies a Route's places, so a walk is searched first without;
- * only if there is no way does it search again with waits.  A kill waits
- * from the first, for the foe to come on. */
+ * only if there is no way does it search again with waits; a goal that
+ * needs them (a foe to come on) waits from the first (RouteOptions). */
 #pragma once
 
 #include <memory>
@@ -22,27 +22,34 @@
 
 namespace simbot {
 
+/* How a RouteAttempt searches: its Routes' places at most, waits in a row
+ * (short ones, with foes about, and timed: routing.h), whether it waits from
+ * the first, and its first lead (ticks). */
+struct RouteOptions {
+    size_t places = 6000;
+    /* Waits in a row for a foe to pass: 2 s. */
+    int    shortWaits = 8;
+    /* Timed waits in a row (schedule.h): with a lift or a platform passing
+     * each height or cell, each way, a cycle or so. */
+    int    timedWaits = 24;
+    bool   waitFirst = false;
+    int    lead = 4;
+};
+
 class RouteAttempt : public Attempt {
 public:
-    /* A trap's search takes longer, the foe coming on meanwhile: its lead
-     * (ticks) from the first. */
-    static const int TRAP_LEAD = 60;
-    RouteAttempt(Goal goal, const Survey &survey)
-        : goal_(goal), survey_(&survey), graph_(&survey.graph()), lead_(goal.trap ? TRAP_LEAD : 4), waits_(goal.kill || goal.trap) {}
+    RouteAttempt(std::shared_ptr<Goal> goal, const Survey &survey, RouteOptions options = {})
+        : goal_(std::move(goal)), survey_(&survey), graph_(&survey.graph()), options_(options),
+          lead_(options.lead), waits_(options.waitFirst) {}
     Status act(const World &live, Work &work, unsigned *presses) override;
     std::string why() const override { return why_; }
     Requirement requirement() const override { return requirement_; }
 
 private:
-    bool done(const World &live) const;
-    /* For a kill: whether every way on the MoveGraph to where a drop may
-     * catch the foe (nearFoe, foeH its height) passes a place another foe
-     * comes to first, and if so that foe, the first on the quickest way. */
-    bool blockedBy(const World &w, const Goal &goal, int foeH, bool moving, unsigned *foe) const;
-
-    Goal goal_;
+    std::shared_ptr<Goal> goal_;
     const Survey *survey_;
     const MoveGraph *graph_;
+    RouteOptions options_;
     std::unique_ptr<Route> route_;
     size_t at_ = 0;
     int    lead_;          // ticks

@@ -13,7 +13,8 @@
  * known.
  *
  * A goal is never reached with fewer gems held and left than the quota
- * (a blast may take some).
+ * (a blast may take some).  A bomb dropped (as the Goal allows) is got
+ * clear of, a step or two, and its blast waited out.
  *
  * Found, it holds the presses of each tick and the World expected before
  * each (Expect), so the one pressing them can tell when the game goes
@@ -43,36 +44,19 @@ struct Expect {
 };
 Expect expectOf(const World &w);
 
-/* Whether a foe is on the move (it stands still till its search finds a
- * way to the player). */
-bool foeMoving(const World &w, const Foe &f);
+/* From a drop till its blast is gone, and a tick. */
+extern const double BLAST_OVER_MS;
 
-/* Whether a bomb dropped at place may catch a foe on cell foe at height
- * foeH: where it blows (MoveGraph::blasts, standing or stepping back, as it
- * rolls and falls off ledges) has the foe in its blast, or, the foe moving,
- * is a place it may walk beside (the player's MoveGraph, its time) before
- * it blows. */
-bool nearFoe(const MoveGraph &g, const Place &place, Cell foe, int foeH, bool moving);
+/* Whether the player stands a while in w unharmed (SAFE_MS): a foe may be
+ * on its way. */
+bool safe(const World &w);
 
-/* What a Route is for: the player at rest on cell, or, with track, nearFoe
- * foe wherever it has come to (cell is only where it was, to guide the
- * search); or, with kill, foe (a Listed id) killed by a bomb the player drops
- * near it (a DROP, a move or two clear, and the blast waited out: so a foe
- * chasing the player walks into it), the player alive and at rest, the cell
- * then the foe's, to guide the search; or, with trap, foe killed with no
- * bomb, the player alive and at rest and never more than a step or two from
- * cell: the foe led onto a falling tile as it drops. */
-struct Goal {
-    Cell     cell;
-    bool     track = false;
-    bool     kill = false;
-    bool     trap = false;
-    unsigned foe = 0;
-};
+class Goal;
 
 class Route {
 public:
-    Route(const World &start, Goal goal, const MoveGraph &guide, size_t maxPlaces = 6000,
+    Route(const World &start, std::shared_ptr<Goal> goal, const MoveGraph &guide,
+          size_t maxPlaces = 6000,
           int shortWaits = 0, int timedWaits = 0);
     ~Route();
 
@@ -84,10 +68,10 @@ public:
     /* The places played from so far. */
     size_t places() const { return places_; }
     /* What the search came to, for the log: its places, whether it hit
-     * its limits, and for a kill its drops and how they ended. */
+     * its limits, its drops and how they ended, and the goal's say. */
     std::string summary() const;
 
-private:
+    /* A node of the search: a place come to, and the World there. */
     struct Node {
         int    parent = -1;
         Move   move = FORWARD;
@@ -103,12 +87,16 @@ private:
         std::unique_ptr<World> world;
         std::tuple<Place, int, int, bool, Cell, Cell> key;   // Key
     };
+    /* What a node is told apart by: keyPlace, waited and the way what it
+     * rides is going (carried); after a drop (true), the cells of what the
+     * goal follows and of the bomb (the drop's time aside: where they are
+     * is what matters); a Goal may make its own. */
+    using Key = std::tuple<Place, int, int, bool, Cell, Cell>;
+
     bool reached(const Node &n) const;
     /* Whether the gems held and those left (of gemCells_) still make the
      * quota. */
     bool gemsEnough(const World &w) const;
-    /* Whether the player stands a while there unharmed (SAFE_MS). */
-    bool safe(const Node &n) const;
     bool mayDrop(const Node &n) const;
     /* Whether a foe may come beside the player, standing at n, within its
      * short waits. */
@@ -120,21 +108,16 @@ private:
     bool still(const World &w, const Place &from, const Place &to) const;
     /* A step from n, as stepsSeen_ holds it: the place, the move, the
      * falling tiles and the way each bridge goes next; false if it is
-     * never kept (in the air, after a drop, a trap). */
+     * never kept (in the air, after a drop). */
     using StepKey = std::tuple<Place, int, uint64_t, uint64_t>;
     bool stillKey(const Node &n, int move, StepKey *key) const;
     void found(int at);
     void push(int id);
     /* The place, riding a lift at its height to the nearest whole. */
     Place keyPlace(const Node &n) const;
-    /* keyPlace, waited and the way what it rides is going (carried); after a
-     * drop, with the foe's cell and the bomb's (the drop's time aside: where
-     * they are is what matters); for a trap, the clock and the falling
-     * tiles. */
-    using Key = std::tuple<Place, int, int, bool, Cell, Cell>;
     Key keyOf(const Node &n) const;
 
-    Goal   goal_;
+    std::shared_ptr<Goal> goal_;
     const MoveGraph *guide_;
     MoveGraph::Table toCell_;
     size_t maxPlaces_;
@@ -163,9 +146,32 @@ private:
     Status status_ = Searching;
     size_t places_ = 1;
     bool   capped_ = false;
-    int    drops_ = 0, foeLived_ = 0, diedAfterDrop_ = 0;
+    int    drops_ = 0, diedAfterDrop_ = 0;
     std::vector<unsigned> presses_;
     std::vector<Expect>   expects_;
+};
+
+/* What a Route searches for.  This one is the plain goal: the player at
+ * rest on cell; a kill's and a trap's are in kill.h and trap.cpp. */
+class Goal {
+public:
+    explicit Goal(Cell cell) : cell(cell) {}
+    virtual ~Goal() = default;
+    Cell cell;   // guides the search: the MoveGraph's time to it
+    /* Whether the search has it at n (the quota aside: the Route sees to it). */
+    virtual bool reached(const Route::Node &n) const;
+    /* The ms left from n, toCell the MoveGraph's time from n to cell. */
+    virtual double estimate(const Route::Node &, double toCell) const { return toCell; }
+    /* n's Key, plain the Route's own. */
+    virtual Route::Key key(const Route::Node &, const Route::Key &plain) const { return plain; }
+    /* Whether a bomb may be dropped at n (the Route sees one is held). */
+    virtual bool mayDrop(const Route::Node &) const { return false; }
+    /* Whether n, just played, is searched on. */
+    virtual bool keeps(const Route::Node &) { return true; }
+    /* Its part of the Route's summary, for the log. */
+    virtual std::string summary() const { return ""; }
+    /* Whether the live game has it (RouteAttempt). */
+    virtual bool done(const World &live) const;
 };
 
 }  // namespace simbot

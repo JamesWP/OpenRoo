@@ -15,7 +15,7 @@ namespace {
 
 class ExitAttempt : public Attempt {
 public:
-    ExitAttempt(Cell exit, const Survey &survey) : walk_(Goal{exit}, survey) {}
+    ExitAttempt(Cell exit, const Survey &survey) : walk_(std::make_shared<Goal>(exit), survey) {}
     Status act(const World &live, Work &work, unsigned *presses) override
     {
         if (!there_) {

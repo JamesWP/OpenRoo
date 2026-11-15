@@ -15,6 +15,8 @@
 #include "actions.h"
 #include "routeattempt.h"
 #include "survey.h"
+#include <stdlib.h>
+#include "world.h"
 
 namespace simbot {
 
@@ -31,11 +33,73 @@ const double AHEAD_MS = 2000;
  * most this, so the trap is played out in a few seconds (TRAP_MS). */
 const double LURE_MS = 6000;
 
+/* How far from its cell a trap's Route goes (steps), and the clock in its
+ * Key (a short wait). */
+const int TRAP_REACH = 1;
+const double TRAP_CLOCK_MS = WAIT_TICKS * 1000.0 / 60;
+/* Waits in a row for a foe to come on to a trap: 10 s. */
+const int TRAP_WAITS = 40;
+/* A trap's Routes: a search on the clock alone, no guide. */
+const size_t TRAP_PLACES = 4000;
+/* A trap's search takes longer, the foe coming on meanwhile: its lead
+ * (ticks) from the first. */
+const int TRAP_LEAD = 60;
+
+/* foe (a Listed id) killed with no bomb, the player alive and at rest and
+ * never more than a step or two from cell: the foe led onto a falling tile
+ * as it drops. */
+class TrapGoal : public Goal {
+public:
+    TrapGoal(Cell cell, unsigned foe) : Goal(cell), foe_(foe) {}
+    bool reached(const Route::Node &n) const override
+    {
+        return foeDead(*n.world, foe_) && safe(*n.world);
+    }
+    /* No guide: what leads the foe on is found by playing. */
+    double estimate(const Route::Node &, double) const override { return 0; }
+    Route::Key key(const Route::Node &n, const Route::Key &) const override
+    {
+        // The cell, and the clock, to a short wait, in place of facing,
+        // waited and the foe (about where it was set, where the foe is goes
+        // by the clock), and which falling tiles are armed or down (the
+        // first 32, folded into a Cell).
+        const Cell clock{(int)(n.now / TRAP_CLOCK_MS), 0};
+        uint64_t bits = 0;
+        const auto &fl = n.world->fallings();
+        for (size_t i = 0; i < fl.size() && i < 32; i++)
+            bits |= (uint64_t)(fl[i].armed() ? 1 : 0) << (2 * i) |
+                    (uint64_t)(fl[i].respawnPending() ? 1 : 0) << (2 * i + 1);
+        Place at = n.place;
+        at.facing = 0;   // which way it faces matters little there
+        return {at, 0, carried(*n.world), true, clock,
+                {(int)(uint32_t)bits, (int)(uint32_t)(bits >> 32)}};
+    }
+    /* A trap is played out about where it was set. */
+    bool keeps(const Route::Node &n) override
+    {
+        return std::abs(n.place.u - cell.u) + std::abs(n.place.v - cell.v) <= TRAP_REACH;
+    }
+    bool done(const World &live) const override { return foeDead(live, foe_); }
+
+private:
+    unsigned foe_;
+};
+
 /* First a walk to the stand, then the trap searched from there. */
 class TrapAttempt : public Attempt {
 public:
-    TrapAttempt(Cell stand, Goal trap, const Survey &survey)
-        : walk_(Goal{stand}, survey), trap_(trap, survey) {}
+    TrapAttempt(Cell stand, unsigned foe, const Survey &survey)
+        : walk_(std::make_shared<Goal>(stand), survey),
+          trap_(std::make_shared<TrapGoal>(stand, foe), survey, trapOptions()) {}
+    static RouteOptions trapOptions()
+    {
+        RouteOptions o;
+        o.places     = TRAP_PLACES;
+        o.shortWaits = TRAP_WAITS;
+        o.waitFirst  = true;
+        o.lead       = TRAP_LEAD;
+        return o;
+    }
     Status act(const World &live, Work &work, unsigned *presses) override
     {
         if (!there_) {
@@ -122,11 +186,7 @@ public:
     std::unique_ptr<Attempt> attempt(const Step &step, const Survey &survey) const override
     {
         const Cell stand = survey.graph().place(step.after.at).cell();
-        Goal g;
-        g.cell = stand;
-        g.trap = true;
-        g.foe  = survey.foes()[step.arg];
-        return std::make_unique<TrapAttempt>(stand, g, survey);
+        return std::make_unique<TrapAttempt>(stand, survey.foes()[step.arg], survey);
     }
 };
 
