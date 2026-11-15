@@ -5,6 +5,7 @@
 if(WIN32)
     set(SYSDEV_PLATFORM path_windows.cpp textfile_windows.cpp)
 else()
+    # Plain POSIX and std::filesystem: macOS uses the Linux files as they are.
     set(SYSDEV_PLATFORM path_linux.cpp textfile_linux.cpp)
 endif()
 add_library(sysdev OBJECT

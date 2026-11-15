@@ -227,7 +227,7 @@ int ScriptPlayer::readTextsForReport(const char *path, std::ostream &sink)
             len = strlen(line);
             if (len > 1 && inBlockMirror) {  // two or more characters, counting the newline
                 if (!wroteHeader) {
-                    sprintf(scratch, "\n%d. Text:\n", (int)((textIndex & 0xffff) + 1));
+                    snprintf(scratch, sizeof scratch, "\n%d. Text:\n", (int)((textIndex & 0xffff) + 1));
                     sink << scratch;
                     wroteHeader = 1;
                 }

@@ -194,22 +194,22 @@ void Hud_Draw(Renderer *renderer, const World *world, Session *session, GameStat
     const unsigned secs = ms / 1000u - mins * 60u;
     const unsigned tenths = ms / 100u - mins * 600u - secs * 10u;
     char *buf = s_text;
-    sprintf(buf, "%02.0f:%02.0f;%d", (double)mins, (double)secs, tenths);
+    snprintf(buf, sizeof s_text, "%02.0f:%02.0f;%d", (double)mins, (double)secs, tenths);
     const uint32_t tc = ms > 10000u ? 0xffffffff : 0xffff0000;
     hud_text(dev, &renderer->fontNumbers, 0, W * 0.5f, 0.0f, W * 0.05f, W * 0.06666667f, 1.0f,
              buf, '0', tc, tc);
 
     const ThemeTextColorPair &hc = theme->textColor(THEME_COLOR_HUD);
     const float cw = W * 0.025f, ch = H * 0.033333335f;
-    sprintf(buf, "x%d", pl->lives());
+    snprintf(buf, sizeof s_text, "x%d", pl->lives());
     hud_text(dev, &renderer->fontMain, -1, wx(w, 490), W * 0.009375f, cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
-    sprintf(buf, "%d/%d", pl->gemsCollected(), map->gemsRequired());
+    snprintf(buf, sizeof s_text, "%d/%d", pl->gemsCollected(), map->gemsRequired());
     hud_text(dev, &renderer->fontMain, -1, wx(w, 10), wx(w, 32), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
-    sprintf(buf, "x%d", pl->glides());
+    snprintf(buf, sizeof s_text, "x%d", pl->glides());
     hud_text(dev, &renderer->fontMain, -1, wx(w, 121), wx(w, 38), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
-    sprintf(buf, "%d", session->levelIndex() + 1);
+    snprintf(buf, sizeof s_text, "%d", session->levelIndex() + 1);
     hud_text(dev, &renderer->fontMain, 1, wx(w, 630), wx(w, 23), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
-    sprintf(buf, "%dx", pl->bombsCarried());
+    snprintf(buf, sizeof s_text, "%dx", pl->bombsCarried());
     hud_text(dev, &renderer->fontMain, 0, wx(w, 32), wx(w, 62), cw, ch, 0.75f, buf, 0, hc.color1, hc.color2);
 }
 
@@ -232,7 +232,7 @@ void Hud_DrawFps(RenderDevice *d3d, TextRenderer *font, float W, float H)
     }
     if (input::down(input::KEY_F1)) {
         char *buf = s_text;
-        sprintf(buf, "%.1f fps", (double)g_fps);
+        snprintf(buf, sizeof s_text, "%.1f fps", (double)g_fps);
         hud_text(d3d, font, 0, W * 0.5f, H * 0.96041667f, W * 0.025f, H * 0.033333335f,
                  0.75f, buf, 0, 0xffffffff, 0xffffffff);
     }
@@ -288,7 +288,7 @@ void Hud_DrawMessages(RenderDevice *d3d, TextRenderer *font, const ThemeAssetBlo
         }
         if (icon && theme->image(img) != NULL) {
             bindTexture(d3d, 0, image(theme, img));
-            sprintf(buf, "%.1f", span - (world->now() - start) * 0.001);
+            snprintf(buf, sizeof s_text, "%.1f", span - (world->now() - start) * 0.001);
         }
         ScreenVertex q[4] = {
             tl(xText, y - ch, 0x00ffffff, 1.0f, 0.0f),

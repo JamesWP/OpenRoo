@@ -1,8 +1,8 @@
 # Open'Roo
 
 A reimplementation of **Ka'roo**, a 1990s Windows 3D puzzle-platform game,
-written from scratch in C++.  It builds natively for Linux (`OpenRoo`) and
-for Windows (`OpenRoo.exe`, with MSVC).  The platform is a configure option,
+written from scratch in C++.  It builds natively for Linux and macOS
+(`OpenRoo`) and for Windows (`OpenRoo.exe`, with MSVC).  The platform is a configure option,
 `OPENROO_PLATFORM` (default: the host's); all
 platform-specific code lives in the `*dev` libraries under `src/` (`windev`,
 `sysdev`, `audiodev`, `inputdev`, `videodev`, `gl`), one header each with a
@@ -30,6 +30,19 @@ $ sudo apt-get install build-essential git make pkg-config cmake ninja-build gno
 ```
 </details>
 
+### For macOS
+
+The Xcode Command Line Tools (`xcode-select --install`) and
+[Homebrew](https://brew.sh):
+
+```bash
+$ brew install cmake pkg-config sdl3 sdl3_mixer ffmpeg
+```
+
+The same commands as Linux build and run it (`OPENROO_PLATFORM=macos` is the
+default on a Mac).  It draws with desktop OpenGL 3.3 core, which macOS
+provides (as 4.1, over Metal); there is no OpenGL ES there.
+
 ### For Windows
 
 Build natively, from PowerShell.  You need Visual Studio 2022 (the "Desktop
@@ -46,7 +59,7 @@ $env:VCPKG_ROOT = "C:\vcpkg"
 
 ```bash
 python3 tools/import_assets.py --from KaRoo.zip   # once: fills game/ from your copy
-cmake -S . -B build                               # once; native Linux; uses system SDL3 or fetches it
+cmake -S . -B build                               # once; native Linux or macOS; uses system SDL3 or fetches it
 cmake --build build -j                            # build/OpenRoo
 bash launch.sh                                    # run it (in run/)
 bash launch.sh --headless --auto-exit 30          # no display at all

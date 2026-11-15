@@ -16,7 +16,7 @@ class ScriptPlayer {
 public:
      
 
-    enum { LINE_SIZE = 1000, LINE_MAX = 1000 };
+    enum { LINE_SIZE = 1000, LINE_COUNT = 1000 };
 
     // Parses <path>.jjs into the line table.
     int  readForLevel(const char *path);
@@ -122,5 +122,5 @@ private:
     unsigned short cursor_{};     // the next line to play
     unsigned short lineCount_{};
     char           scratch_[0x3ea]{};  // the caption, and scratch for parsing
-    char           lines_[LINE_MAX][LINE_SIZE]{};
+    char           lines_[LINE_COUNT][LINE_SIZE]{};
 };

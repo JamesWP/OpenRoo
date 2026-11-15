@@ -158,7 +158,7 @@ std::vector<Landing> glideLandings(const BotView &view, int u, int v, int f)
         queue.push({open, s0});
     }
     while (!queue.empty()) {
-        const auto [t, i] = queue.top();
+        const int t = queue.top().first, i = queue.top().second;
         queue.pop();
         if (t > at[i])
             continue;

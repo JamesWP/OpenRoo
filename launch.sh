@@ -28,8 +28,8 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-# build/ must be a Linux build (the CMake option OPENROO_PLATFORM); the Windows
-# build runs with launch.ps1.
+# build/ must be a Linux or macOS build (the CMake option OPENROO_PLATFORM); the
+# Windows build runs with launch.ps1.
 BUILD_DIR=${BUILD_DIR:-build}
 # Bring the build up to date first; a failed build does not launch a stale exe.
 # OPENROO_SKIP_BUILD=1 launches what is already built: a caller that starts many
@@ -37,12 +37,12 @@ BUILD_DIR=${BUILD_DIR:-build}
 # costs about a second a launch.
 if [[ -z "${OPENROO_SKIP_BUILD:-}" ]]; then
   [[ -f "$BUILD_DIR/CMakeCache.txt" ]] || cmake -S . -B "$BUILD_DIR" >&2 || { echo "ERROR: cmake configure failed"; exit 1; }
-  cmake --build "$BUILD_DIR" -j"$(nproc)" >&2 || { echo "ERROR: build failed"; exit 1; }
+  cmake --build "$BUILD_DIR" -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu)" >&2 || { echo "ERROR: build failed"; exit 1; }
 fi
 [[ -f "$BUILD_DIR/CMakeCache.txt" ]] || { echo "ERROR: $BUILD_DIR is not configured" >&2; exit 1; }
 PLATFORM=$(sed -n 's/^OPENROO_PLATFORM:[A-Z]*=//p' "$BUILD_DIR/CMakeCache.txt")
 case "$PLATFORM" in
-  linux)  EXE=OpenRoo ;;
+  linux|macos) EXE=OpenRoo ;;
   windows) echo "ERROR: $BUILD_DIR is a Windows build; run launch.ps1 from PowerShell" >&2; exit 1 ;;
   rg35xx)  echo "ERROR: $BUILD_DIR is an rg35xx build; it runs on the device (see README.md)" >&2; exit 1 ;;
   *) echo "ERROR: $BUILD_DIR has no OPENROO_PLATFORM (got '$PLATFORM'); reconfigure it" >&2; exit 1 ;;
@@ -76,6 +76,10 @@ for _entry in game/*; do
   esac
   [[ -L "run/$_name" ]] || ln -s "../game/$_name" "run/$_name"
 done
+# Removed first, not copied over: macOS caches a binary's code signature by
+# file, and a new build written into the same file is killed at launch
+# ("Code Signature Invalid").
+rm -f "run/$EXE"
 cp -p "$BUILD_DIR/$EXE" run/
 
 # openroo.ini is ours, not the game's, and holds the settings and the key
@@ -105,6 +109,8 @@ roll_log karoo_hooks.log
 # newest mutter Xwayland cookie.  Only ever overrides a broken value.
 if (( HEADLESS )); then
   : # No display is needed or wanted; skip the X checks entirely.
+elif [[ "$PLATFORM" == macos ]]; then
+  : # No X server: SDL draws through Cocoa.
 elif ! DISPLAY="${DISPLAY:-}" XAUTHORITY="${XAUTHORITY:-}" xdpyinfo >/dev/null 2>&1; then
   newest_cookie=$(ls -t "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/.mutter-Xwaylandauth.* 2>/dev/null | head -1)
   if [ -n "$newest_cookie" ] && DISPLAY="$DISPLAY" XAUTHORITY="$newest_cookie" xdpyinfo >/dev/null 2>&1; then
@@ -175,7 +181,8 @@ RUN_PREFIX=(
   KAROO_SKIP_LAUNCHER="$SKIP_LAUNCHER"
   KAROO_AUTO_EXIT_SECS="$AUTO_EXIT_SECS"
   KAROO_HEADLESS="$HEADLESS"
-  "${FORWARD_ENV[@]}"
+  # (Written so that an empty list is not "unbound" to macOS's bash 3.2.)
+  ${FORWARD_ENV[@]+"${FORWARD_ENV[@]}"}
 )
 # OPENROO_WRAPPER: a command to run the game under, e.g. "valgrind --error-exitcode=9".
 # shellcheck disable=SC2206

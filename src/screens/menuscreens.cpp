@@ -522,7 +522,7 @@ Menu_BuildMenuGeometry(MenuArt *art, RenderDevice *d3d, const char *prefix)
 
     char path[260];
     for (const MenuTextureLoad &t : k_menuTextures) {
-        sprintf(path, "%s\\textures\\%s", prefix, t.file);
+        snprintf(path, sizeof path, "%s\\textures\\%s", prefix, t.file);
         (art->*t.obj).load(d3d, path, 1, 0);
     }
 }
