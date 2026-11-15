@@ -44,6 +44,7 @@ private:
     Requires                 requires_;    // Requirements learned, for the level
     unsigned long            ticks_ = 0, retryAt_ = 0;
     std::string              note_;
+    std::vector<SubGoal>     subGoals_;   // of survey_
     /* Whether the last tick's presses came from a step under way, and
      * whether the one before did: the log notes each change. */
     bool                     pressing_ = false, pressed_ = false;

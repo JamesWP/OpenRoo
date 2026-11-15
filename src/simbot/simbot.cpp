@@ -1,4 +1,5 @@
 #include "simbot.h"
+#include "subgoals.h"
 #include <stdio.h>
 #include <chrono>
 #include "logger.h"
@@ -18,6 +19,7 @@ unsigned SimBot::act(const bot::BotView &, const World &world)
         // Wall time, for the log only: nothing is decided by it.
         const auto began = std::chrono::steady_clock::now();
         survey_ = std::make_unique<Survey>(world);
+        subGoals_ = subGoals(*survey_);
         const double surveyMs =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began)
                 .count();
@@ -63,22 +65,6 @@ unsigned SimBot::act(const bot::BotView &, const World &world)
     return presses;
 }
 
-namespace {
-
-/* The foes are killed first, as many as can be, then the level is done. */
-const int FOES_NODES = 1000;   // the search for kills, at most
-
-const std::vector<SubGoal> &subGoals()
-{
-    static const std::vector<SubGoal> all = {
-        {[](const Facts &f) { return __builtin_popcountll(f.alive); }, FOES_NODES},
-        {[](const Facts &f) { return f.done ? 0 : 1; }},
-    };
-    return all;
-}
-
-}  // namespace
-
 unsigned SimBot::decide(const World &world, Work &work)
 {
     for (;;) {
@@ -120,7 +106,12 @@ unsigned SimBot::decide(const World &world, Work &work)
             const Facts now = factsOf(world, *survey_);
             if (!(now == ruledAt_))
                 ruled_.clear();
-            planner_ = std::make_unique<Planner>(*survey_, now, subGoals(), ruled_, requires_, rest_);
+            const Survey &survey = *survey_;
+            planner_ = std::make_unique<Planner>(
+                survey, now, subGoals_, ruled_, requires_, rest_,
+                [&survey](const Facts &start, std::vector<Step> &steps, Work &work) {
+                    polishGems(survey, start, steps, work);
+                });
         }
         if (!planner_->run(work))
             return 0;
