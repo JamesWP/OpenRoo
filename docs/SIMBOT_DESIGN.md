@@ -58,7 +58,7 @@ they are needed.
 
 The Survey holds what is true of the level. What one Action works out
 once for a level, for itself alone (the trap's stands), it keeps in a
-*Working* of its own (`Survey::working`), which the Survey holds for it.
+*ActionData* of its own (`Survey::actionData`), which the Survey holds for it.
 
 **What-ifs.** Hypothetical facts are made by editing a copy of the World
 (the foes removed, the falling tiles put back, a bomb given), and the game is then

@@ -44,13 +44,13 @@ public:
     /* What an Action works out once for a level, kept for it here: made
      * empty the first time the Action asks, filled as it likes (lazily, as
      * the trap's stands are).  The Survey holds what is true of the level;
-     * an Action's own working on it is its Working. */
-    struct Working {
-        virtual ~Working() = default;
+     * what an Action works out for itself is its ActionData. */
+    struct ActionData {
+        virtual ~ActionData() = default;
     };
-    template <class T> T &working(const Action &a) const
+    template <class T> T &actionData(const Action &a) const
     {
-        std::unique_ptr<Working> &slot = working_[&a];
+        std::unique_ptr<ActionData> &slot = actionData_[&a];
         if (!slot)
             slot = std::make_unique<T>();
         return static_cast<T &>(*slot);
@@ -64,7 +64,7 @@ private:
     std::vector<unsigned> foes_;
     std::vector<Cell> seen_;
     std::vector<Cell> fallings_;
-    mutable std::map<const Action *, std::unique_ptr<Working>> working_;
+    mutable std::map<const Action *, std::unique_ptr<ActionData>> actionData_;
     Cell              exit_;
     int               quota_ = 0;
 };

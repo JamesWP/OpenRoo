@@ -136,9 +136,9 @@ struct Stand {
     double tileMs, standMs;
 };
 
-/* The trap's working for a level (Survey::working): the stands for a foe on
+/* The trap's data for a level (Survey::actionData): the stands for a foe on
  * each cell, worked out the first time it is asked for. */
-struct TrapWorking : Survey::Working {
+struct TrapData : Survey::ActionData {
     std::map<Cell, std::vector<Stand>> stands;
 };
 
@@ -148,7 +148,7 @@ const double ON_WAY_MS = 400;
 
 const std::vector<Stand> &stands(const Survey &survey, Cell foe)
 {
-    auto &known = survey.working<TrapWorking>(trapAction()).stands;
+    auto &known = survey.actionData<TrapData>(trapAction()).stands;
     auto it = known.find(foe);
     if (it != known.end())
         return it->second;
