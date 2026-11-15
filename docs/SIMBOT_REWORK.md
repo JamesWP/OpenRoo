@@ -3,7 +3,8 @@
 Two parts. Part 1 is a prompt to hand to a session that does the seam
 fixes: no new behaviour, the code brought back in line with
 `SIMBOT_DESIGN.md`. Part 2 is the design of the change that follows it:
-an Attempt split into a *solve* and a generic *press*.
+an Attempt split into an `ActionSearch`, the `ActionScript` it finds, and
+one `ScriptQueue` that plays them.
 
 Where this comes from: a review of `src/simbot` at `577bab8`. The latest
 full backtest then (`635015b`, policy `sim`) completed 41 of 80 levels,
@@ -83,8 +84,8 @@ How to work:
   probably in the wrong place.
 - Leave docs/SIMBOT_DESIGN.md as it is. At the end, list the edits to it
   you would suggest.
-- Stop after item 4. The solve / press split (Part 2 of
-  docs/SIMBOT_REWORK.md) is next and is not part of this; if something
+- Stop after item 4. The ActionSearch / ActionScript split (Part 2
+  of docs/SIMBOT_REWORK.md) is next and is not part of this; if something
   you are about to build would be thrown away by it, say so instead.
 
 When you finish, report: the backtest counts before and after, by kind
@@ -93,14 +94,14 @@ routeattempt.cpp before and after; and anything in the design you found
 did not hold.
 ```
 
-## Part 2: solve and press
+## Part 2: ActionSearch, ActionScript and ScriptQueue
 
 ### The problem
 
 An Attempt today does four jobs in one `act`: it searches for presses, it
 presses them, it checks the game is where the search expected, and it
 manages the time the search takes (the lead, doubled when outrun). Each
-Attempt class repeats some of this, and the bot can only think about a
+Attempt class repeats some of this, and the bot can only search for a
 step once the last one is finished. So the player stands still while the
 planner and the Route search, and stands still for good when there is no
 plan. Most of the 17 deaths are of this kind: no presses under way, a foe
@@ -109,139 +110,154 @@ arriving.
 Nothing needs the bot to wait. On the fixed clock a copy of the World
 plays out exactly as the game will, so the World at the end of the
 presses now being made is known before they are made. The next step can
-be planned and searched from there, while the hands are still busy.
+be planned and searched from that World while the current presses are
+still being played.
+
+### The names
+
+| Name | What it is | Replaces |
+|---|---|---|
+| `ActionScript` | The presses that do one Step, tick by tick, and the World they end in | the presses and expects inside `Route` / `RouteAttempt` |
+| `ActionSearch` | The search for a Step's `ActionScript`, from a given World | the searching half of `Attempt` |
+| `ScriptQueue` | The `ActionScript`s waiting to be played, and the one thing that plays them | the pressing half of `Attempt` |
+| `ScriptQueue::endWorld()` | The World after everything queued has been played | the lead |
+| `waitScript` | An `ActionScript` that presses nothing for some ticks | standing while searching |
+| `SequenceSearch` | Two searches, the second from the World the first one's script ends in | `ExitAttempt`, `TrapAttempt`, the kill's approach |
+| `FallbackSearch` | Two searches from the same World, the second tried if the first is impossible | "without waits, then with" |
+
+`presses` stays the name of the field: it is the game's own word for a
+tick's input (`presses.h`, `Policy::act`).
 
 ### The shape
 
 ```
-            plans from factsOf(horizon)
-  Planner ─────────────────────────────▶ Step
-                                           │ Action::solve(step, horizon)
-                                           ▼
-                                         Solve ── searches copies ──▶ Solution
-                                                                         │
-     horizon = solution.end  ◀───────────────────────────────────────────┤
-                                                                         ▼
-  live World ──▶ Presser: a queue of Solutions, one press a tick ──▶ keys
+  Planner ── plans from factsOf(queue.endWorld()) ──▶ Step
+                                                        │ Action::search(step, queue.endWorld())
+                                                        ▼
+                                                  ActionSearch ── searches copies ──▶ ActionScript
+                                                                                          │ queued
+                                                                                          ▼
+  live World ──▶ ScriptQueue: one press a tick, checked against the script ──▶ keys
 ```
 
-**Solution.** What a search found: the presses, one for each tick; what
-the game must look like before each (`Expect`, as now); and the World
-after the last. It always ends with the player alive and at rest.
+**ActionScript.** What a search found: the presses, one for each tick;
+what the game must look like before each (`Expect`, as now); and the
+World after the last. It always ends with the player alive and at rest.
 
 ```cpp
-struct Solution {
+struct ActionScript {
     std::vector<unsigned> presses;
     std::vector<Expect>   expects;
     World                 end;
 };
 ```
 
-**Solve.** A Step's search, and nothing else: given a World to start
-from, it works a little each frame and ends with a Solution or with
-Impossible (and, from Part 1, a Requirement if it knows what would make
-it possible). It never sees the live game and never presses.
+**ActionSearch.** A Step's search, and nothing else: given a World to
+start from, it works a little each frame and ends with an ActionScript or
+with Impossible (and, from Part 1, a Requirement if it knows what would
+make it possible). It never sees the live game and never presses.
 
 ```cpp
-class Solve {
+class ActionSearch {
 public:
     enum Status { Searching, Found, Impossible };
     virtual Status run(Work &work) = 0;
-    virtual const Solution &solution() const = 0;
+    virtual const ActionScript &script() const = 0;
     virtual std::string why() const { return ""; }
     virtual Requirement requirement() const { return {}; }
 };
 ```
 
-**Action.** Its doing half becomes
-`solve(step, from, survey)` in place of `attempt(step, survey)`.
+**Action.** Its doing half becomes `search(step, from, survey)` in place
+of `attempt(step, survey)`.
 
-**Presser.** The one thing that presses, the same for every Action. It
-holds a queue of Solutions. Each tick it checks the live World against
-the next `Expect` and gives the press. The *horizon* is the World at the
-end of everything queued: where the game will be when the queue runs
-out.
+**ScriptQueue.** The same for every Action, and the only code that
+presses. It holds the ActionScripts still to be played. Each tick it
+checks the live World against the next `Expect` and gives the press.
+`endWorld()` is the World at the end of everything queued: where the game
+will be when the queue runs out.
 
 ### The loop
 
 Each tick, within the frame's Work:
 
-1. **Think**, while fewer than two Solutions are queued (the one being
-   pressed, and one ahead). With no Solve under way, plan from
-   `factsOf(horizon)` and start the Solve of the plan's first step from
-   the horizon. Run it. Found: queue its Solution, which moves the
-   horizon to its end. Impossible: learn its Requirement or rule the step
-   out, and plan again, as now.
-2. **Keep the hands busy.** If the queue is empty, queue an *idle*
-   Solution from the horizon: at first a stand of `lead` ticks, checked
-   on a copy that the player lives. A Solve under way started from the
-   old horizon, which the game is now past: it starts again from the new
-   one, with the lead doubled. This is today's lead, kept in one place.
-3. **Press** the queue's next press. If the live World is not what was
-   expected, something is not deterministic: log it, drop the queue and
-   any Solve, and start again from the live World.
+1. **Search**, while fewer than two ActionScripts are queued (the one
+   being played, and the next). With no ActionSearch under way, plan from
+   `factsOf(queue.endWorld())` and start the search of the plan's first
+   step from that World. Run it. Found: queue its script, which moves
+   `endWorld()` to the script's end. Impossible: learn its Requirement or
+   rule the step out, and plan again, as now.
+2. **Refill.** If the queue is empty, queue a `waitScript` of `lead`
+   ticks from `endWorld()`, checked on a copy that the player lives. An
+   ActionSearch under way started from the old end World, which the game
+   is now past: it starts again from the new one, with the lead doubled.
+   This is today's lead, kept in one place.
+3. **Play** the queue's next press. If the live World is not what the
+   script expected, something is not deterministic: log it, drop the
+   queue and any search, and start again from the live World.
 
-A step is done when its Solution has been pressed to the end. The next
-plan is made from the facts of the World it ended in, not from the
+A step is done when its ActionScript has been played to the end. The
+next plan is made from the facts of the World it ended in, not from the
 Step's estimate of them.
 
 ### What it removes
 
 - `Attempt`, and with it `RouteAttempt`'s lead, its retries (`MAX_ROUTES`:
-  a Solution is exact, so it is not tried again) and its waiting for the
-  player to come to rest (a Solution ends at rest, so the horizon is
-  always at rest).
-- The wrapper Attempts. Two helpers over Solves replace them: *then* (a
-  second Solve started from the first one's end, their presses joined)
-  and *else* (a second tried from the same World if the first is
-  Impossible). The exit is a Route to its cell, then a stand till the
-  level completes. A trap is a Route to the stand, then the trap's
-  search. A kill is a Route near the foe, then the drop. A walk is a
-  Route without waits, else one with.
-- Standing while thinking, in the common case: the search for step N+1
-  runs during the presses of step N.
+  an ActionScript is exact, so it is not searched for again) and its
+  waiting for the player to come to rest (a script ends at rest, so
+  `endWorld()` is always at rest).
+- The wrapper Attempts, replaced by `SequenceSearch` and
+  `FallbackSearch`. The exit is a Route to its cell in sequence with a
+  wait till the level completes. A trap is a Route to the stand in
+  sequence with the trap's search. A kill is a Route near the foe in
+  sequence with the drop. A walk is a Route without waits, falling back
+  to one with.
+- Standing while searching, in the common case: the search for step N+1
+  runs while step N's script is played.
 
-`Route` is nearly a Solve already. It takes a World, runs on Work and
-gives presses and Expects; it needs only to keep the World its presses
-end in, which `found()` already plays through.
+`Route` is nearly an ActionSearch already. It takes a World, runs on Work
+and gives presses and Expects; it needs only to keep the World its
+presses end in, which `found()` already plays through.
 
 ### Staying alive
 
-The idle Solution is where "stay safe" goes. It starts as a stand. When
-a stand would have the player die, it becomes a search of its own, an
-ordinary Solve whose goal is "alive and at rest in N ticks", and the
-Presser queues that instead. It is not an Action: it changes no fact, so
-the planner never sees it. The same idle covers "no plan": the hands are
-kept busy and alive while the planner tries again from the new horizon.
+The `waitScript` is where staying alive goes. When waiting would have
+the player die, the refill instead runs a `SurviveSearch`: an ordinary
+ActionSearch whose goal is "alive and at rest in N ticks". It is not an
+Action: it changes no fact, so the planner never sees it. The same refill
+covers "no plan": scripts keep being played and the player kept alive
+while the planner tries again from the new end World.
 
 ### In what order
 
 Each a commit, the backtest run after each.
 
-1. `Solution` and `Solve`; `Route` keeps its end World and is one.
-2. An adapter: one Attempt that runs any Solve with today's lead and
-   presses its Solution. Nothing behaves differently yet, and the
-   Actions can move over one at a time.
-3. *then* and *else*; collect, pickup and exit moved to `solve`.
+1. `ActionScript` and `ActionSearch`; `Route` keeps its end World and is
+   an ActionSearch.
+2. `SearchAttempt`, an adapter: one Attempt that runs any ActionSearch
+   with today's lead and plays its script. Nothing behaves differently
+   yet, and the Actions can move over one at a time.
+3. `SequenceSearch` and `FallbackSearch`; collect, pickup and exit moved
+   to `search`.
 4. Kill and trap moved. `RouteAttempt` and the wrapper Attempts go.
-5. The Presser and the loop above, with one Solution queued at most
-   (no looking ahead yet). The adapter and `Attempt` go. The same levels
-   should complete.
-6. Two queued: the next step is solved while this one is pressed. This
-   is the first commit meant to change results: fewer deaths while
-   thinking, shorter runs.
-7. The idle that evades.
+5. `ScriptQueue` and the loop above, holding one script at most (the
+   next step is not yet searched early). `SearchAttempt` and `Attempt`
+   go. The same levels should complete.
+6. Two scripts queued: the next step is searched while this one is
+   played. This is the first commit meant to change results: fewer
+   deaths with no presses under way, shorter runs.
+7. `SurviveSearch`.
 
 ### Open questions
 
 - **A search that outlasts the queue** is thrown away and started again
-  further ahead. That is today's behaviour, and rare once searches run
-  during the presses before them, but a trap's search is long (its lead
-  is 60 ticks from the first). An Action could say what lead its Solve
-  wants; left out until the scoreboard shows it matters.
-- **How far ahead.** One step, to begin with. Further would have the bot
-  commit to more of a plan before the facts are in, for little gain
-  while one step's search fits in the presses of the last.
+  from a later World. That is today's behaviour, and rare once searches
+  run while the script before them is played, but a trap's search is
+  long (its lead is 60 ticks from the first). An Action could say what
+  lead its search wants; left out until the scoreboard shows it matters.
+- **How many scripts to queue.** Two, to begin with. More would have the
+  bot commit to more of a plan before the facts are in, for little gain
+  while one step's search fits in the playing of the last.
 - **Whether an `Expect` is enough.** It compares the clock and the
   player. A foe gone astray with the player still in place is not seen
   until the player is. On the fixed clock neither should happen; if the
