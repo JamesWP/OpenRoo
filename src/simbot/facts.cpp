@@ -35,4 +35,15 @@ Facts factsOf(const World &w, const Survey &survey)
     return f;
 }
 
+Requirement foeDead(const Survey &survey, unsigned id)
+{
+    const std::vector<unsigned> &foes = survey.foes();
+    for (size_t i = 0; i < foes.size(); i++)
+        if (foes[i] == id) {
+            const uint64_t bit = (uint64_t)1 << i;
+            return {"dead f" + std::to_string(i), [bit](const Facts &f) { return !(f.alive & bit); }};
+        }
+    return {};
+}
+
 }  // namespace simbot

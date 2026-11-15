@@ -55,9 +55,9 @@ struct SubGoal {
 using Polish = std::function<void(const Facts &start, std::vector<Step> &steps, Work &work)>;
 
 using Ruled = std::set<std::pair<const Action *, int>>;
-/* Requirements learned (Attempt::requiresDead): for a step, the foes (bits
- * of Facts::alive) that must be dead before it is offered. */
-using Requires = std::map<std::pair<const Action *, int>, uint64_t>;
+/* Requirements learned (Attempt::requirement): a step is offered only while
+ * all of its hold. */
+using Requires = std::map<std::pair<const Action *, int>, std::vector<Requirement>>;
 
 class Planner {
 public:
@@ -84,6 +84,8 @@ private:
     int tie(const Facts &f) const;
     /* Whether the last sub-goal is met at f: nothing follows. */
     bool met(const Facts &f) const;
+    /* Whether the Requirements learned for s hold at f. */
+    bool holds(const Step &s, const Facts &f) const;
     /* A search for subGoals_[subGoal_] from f. */
     void begin(const Facts &f);
     /* The search for subGoals_[subGoal_] ended at node at (-1: not met). */

@@ -96,7 +96,7 @@ Attempt::Status RouteAttempt::act(const World &live, Work &work, unsigned *press
             goal.cell = {f->cellU(), f->cellV()};
             unsigned blocker;
             if (blockedBy(ahead, goal, f->heightCell(), foeMoving(ahead, *f), &blocker)) {
-                requiresDead_ = {blocker};
+                requirement_ = foeDead(*survey_, blocker);
                 why_ = "foe " + std::to_string(blocker) + " is in the way";
                 return Impossible;
             }

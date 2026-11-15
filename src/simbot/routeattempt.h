@@ -18,6 +18,7 @@
 #include "movegraph.h"
 #include "moves.h"
 #include "routing.h"
+#include "survey.h"
 
 namespace simbot {
 
@@ -26,11 +27,11 @@ public:
     /* A trap's search takes longer, the foe coming on meanwhile: its lead
      * (ticks) from the first. */
     static const int TRAP_LEAD = 60;
-    RouteAttempt(Goal goal, const MoveGraph &graph)
-        : goal_(goal), graph_(&graph), lead_(goal.trap ? TRAP_LEAD : 4), waits_(goal.kill || goal.trap) {}
+    RouteAttempt(Goal goal, const Survey &survey)
+        : goal_(goal), survey_(&survey), graph_(&survey.graph()), lead_(goal.trap ? TRAP_LEAD : 4), waits_(goal.kill || goal.trap) {}
     Status act(const World &live, Work &work, unsigned *presses) override;
     std::string why() const override { return why_; }
-    std::vector<unsigned> requiresDead() const override { return requiresDead_; }
+    Requirement requirement() const override { return requirement_; }
 
 private:
     bool done(const World &live) const;
@@ -40,6 +41,7 @@ private:
     bool blockedBy(const World &w, const Goal &goal, int foeH, bool moving, unsigned *foe) const;
 
     Goal goal_;
+    const Survey *survey_;
     const MoveGraph *graph_;
     std::unique_ptr<Route> route_;
     size_t at_ = 0;
@@ -47,7 +49,7 @@ private:
     bool   waits_;         // the Route may wait (routing.h)
     int    routes_ = 0;    // Routes pressed to their end without the goal
     std::string why_;      // the last Route's summary
-    std::vector<unsigned> requiresDead_;
+    Requirement requirement_;
     bool   approach_ = false;       // the Route walks near the foe, to kill it from there
     bool   approachWaits_ = false;  // and may wait
 };

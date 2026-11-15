@@ -32,6 +32,16 @@ int Planner::tie(const Facts &f) const
     return sub.tie ? sub.tie(f) : 0;
 }
 
+bool Planner::holds(const Step &s, const Facts &f) const
+{
+    auto r = requires_.find({s.action, s.arg});
+    if (r != requires_.end())
+        for (const Requirement &q : r->second)
+            if (!q.holds(f))
+                return false;
+    return true;
+}
+
 bool Planner::met(const Facts &f) const
 {
     return subGoals_.back().left(f) == 0;
@@ -166,9 +176,8 @@ bool Planner::run(Work &work)
         for (Step &s : next) {
             if (out_.count({s.action, s.arg}) && at == 0 && nodes_[0].facts == start_)
                 continue;   // impossible now, from here
-            auto r = requires_.find({s.action, s.arg});
-            if (r != requires_.end() && (r->second & nodes_[at].facts.alive))
-                continue;   // a foe it needs dead is alive
+            if (!holds(s, nodes_[at].facts))
+                continue;   // a Requirement learned does not hold
             Node n;
             n.facts  = s.after;
             n.ms     = nodes_[at].ms + s.ms;
@@ -194,9 +203,7 @@ bool Planner::reoffer(Facts f, const std::vector<Step> &steps, std::vector<Step>
     out.clear();
     ms = 0;
     for (const Step &st : steps) {
-        auto r = requires_.find({st.action, st.arg});
-        if (out_.count({st.action, st.arg}) ||
-            (r != requires_.end() && (r->second & f.alive)))
+        if (out_.count({st.action, st.arg}) || !holds(st, f))
             return false;
         std::vector<Step> offered;
         st.action->offer(f, survey_, offered, st.arg);

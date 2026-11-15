@@ -138,25 +138,12 @@ unsigned SimBot::decide(const World &world, Work &work)
 
 bool SimBot::learn(const Attempt &a)
 {
-    const std::vector<unsigned> dead = a.requiresDead();
-    if (dead.empty())
+    Requirement r = a.requirement();
+    if (!r)
         return false;
-    uint64_t bits = 0;
-    for (unsigned id : dead) {
-        size_t i = 0;
-        while (i < survey_->foes().size() && survey_->foes()[i] != id)
-            i++;
-        if (i == survey_->foes().size())
-            return false;   // one no bomb kills (a thrower): no way to meet it
-        bits |= (uint64_t)1 << i;
-    }
-    requires_[{step_.action, step_.arg}] |= bits;
-    std::string names;
-    for (size_t i = 0; i < survey_->foes().size(); i++)
-        if (bits >> i & 1)
-            names += (names.empty() ? "f" : " f") + std::to_string(i);
     log_.write(ticks_, "requires", "\"step\":" + SimLog::quote(step_.what) +
-                                       ",\"dead\":" + SimLog::quote(names));
+                                       ",\"requirement\":" + SimLog::quote(r.name));
+    requires_[{step_.action, step_.arg}].push_back(std::move(r));
     return true;
 }
 

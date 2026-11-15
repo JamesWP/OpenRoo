@@ -67,7 +67,7 @@ public:
         g.cell = survey.seen(step.arg);
         g.kill = true;
         g.foe  = survey.foes()[step.arg];
-        return std::make_unique<RouteAttempt>(g, survey.graph());
+        return std::make_unique<RouteAttempt>(g, survey);
     }
 };
 

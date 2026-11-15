@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 #include <array>
+#include <functional>
+#include <string>
 #include <tuple>
 
 class World;
@@ -40,6 +42,18 @@ struct Facts {
     bool operator<(const Facts &o) const { return key() < o.key(); }
     bool operator==(const Facts &o) const { return key() == o.key(); }
 };
+
+/* A condition on Facts a step needs before it is offered, learned by an
+ * Attempt that found no way; the name is for the log ("dead f2"). */
+struct Requirement {
+    std::string name;
+    std::function<bool(const Facts &)> holds;   // empty: no Requirement
+    explicit operator bool() const { return (bool)holds; }
+};
+
+/* That the survey's foe with Listed id is dead; none if it is not one of
+ * them (a thrower: no bomb kills it). */
+Requirement foeDead(const Survey &survey, unsigned id);
 
 /* The facts of a World. */
 Facts factsOf(const World &w, const Survey &survey);

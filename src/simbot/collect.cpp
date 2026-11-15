@@ -105,7 +105,7 @@ public:
 
     std::unique_ptr<Attempt> attempt(const Step &step, const Survey &survey) const override
     {
-        return std::make_unique<RouteAttempt>(Goal{survey.gems()[step.arg]}, survey.graph());
+        return std::make_unique<RouteAttempt>(Goal{survey.gems()[step.arg]}, survey);
     }
 };
 

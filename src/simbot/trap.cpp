@@ -34,8 +34,8 @@ const double LURE_MS = 6000;
 /* First a walk to the stand, then the trap searched from there. */
 class TrapAttempt : public Attempt {
 public:
-    TrapAttempt(Cell stand, Goal trap, const MoveGraph &graph)
-        : walk_(Goal{stand}, graph), trap_(trap, graph) {}
+    TrapAttempt(Cell stand, Goal trap, const Survey &survey)
+        : walk_(Goal{stand}, survey), trap_(trap, survey) {}
     Status act(const World &live, Work &work, unsigned *presses) override
     {
         if (!there_) {
@@ -126,7 +126,7 @@ public:
         g.cell = stand;
         g.trap = true;
         g.foe  = survey.foes()[step.arg];
-        return std::make_unique<TrapAttempt>(stand, g, survey.graph());
+        return std::make_unique<TrapAttempt>(stand, g, survey);
     }
 };
 
