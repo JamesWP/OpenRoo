@@ -12,6 +12,9 @@
  * Its cost is a guess past the walk: how the foe comes on only playing
  * says. */
 #include <stdio.h>
+#include <algorithm>
+#include <map>
+#include <set>
 #include "actions.h"
 #include "routeattempt.h"
 #include "survey.h"
@@ -19,6 +22,8 @@
 #include "world.h"
 
 namespace simbot {
+
+const Action &trapAction();
 
 namespace {
 
@@ -122,6 +127,82 @@ private:
     std::string why_;
 };
 
+/* Where a foe on a cell may be trapped: a falling tile it comes to, and a
+ * stand beside it, not a falling tile, that it comes to only over falling
+ * tiles, by way of that one; with the foe's times to the tile and the stand
+ * on the player's MoveGraph. */
+struct Stand {
+    Cell   tile, stand;
+    double tileMs, standMs;
+};
+
+/* The trap's working for a level (Survey::working): the stands for a foe on
+ * each cell, worked out the first time it is asked for. */
+struct TrapWorking : Survey::Working {
+    std::map<Cell, std::vector<Stand>> stands;
+};
+
+/* A stand is on the foe's way by its tile if the foe comes to it no more
+ * than this after the tile (a step, or a step and a drop). */
+const double ON_WAY_MS = 400;
+
+const std::vector<Stand> &stands(const Survey &survey, Cell foe)
+{
+    auto &known = survey.working<TrapWorking>(trapAction()).stands;
+    auto it = known.find(foe);
+    if (it != known.end())
+        return it->second;
+    std::vector<Stand> &out = known[foe];
+    const MoveGraph &g = survey.graph();
+    const std::vector<Cell> &fallings_ = survey.fallings();
+    if (fallings_.empty() || g.on(foe).empty())
+        return out;
+    auto falling = [&](Cell c) {
+        return std::find(fallings_.begin(), fallings_.end(), c) != fallings_.end();
+    };
+    // The foe walks as the player would: its time to each cell, and the
+    // cells it comes to without crossing a falling tile.
+    const int from = g.on(foe).front();
+    const MoveGraph::Table times = g.times(from);
+    auto timeTo = [&](Cell c) {
+        double best = -1;
+        for (int p : g.on(c))
+            if ((*times)[p] >= 0 && (best < 0 || (*times)[p] < best))
+                best = (*times)[p];
+        return best;
+    };
+    std::set<Cell> open;
+    std::vector<int> stack{from};
+    std::set<int> seen{from};
+    while (!stack.empty()) {
+        const int p = stack.back();
+        stack.pop_back();
+        open.insert(g.place(p).cell());
+        for (const MoveGraph::Edge &e : g.edges(p))
+            if (!falling(g.place(e.to).cell()) && seen.insert(e.to).second)
+                stack.push_back(e.to);
+    }
+    std::vector<std::pair<double, Stand>> found;
+    for (const Cell &t : fallings_) {
+        const double toTile = timeTo(t);
+        if (toTile < 0)
+            continue;
+        for (const Cell &n : {Cell{t.u + 1, t.v}, Cell{t.u - 1, t.v}, Cell{t.u, t.v + 1},
+                              Cell{t.u, t.v - 1}}) {
+            const double toStand = timeTo(n);
+            // Just past the tile from the foe: its way there is by the tile.
+            if (falling(n) || open.count(n) || toStand <= toTile || toStand > toTile + ON_WAY_MS)
+                continue;
+            found.push_back({toTile, {t, n, toTile, toStand}});
+        }
+    }
+    std::stable_sort(found.begin(), found.end(),
+                     [](const auto &a, const auto &b) { return a.first < b.first; });
+    for (const auto &f : found)
+        out.push_back(f.second);
+    return out;
+}
+
 /* The place the player stands to lead foe (a Survey index) onto a falling
  * tile, from f.at, coming there well before the foe; its ms and the glides
  * it uses.  -1 if none. */
@@ -133,7 +214,7 @@ int trapStand(const Facts &f, const Survey &survey, size_t foe, double *ms, int 
     // player comes to soonest, well before the foe.
     int to = -1;
     double tile = -1;
-    for (const Survey::Stand &s : survey.stands(survey.seen((int)foe))) {
+    for (const Stand &s : stands(survey, survey.seen((int)foe))) {
         if ((to >= 0 && s.tileMs > tile) || s.tileMs > LURE_MS)
             break;
         double m;

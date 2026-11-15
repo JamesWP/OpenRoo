@@ -4,12 +4,15 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <vector>
 #include "movegraph.h"
 
 class World;
 
 namespace simbot {
+
+class Action;
 
 class Survey {
 public:
@@ -32,22 +35,26 @@ public:
     /* The cells of the falling tiles: a foe stood on one when it drops
      * falls with it (trap.cpp). */
     const std::vector<Cell> &fallings() const { return fallings_; }
-    /* Where a foe on cell foe may be trapped (trap.cpp): a falling tile it
-     * comes to, and a stand beside it, not a falling tile, that it comes to
-     * only over falling tiles, by way of that one; with the foe's times to
-     * the tile and the stand on the player's MoveGraph.  Its tiles soonest
-     * first.
-     * Worked out for each cell the first time it is asked for. */
-    struct Stand {
-        Cell   tile, stand;
-        double tileMs, standMs;
-    };
-    const std::vector<Stand> &stands(Cell foe) const;
     /* Notes where the foes are now. */
     void see(const World &w);
 
     Cell exit() const { return exit_; }
     int  quota() const { return quota_; }
+
+    /* What an Action works out once for a level, kept for it here: made
+     * empty the first time the Action asks, filled as it likes (lazily, as
+     * the trap's stands are).  The Survey holds what is true of the level;
+     * an Action's own working on it is its Working. */
+    struct Working {
+        virtual ~Working() = default;
+    };
+    template <class T> T &working(const Action &a) const
+    {
+        std::unique_ptr<Working> &slot = working_[&a];
+        if (!slot)
+            slot = std::make_unique<T>();
+        return static_cast<T &>(*slot);
+    }
 
 private:
     MoveGraph         graph_;
@@ -57,7 +64,7 @@ private:
     std::vector<unsigned> foes_;
     std::vector<Cell> seen_;
     std::vector<Cell> fallings_;
-    mutable std::map<Cell, std::vector<Stand>> stands_;
+    mutable std::map<const Action *, std::unique_ptr<Working>> working_;
     Cell              exit_;
     int               quota_ = 0;
 };
