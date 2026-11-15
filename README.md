@@ -43,6 +43,19 @@ The same commands as Linux build and run it (`OPENROO_PLATFORM=macos` is the
 default on a Mac).  It draws with desktop OpenGL 3.3 core, which macOS
 provides (as 4.1, over Metal); there is no OpenGL ES there.
 
+To launch it from the Dock or Finder, package it as an app (after importing
+the game data):
+
+```bash
+cmake --build build --target macos-app            # build/OpenRoo.app
+cp -cR build/OpenRoo.app ~/Applications/          # then drag it to the Dock
+```
+
+The app carries a copy of `game/` (an APFS clone, so it costs no space) and
+runs in `~/Library/Application Support/OpenRoo`, which holds its settings,
+saves, high scores and logs.  It uses Homebrew's SDL3 and FFmpeg, so it runs
+on a Mac that has them installed.
+
 ### For Windows
 
 Build natively, from PowerShell.  You need Visual Studio 2022 (the "Desktop

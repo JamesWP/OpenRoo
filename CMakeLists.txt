@@ -134,6 +134,17 @@ if(OPENROO_PLATFORM STREQUAL "rg35xx")
         COMMENT "Packaging ${pkg}")
 endif()
 
+if(OPENROO_PLATFORM STREQUAL "macos")
+    # build/OpenRoo.app, for the Dock and Finder: the game, its icon and a copy
+    # of game/ (see tools/make_macos_app.py).  On request only.
+    add_custom_target(macos-app
+        COMMAND ${Python3_EXECUTABLE} "${PROJECT_SOURCE_DIR}/tools/make_macos_app.py"
+                --exe $<TARGET_FILE:OpenRoo> --out "${CMAKE_BINARY_DIR}/OpenRoo.app"
+                --version ${PROJECT_VERSION}
+        DEPENDS OpenRoo
+        COMMENT "Packaging ${CMAKE_BINARY_DIR}/OpenRoo.app")
+endif()
+
 # Only the platform groups may include SDL.
 add_custom_target(check-native-sdl ALL
     COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${PROJECT_SOURCE_DIR} -P ${PROJECT_SOURCE_DIR}/cmake/CheckNativeSDL.cmake)
